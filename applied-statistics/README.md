@@ -1,5 +1,12 @@
 # (2023/2024) Applied Statistics
 
+The notes are taken from the book required for the course: 
+
+- Johnson, R. A., Wichern, D. W.
+- [Applied Multivariate Statistical Analysis (6th edition, 2007)](https://amzn.eu/d/awe8a4O)
+- Pearson Prentice Hall
+- ISBN: 9780135143506, 0135143500
+
 ## Course Syllabus
 
 According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=811775&polij_device_category=DESKTOP&__pj0=0&__pj1=bdb7cb7ade98cc40d13ce69e7ddd72af):

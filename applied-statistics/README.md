@@ -5,6 +5,10 @@ The notes are taken from the book required for the course:
 - G. James, D. Witten, T. Hastie, and R. Tibshirani. _An Introduction to Statistical Learning: with Applications in R_. Springer Texts in Statistics. Springer New York, 2013.
 - R.A. Johnson and D.W. Wichern. _Applied Multivariate Statistical Analysis_. Applied Multivariate Statistical Analysis. Pearson Prentice Hall, 2007.
 
+You can view/download the PDF [here](notes/applied-statistics.pdf). In the [notes folder](notes/), you can also see the source code.
+
+For any issue, [use the appropriate section](https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/issues).
+
 ## Course Syllabus
 
 According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=811775&polij_device_category=DESKTOP&__pj0=0&__pj1=bdb7cb7ade98cc40d13ce69e7ddd72af):

@@ -7,6 +7,7 @@
 \usepackage{booktabs}				% high quality tables
 \usepackage{amsmath}				% math package
 \usepackage{amssymb}				% another math package (e.g. \nexists)
+\usepackage{bm}                     % bold math symbols
 \usepackage{mathtools}				% emphasize equations
 \usepackage{stmaryrd} 				% '\llbracket' and '\rrbracket'
 \usepackage{amsthm}					% better theorems
@@ -55,11 +56,26 @@
 \newcommand{\circledtext}[1]{\raisebox{.5pt}{\textcircled{\raisebox{-.9pt}{#1}}}}
 \newcommand{\definition}[1]{\textcolor{Red3}{\textbf{#1}}\index{#1}}
 \newcommand{\example}[1]{\textcolor{Green4}{\textbf{#1}}}
+\newcommand{\Var}{\mathrm{Var}}
 
 
 \begin{document}
     \newcounter{definition}[section]
-    \newtcolorbox{boxdef}{colback=red!5!white,colframe=red!75!black,fonttitle=\bfseries,title=Definizione~\refstepcounter{definition}\thedefinition}
+    \newcounter{example}[section]
+    
+    \newtcolorbox[use counter = definition]{definitionbox}{%
+        colback=red!5!white,
+        colframe=red!75!black,
+        fonttitle=\bfseries,
+        title=Definition \thetcbcounter %
+    }
+    
+    \newtcolorbox[use counter = example]{examplebox}{%
+        colback=Green4!5!white,
+        colframe=Green4!75!black,
+        fonttitle=\bfseries,
+        title=Example \thetcbcounter %
+    }
 
     \author{260236}
 	\title{Applied Statistics - Notes}
@@ -344,24 +360,82 @@
     \begin{equation}
         Y = f\left(X\right) + \varepsilon
     \end{equation}
-    Where $\varepsilon$ is an \definition{error term}, which is \textbf{independent} of $X$ and has \textbf{mean zero}. The function $f$ represents the \definition{systematic information} that $X$ provides about $Y$. The \textbf{function} $f$ that connects the input variables to the output variable \textbf{is in general unknown}.\newline
+    Where $\varepsilon$ is an \definition{error term}, which is \textbf{independent} of $X$ and has \textbf{mean zero}. The function $f$ represents the \definition{systematic information} that $X$ provides about $Y$. The \textbf{function} $f$ that connects the input variables to the output variable \textbf{is in general unknown}.
     
-    \noindent
-    For \example{example}, on the left-hand panel of figure~\ref{fig: error term systematic}, a plot \texttt{income} versus \texttt{years of education} for 30 individuals in the Income data set.
-    
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=\textwidth]{img/error-term-systematic-1.pdf}
-        \caption{The \texttt{Income} data set.\cite{james2013introduction}}
-        \label{fig: error term systematic}
-    \end{figure}
+    \begin{examplebox}
+        For \example{example}, on the left-hand panel of figure~\ref{fig: error term systematic}, a plot \texttt{income} versus \texttt{years of education} for 30 individuals in the Income data set.
+        
+        \begin{center}
+            \includegraphics[width=\textwidth]{img/error-term-systematic-1.pdf}
+            \captionof{figure}{The \texttt{Income} data set.\cite{james2013introduction}}
+            \label{fig: error term systematic}
+        \end{center}
 
-    \noindent
-    As you can see, the plot suggests that one might be able to predict \texttt{income} using \texttt{years of education}. Since \texttt{Income} is a simulated data set, the function $f$ is known and is shown by the blue curve in the right-hand panel. The \textbf{vertical lines} represent the \textbf{error terms} $\varepsilon$. We note that some of the 30 observations lie above the blue curve and some lie below it; overall, the \textbf{errors have approximately mean zero}.\newline
+
+        \noindent
+        As you can see, the plot suggests that one might be able to predict \texttt{income} using \texttt{years of education}. Since \texttt{Income} is a simulated data set, the function $f$ is known and is shown by the blue curve in the right-hand panel. The \textbf{vertical lines} represent the \textbf{error terms} $\varepsilon$. We note that some of the 30 observations lie above the blue curve and some lie below it; overall, the \textbf{errors have approximately mean zero}.
+    \end{examplebox}
 
     \noindent
     In essence, \textbf{statistical learning refers to a set of approaches for estimating $f$}. In this chapter we outline some of the key theoretical concepts that arise in estimating $f$.
 
+    \newpage
+
+    \subsection{Why Estimate \emph{f} (systematic information provided by a predictor about a quantitative response)?}
+
+    There are two main reasons that we may wish to estimate $f$\index{systematic information}: \definition{prediction} and \definition{inference}.
+
+    \longline
+
+    \subsubsection{Prediction}
+
+    In many situations, a set of inputs $X$ are readily available, but the output $Y$ cannot be easily obtained. In this setting, since the error term $\varepsilon$ averages to zero, we can predict $Y$ using:
+    \begin{equation}
+        \hat{Y} = \hat{f}\left(X\right)
+    \end{equation}
+    \begin{itemize}
+        \item $\hat{f}$ represents our \textbf{estimate for} $\bm{f}$
+        \item $\hat{Y}$ represents \definition{prediction} for $Y$
+    \end{itemize}
+    The function $\hat{f}$ is often treated as a \textbf{black box}, in the sense that one is not typically concerned with the exact form of $\hat{f}$, provided that \textbf{it yields accurate predictions for} $Y$.
+
+    \begin{examplebox}
+        As an \example{example}, suppose that:
+        \begin{itemize}
+            \item $X_{1}, \dots, X_{p}$ are \textbf{characteristics of a patient's blood sample} that can be easily measured in a lab.
+            \item $Y$ is a variable encoding the \textbf{patient's risk for a severe adverse reaction to a particular drug}.
+        \end{itemize}
+        It is natural to seek to predict $Y$ using $X$, since we can then avoid giving the drug in question to patients who are at high risk of an adverse reaction. That is, patients for whom the estimate of $Y$ is high.
+    \end{examplebox}
+
+    \noindent
+    The accuracy of $\hat{Y}$ as a prediction for $Y$ depends on two quantities: \definition{reducible error} and \definition{irreducible error}.
+    \begin{itemize}
+        \item In general, $\hat{f}$ will not be a perfect estimate for $f$, and this \textbf{inaccuracy} will introduce some error. This is a \definition{reducible error} because we can potentially \textbf{improve the accuracy of $\bm{\hat{f}}$ by using the most appropriate statistical learning technique to estimate $\bm{f}$}.
+        
+        \item Even if it were possible to form a perfect estimate for $f$, so that our estimated response took the form $\hat{Y} = f\left(X\right)$, our prediction would still have some error in it! This is because $Y$ is also a function of $\varepsilon$ (error term), which, by definition, cannot be predicted using $X$. Therefore, variability associated with $\varepsilon$ also affects the accuracy of our predictions. This is the \definition{irreducible error}, because \textbf{no matter how well we estimate $\bm{f}$, we cannot reduce the error introduced by $\bm{\varepsilon}$}.
+    \end{itemize}
+    The real question is: \emph{why is the irreducible error larger than zero?} Well, the quantity $\varepsilon$ may contain unmeasured variables that are useful in predicting $Y$: since we don't measure them, $f$ cannot use them for its prediction. The quantity $\varepsilon$ may also contain unmeasurable variation.
+
+    \begin{examplebox}
+        For \example{example}, the risk of an adverse reaction might vary for a given patient on a given day, depending on manufacturing variation in the drug itself or the patient's general feeling of well-being on that day.
+    \end{examplebox}
+
+    \noindent
+    Consider a given estimate $\hat{f}$ and a set of predictors $X$, which yields the prediction $\hat{Y} = \hat{f}\left(X\right)$. Assume for a moment that both $\hat{f}$ and $X$ are fixed, so that the only variability comes from $\varepsilon$ (error term). Then, it's easy to show that:
+    \begin{equation}
+        \begin{array}{rcl}
+            E\left(Y - \hat{Y}\right)^{2} &=& E\left[f\left(X\right) + \varepsilon - \hat{f}\left(X\right)\right]^{2} \\ [1em]
+                                          &=& \underbrace{\left[f\left(X\right) - \hat{f}\left(X\right)\right]^{2}}_{\text{Reducible}} + \underbrace{\Var\left(\varepsilon\right)}_{\text{Irreducible}}
+        \end{array}
+    \end{equation}
+    \begin{itemize}
+        \item $\left[f\left(X\right) - \hat{f}\left(X\right)\right]^{2}$ represents the \textbf{squared difference between the predicted and actual value of} $\bm{Y}$
+        
+        \item $E\left(Y-\hat{Y}\right)^{2}$ represents the \textbf{average}, or \definition{exprected value}
+        
+        \item $\Var\left(\varepsilon\right)$ represents the \definition{variance} \textbf{associated with the error term} $\varepsilon$
+    \end{itemize}
 
 
 
@@ -369,7 +443,18 @@
 
 
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% END %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
     \newpage
 

@@ -364,7 +364,7 @@
     \subsection{Introduction}
 
     Suppose that we observe a quantitative response $Y$ and $p$ different predictors, $X_{1}, X_{2}, \dots, X_{p}$. We assume that there is some relationship between $Y$ and $X = \left(X_{1}, X_{2}, \dots, X_{p}\right)$, which can be written in the general form:
-    \begin{equation}
+    \begin{equation}\label{eq: error term systematic}
         Y = f\left(X\right) + \varepsilon
     \end{equation}
     Where $\varepsilon$ is an \definition{error term}, which is \textbf{independent} of $X$ and has \textbf{mean zero}. The function $f$ represents the \definition{systematic information} that $X$ provides about $Y$. The \textbf{function} $f$ that connects the input variables to the output variable \textbf{is in general unknown}.
@@ -432,7 +432,7 @@
 
     \noindent
     Consider a given estimate $\hat{f}$ and a set of predictors $X$, which yields the prediction $\hat{Y} = \hat{f}\left(X\right)$. Assume for a moment that both $\hat{f}$ and $X$ are fixed, so that the only variability comes from $\varepsilon$ (error term). Then, it's easy to show that:
-    \begin{equation}
+    \begin{equation}\label{eq: reducible and irreducible error}
         \begin{array}{rcl}
             E\left(Y - \hat{Y}\right)^{2} &=& E\left[f\left(X\right) + \varepsilon - \hat{f}\left(X\right)\right]^{2} \\ [1em]
                                           &=& \underbrace{\left[f\left(X\right) - \hat{f}\left(X\right)\right]^{2}}_{\text{Reducible}} + \underbrace{\Var\left(\varepsilon\right)}_{\text{Irreducible}}
@@ -637,9 +637,172 @@
     \highspace
     In this setting, we are in some sense \emph{working blind}; the situation is referred to as \textbf{unsupervised} because \textbf{we lack a response variable that can supervise our analysis}. We can \textbf{seek to understand the relationships between the variables or between the observations}.
 
+    \newpage
 
+    \subsection{Assessing Model Accuracy}
 
+    The aim of this section is to decide which method will give the best results for a given set of data.
 
+    \subsubsection{Measuring the Quality of Fit (MSE)}
+
+    In order to evaluate the performance of a statistical learning method on a given data set, we need some way to measure how well its predictions actually match the observed data. We need to \textbf{quantify the extent to which the predicted response value for a given observation is close to the true response value for that observation}. The most commonly-used measure is the \definition{mean squared error (MSE)}:
+    \begin{equation}\label{eq: mean squared error}
+        \mathrm{MSE} = \dfrac{1}{n} \displaystyle\sum_{i=1}^{n} \left(y_{i} - \hat{f}\left(x_{i}\right)\right)^{2}
+    \end{equation}
+    \begin{itemize}
+        \item $\hat{f}\left(x_{i}\right)$ is the prediction that $\hat{f}$ gives for the $i$th observation
+        \item $y_{i}$ the $i$th true response
+    \end{itemize}
+    Obviously,the MSE will be:
+    \begin{itemize}
+        \item \textbf{Small} if the predicted responses are very close to the true responses;
+        \item \textbf{Large} if for some of the observations, the predicted and true responses differ substantially.
+    \end{itemize}
+    In general, we do not really care how well the method works on the training data. Rather, \textbf{we are interested in the accuracy of the predictions that we obtain when we apply our method to previously unseen test data}.
+
+    \begin{examplebox}
+        Suppose that we are interested in developing an algorithm to predict a stock's price based on previous stock returns.
+
+        \highspace
+        We can train the method using stock returns from the past 6 months. But we \underline{don't} really care how well our method predicts last week's stock price.
+
+        We instead \textbf{care about how well it predict tomorrow's price or next month's price}.
+    \end{examplebox}
+
+    \begin{examplebox}
+        Suppose that we have clinical measurements (e.g. weight, blood pressure, height, age, family history of disease) for a number of patients, as well as information about whether each patient has diabetes.
+
+        \highspace
+        We can use these patients to train a statistical learning method to predict risk of diabetes based on clinical measurements.
+
+        \highspace
+        In practice, \textbf{we want this method to accurately predict diabetes risk for \emph{future patients} based on their clinical measurements}. Again, we are \underline{not} very interested in whether or not the method accurately predicts diabetes risk for patients used to train the mode, since \underline{we already know which of those patients have diabetes}!
+    \end{examplebox}
+
+    \noindent
+    In mathematical terms, suppose that we fit our statistical learning method on our training observations:
+    \begin{equation*}
+        \left\{\left(x_{1}, y_{1}\right), \left(x_{2}, y_{2}\right), \dots, \left(x_{n}, y_{n}\right)\right\}
+    \end{equation*}
+    And we obtain the estimate $\hat{f}$. We can then compute:
+    \begin{equation*}
+        \hat{f}\left(x_{1}\right), \hat{f}\left(x_{2}\right), \dots, \hat{f}\left(x_{n}\right)
+    \end{equation*}
+    If these are approximately equal to:
+    \begin{equation*}
+        y_{1}, y_{2}, \dots, y_{n}
+    \end{equation*}
+    Then \textbf{the training MSE is small}.
+
+    \highspace
+    However, we are really \underline{not interested} in whether $\hat{f}\left(x_{i}\right) \approx y_{i}$; instead, we want to know whether $\hat{f}\left(x_{0}\right)$ is approximately equal to $y_{0}$, where $\left(x_{0}, y_{0}\right)$ is a \textbf{previously unseen test observation not used to train the statistical learning method}.
+
+    We \textbf{want to choose the method that gives the lowest} \definition{test mean squared error (MSE)}, as opposed to the lowest training MSE. In other words, if we had a large number of test observations, we could compute:
+    \begin{equation}
+        \mathrm{Ave}\left(y_{0} - \hat{f}\left(x_{0}\right)\right)^{2}
+    \end{equation}
+    The \textbf{average squared prediction error for these test observations} $\left(x_{0}, y_{0}\right)$.
+
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem to find the lowest training MSE}}
+    \end{flushleft}
+    There is \underline{no guarantee} that the method with the lowest training MSE will also have the lowest test MSE. 
+    
+    The problem is that \textbf{many statistical methods specifically estimate coefficients so as to minimize the training set MSE}. For these methods, the \textbf{training set MSE can be quite small}, \textbf{but the test MSE is often much larger}.
+    
+    \newpage
+
+    \begin{figure}[!htp]
+        \begin{examplebox}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/measuring-the-quality-of-fit-1.pdf}
+                \captionof{figure}{On the left: \emph{data simulated from $f$, shown in black. Three estimates of $f$ are shown: the linear regression (orange curve), and two smoothing spline fits (blue and green curves)}. Right: \emph{Training MSE (grey curve), test MSE (red curve), and minimum possible test MSE over all methods (dashed line). Squares represent the training and test MSEs for the three fits shown in the left-hand panel}.\cite{james2013introduction}}
+                \label{fig: measuring the quality of fit}
+            \end{center}
+            In the left-hand panel we have generated observations from the (error term\index{error term}) equation~\ref{eq: error term systematic} with the true $f$ given by the black curve. 
+            
+            The orange, blue and green curves illustrate three possible estimates for $f$ obtained using methods with increasing levels of flexibility.
+
+            \highspace
+            It is clear that as the \textbf{level of flexibility increases}, the \textbf{curves fit the observed data more closely}. 
+            
+            The \emph{green curve} is the most flexible and matches the data very well; however, we observe that it fits the true $f$ (shown in black) poorly because it is too wiggly. 
+            
+            By \textbf{adjusting the level of flexibility} of the smoothing spline fit, we can \textbf{produce many different fits to this data}.
+        \end{examplebox}
+    \end{figure}
+
+    \setcounter{example}{9}
+    \newpage
+
+    \begin{examplebox}
+        \begin{center}
+            Referring to Figure~\ref{fig: measuring the quality of fit}
+        \end{center}
+
+        We now move on to the right-hand panel. The grey curve displays the average training MSE as a function of flexibility, or more formally the \definition{degrees of freedom}\footnote{The degrees of freedom is a \textbf{quantity that summarizes the flexibility of a curve}.}, for a number of smoothing splines.
+
+        The orange, blue and green squares indicate the MSEs associated with the corresponding curve in the left-hand panel.
+
+        A more restricted and hence smoother curve has fewer degrees of freedom than a wiggly curve. The \emph{linear regression} is at the most restrictive end, with two degrees of freedom.
+
+        \highspace
+        The \textbf{training MSE declines monotonically as flexibility increases}. In this example, the true $f$ is non-linear, and so the orange linear fit is not flexible enough to estimate $f$ well. 
+        
+        The \emph{green curve} has the lowest training MSE of all three methods, since it corresponds to the most flexible of the three curves fit in the left-hand panel.
+
+        \highspace
+        The test MSE is displayed using the red curve. As with the training MSE, the test MSE initially declines as the level of flexibility increases.
+
+        At some point, the test MSE levels off and then starts to increase again. Consequently, the orange and green curves both have high test MSE. The blue curve minimizes the test MSE, which should not be surprising given that visually it appears to estimate $f$ the best in the left-hand panel.
+
+        The horizontal dashed line indicates $\Var\left(\varepsilon\right)$, the \textbf{irreducible error} (eq.~\ref{eq: reducible and irreducible error}), which \textbf{corresponds to the lost achievable test MSE among all possible methods}. Hence, the smoothing spline represented by \textbf{the blue curve is close to optimal}.
+    \end{examplebox}
+
+    In the right-hand panel of figure~\ref{fig: measuring the quality of fit}, as the flexibility of the Statistical learning method increases, we observe a \textbf{monotone decrease in the training MSE and a U-shape} in the test MSE. This is a \textbf{fundamental property} of statistical learning that holds regardless of the particular data set at hand and regardless of the Statistical method being used.
+    
+    As model flexibility increases, the training MSE will decrease, but the test MSE may not. \textbf{When a given method yields a small training MSE but a large test MSE}, we are said to be \definition{overfitting} the data.
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does this phenomenon happen?}}
+    \end{flushleft}
+    This happens because our \textbf{statistical learning procedure} is working too hard to find patterns in the training data, and \textbf{may be picking up some patterns that are just caused by random chance} rather than by true properties of the unknown function $f$.
+
+    \noindent
+    So when we \emph{overfit} the training data, the \textbf{test MSE} will be \textbf{very large because the supposed patterns that the method found in the training data simply don't exist in the test data}.
+
+    \highspace
+    We almost \underline{always} expect the \textbf{training MSE to be smaller than the test MSE} because most \textbf{statistical learning methods} either directly or indirectly seek to \textbf{minimize the training MSE}. \emph{Overfitting} refers specifically to the test case in which a \textbf{less flexible model would have yielded a smaller test MSE}.
+
+    \begin{figure}[!htp]
+        \begin{examplebox}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/measuring-the-quality-of-fit-2.pdf}
+                \captionof{figure}{Details are as in Figure~\ref{fig: measuring the quality of fit}, using a different true $f$ that is much closer to linear. In this setting, linear regression provides a very good fit to the data.\cite{james2013introduction}}
+                \label{fig: measuring the quality of fit - 2}
+            \end{center}
+
+            This figure provides another \example{example} in which the true $f$ is approximately linear. Again we observe that the training MSE decreases monotonically as the model flexibility increases, and that there is a \emph{U-shape} in the test MSE. 
+            
+            \highspace
+            However, because the truth is close to linear, the \textbf{test MSE only decreases slightly before increasing again}, so that the \textbf{orange least squares fit is substantially better than the highly flexible green curve}.
+        \end{examplebox}
+    \end{figure}
+
+    \begin{figure}[!htp]
+        \begin{examplebox}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/measuring-the-quality-of-fit-3.pdf}
+                \captionof{figure}{Details are as in Figure~\ref{fig: measuring the quality of fit}, using a different true $f$ that is far from linear. In this setting, linear regression provides a very poor fit to the data.\cite{james2013introduction}}
+                \label{fig: measuring the quality of fit - 3}
+            \end{center}
+
+            Finally, this figure displays an \example{example} in which $f$ is highly non-linear.
+
+            \highspace
+            The training and test MSE curves still exhibit the same general patterns, but now there is a rapid decrease in both curves before the test MSE start to increase slowly.
+        \end{examplebox}
+    \end{figure}
 
 
 

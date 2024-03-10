@@ -18,3 +18,9 @@ f + a # vector + scalar
 # [1] 3 4 5
 f^2
 # [1]  4  9 16
+exp(f)
+# [1]  7.389056 20.085537 54.598150
+sum(f) # sums the components of f
+# [1] 9
+prod(f) # returns the product of the components of f
+# [1] 24

@@ -1,6 +1,6 @@
 # (2023/2024) Applied Statistics
 
-The notes are taken from the book required for the course: 
+The notes are taken from the books required for the course: 
 
 - G. James, D. Witten, T. Hastie, and R. Tibshirani. _An Introduction to Statistical Learning: with Applications in R_. Springer Texts in Statistics. Springer New York, 2013.
 - R.A. Johnson and D.W. Wichern. _Applied Multivariate Statistical Analysis_. Applied Multivariate Statistical Analysis. Pearson Prentice Hall, 2007.

@@ -2,7 +2,7 @@
 
 The notes are taken from the books required for the course: 
 
-- J.L. Hennessy and D.A. Patterson. Computer Architecture: A Quantitative Approach. ISSN. Elsevier Science, 2017
+- J.L. Hennessy and D.A. Patterson. *Computer Architecture: A Quantitative Approach.* ISSN. Elsevier Science, 2017
 
 You can view/download the PDF [here](notes/advanced-computer-architectures.pdf). In the [notes folder](notes/), you can also see the source code.
 

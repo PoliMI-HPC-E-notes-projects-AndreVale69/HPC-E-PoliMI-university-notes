@@ -1,0 +1,1 @@
+sw $s1, offset ($s2)    # Memory[$s2 + offset] <- $s1

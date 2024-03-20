@@ -38,6 +38,25 @@
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\lstdefinelanguage{misc}
+{
+  % list of keywords
+  morekeywords={%
+    add,
+    addi,
+    lw,
+    sw,
+    beq,
+    bne,
+    j,
+    jr,
+    offset %
+  },
+  sensitive=false, % keywords are not case-sensitive
+  morecomment=[l]{\#}, % l is for line comment
+  % morecomment=[s]{/*}{*/}, % s is for start and end delimiter
+  % morestring=[b]" % defines that strings are enclosed in double quotes
+}
 \lstdefinestyle{mystyle}{
     backgroundcolor=\color{backcolour},   
     commentstyle=\color{codegreen},
@@ -57,6 +76,7 @@
     tabsize=2
 }
 \lstset{style=mystyle}
+
 
 
 % draw a frame around given text
@@ -125,6 +145,309 @@
     \newpage
 	
 	\tableofcontents
+
+    \newpage
+
+    \section{Basic Concepts}
+
+    This section is designed to review old concepts that are fundamental to this course.
+
+    \subsection{Pipelining}
+
+    \subsubsection{MIPS  Architecture}
+
+    \definition{MIPS} (\textbf{Microprocessor without Interlocked Pipelined Stages}) is a family of Reduced Instruction Set Computer (RISC). It is based on the concept of \textbf{executing only simple instruction in a reduced basic cycle to optimize the performance of CISC}\footnote{CISC processors use simple and complex instructions to complete any given task. Instead, the RISC processor uses the approach of increasing internal parallelism by executing a simple set of instructions in a single clock cycle (see more \href{https://electronicsdesk.com/cisc-processor.html}{here}).} CPUs.
+
+    \highspace
+    MIPS is a \textbf{load-store architecture} (or a register–register architecture), which means it is an Instruction Set Architecture (ISA\footnote{Instruction Set Architecture (ISA) is a part of the abstract model of a computer, which generally defines how software controls the CPU.}) that divides \textbf{instructions into two categories}: 
+    \begin{itemize}
+        \item \textbf{Memory access} (load and store between memory and registers; load data from memory to registers; store data from registers to memory):
+        \begin{equation*}
+            \begin{array}{rcl}
+                \text{Memory } &\xlongrightarrow{\mathbf{load}}& \text{ Registers} \\ [.5em]
+                \text{Memory } &\xlongleftarrow{\mathbf{store}}& \text{ Registers}
+            \end{array}
+        \end{equation*}
+        \item ALU operations (which only occur between registers).
+    \end{itemize}
+
+    \highspace
+    Finally, \textbf{MIPS} is also a \textbf{Pipeline Architecture}. It means that \textbf{it can execute a performance optimization technique based on overlapping the execution of multiple instructions derived from a sequential execution flow}.
+
+    \newpage
+
+    \begin{center}
+        \large
+        \textcolor{Red3}{\textbf{Reduced Instruction Set of MIPS Processor}}
+    \end{center}
+    The instruction set of the MIPS processor is the following:
+    \begin{itemize}
+        \item \underline{ALU instructions}:
+        \begin{itemize}
+            \item \textbf{Sum} between \textbf{two registers}:
+            \lstinputlisting[language=misc]{code/mips-architecture/add.s}
+            Take the values from \texttt{s2} and \texttt{s3}, make the sum and save the result on \texttt{s1}.
+
+            \item \textbf{Sum} between \textbf{register and constant}:
+            \lstinputlisting[language=misc]{code/mips-architecture/addi.s}
+            Take the value from \texttt{s1}, make the sum between \texttt{s1} and \texttt{4}, and save the result on \texttt{s1}.
+        \end{itemize}
+
+        \item \underline{Load/Store instructions}:
+        \begin{itemize}
+            \item \textbf{Load}
+            \lstinputlisting[language=misc]{code/mips-architecture/load.s}
+            From the \texttt{s2} register, calculate the index on the memory with the \texttt{offset}, take the value and store it in the \texttt{s1} register.
+
+            \item \textbf{Store}
+            \lstinputlisting[language=misc]{code/mips-architecture/store.s}
+            Take the value from the \texttt{s1} register, take the value from the \texttt{s2} register, calculate the index on the memory with the \texttt{offset}, and store the value taken from s1 in the memory.
+        \end{itemize}
+
+        \item \underline{Branch instructions to control the instruction flow}:
+        \begin{itemize}
+            \item \textbf{Conditional branches}
+            
+            Only if the condition is true (branch on equal):
+            \lstinputlisting[language=misc]{code/mips-architecture/beq.s}
+            
+            Only if the condition is false (branch on not equal):
+            \lstinputlisting[language=misc]{code/mips-architecture/bne.s}
+
+
+            \item \textbf{Unconditional jumps}. The branch is always taken.
+
+            Jump:
+            \lstinputlisting[language=misc]{code/mips-architecture/j.s}
+
+            Jump register:
+            \lstinputlisting[language=misc]{code/mips-architecture/jr.s}
+        \end{itemize}
+    \end{itemize}
+
+    \newpage
+
+    \begin{center}
+        \large
+        \textcolor{Red3}{\textbf{Formats of MIPS 32-bit Instructions}}
+    \end{center}
+    The previous instructions are divided into \textbf{three types}: 
+    \begin{itemize}
+        \item Type \textbf{R (Register)}: ALU instructions.
+
+        \item Type \textbf{I (Immediate)}: Load/Store instructions and Conditional branches.
+        
+        \item Type \textbf{J (Jump)}: Unconditional jumps instructions.
+    \end{itemize}
+    Every instruction \textbf{starts with a 6-bit opcode}. In addition to the opcode:
+    \begin{itemize}
+        \item \underline{R-type} instructions specify:
+        \begin{itemize}
+            \item \textbf{Three registers}: \texttt{rs}, \texttt{rt}, \texttt{rd}
+            \item A \textbf{shift amount field}: \texttt{shamt}
+            \item A \textbf{function field}: \texttt{funct}
+        \end{itemize}
+
+        \item \underline{I-type} instructions specify:
+        \begin{itemize}
+            \item \textbf{Two registers}: \texttt{rs}, \texttt{rt}
+            \item \textbf{16-bit immediate value}: \texttt{offset/immediate}
+        \end{itemize}
+
+        \item \underline{J-type} instructions specify: 
+        \begin{itemize}
+            \item \textbf{26-bit jump target}: \texttt{address}
+        \end{itemize}
+    \end{itemize}
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/mips-arch.pdf}
+        \caption{MIPS 32-bit architecture.}
+    \end{figure}
+    
+    \noindent
+    Scan (or click) the QR code below to view the table in high quality:
+    \begin{center}
+        \qrcode{https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/tree/main/advanced-computer-architectures/notes/img/mips-arch.pdf}
+    \end{center}
+
+    \newpage
+
+    \begin{center}
+        \large
+        \textcolor{Red3}{\textbf{Phases of execution of MIPS Instructions}}
+        \index{Program Counter (PC)}
+        \index{Instruction Memory (IM)}
+        \index{Register File (RF)}
+        \index{Data Memory (DM)}
+    \end{center}
+    Every instruction in the MIPS subset can be implemented in \textbf{\underline{at most} 5 clock cycles (phases)} as follows:
+    \begin{enumerate}
+        \item \definition{Instruction Fetch (IF)}
+        \begin{enumerate}
+            \item \textbf{Send} the \textbf{content} of Program Counter (PC) register to the Instruction Memory (IM);
+
+            \item \textbf{Fetch} the current \textbf{instruction} from Instruction Memory;
+            
+            \item \textbf{Update} the Program Counter to the \textbf{next sequential address} by adding the value 4 to the Program Counter (4 because each instruction is 4 bytes!).
+        \end{enumerate}
+        
+        \item \definition{Instruction Decode and Register Read (ID)}
+        \begin{enumerate}
+            \item Make the \textbf{fixed-filed recording} (\textbf{decode the current instruction});
+            
+            \item \textbf{Read} from the Register File (RF) of one or two registers corresponding to the registers specified in the instruction fields;
+            
+            \item Sign-extension of the offset field of the instruction in case it is needed.
+        \end{enumerate}
+
+        \item \definition{Execution (EX)}. The ALU operates on the operands prepared in the previous cycle depending on the instruction type (see more details after this list):
+        \begin{itemize}
+            \item \textbf{Register-Register} ALU instructions: ALU \textbf{executes the specified operation} on the operands read from the Register File.
+
+            \item \textbf{Register-Immediate} (Register-Constant) ALU instructions: ALU executes the specified operation on the first operand read from Register File and the sign-extended immediate operand.
+
+            \item \textbf{Memory Reference}: ALU adds the base register and the offset to calculate the \textbf{effective address}.
+
+            \item \textbf{Conditional Branches}: ALU compares the two registers read from Register File and computes the possible \textbf{branch target address} by adding the sign-extended offset to the incremented Program Counter.
+        \end{itemize}
+
+        \item \definition{Memory Access (ME)}. It depends on the operation performed:
+        \begin{itemize}
+            \item \underline{\textbf{Load}}. Instructions require a \textbf{read access to the Data Memory using the effective address}.
+
+            \item \underline{\textbf{Store}}. Instruction require a \textbf{write access to the Data Memory using the effective address} to write the data \textbf{from the source register read from the Register File}.
+
+            \item \underline{\textbf{Conditional branches}} can \textbf{update the content of the Program Counter} with the branch target address, if the conditional test yielded true.
+        \end{itemize}
+
+        \newpage
+
+        \item \definition{Write-Back (WB)}. It depends on the operation performed:
+        \begin{enumerate}
+            \item \underline{\textbf{Load}} instructions \textbf{write the data read from memory in the destination register of the Register File}.
+
+            \item \underline{\textbf{ALU}} instructions \textbf{write the ALU results into the destination register of the Register File}.
+        \end{enumerate}
+    \end{enumerate}
+
+    \begin{flushleft}
+        \textcolor{Red3}{\textbf{Execution (EX) details}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{Register-Register ALU instructions}. Given the following pattern (where \texttt{op} can be the operators \texttt{add/addi} (+) or \texttt{sub/subi} (-), but not \texttt{mult} ($\times$) or \texttt{div} ($\div$) because they required some special registers and therefore more phases):
+        \lstinputlisting[language=misc]{code/mips-architecture/alu-instructions-1.s}
+        \textbf{Cost: 4 clock cycles}
+        \begin{enumerate}
+            \item Instruction Fetch (IF) and update the Program Counter (next sequential address);
+
+            \item Fixed-Field Decoding and read from Register File the registers: \texttt{y} and \texttt{z};
+            
+            \item Execution (EX), ALU performs the operation \texttt{op} (\texttt{\$ y op \$ z});
+
+            \item Write-Back (WB), ALU writes the result into the destination register \texttt{x}.
+        \end{enumerate}
+
+        \item \textbf{Memory Reference}
+        \begin{itemize}
+            \item \underline{Load}. Given the following pattern:
+            \lstinputlisting[language=misc]{code/mips-architecture/alu-instructions-2.s}
+            \textbf{Cost: 5 clock cycles}
+            \begin{enumerate}
+                \item Instruction Fetch (IF) and update the Program Counter (next sequential address);
+
+                \item Fixed-Field Decoding and read of Base and register \texttt{y} from Register File (RF);
+
+                \item Execution (EX), ALU adds the base register and the offset to calculate the effective address: \texttt{y + offset};
+
+                \item Memory Access (ME), read access to the Data Memory (DM) using the effective (\texttt{y + offset}) address;
+
+                \item Write-Back (WB), write the data read from memory in the destination register of the Register File (RF) \texttt{x}.
+            \end{enumerate}
+
+            \newpage
+
+            \item \underline{Store}. Given the following pattern:
+            \lstinputlisting[language=misc]{code/mips-architecture/alu-instructions-3.s}
+            \textbf{Cost: 4 clock cycles}
+            \begin{enumerate}
+                \item Instruction Fetch (IF) and update the Program Counter (next sequential address);
+
+                \item Fixed-Field Decoding and read of Base register \texttt{y} and source register \texttt{x} from Register File (RF);
+
+                \item Execution (EX), ALU adds the base register and the offset to calculate the effective address: \texttt{y + offset};
+
+                \item Memory Access (WB), write the data read from memory in the destination register of the Register File (RF) \texttt{M(y + offset)}.
+            \end{enumerate}
+        \end{itemize}
+
+        \item \textbf{Conditional Branch}. Given the following pattern:
+        \lstinputlisting[language=misc]{code/mips-architecture/alu-instructions-4.s}
+            \textbf{Cost: 4 clock cycles}
+            \begin{enumerate}
+                \item Instruction Fetch (IF) and update the Program Counter (next sequential address);
+
+                \item Fixed-Field Decoding and read of source registers \texttt{x} and \texttt{y} from Register File (RF);
+
+                \item Execution (EX), ALU compares two registers \texttt{x} and \texttt{y} and compute the possible branch target address by adding the sign-extended offset to the incremented Program Counter: \texttt{PC + 4 + offset};
+
+                \item Memory Access (ME), update the content of the Program Counter with the branch target address (we assume that the conditional test is true).
+            \end{enumerate}
+    \end{itemize}
+
+    \newpage
+
+    \subsubsection{Implementation of MIPS processor - Data Path}
+
+    Implementing a MIPS processor isn't difficult. On the following page we show three different diagrams: the first is a very high level data path to allow the reader to understand how it works; the second is more detailed, but without the CU (Control Unit); the third is the complete data path and it also includes the CU (in red).
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/basic-implementation-mips-datapath.pdf}
+        \caption{A basic implementation of MIPS data path.}
+        \label{fig: basic implementation of MIPS data path}
+    \end{figure}
+
+    \noindent
+    Scan (or click) the QR code below to view the figure~\ref{fig: basic implementation of MIPS data path} in high quality:
+    \begin{center}
+        \qrcode{https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/tree/main/advanced-computer-architectures/notes/img/basic-implementation-mips-datapath.pdf}
+    \end{center}
+    Two notes:
+    \begin{itemize}
+        \item The \textbf{Instruction Memory} (read-only memory) is separated from \textbf{Data Memory}.
+        
+        \item The 32 general-purpose register are organized in a \textbf{Register File} (RF) with 2 read ports and 1 write port.
+    \end{itemize}
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/implementation-mips-datapath.pdf}
+        \caption{An implementation of MIPS data path (no Control Unit).}
+        \label{fig: implementation of MIPS data path (no Control Unit)}
+    \end{figure}
+
+    \newpage
+
+    \noindent
+    Scan (or click) the QR code below to view the figure~\ref{fig: implementation of MIPS data path (no Control Unit)} in high quality:
+    \begin{center}
+        \qrcode{https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/tree/main/advanced-computer-architectures/notes/img/implementation-mips-datapath.pdf}
+    \end{center}
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/implementation-mips-datapath-cu.pdf}
+        \caption{A complete implementation of MIPS data path.}
+        \label{fig: complete implementation of MIPS data path}
+    \end{figure}
+
+    \noindent
+    Scan (or click) the QR code below to view the figure~\ref{fig: complete implementation of MIPS data path} in high quality:
+    \begin{center}
+        \qrcode{https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/tree/main/advanced-computer-architectures/notes/img/implementation-mips-datapath-cu.pdf}
+    \end{center}
 
     \newpage
 

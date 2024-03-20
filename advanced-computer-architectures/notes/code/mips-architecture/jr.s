@@ -1,0 +1,1 @@
+jr $s1  # jump to address contained in $s1

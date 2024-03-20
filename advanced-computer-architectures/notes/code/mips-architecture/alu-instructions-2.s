@@ -1,0 +1,1 @@
+lw $x, offset ($y)  # $x <- M[$y + offset]

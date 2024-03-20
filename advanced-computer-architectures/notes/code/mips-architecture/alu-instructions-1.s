@@ -1,0 +1,1 @@
+op $x, $y, $z   # e.g. op=add  =>  $x <- $y + $z

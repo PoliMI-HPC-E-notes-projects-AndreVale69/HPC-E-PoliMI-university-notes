@@ -50,7 +50,10 @@
     bne,
     j,
     jr,
-    offset %
+    offset,
+    sub,
+    and,
+    or
   },
   sensitive=false, % keywords are not case-sensitive
   morecomment=[l]{\#}, % l is for line comment
@@ -579,7 +582,7 @@
     \noindent
     Finally, in the following figure we can see the timeline implementation of the pipeline registers. But there are two basic assumptions to make:
     \begin{enumerate}
-        \item There are no data dependencies between instructions.If there were, an instruction could read a register with an unknown value.
+        \item There are no data dependencies between instructions. If there were, an instruction could read a register with an unknown value (Pipeline Hazard, page~\pageref{subsubsection: The problem of Pipeline Hazards}).
 
         \item There are no branch/jump instructions.
     \end{enumerate}
@@ -588,6 +591,100 @@
         \includegraphics[width=\textwidth]{img/pipeline-registers-2.pdf}
         \caption{Timeline of MIPS pipeline implementation.\cite{pipelining-slides}}
     \end{figure}
+
+    \newpage
+
+    \subsubsection{The problem of Pipeline Hazards}\label{subsubsection: The problem of Pipeline Hazards}
+
+    \begin{definitionbox}
+        A \definition{hazard (conflict)} is created whenever there a \textbf{dependence} between two instructions, and instructions are close enough that the overlap caused by pipelining would change the order of access to the operands involved in the dependence.
+    \end{definitionbox}
+
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem Consequences}}
+    \end{flushleft}
+    The Hazards:
+    \begin{itemize}
+        \item \textbf{Force} the next \textbf{instruction} in the pipeline \textbf{to be executed later} than its intended clock cycle.
+
+        \item \textbf{Reduced the performance} from the ideal speedup achieved by pipelining (direct previous consequence).
+    \end{itemize}
+    There are \textbf{three classes} of Hazards:
+    \begin{itemize}
+        \item \definition{Structural Hazards}. Attempt to use the \textbf{same resource from different instructions simultaneously}.
+        
+        \example{Example}: single memory for instruction and data.
+        
+
+        \item \definition{Data Hazards}. Attempt to \textbf{use a result before it is ready}.
+        
+        \example{Example}: instruction depending on a result of a previous instruction still in the pipeline.
+
+
+        \item \definition{Control Hazards}. Attempt to \textbf{make a decision on the next instruction to execute before the condition is evaluated}.
+        
+        \example{Example}: conditional branch execution.
+    \end{itemize}
+
+    \begin{flushleft}
+        Structural Hazards? No problem for MIPS Architecture!
+    \end{flushleft}
+    \textbf{There aren't any structural hazards in MIPS architecture} because the Instruction Memory (IM) is separated from the Data Memory (DM). Also, the Register File (RF) is used in the same clock cycle (read access by an instruction and write access by another instruction).
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How to detect Data Hazards? Dependency Analysis}}
+    \end{flushleft}
+    To \textbf{detect Data Hazards}, it is suggested to analyze the dependencies. If the instructions executed in the pipeline depend on each other, data hazards can arise \textbf{when instructions are too close}. For \example{example}:
+    \lstinputlisting[language=misc]{code/the-problem-of-pipeline-hazards/data-hazards-1.s}
+    Data Hazards can occur in a variety of situations, but a \textbf{true dependency situation} is created by a \textbf{RAW (Read After Write) Hazard}.
+
+    \begin{definitionbox}
+        A \definition{RAW (Read After Write) Hazard} occurs when an instruction $n+1$ tries to read a source operand before the previous instruction $n$ has written its value in the Register File (RF).
+    \end{definitionbox}
+
+    \noindent
+    For \example{example}:
+    \lstinputlisting[language=misc]{code/the-problem-of-pipeline-hazards/RAW-hazard-1.s}
+
+    \begin{center}
+        \large
+        \textcolor{Red3}{\textbf{MIPS Optimized Pipeline}}
+    \end{center}
+    Consider the following situation:
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/RAW-hazards-1.pdf}
+        \caption{Why MIPS Optimized Pipeline was born.\cite{pipelining-slides}}
+    \end{figure}
+    The Register File is used in 2 stages: read access during ID (\texttt{and} operation) and write access during Write Back (WB) (\texttt{sub} operation). \emph{What happens if read and write refer to the same register in the same clock cycle?} Or we insert a stall, or we use an \textbf{optimized pipeline} (smart choice).
+
+    \begin{definitionbox}
+        By selecting \definition{Optimized Pipeline}, we assume the Register File (RF) read occurs in the second half of clock cycle and the Register File write in the first half of clock cycle.
+    \end{definitionbox}
+
+    \noindent
+    This way \textbf{we don't need the stall}. The following Figure~\ref{fig: Optimized Pipeline} shows an optimized pipeline.
+
+    \newpage
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/optimized-pipeline-1.pdf}
+        \caption{Optimized Pipeline (IM is Instruction Memory, REG is Register File, and DM is Data Memory).\cite{pipelining-slides}}
+        \label{fig: Optimized Pipeline}
+    \end{figure}
+
+    \noindent
+    And the problem mentioned at the beginning of this paragraph is partially solved, as we can see in the following figure.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/optimized-pipeline-2.pdf}
+        \caption{Optimized Pipeline to solve the example stall.\cite{pipelining-slides}}
+    \end{figure}
+
+    \newpage
+
+    % \subsubsection{The solution of Data Hazards}
 
     \newpage
 

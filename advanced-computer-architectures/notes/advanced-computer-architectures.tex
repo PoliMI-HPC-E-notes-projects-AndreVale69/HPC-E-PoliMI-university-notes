@@ -19,7 +19,7 @@
 \usepackage{multirow}				% more lines in a table
 \usepackage{textcomp, gensymb}		% degree symbol
 \usepackage[x11names]{xcolor}		% RGB color
-\usepackage{tcolorbox}				% colorful box
+\usepackage[many]{tcolorbox}		% colorful box
 \usepackage{multicol}				% more rows in a table (used for the lists)
 \usepackage{listings}
 \usepackage{url}
@@ -121,6 +121,8 @@
     }
     
     \newtcolorbox[use counter = example]{examplebox}{%
+        breakable,
+        enhanced,
         colback=Green4!5!white,
         colframe=Green4!75!black,
         fonttitle=\bfseries,
@@ -488,6 +490,8 @@
         Image a car assembly line (e.g. Ferrari). A new car exits from the Ferrari assembly line in the time necessary to complete one of the phases. The pipelining technique doesn't reduce the time required to complete a car (the \textbf{latency}), BUT increases the number of vehicles produced per time unit (the \textbf{throughput}) and the frequency to complete cars.
     \end{examplebox}
 
+    \newpage
+
     \begin{examplebox}
         Image a sequential laundry jobs over time:\cite{pipelining-slides}
         \begin{center}
@@ -620,6 +624,10 @@
         
         \example{Example}: instruction depending on a result of a previous instruction still in the pipeline.
 
+        There are also \textbf{two specific forms} of data hazard, called \definition{Load-Use Data Hazard} and \definition{Load-Store Data Hazard}. Both occur when the \textbf{data loaded by a load instruction is not yet available when it is needed by another instruction}. In the case of Load-Use, the \dquotes{another instruction} is an operator such as \texttt{add}; in the case of Load-Store, the \dquotes{another instruction} is the store (\texttt{sw}) instruction.
+
+        The following \example{example} shows the conflict (Load-Use Data Hazard) between two instructions. In particular, the value \texttt{lw} writes to \texttt{s2} is not available until \texttt{lw} has completed the \texttt{MEM} phase, but \texttt{and} needs this value when it enters the \texttt{EX} phase, i.e. when \texttt{lw} enters the \texttt{MEM} phase.
+        \lstinputlisting[language=misc]{code/the-problem-of-pipeline-hazards/load-use-data-hazard.s}
 
         \item \definition{Control Hazards}. Attempt to \textbf{make a decision on the next instruction to execute before the condition is evaluated}.
         
@@ -630,6 +638,8 @@
         Structural Hazards? No problem for MIPS Architecture!
     \end{flushleft}
     \textbf{There aren't any structural hazards in MIPS architecture} because the Instruction Memory (IM) is separated from the Data Memory (DM). Also, the Register File (RF) is used in the same clock cycle (read access by an instruction and write access by another instruction).
+
+    \newpage
 
     \begin{flushleft}
         \textcolor{Green3}{\faIcon{question-circle} \textbf{How to detect Data Hazards? Dependency Analysis}}
@@ -713,12 +723,71 @@
         \end{itemize}
     \end{itemize}
     We have the mandatory to give more words to the data forwarding technique. First of all, its implementation needs new paths and new multiplexers. So, to adapt the MIPS architecture, the new implementation will be show in the figure \ref{fig: implementation of MIPS with Forwarding Unit} on page \pageref{fig: implementation of MIPS with Forwarding Unit}.
+
+    \newpage
+    
     \begin{figure}[!htp]
         \centering
         \includegraphics[width=\textwidth]{img/implementation-mips-forwarding-unit-1.pdf}
         \caption{Implementation of MIPS with \definition{Forwarding Unit}.\cite{pipelining-slides}}
         \label{fig: implementation of MIPS with Forwarding Unit}
     \end{figure}
+
+    \noindent
+    Scan (or click) the QR code below to view the figure~\ref{fig: implementation of MIPS with Forwarding Unit} in high quality:
+    \begin{center}
+        \qrcode{https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/tree/main/advanced-computer-architectures/notes/img/implementation-mips-forwarding-unit-1.pdf}
+    \end{center}
+    
+    \noindent
+    The forwarding paths created inside the MIPS architecture are three: \textbf{\texttt{EX} to \texttt{EX}} path, \textbf{\texttt{MEM} to \texttt{EX}} path, and \textbf{\texttt{MEM} to \texttt{MEM}} path.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/forwarding-paths-1.pdf}
+        \caption{Forwarding paths on MIPS architecture.\cite{pipelining-slides}}
+    \end{figure}
+
+    \noindent
+    Furthermore, the \textbf{forwarding technique can solve} the \textbf{Load-Use} and \textbf{Load-Store} Data Hazard. It's a very interesting feature because the \texttt{MEM} to \texttt{EX} and \texttt{MEM} to \texttt{MEM} paths can solve two different situations:
+    \begin{itemize}
+        \item \textbf{Load-Use} Hazard. It's \textbf{solved by MEM to EX path} because the value loaded in the MEM stage, is forwarded directly to the EX stage of the next conflict instruction (but unfortunately we need one stall to delay the run).
+
+        \begin{examplebox}
+            Given the following code:
+            \lstinputlisting[language=misc]{code/solution-of-data-hazards/load-use-hazard-1.s}
+            The \texttt{s0} operand depends on the load (\texttt{lw}) operator. Here, the problem of \textbf{\emph{load-use hazard}} occurs.
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/load-use-hazard-problem-1.pdf}
+                \captionof*{figure}{The load-use hazard problem.\cite{pipelining-slides}}
+            \end{center}
+            In the figure, we can see the existing dependence. An ideal solution to the load-use hazard should be taking the value after the Memory Access operation (because the load instruction reads the effective address on the memory) and using it in the sum (operation).
+
+            The \textbf{forwarding technique solves it using the MEM-EX path but using \underline{one stall}}.
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/load-use-hazard-problem-2.pdf}
+                \captionof*{figure}{Forwarding technique with MEM-EX path.\cite{pipelining-slides}}
+            \end{center}
+        \end{examplebox}
+        % TODO: add example
+
+        \item \textbf{Load-Store} Hazard. It's \textbf{solved by MEM to MEM path} because the value loaded in the MEM stage, is forwarded directly to the MEM stage of the next conflict instruction.
+        \begin{examplebox}
+            Given the following code:
+            \lstinputlisting[language=misc]{code/solution-of-data-hazards/load-store-hazard-1.s}
+            The \texttt{s0} operand depends on the load (\texttt{lw}) operator. Here, the problem of \textbf{\emph{load-store hazard}} occurs.
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/load-store-hazard-problem-1.pdf}
+                \captionof*{figure}{The load-store hazard problem.\cite{pipelining-slides}}
+            \end{center}
+            In the figure, we can see the existing dependence. An ideal solution to the load-store hazard should be taking the value after the Write Back operation (because the load instruction writes the data read from memory in the destination register of the Register File) and using it in the Instruction Decode (because the ID includes also Register Read, then it reads from the Register File (RF)).
+
+            The \textbf{forwarding technique solves it using the MEM-MEM path \underline{without any stall}}.
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/load-store-hazard-problem-2.pdf}
+                \captionof*{figure}{Forwarding technique with MEM-MEM path.\cite{pipelining-slides}}
+            \end{center}
+        \end{examplebox}
+    \end{itemize}
 
     \begin{examplebox}\label{example: insertion of nop}
         In the following figure, we can see how a \textbf{compilation technique}, the \textbf{insertion of \texttt{nop}}, can be solve the data hazard problem.
@@ -727,6 +796,8 @@
             \captionof*{figure}{Insertion of \texttt{nop}.\cite{pipelining-slides}}
         \end{center}
     \end{examplebox}
+
+    \newpage
 
     \begin{examplebox}\label{example: instructions scheduling}
         In the following figure, we can see how a \textbf{compilation technique}, the \textbf{instructions scheduling}, can be solve the data hazard problem.

@@ -29,7 +29,7 @@ There are \textbf{three classes} of Hazards:
     The following \example{example} shows the conflict (Load-Use Data Hazard) between two instructions. In particular, the value \texttt{lw} writes to \texttt{s2} is not available until \texttt{lw} has completed the \texttt{MEM} phase, but \texttt{and} needs this value when it enters the \texttt{EX} phase, i.e. when \texttt{lw} enters the \texttt{MEM} phase.
     \lstinputlisting[language=misc]{code/the-problem-of-pipeline-hazards/load-use-data-hazard.s}
 
-    \item \definition{Control Hazards}. Attempt to \textbf{make a decision on the next instruction to execute before the condition is evaluated}.
+    \item \definition{Control Hazards}. Attempt to \textbf{make a decision on the next instruction to execute before the condition is evaluated} (more detailed analysis on page \pageref{flushleft: how to detect Control Hazards}).
     
     \example{Example}: conditional branch execution.
 \end{itemize}
@@ -42,7 +42,7 @@ There are \textbf{three classes} of Hazards:
 \newpage
 
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to detect Data Hazards? Dependency Analysis}}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to detect \underline{Data Hazards}? Dependency Analysis}}
 \end{flushleft}
 To \textbf{detect Data Hazards}, it is suggested to analyze the dependencies. If the instructions executed in the pipeline depend on each other, data hazards can arise \textbf{when instructions are too close}. For \example{example}:
 \lstinputlisting[language=misc]{code/the-problem-of-pipeline-hazards/data-hazards-1.s}
@@ -55,6 +55,41 @@ Data Hazards can occur in a variety of situations, but a \textbf{true dependency
 \noindent
 For \example{example}:
 \lstinputlisting[language=misc]{code/the-problem-of-pipeline-hazards/RAW-hazard-1.s}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to detect \underline{Control Hazards}? Check conditional branches}}
+    \label{flushleft: how to detect Control Hazards}
+\end{flushleft}
+First of all, some \example{examples} of conditional branches for MIPS processor are: \texttt{beq} (branch on equal) and \texttt{bne} (branch on not equal):
+\lstinputlisting[language=misc]{code/mips-architecture/beq-bne.s}
+The \textbf{address to which you want to branch} is called the \definition{Branch Target Address}. If the branch condition:
+\begin{itemize}
+    \item Is satisfied $\Rightarrow$ the \textbf{branch is taken} and the Branch Target Address is stored in the Program Counter (PC).
+
+    \item Is \underline{not} satisfied $\Rightarrow$ the \textbf{branch is not taken} (untaken) and the instruction stream is executed sequentially with the next instruction address (PC $+ 4$).
+\end{itemize}
+In detail, the stages are the following:
+\begin{enumerate}
+    \item \texttt{[IF]} Instruction fetch and PC increment.
+    \item \texttt{[ID]} Instruction Decode and Registers Read (e.g. \texttt{x} and \texttt{y})
+    \item \texttt{[EX]} Compare registers (e.g. \texttt{x} and \texttt{y}) in the ALU to derive the Branch Outcome: taken or not taken. Also, computation of the Branch Target Address, so $\texttt{PC} + 4 + \texttt{offset}$
+    \item \texttt{[ME]} The Branch Outcome is used to decide the next PC:
+    \begin{itemize}
+        \item Is satisfied $\Rightarrow$ \texttt{PC} take $\texttt{PC} + 4 + \texttt{offset}$
+        \item Is \underline{not} satisfied $\Rightarrow$ \texttt{PC} take $\texttt{PC} + 4$
+    \end{itemize}
+\end{enumerate}
+Let us now move on to a more interesting analysis. To understand when the Control Hazards occur, think about the Branch Outcome and the Branch Target Address. Both are ready at the end of the EX (execution) phase (so between pass number 3 and 4). Finally, branches are resolved when the Program Counter is updated at the end of the Memory Access stage (after pass number 4). 
+
+\highspace
+To feed the condition branch into the pipeline, we need to \textbf{create a way where the condition branch is decided before the EX stage of the next instruction}. It's obvious, because if the Branch Outcome is positive, we need to skip the next instruction and do the conditional jump instead.
+
+\highspace
+This is a more detailed explanation of a control hazard. Control Hazards arise from the pipelining of conditional branches and other \texttt{jump} \textbf{instructions that change the PC}. They also \textbf{reduce the performance from the ideal speedup gained by pipelining}, because it is necessary to hold the pipeline until the branch is resolved.
+
+\newpage
 
 \begin{center}
     \large

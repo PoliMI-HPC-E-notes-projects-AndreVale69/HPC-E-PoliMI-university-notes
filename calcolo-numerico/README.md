@@ -8,7 +8,7 @@ The notes are taken from the books required for the course:
 
 You can view/download the PDF [here](notes/calcolo-numerico.pdf). In the [notes folder](notes/), you can also see the source code.
 
-For any issue, [use the appropriate section](https://github.com/AndreVale69/HPC-E-PoliMI-university-notes/issues).
+For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
 ## Course Syllabus
 

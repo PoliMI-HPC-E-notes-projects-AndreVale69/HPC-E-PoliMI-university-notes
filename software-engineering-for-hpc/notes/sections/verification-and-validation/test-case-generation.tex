@@ -6,15 +6,20 @@
 
 \begin{figure}[!htp]
     \centering
-    %\includegraphics[width=\textwidth]{img/}
+    \includegraphics[width=\textwidth]{img/testing-overflow.pdf}
     \caption{Testing Workflow.}
     \label{fig: Testing Workflow}
 \end{figure}
 
 \noindent
+To view the component diagram in high resolution, scan (or click) the QR code below.
+\begin{center}
+    \qrcode{https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/tree/main/software-engineering-for-hpc/notes/img/testing-overflow.pdf}
+\end{center}
+
+\noindent
 As we can see in Figure \ref{fig: Testing Workflow}, test cases can be generated in a \textbf{black-box} or \textbf{white-box} manner. The \definition{White Box} is a \textbf{generation based on code features}. Meanwhile, the \definition{Black Box} is a generation \textbf{based on specification features}.
 
-\highspace
 Test case generation can be done manually (no need to explain) or automatically. Automatic generation can be done in several ways:
 \begin{itemize}
     \item \definition{Combinatorial} testing. It enumerates all possible inputs according to some policy (e.g. smaller to larger).
@@ -32,10 +37,10 @@ Test case generation can be done manually (no need to explain) or automatically.
 
 \subsubsection{Concolic Execution}\label{subsubsection: Concolic Execution}
 
-\definition{Concolic Execution} (concrete-symbolic execution) is an automatic generation of test cases. It's a pseudo-random generation of inputs guided by symbolic path properties.
+\definition{Concolic Execution} (concrete-symbolic execution) is an \textbf{automatic generation of test cases}. It's a pseudo-random generation of inputs guided by symbolic path properties.
 
 \highspace
-In other words, the concolic execution performs symbolic execution (definition on page \pageref{def: symbolic execution}) \textbf{alongside} concrete execution (concrete inputs). Under the hood, in concolic execution a \textbf{state} combines a symbolic part and a concrete part, used as needed to make progress in the exploration.
+In other words, the concolic execution \textbf{performs symbolic execution} (definition on page \pageref{def: symbolic execution}) \textbf{alongside} concrete execution (\textbf{concrete inputs}). Under the hood, in concolic execution a \textbf{state} combines a symbolic part and a concrete part, used as needed to make progress in the exploration.
 
 \highspace
 The steps are then as follows:
@@ -135,5 +140,97 @@ Let's take an example to clarify the explanation.
         \begin{center}
             \includegraphics[width=.8\textwidth]{img/concolic-execution-13.pdf}
         \end{center}
+    \end{enumerate}
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
+\end{flushleft}
+The concolic execution has two main advantages:
+\begin{enumerate}
+    \item Can \textbf{handle black-box functions in path conditions} (not possible with symbolic execution!).
+    \item Can \textbf{automatically generate concrete test cases according to a code coverage criterion}.
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}}
+\end{flushleft}
+And the disadvantages are:
+\begin{enumerate}
+    \item It will only \textbf{find one input example per path}. And this could be a problem, because typically the errors only occur with certain inputs. What's more, if the errors are infrequent events, it's difficult to detect them with concolic execution.
+    
+    \item The number of paths explodes due to complex nested conditions, then it \textbf{requires a large search space}.
+
+    \item It \textbf{doesn't guide the exploration}, it just explores possible paths one by one, as long as we have the budget (e.g. time, number of runs).
+\end{enumerate}
+
+\newpage
+
+\subsubsection{Concurrent systems testing}
+
+There are many difficulties in testing concurrent software. For example, the \textbf{concurrency bugs are non-deterministic} and can only manifest themselves within certain \emph{interleavings}. Furthermore, the interleavings depend on execution conditions that are not under the direct control of the program.
+
+\begin{examplebox}
+    The following code:
+    \lstinputlisting{code/different-interleavings}
+    Can have the following possible execution behaviors:
+    \begin{center}
+        \includegraphics[width=.6\textwidth]{img/different-interleavings-2.pdf}
+    \end{center}
+\end{examplebox}
+
+\newpage
+
+\begin{examplebox}[: an example of data race]
+    \lstinputlisting{code/data-race}
+\end{examplebox}
+
+\begin{examplebox}[: an example of atomicity violation]
+    \lstinputlisting{code/atomicity-violation}
+\end{examplebox}
+
+\begin{examplebox}[: an example of deadlock]
+    \lstinputlisting{code/deadlock}
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{So how do you test concurrent programmes?}}
+\end{flushleft}
+\definition{Metamorphic Testing (MT)} is a property-based software testing technique that can be an effective approach to solving the test oracle problem\footnote{In software testing, a \textbf{Test Oracle} (or simply oracle) is a provider of information that describes the correct output based on the input of a test case.} and the test case generation problem (this chapter). The test oracle problem is the difficulty in determining the expected results of selected test cases, or whether the actual results match the expected results.
+
+\highspace
+The MT technique is applicable to any type of software and has recently been \textbf{adapted to detect \emph{data race} problems} in concurrent software.
+
+\highspace
+The basic idea of general MT is to derive \definition{Metamorphic Relations (MRs)} between multiple program inputs and corresponding outputs:
+\begin{enumerate}
+    \item New test cases from existing ones
+    \item An oracle for the program
+\end{enumerate}
+
+\begin{examplebox}
+    Consider a program $P$ computing the shortest path in an undirected graph $G$. We may express the following properties (MRs):
+    \begin{enumerate}[label=\textbf{MR\arabic*}]
+        \item The length of the shortest path between two points in the graph doesn't vary if we swap the two points:
+        \begin{equation*}
+            \left| P\left(G,a,b\right) \right| = \left| P\left(G,b,a\right) \right|
+        \end{equation*}
+
+        \item If $c$ belongs to the shortest path between $a$ and $b$:
+        \begin{equation*}
+            \left| P\left(G,a,c\right) \right| + \left| P\left(G,c,b\right) \right| = \left| P\left(G,a,b\right) \right|
+        \end{equation*}
+    \end{enumerate}
+    Now we can:
+    \begin{enumerate}
+        \item Pick a source test case $<a1, b1>$ selected with any technique;
+        \item Run the software and obtain the result, that is, the shortest path and its length
+        \item Based on MR1, generate a follow up test case $<b1, a1>$
+        \item Run the software with the new test case
+        \item Check if MR holds: 
+        \begin{equation*}
+            \left| P\left(G,a1,b1\right) \right| = \left| P\left(G,b1,a1\right) \right|
+        \end{equation*}
+        If not, then $P$ is failing.
     \end{enumerate}
 \end{examplebox}

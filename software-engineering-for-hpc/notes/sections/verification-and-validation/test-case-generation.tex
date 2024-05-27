@@ -234,3 +234,90 @@ The basic idea of general MT is to derive \definition{Metamorphic Relations (MRs
         If not, then $P$ is failing.
     \end{enumerate}
 \end{examplebox}
+
+\noindent
+The \textbf{test case} for concurrent programmes can be represented as follows:
+\begin{equation*}
+    C = \left(X, S\right)
+\end{equation*}
+\begin{itemize}
+    \item Where $X$ is a \textbf{set of values for the input parameters}.
+    
+    \item $S$ is a series of \textbf{read and write events on the variable shared between different threads/processes}.
+\end{itemize}
+The Metamorphic Relations (MRs) are relations between several programme inputs + series of read/write events and corresponding outputs.
+
+\begin{examplebox}[: example of a test case that raises some doubts]
+    An example of a test case $p_{\text{array}}$:
+    \begin{equation*}
+        \begin{array}{ll}
+            C = (&\left\{2\right\}, \\ [.5em]
+            &
+            < 
+            R_{x}^{t1}\left(2\right), 
+            W_{x}^{t1}\left(0\right), 
+            R_{x}^{t2}\left(0\right), \\ [.5em]
+            & \left.
+            W_{x}^{t2}\left(2\right), 
+            W_{x}^{t1}\left(-1\right), 
+            W_{x}^{t2}\left(1\right), 
+            R_{x}^{t2}\left(1\right) 
+            > \:\:\right) 
+        \end{array}
+    \end{equation*}
+    For the following concurrent program:
+    \lstinputlisting{code/different-interleavings}
+    Let's assume that this is the source test case. Intuitively, our MR is that the output remains the same for the same inputs and different read/write sequences.
+
+    So we define follow-on test cases based on the MR and run the concurrent program, making sure that the selected read/write sequences occur. If the output changes, the test fails.
+\end{examplebox}
+
+From the previous example, there are a number of questions:
+\begin{itemize}
+    \item \emph{How to select the read/write sequences for the subsequent test cases?}
+
+    For example, we can select those that may raise specific issues.
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | l | p{15em} @{}}
+            \toprule
+             & \textbf{Data Access Pattern} & \textbf{Description} \\
+            \midrule
+            1. & $R_{u}\left(l\right) W_{u'}\left(l\right) W_{u}\left(l\right)$ & Value read is stale by the time an update is made in $u$. \\
+            \cmidrule{1-3}
+            2. & $R_{u}\left(l\right) W_{u'}\left(l\right) R_{u}\left(l\right)$ & Two reads of the same location yield different values in $u$. \\
+            \cmidrule{1-3}
+            3. & $W_{u}\left(l\right) R_{u'}\left(l\right) W_{u}\left(l\right)$ & An intermediate state is observed by $u'$. \\
+            \cmidrule{1-3}
+            4. & $W_{u}\left(l\right) W_{u'}\left(l\right) R_{u}\left(l\right)$ & Value read is not the same as the one written last in $u$. \\
+            \cmidrule{1-3}
+            5. & $W_{u}\left(l\right) W_{u'}\left(l\right) W_{u}\left(l\right)$ & Value written by $u'$ is lost. \\
+            \cmidrule{1-3}
+            6. & $W_{u}\left(l_{1}\right) W_{u'}\left(l_{1}\right) W_{u'}\left(l_{2}\right) W_{u}\left(l_{2}\right)$ & Memory is left in an inconsistent state. \\
+            \cmidrule{1-3}
+            7. & $W_{u}\left(l_{1}\right) W_{u'}\left(l_{2}\right) W_{u'}\left(l_{1}\right) W_{u}\left(l_{2}\right)$ & Same as above. \\
+            \cmidrule{1-3}
+            8. & $W_{u}\left(l_{1}\right) W_{u'}\left(l_{2}\right) W_{u}\left(l_{2}\right) W_{u'}\left(l_{1}\right)$ & Same as above. \\
+            \cmidrule{1-3}
+            9. & $W_{u}\left(l_{1}\right) R_{u'}\left(l_{1}\right) R_{u'}\left(l_{2}\right) W_{u}\left(l_{2}\right)$ & State observed is inconsistent. \\
+            \cmidrule{1-3}
+            10. & $W_{u}\left(l_{1}\right) R_{u'}\left(l_{2}\right) R_{u'}\left(l_{1}\right) W_{u}\left(l_{2}\right)$ & Same as above. \\
+            \cmidrule{1-3}
+            11. & $R_{u}\left(l_{1}\right) W_{u'}\left(l_{1}\right) W_{u'}\left(l_{2}\right) R_{u}\left(l_{2}\right)$ & Same as above. \\
+            \cmidrule{1-3}
+            12. & $R_{u}\left(l_{1}\right) W_{u'}\left(l_{2}\right) W_{u'}\left(l_{1}\right) R_{u}\left(l_{2}\right)$ & Same as above. \\
+            \cmidrule{1-3}
+            13. & $R_{u}\left(l_{1}\right) W_{u'}\left(l_{2}\right) R_{u}\left(l_{2}\right) W_{u'}\left(l_{1}\right)$ & Same as above. \\
+            \cmidrule{1-3}
+            14. & $W_{u}\left(l_{1}\right) R_{u'}\left(l_{2}\right) W_{u}\left(l_{2}\right) R_{u'}\left(l_{1}\right)$ & Same as above. \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \newpage
+
+    \item \emph{How to control that the program runs according to the selected nesting?}
+
+    Instrumenting the bytecode:
+    \lstinputlisting{code/instrumenting}
+\end{itemize}

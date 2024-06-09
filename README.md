@@ -62,7 +62,7 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
         <td><a href="quantum-physics/README.md">Course Details</a> - <a href="quantum-physics/notes/quantum-physics.pdf">PDF</a></td>
     </tr>
     <tr>
-        <td>❌</td>
+        <td>✅</td>
         <td>2023/2024</td>
         <td>Software Engineering for HPC</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=4444" target="_blank">Di Nitto Elisabetta</a></td>

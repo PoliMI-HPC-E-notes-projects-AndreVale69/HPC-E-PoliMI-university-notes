@@ -4,9 +4,10 @@ These notes are an unofficial resource and shouldn't replace the course material
 
 As I have highlighted, a student should choose the teacher's material or a book on the topic. These notes can only be a helpful material.
 
-The notes are taken from the books required for the course: 
+The notes are taken from the books/resources required for the course: 
 
 - Course slides.
+- SE4HPC Exercise Book.
 
 You can view/download the PDF [here](notes/software-engineering-for-hpc.pdf). In the [notes folder](notes/), you can also see the source code.
 

@@ -1,10 +1,14 @@
 # (2023/2024) Calcolo Numerico
 
+These notes are an unofficial resource and shouldn't replace the course material or any other book on _calcolo numerico_. It is not made for commercial purposes. I've made the following notes to help me improve my knowledge and maybe it can be helpful for everyone.
+
+As I have highlighted, a student should choose the teacher's material or a book on the topic. These notes can only be a helpful material.
+
 **The course is in Italian, so my notes are in Italian.**
 
 The notes are taken from the books required for the course: 
 
-- None
+- A. Quarteroni, F. Saleri, and P. Gervasio. _Calcolo Scientifico: Esercizi e problemi risolti con MATLAB e Octave_. UNITEXT. Springer Milan, 2017.
 
 You can view/download the PDF [here](notes/calcolo-numerico.pdf). In the [notes folder](notes/), you can also see the source code.
 

@@ -17,11 +17,11 @@ For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-not
 
 During the Software Engineering for HPC course, I created two projects:
 
-1. **Requirement Engineering and Design Project** (section 1 to 5). More information in the following repository (actually private):
+1. **Requirement Engineering and Design Project** (section 1 to 5). More information in the following repository:
     - [SE4HPC_project_RD](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_RD)
 2. **DevOps Project** (section 6 to 7). More information in the following repositories:
-    - [SE4HPC_project_part1](https://github.com/AndreVale69/SE4HPC_project_part1)
-    - [SE4HPC_project_part2](https://github.com/AndreVale69/SE4HPC_project_part2)
+    - [SE4HPC_project_part1](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part1)
+    - [SE4HPC_project_part2](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part2)
 
 ## Course Syllabus
 

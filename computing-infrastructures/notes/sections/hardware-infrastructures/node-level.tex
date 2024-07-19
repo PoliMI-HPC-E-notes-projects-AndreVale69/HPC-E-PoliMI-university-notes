@@ -260,7 +260,7 @@ Data has significantly grown in the last few years due to sensors, industry 4.0,
 \end{itemize}
 
 \highspace
-The \emph{storage technologies} are many. One of the oldest but still used is the \definition{hard disk drive (HDD)}, a magnetic disk with mechanical interactions. Due to its mechanical movement, the \definition{solid-state drive (SSD)} is the best solution (quality-price) because there are no mechanical or moving parts, and they are built out of transistors (NADN flash-based devices). The \definition{non-volatile memory express (NVMe)} also exists, which is the \textbf{latest industry standard} for running PCIe\footnote{\definition{PCIe (peripheral component interconnect express).} is an interface standard for connecting high-speed components} SSDs.
+The \emph{storage technologies} are many. One of the oldest but still used is the \definition{hard disk drive (HDD)}, a magnetic disk with mechanical interactions. Due to its mechanical movement, the \definition{solid-state drive (SSD)} is the best solution (quality-price) because there are no mechanical or moving parts, and they are built out of transistors (NADN flash-based devices). The \definition{non-volatile memory express (NVMe)} also exists, which is the \textbf{latest industry standard} for running PCIe\footnote{\definition{PCIe (peripheral component interconnect express)}. is an interface standard for connecting high-speed components} SSDs.
 
 \highspace
 As for price classification, we can see that the NVMe is the most expensive solution:
@@ -274,6 +274,121 @@ For these reasons, it is reasonable to use a \textbf{hybrid solution} (HDD + SSD
     \item A speed storage technology (\textbf{SSD or NVMe}) as \textbf{cache} and \textbf{several HDDs for storage}. It is a combination used by some servers: a small SSD with a large HDD to have a faster disk.
     
     \item Some HDD manufacturers produce Solid State Hybrid Disks (SSHD) that combine a small SDD with a large HDD in a single unit.
+\end{itemize}
+
+\newpage
+
+\paragraph{Files}
+
+An \textbf{OS can see the disks as a collection of} \definition{data blocks} that can be read or written independently. To allow the ordering/management among them, \textbf{each block is characterized by a unique numerical address} called \definition{LBA (Logical Block Address)}. Typically, the \textbf{OS groups blocks into clusters}\footnote{\definition{Clusters} are the minimal units an OS can read from or write to a disk.} \textbf{to simplify the access to the disk}. Typical cluster sizes range from 1 disk sector (512 B, or 4 KB) to 128 sectors (64 KB).
+
+\highspace
+Each \emph{cluster} contains:
+\begin{itemize}
+    \item \textbf{File data}. The actual content of the files.
+    
+    \item \textbf{Metadata}. The information required to support the file system:
+    \begin{itemize}
+        \item File names
+        \item Directory structures and symbolic links
+        \item Creation, modification, and last access dates
+        \item Security information (owners, access list, encryption)
+        \item \textbf{Links to the LBA where the file content can be located on the disk}
+    \end{itemize}
+\end{itemize}
+The disk can thus contain \textbf{several types of clusters}:
+\begin{itemize}
+    \item Metadata:
+    \begin{itemize}
+        \item Fixed position (to bootstrap the entire file system)
+        \item Variable position (to hold the folder structure)
+    \end{itemize}
+    
+    \item File data (the actual content of the files)
+    
+    \item Unused space (available to contain new files and folders)
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/files-1.pdf}
+    \caption{A cluster can be seen visually as an array. In this image, for example, we've shown three types of cluster: metadata fixed position (azure), metadata variable position (green), file data (orange), unused space (white).}
+\end{figure}
+
+\newpage
+
+\noindent
+The following explanation introduces some basic operations on the files to see what happens inside the disks.
+\begin{itemize}
+    \item \underline{\textbf{Reading}}. To read a file:
+    \begin{enumerate}
+        \item Access the metadata, variable position (because it contains the folder structure), to locate its block;
+        \item Access the blocks to read the contents of the file.
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/files-2.pdf}
+    \end{figure}
+
+    \item \underline{\textbf{Writing}}. To write a file:
+    \begin{enumerate}
+        \item Access the metadata, variable position (because it contains the folder structure), to find free space.
+        \item Write the data in the allocated blocks (cluster type: unused space).        
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/files-3.pdf}
+    \end{figure}
+
+    Since the \emph{file system can only access clusters}, the \textbf{actual space taken up by a file on a disk is always a multiple of the cluster size}. Given:
+    \begin{itemize}
+        \item $s$, the \emph{file size}
+        \item $c$, the \emph{cluster size}
+    \end{itemize}
+    Then the \definition{actual size on the disk $a$} can be calculated as:
+    \begin{equation}
+        a = \mathrm{ceil}\left(\dfrac{s}{c}\right) \times c
+    \end{equation}
+    Where $\mathrm{ceil}$ rounds a number \underline{up} to the nearest integer. It's also possible to calculate the \textbf{amount of disk space wasted by organising the file into clusters} (\definition{wasted disk space $w$}):
+    \begin{equation}
+        w = a - s
+    \end{equation}
+    A formal way to refer to wasted disk space is \definition{internal fragmentation} of files.
+    \newpage
+    \begin{examplebox}[: internal fragmentation]
+        \begin{itemize}
+            \item File size: 27 byte
+            \item Cluster size: 8 byte
+        \end{itemize}
+        The \emph{actual size} on the disk is:
+        \begin{equation*}
+            a = \mathrm{ceil}\left(\dfrac{27}{8}\right) \cdot 8 = \mathrm{ceil}\left(3.375\right) \cdot 8 = 4 \cdot 8 = 32 \text{ byte}
+        \end{equation*}
+        And the internal fragmentation $w$ is:
+        \begin{equation*}
+            w = 32 - 27 = 5 \text{ byte}
+        \end{equation*}
+    \end{examplebox}
+
+    \item \underline{\textbf{Deleting}}. To delete a file:
+    \begin{enumerate}
+        \item Just update the metadata, variable position (because it contains the folder structure), to say that the blocks where the file was stored are no longer used by the OS.
+    \end{enumerate}
+    \textbf{Deleting a file never actually deletes the data on the disk}: if a new file is written to the same clusters, the old data is replaced by the new.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/files-4.pdf}
+    \end{figure}
+    
+    \item \underline{\textbf{External fragmentation}}. As the disk's life evolves, there might \textbf{not be enough space to store a file contiguously}.
+    
+    In this case, the file is split into smaller chunks and inserted into the free clusters spread over the disk.
+    
+    The effect of \textbf{splitting a file into non-contiguous clusters} is called \definition{external fragmentation}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/files-5.pdf}
+    \end{figure}
 \end{itemize}
 
 \newpage

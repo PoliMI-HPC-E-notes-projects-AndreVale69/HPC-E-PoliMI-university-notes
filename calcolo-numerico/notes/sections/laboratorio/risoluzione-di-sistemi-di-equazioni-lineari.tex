@@ -179,8 +179,107 @@ E il termine noto:
 \end{equation*}
 \begin{enumerate}
     \item Costruire la matrice $A$ (utilizzando i comandi Matlab \texttt{diag} e \texttt{ones}) e determinare il numero di elementi non nulli tramite il comando \texttt{nnz}. La matrice $A$ è a dominanza diagonale per righe? È simmetrica e definita positiva?
+    
+    È stato richiesto di utilizzare i comandi \texttt{diag} e \texttt{ones} per costruire la matrice $A$. Quindi per farlo, si controlla rapidamente la documentazione dei due comandi:
+    \begin{lstlisting}[language=bash]
+>> help ones
+ ones - Create array of all ones
+    This MATLAB function returns the scalar 1.
 
-    \item Si calcolino le matrici di iterazione $B_{J} = D^{-1}\left(D - A\right)$ e $B_{GS} = \left(D - E\right)^{-1}F$ associate rispettivamente ai metodi di Jacobi e Gauss-Seidel e i relativi raggi spettrali. La condizione necessaria e sufficiente per la convergenza del metodo iterativo è soddisfatta in entrambi i casi?
+    Syntax
+      X = ones
+      X = ones(n)
+      X = ones(sz1,...,szN)
+      X = ones(sz)
+
+      X = ones(___,typename)
+      X = ones(___,'like',p)
+
+    Input Arguments
+      n - Size of square matrix
+        integer value
+      sz1,...,szN - Size of each dimension
+        two or more integer values
+      sz - Output size
+        row vector of integer values
+      typename - Output class
+        'double' (default) | 'single' | 'logical' | 'int8' | 'uint8' | ...
+      p - Prototype
+        variable
+
+>> help diag
+ diag - Create diagonal matrix or get diagonal elements of matrix
+    This MATLAB function returns a square diagonal matrix with the elements
+    of vector v on the main diagonal.
+
+    Syntax
+      D = diag(v)
+      D = diag(v,k)
+
+      x = diag(A)
+      x = diag(A,k)
+
+    Input Arguments
+      v - Diagonal elements
+        vector
+      A - Input matrix
+        matrix
+      k - Diagonal number
+        integer\end{lstlisting}
+    Adesso si osservi la matrice $A$. È possibile notare che la diagonale principale ha tutti i valori uguale a $9$, mentre sopra e sotto la diagonale principale, altre due diagonali con valore pari a $-3$ e allo stesso modo due diagonali con valore uguale a $1$.
+
+    Usando entrambi i comandi, si può giungere al seguente risultato parziale:
+    \begin{lstlisting}[language=MATLAB]
+>> diag(9*ones(1, n)) + diag(-3*ones(1,n-1), 1) + diag(1*ones(1,n-2), 2)
+
+ans =
+
+        9    -3     1     0     0     0     0
+        0     9    -3     1     0     0     0
+        0     0     9    -3     1     0     0
+        0     0     0     9    -3     1     0
+        0     0     0     0     9    -3     1
+        0     0     0     0     0     9    -3
+        0     0     0     0     0     0     9\end{lstlisting}
+    Ed eseguendo con la stessa logica anche sotto la diagonale principale, si ottiene la matrice $A$ richiesta:
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/J_GS_1.m}
+
+    Il numero di elementi non nulli si calcola con il comando \texttt{nnz}:
+\begin{lstlisting}[language=bash]
+>> help nnz
+ nnz - Number of nonzero matrix elements
+    This MATLAB function returns the number of nonzero elements in matrix X.
+
+    Syntax
+      N = nnz(X)
+
+    Input Arguments
+      X - Input matrix
+        matrix
+
+>> nnz(A)
+
+ans =
+
+    29
+\end{lstlisting}
+    E infine, per confermare che la matrice sia a dominanza diagonale per righe, simmetrica e definita positiva:
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/J_GS_2.m}
+
+
+    \item Si calcolino le matrici di iterazione:
+    \begin{gather*}
+        B_{J} = D^{-1}\left(D - A\right) \\
+        B_{GS} = \left(D - E\right)^{-1}F
+    \end{gather*}
+    Associate rispettivamente ai metodi di Jacobi e Gauss-Seidel e i relativi raggi spettrali. La condizione necessaria e sufficiente per la convergenza del metodo iterativo è soddisfatta in entrambi i casi?
+
+    Le matrici di iterazione dei due metodi si calcolano a partire dalla definizione:
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/J_GS_3.m}
+
+    Si noti l'istruzione \texttt{D = diag(diag(A))}; il comando interno estrae la diagonale principale di $A$, restituendo un vettore, il quale viene elaborato dal comando più esterno che crea una seconda matrice quadrata identica alla dimensione di $A$ ma con solo la diagonale principale.
+
+    Dal calcolo del raggio spettrale delle matrici si può concludere che in questo caso entrambi i metodi convergono, in quanto l'autovalore massimo risulta in modulo strettamente minore di 1. Si osservi che il raggio spettrale della matrice di iterazione del metodo di Gauss-Seidel è più basso di quello della matrice del metodo di Jacobi.
 
     \item Scrivere la funzione Matlab che implementi il metodo di Jacobi inversione \emph{matriciale} per il sistema lineare $A\mathbf{x} = \mathbf{b}$. L'intestazione della funzione sarà la seguente:
     \begin{equation*}
@@ -192,10 +291,17 @@ E il termine noto:
     \end{equation*}
     (criterio d'arresto del residuo normalizzato).
 
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/jacobi.m}
+
     \item Scrivere una funzione Matlab che implementi il metodo di Gauss-Seidel inversione \emph{matriciale} per il sistema lineare $A\mathbf{x} = \mathbf{b}$. L'intestazione della funzione sarà la seguente:
     \begin{equation*}
         \texttt{[x,k] = gs(A,b,x0,toll,nmax).}
     \end{equation*}
 
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gs.m}
+
     \item Costruire il termine noto $\mathbf{b}$. Utilizzando le funzioni costruite nei punti 3 e 4, risolvere il sistema $A\mathbf{x} = \mathbf{b}$ ponendo $x^{(0)} = \left[0,0,\dots,0\right]^{T}$, $\texttt{toll} = 10^{-6}$ e $\texttt{nmax} = 1000$. Confrontare il numero di iterazioni necessarie per arrivare a convergenza per i due metodi e commentare i risultati ottenuti.
+    
+    Il metodo di Gauss-Seidel converge più velocemente alla soluzione esatta in accordo con il corrispondente raggio spettrale che è più basso di quello della matrice del metodo di Jacobi.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/J_GS_4.m}
 \end{enumerate}

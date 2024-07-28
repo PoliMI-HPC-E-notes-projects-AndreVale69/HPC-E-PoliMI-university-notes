@@ -779,10 +779,275 @@ Two techniques exist to guarantee these features: \textbf{data striping} (improv
 \highspace
 The \textbf{redundancy technique is introduced because} the more physical disks in the array, the more significant the size and performance gains, but the \textbf{larger the probability of failure of a disk}.
 
-In fact, the \emph{probability of a failure} (assuming independent failures) in an array of 100 disks is 100 higher than the probability of a failure of a single disk! For \textcolor{Green4}{\textbf{example}}, if a disk has a mean time to failure (MTTF) of 200.000 hours (23 years), an array of 100 disks will show an MTTF of 2000 hours (3 months).
+In fact, the \emph{probability of a failure} (assuming independent failures) in an array of 100 disks is 100 higher than the probability of a failure of a single disk! For \textcolor{Green4}{\textbf{example}}, if a disk has a \definition{Mean Time To Failure (MTTF)} of 200.000 hours (23 years), an array of 100 disks will show an MTTF of 2000 hours (3 months).
 
 \highspace
 The \definition{Redundancy} is the \textbf{technique of data duplication or error correcting codes} (stored on disks different from the ones with the data) \textbf{that are computed to tolerate loss due to disk failures}. Since write operations must also update the redundant information, their \textbf{performance is worse than traditional writing}.
+
+\highspace
+Data is distributed across the drives in one of several ways, referred to as \definition{RAID levels}, depending on the required level of redundancy and performance. The different schemes, or data distribution layouts, are named by the word \emph{RAID} followed by a number, for example RAID 0 or RAID 1. Each scheme, or RAID level, provides a different balance among the key goals: reliability, availability, performance, and capacity. The RAID levels are:
+\begin{itemize}
+    \item \texttt{RAID 0} striping only
+    \item \texttt{RAID 1} mirroring only
+    \begin{itemize}
+        \item \texttt{RAID 0+1} nested levels
+        \item \texttt{RAID 1+0} nested levels
+    \end{itemize}
+    \item \texttt{RAID 2} bit interleaving (not used)
+    \item \texttt{RAID 3} byte interleaving - redundancy (parity disk)
+    \item \texttt{RAID 4} block interleaving - redundancy (parity disk)
+    \item \texttt{RAID 5} block interleaving - redundancy (parity block distributed)
+    \item \texttt{RAID 6} greater redundancy (2 failed disks are tolerated)
+\end{itemize}
+Note: these notes do \underline{not} study the levels \texttt{RAID 2} and \texttt{RAID 3}.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Topic} & \textbf{Page} \\
+        \midrule
+        \texttt{RAID 0} & \hyperlink{RAID 0}{\hypergetpageref{RAID 0}} \\
+        \texttt{RAID 1} & \hyperlink{RAID 1}{\hypergetpageref{RAID 1}} \\
+        \texttt{RAID 0 + 1} & \hyperlink{RAID 0 + 1}{\hypergetpageref{RAID 0 + 1}} \\
+        \texttt{RAID 1 + 0} & \hyperlink{RAID 1 + 0}{\hypergetpageref{RAID 1 + 0}} \\
+        \bottomrule
+    \end{tabular}
+    \caption{RAID - Table of Contents.}
+\end{table}
+
+\newpage
+
+\begin{center}\label{RAID 0}
+    \large
+    \hypertarget{RAID 0}{\textcolor{Red2}{\textbf{RAID 0}}}
+\end{center}
+
+\noindent
+In RAID 0, the data are \textbf{written on a single logical disk and split into several blocks distributed across the disks} according to a striping algorithm.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When is it used?}}
+\end{flushleft}
+It is used where \textbf{performance} and \textbf{capacity} are the primary concerns. These mean that a minimum of two drives is required.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Lower cost} because it does not employ redundancy (no error-correcting codes are computed and stored).
+    \item \textbf{Best write performance} (it does not need to update redundant data and is parallelized).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Disadvantages}}
+\end{flushleft}
+\textbf{Single disk failure} will result in data loss.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
+\end{flushleft}
+The key idea is to present an \textbf{array of disks as a single large disk} and maximize parallelism by striping data across all $N$ disks.
+
+\highspace
+Now, we will give some metrics to understand how it is possible to \textbf{calculate access to a specific data block} and compare the \textbf{performance} of different RAID technologies.
+
+\highspace
+To \textbf{access to a specific data blocks}, the formulas are:
+\begin{equation}
+    \begin{array}{rcl}
+        \texttt{Disk}    &=& \texttt{logical\_block\_number} \: \% \: \texttt{number\_of\_disks} \\ [.5em]
+        \texttt{Offset}  &=& \dfrac{\texttt{logical\_block\_number}}{\texttt{number\_of\_disks}}
+    \end{array}
+\end{equation}
+For example, given the following schema:
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.5\textwidth]{img/raid-1.pdf}
+\end{figure}
+
+\noindent
+If it is requested, the logical block is 11, and the disks are 4:
+\begin{equation*}
+    \begin{array}{rcl}
+        \texttt{Disk}    &=& 11 \% 4 = 3 \\ [.5em]
+        \texttt{Offset}  &=& 11 \div 4 = 2.75 \approx 3, \text{ then physical block 2 starting from 0}
+    \end{array}
+\end{equation*}
+Note that the \textbf{chunk size is critical} because it impacts disk array performance. With \textbf{smaller chunks}, there is \textbf{greater parallelism} than with \textbf{big chunks}, which have \textbf{reduced seek times}. The typical arrays use 64 KB chunks.
+
+\highspace
+To measure RAID \textbf{performance}, we focus on sequential and random workloads. Assume disks in the array have sequential transfer rate S, and the info about the disk is:
+\begin{itemize}
+    \item Average seek time: 7 ms
+    \item Average rotational delay: 3 ms
+    \item Transfer rate: 50 MB/s
+\end{itemize}
+For a single large transfer (10 MB):
+\begin{equation*}
+    \begin{array}{rcl}
+        S &=& \dfrac{\texttt{transfer\_size}}{\texttt{time\_to\_access}} \\ [1.2em]
+        S &=& 10 \text{ MB} \div \left(7 \text{ ms} + 3 \text{ ms} + 10 \text{ MB} \div 50 \text{ MB/s}\right) = 47.62 \text{ MB/s}
+    \end{array}
+\end{equation*}
+If the disks in the array have a random transfer rate R, and for a set of small files (10 KB):
+\begin{equation*}
+    \begin{array}{rcl}
+        R &=& \dfrac{\texttt{transfer\_size}}{\texttt{time\_to\_access}} \\ [1.2em]
+        R &=& 10 \text{ KB} \div \left(7 \text{ ms} + 3 \text{ ms} + 10 \text{ KB} \div 50 \text{ MB/s}\right) = 0.98 \text{ MB/s}
+    \end{array}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Analysis}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Capacity}: $N$, where $N$ is the number of disks. Then, everything can be filled with data.
+
+    \item \textbf{Reliability}: non-existent. If any drive fails, data is permanently lost. Then, the Mean Time To Failure (MTTF) equals the \definition{Mean Time To Data Loss (MTTDL)}:
+    \begin{equation*}
+        \texttt{MTTF} = \texttt{MTTDL}
+    \end{equation*}
+
+    \item \textbf{Sequential read and write}: $N \times S$
+
+    \item \textbf{Random read and write}: $N \times R$
+\end{itemize}
+Where $N$ is the number of disks, $S$ the sequential transfer rate and $R$ the random transfer rate.
+
+\newpage
+
+\begin{center}\label{RAID 1}
+    \large
+    \hypertarget{RAID 1}{\textcolor{Red2}{\textbf{RAID 1}}}
+\end{center}
+
+\noindent
+Although RAID 0 offers high performance, it has zero error recovery. For this reason, RAID 1 makes \textbf{two copies of all data} (again, a minimum of 2 disk drives are required).
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When is it used?}}
+\end{flushleft}
+It is used when \textbf{zero error recovery is not allowed}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{High reliability}. When a disk fails, the \emph{second copy is used}.
+    \item \textbf{Read of a data}. It can be \emph{retrieved} from the \emph{disk with shorter queueing, seek, and latency delays}.
+    \item \textbf{Fast writes} (no error correcting code should be computed). But \emph{still slower than standard disks} (due to duplication).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{High costs} because only 50\% of the capacity is used.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
+\end{flushleft}
+In principle, a RAID 1 can mirror the content over more than one disk. This feature gives resiliency to errors even if more than one disk breaks. Also, it allows a \textbf{voting mechanism to identify errors not reported by the disk controller}. Unfortunately, this is \textbf{never used in practice because the overhead and costs are \underline{too high}}.
+
+\highspace
+However, disks could be coupled if several disks are available (always in an \underline{even} number). Nevertheless, the total capacity is halved, and each disk has a mirror. Then, the question is simple: \emph{How do we organize this architecture?} The answer is the nested RAIDs: \texttt{RAID 0 + 1} and \texttt{RAID 1 + 0}.
+
+\highspace
+We define the \texttt{RAID x + y} (or \texttt{RAID xy}) as:
+\begin{itemize}
+    \item $n \times m$ disks in total
+    \item $m$ groups of $n$ disks
+    \item Apply \texttt{RAID x} to each group of $n$ disks
+    \item Apply \texttt{RAID y} considering the $m$ groups as single disks
+\end{itemize}
+\newpage
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.6\textwidth]{img/raid-2.pdf}
+    \caption{\texttt{RAID x + y} general architecture.}
+\end{figure}
+
+\label{RAID 0 + 1}\noindent
+The \hypertarget{RAID 0 + 1}{\texttt{\textbf{RAID 0 + 1}}} is a \textbf{group of striped disks (RAID 0) that are then mirrored (RAID 1)}. So:
+\begin{enumerate}
+    \item The mirroring first (RAID 1)
+    \item Then the striping (RAID 0)
+\end{enumerate}
+There are necessary almost four drives. Note that after the first failure, the model becomes a RAID 0.
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.5\textwidth]{img/raid-3.pdf}
+\end{figure}
+
+\label{RAID 1 + 0}\highspace
+The \hypertarget{RAID 1 + 0}{\texttt{\textbf{RAID 1 + 0}}} is a \textbf{group of mirrored disks (RAID 1) that are then striped (RAID 0)}. So: 
+\begin{enumerate}
+    \item The striping first (RAID 0)
+    \item Then the mirroring (RAID 1)
+\end{enumerate}
+There are necessary almost four drives. Usually, it is used in databases with very high workloads (fast writes).
+\newpage
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.5\textwidth]{img/raid-4.pdf}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{not-equal} \textbf{Differences between RAID 01 and RAID 10}}
+\end{flushleft}
+Look at the following architectures:
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/raid-5.pdf}
+\end{figure}
+
+\noindent
+What we can say is:
+\begin{itemize}
+    \item The performance of RAID 01 and RAID 10 are the same.
+    \item The \textbf{main difference is the fault tolerance}\footnote{Fault tolerance is the ability of a system to maintain proper operation despite failures or faults in or more of its components.}!
+\end{itemize}
+On most implementations of RAID controllers, \textbf{RAID 01 fault tolerance is less}. Since we have only two groups of RAID 0, if two drives (one in each group) fail, the entire RAID 01 will fail. Looking at the architecture above, if Disk 1 and 4 fail, both groups will be down. So, the whole RAID 01 will fail.
+
+On the contrary, RAID 10 since there are many groups (as the individual group is only two disks), even if three disks fail (one in each group), the RAID 10 is still functional. Looking at the architecture above, even if Disk 1, 3, and 5 fail, the RAID 10 will still be functional.
+\begin{equation*}
+    \text{Fault Tolerance: } \texttt{RAID 01} \ggg \texttt{RAID 10}
+\end{equation*}
+So, given a choice between RAID 10 and RAID 01, it should be better to choose RAID 10 to have more fault tolerance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Analysis}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Capacity}: $N \div 2$, where $N$ is the number of disks. Then, two copies of all data, thus half capacity.
+
+    \item \textbf{Reliability}: $1$ drive can fail, sometimes more! In an optimistic scenario, $N \div 2$ drives can fail without data loss.
+
+    \item \textbf{Sequential write}: $\left(N \div 2\right) \times S$; two copies of all data, thus half throughput.
+
+    \item \textbf{Sequential read}: $\left(N \div 2\right) \times S$; half of the read blocks are wasted, thus halving throughput.
+
+    \item \textbf{Random read}: $N \times R$; it is the best scenario for RAID 1 because the read can be parallelized across all disks.
+
+    \item \textbf{Random write}: $\left(N \div 2\right) \times R$; two copies of all data, thus half throughput.
+\end{itemize}
+Where $N$ is the number of disks, $S$ is the sequential transfer rate, and $R$ is the random transfer rate.
+
+\highspace
+It is essential to observe RAID 1. There is a notorious \textbf{problem} called the \definition{Consistent Update Problem}.
+
+Mirrored writes \underline{should be atomic}. Then, all copies are written, or none are written. Unfortunately, this is very \textbf{difficult to guarantee} sometimes, for example, in a power failure scenario. To \textbf{solve} this problem, many RAID controllers include a \definition{write-ahead log}, a \textbf{battery backend}, and \textbf{non-volatile storage of pending writes}. With this system, a \textbf{recovery procedure ensures the recovery of the out-of-sync mirrored copies}.
 
 \newpage
 

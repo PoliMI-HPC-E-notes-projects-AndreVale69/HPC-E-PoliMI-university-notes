@@ -811,6 +811,7 @@ Note: these notes do \underline{not} study the levels \texttt{RAID 2} and \textt
         \texttt{RAID 1} & \hyperlink{RAID 1}{\hypergetpageref{RAID 1}} \\
         \texttt{RAID 0 + 1} & \hyperlink{RAID 0 + 1}{\hypergetpageref{RAID 0 + 1}} \\
         \texttt{RAID 1 + 0} & \hyperlink{RAID 1 + 0}{\hypergetpageref{RAID 1 + 0}} \\
+        \texttt{RAID 4} & \hyperlink{RAID 4}{\hypergetpageref{RAID 4}} \\
         \bottomrule
     \end{tabular}
     \caption{RAID - Table of Contents.}
@@ -1048,6 +1049,107 @@ Where $N$ is the number of disks, $S$ is the sequential transfer rate, and $R$ i
 It is essential to observe RAID 1. There is a notorious \textbf{problem} called the \definition{Consistent Update Problem}.
 
 Mirrored writes \underline{should be atomic}. Then, all copies are written, or none are written. Unfortunately, this is very \textbf{difficult to guarantee} sometimes, for example, in a power failure scenario. To \textbf{solve} this problem, many RAID controllers include a \definition{write-ahead log}, a \textbf{battery backend}, and \textbf{non-volatile storage of pending writes}. With this system, a \textbf{recovery procedure ensures the recovery of the out-of-sync mirrored copies}.
+
+\newpage
+
+\begin{center}\label{RAID 4}
+    \large
+    \hypertarget{RAID 4}{\textcolor{Red2}{\textbf{RAID 4}}}
+\end{center}
+
+\noindent
+RAID 4 consists of \textbf{block-level striping with a dedicated parity disk}.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When is it used?}}
+\end{flushleft}
+RAID 1 offers highly reliable data storage, but it uses half the space of the array capacity. To achieve the \textbf{same level of reliability without wasting capacity}, it is possible to use RAID 4, which uses \textbf{information coding techniques to build lightweight error recovery mechanisms}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Good performance} of random reads.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Random Write performance is terrible} due to being \emph{bottlenecked} by the parity drive.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
+\end{flushleft}
+Disk $N$ only stores parity information for the other $N-1$ disks. The parity is calculated using the \texttt{XOR} operation\footnote{\dquotes{A or B, but not A and B}}.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/raid-6.pdf}
+    \caption{RAID 4 - \emph{How does it work?}}
+\end{figure}
+
+\noindent
+The \textbf{\underline{serial}} or \textbf{\underline{random read}} is not a problem in RAID 4 because there is a \textbf{parallelization across all non-parity blocks} in the stripe despite a tiny performance reduction due to the parity disk.
+
+\newpage
+
+\noindent
+During the parity writing, the blocks are updated. The \textbf{\underline{random write}} performance is affected by the approach used:
+\begin{itemize}
+    \item \definition{Additive parity} (as known as reconstruct-writes):\index{reconstruct-writes}
+    \begin{enumerate}
+        \item Read all other blocks in a stripe in parallel;
+        \item \texttt{XOR} those with the new block to form a new parity block;
+        \item Write the new data block and new parity block to disks.
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.8\textwidth]{img/raid-7.pdf}
+    \end{figure}
+
+    \item \definition{Subtractive parity} (as known as read-modify-writes):\index{read-modify-writes}
+    \begin{enumerate}
+        \item Read only the old data block to be updated and the old parity block;
+        \item Compute the new parity block using:
+        \begin{equation*}
+            P_{new} = \left(D_{new} \:\veebar\: D_{old}\right) \:\veebar\: P_{old}
+        \end{equation*}
+        Where $\veebar$ is the logical \texttt{XOR}.
+        \item Write the new data block and new parity block to disks.
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.8\textwidth]{img/raid-8.pdf}
+    \end{figure}
+\end{itemize}
+Despite the \textbf{\underline{sequential write}} does \textbf{not suffer any performance effect} from the parity disk. Because it uses full-stripe write:
+\begin{enumerate}
+    \item Buffer all data blocks of a stripe
+    \item Compute the parity block
+    \item Write all data and parity blocks in parallel\cite{raid-and-data-integrity-slides}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Analysis}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Capacity}: $N - 1$, where $N$ is the number of disks, and the $-1$ is because one is dedicated to the parity disk.
+
+    \item \textbf{Reliability}: $1$ drive can fail. Massive performance degradation during partial outage.
+
+    \item \textbf{Sequential read/write}: $\left(N - 1\right) \times S$; parallelization across all non-parity blocks in the stripe (parity disk has no effect).
+
+    \item \textbf{Random read}: $\left(N - 1\right) \times R$; reads parallelize over all but the parity drive (parity disk has no effect).
+
+    \item \textbf{Random write}: $R \div 2$; writes serialize due to the parity drive, and each write requires one read and one write of the parity drive.
+\end{itemize}
+Where $N$ is the number of disks, $S$ is the sequential transfer rate, and $R$ is the random transfer rate.
 
 \newpage
 

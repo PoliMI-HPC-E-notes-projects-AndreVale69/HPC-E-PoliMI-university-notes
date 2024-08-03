@@ -305,3 +305,252 @@ ans =
     Il metodo di Gauss-Seidel converge più velocemente alla soluzione esatta in accordo con il corrispondente raggio spettrale che è più basso di quello della matrice del metodo di Jacobi.
     \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/J_GS_4.m}
 \end{enumerate}
+
+\newpage
+
+\paragraph{Metodo di Richardson}
+
+Il metodo di Richardson stazionario è basato sulla seguente legge. Dati $\mathbf{x}^{\left(0\right)}$ e $\alpha \in \mathbb{R}$ si calcola:
+\begin{equation}\label{lab-eq: metodo di Richardson}
+    \mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)} + \alpha\mathbf{r}^{\left(k\right)} \hspace{2em} k \ge 0
+\end{equation}
+Dove $\alpha \ne 0$ è un parametro costante per ogni iterazione. Questo metodo richiede, ad ogni passo $k$, di calcolare il \emph{residuo} $\mathbf{r}^{\left(k\right)}$ definito come:
+\begin{equation*}
+    \mathbf{r}^{\left(k\right)} = \mathbf{b} - A \mathbf{x}^{\left(k\right)}
+\end{equation*}
+Il metodo di Richardson \emph{stazionario} converge solo per $0 < \alpha < \frac{2}{\lambda_{\max}}$, in cui $\lambda_{\max}$ è il massimo degli autovalori della matrice $A$. Inoltre, è possibile calcolare un valore di $\alpha$ ottimale che massimizza la velocità di convergenza. Questo valore è dato da:
+\begin{equation*}
+    \alpha_{\text{opt}} = \dfrac{2}{\lambda_{\min} + \lambda_{\max}}
+\end{equation*}
+In cui $\lambda_{\min}$ è il minimo degli autovalori della matrice $A$. Per questo valore, la velocità di convergenza è data da:
+\begin{equation*}
+    \rho_{\text{opt}} = \dfrac{K\left(A\right) - 1}{K\left(A\right) + 1}
+\end{equation*}
+Dove $K\left(A\right)$ è il numero di condizionamento, definito anche come:
+\begin{equation*}
+    K\left(A\right) = \left|\left| A^{-1} \right|\right| \cdot \left|\left| A \right|\right|
+\end{equation*}
+Dove $\left|\left| \cdot \right|\right|$ è una opportuna norma introdotta per la matrice. Vale sempre $K\left(A\right) \ge 1$. Se la matrice $A$ è simmetrica e definita positiva, utilizzando la sua norma 2, vale:
+\begin{equation*}
+    K\left(A\right) = \left|\left| A^{-1} \right|\right|_{2} \cdot \left|\left| A \right|\right|_{2} = \dfrac{\lambda_{\max}}{\lambda_{\min}}
+\end{equation*}
+Si noti che, dalla sua definizione, il metodo di Richardson (eq. \ref{lab-eq: metodo di Richardson}) può essere riscritto nella seguente forma (utilizzando la definizione di $\mathbf{r}$):
+\begin{equation}
+    \mathbf{x}^{\left(k+1\right)} = \left(I - \alpha A\right) \mathbf{x}^{\left(k\right)} + \alpha \mathbf{b} \hspace{2em} k \ge 0
+\end{equation}
+Segue che il metodo di Richardson è un metodo iterativo caratterizzato dalla matrice di iterazione $B_{\alpha} = I - \alpha A$ e da $\mathbf{f} = \alpha \mathbf{b}$.
+
+\newpage
+
+\paragraph{Precondizionamento}
+
+Il numero di condizionamento di una matrice governa il rapporto tra l'errore relativo commesso dalla soluzione numerica nella risoluzione di un sistema lineare e il corrispondente residuo normalizzata, alla iterata $k$:
+\begin{equation*}
+    \dfrac{
+        \left|\left| \mathbf{x}^{\left(k\right)} - \mathbf{x} \right|\right|
+    }{
+        \left|\left| \mathbf{x}^{\left(k\right)} \right|\right|
+    } 
+    \le
+    K\left(A\right) \dfrac{
+        \left|\left| \mathbf{r}^{\left(k\right)} \right|\right|
+    }{
+        \left|\left| \mathbf{b} \right|\right|
+    }
+\end{equation*}
+Dove:
+\begin{itemize}
+    \item $\mathbf{x}^{\left(k\right)}$ è la soluzione numerica
+    \item $\mathbf{r}^{\left(k\right)}$ è il residuo, ovvero $\mathbf{b} - A\mathbf{x}^{\left(k\right)}$
+    \item $\mathbf{x}$ è la soluzione esatta del sistema lineare
+\end{itemize}
+Inoltre, nel caso del metodo di Richardson, si ottiene:
+\begin{equation*}
+    \left|\left| \mathbf{e}^{\left(k+1\right)} \right|\right|
+    \le
+    \dfrac{K\left(A\right)-1}{K\left(A\right)+1}
+    \cdot
+    \left|\left| \mathbf{e}^{\left(k\right)} \right|\right|
+\end{equation*}
+Come migliore stima ottenibile usando $\alpha_{\text{opt}}$.
+
+\highspace
+Per problemi ben condizionati ($K\left(A\right)$ non molto più grande di $1$), la soluzione del problema con piccoli residui non differisce molto dalla soluzione del problema originale; al contrario, in problemi con la matrice mal condizionata $\left(K\left(A\right) \gg  1\right)$ a piccoli residui possono corrispondere grandi errori e la convergenza è molto lenta.
+
+\highspace
+L'idea del precondizionamento consiste nel cercare di ridurre il numero di condizionamento della matrice del sistema, pre-moltiplicandola per una matrice $P^{-1}$ ($P$ è chiamata \emph{precondizionatore}). Si ottiene così il sistema equivalente:
+\begin{equation*}
+    P^{-1}A\mathbf{x}^{\left(k\right)} = P^{-1}\mathbf{b}
+\end{equation*}
+Ovviamente il precondizionatore è efficace se $K\left(P^{-1}A\right) \ll K\left(A\right)$ e se la soluzione del sistema lineare in $P$ che sorge ad ogni iterazione non è troppo onerosa. La prima proprietà è solitamente verificata quando $P^{-1} \approx A^{-1}$, cioè quando $P$ e $A$ hanno uno spettro simile, ma dovendo tener conto della seconda condizione è opportuno scegliere $P$ con una struttura speciale che mantenga basso il costo computazionale (ad esempio diagonale o triangolare).
+
+\highspace
+Ad esempio, nel caso di Richardson, per alleviare la dipendenza della convergenza ottimale dal numero di condizionamento, si introduce la tecnica di precondizionamento, che consiste nel sostituire $A$ con $P^{-1}A$. Questo metodo richiede, ad ogni iterata, di trovare il cosiddetto \emph{residuo precondizionato} $\mathbf{z}^{\left(k\right)}$ dato dalla soluzione del sistema lineare:
+\begin{equation}\label{lab-eq: residuo precondizionato}
+    P\mathbf{z}^{\left(k\right)} = \mathbf{r}^{\left(k\right)}
+\end{equation}
+Di conseguenza, la nuova iterata è definita da $\mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)} + \alpha\mathbf{z}^{\left(k\right)}$. Si noti che la matrice $P$, oltre ad essere non singolare (determinante diverso da zero), simmetrica (coincide con la sua trasposta) e definita positiva, deve essere scelta in modo tale che il costo computazionale richiesto dalla risoluzione del sistema (eq. \ref{lab-eq: residuo precondizionato}) sia basso. Per il caso precondizionato, valgono i precedenti risultati su $\alpha_{\text{opt}}$ e $\rho_{\text{opt}}$ a patto che si considerino gli autovalori di $P^{-1} A$ invece di quelli di $A$.
+
+\longline
+
+\paragraph{Metodo del gradiente}
+
+È possibile generalizzare il metodo di Richardson precondizionato tramite l'introduzione di un parametro di accelerazione dinamico $\alpha_{k}$:
+\begin{equation*}
+    P\left(\mathbf{x}^{\left(k+1\right) - \mathbf{x}^{\left(k\right)}}\right) = \alpha_{k}\mathbf{r}^{\left(k\right)} \hspace{2em} k \ge 0, \: \alpha_{k} \ne 0
+\end{equation*}
+Con $P$ il precondizionatore. Lo scopo dell'utilizzo di $\alpha_{k}$ è quello di poter calcolare facilmente il parametro di accelerazione evitando il calcolo (spesso oneroso) degli autovalori di $A$ come per $\alpha_{\text{opt}}$. Questo metodo è detto \emph{metodo di Richardson dinamico}. Se $\alpha_{k}$ è scelto in modo ottimale, allora il metodo è detto del \emph{gradiente} se $P = I$, oppure del \emph{gradiente precondizionato} se $P \ne I$.
+
+\highspace
+A partire dal metodo di Richardson, è possibile ottenere i metodi del \emph{gradiente} ($P = I$) e del \emph{gradiente precondizionato} ($P \ne I$) tramite l'aggiunta del parametro $\alpha_{k}$: dato $\mathbf{x}^{\left(0\right)}$ assegnato, si ponga $\mathbf{r}^{\left(0\right)} = \mathbf{b} - A\mathbf{x}^{\left(0\right)}$ e per $k = 0, 1, \dots$
+\begin{equation}
+    \begin{array}{rcl}
+        P\mathbf{z}^{\left(k\right)} &=& \mathbf{r}^{\left(k\right)} \\ [.5em]
+        \alpha_{k} &=& \dfrac{
+            \left(\mathbf{z}^{\left(k\right)}\right)^{T} \mathbf{r}^{\left(k\right)}
+        }{
+            \left(\mathbf{z}^{\left(k\right)}\right)^{T} A\mathbf{z}^{\left(k\right)}
+        } \\ [2em]
+        \mathbf{x}^{\left(k+1\right)} &=& \mathbf{x}^{\left(k\right)} + \alpha_{k} \mathbf{z}^{\left(k\right)} \\ [1em]
+        \mathbf{r}^{\left(k+1\right)} &=& \mathbf{r}^{\left(k\right)} + \alpha_{k}A\mathbf{z}^{\left(k\right)}
+    \end{array}
+\end{equation}
+
+\newpage
+
+\paragraph{Esercizi su Richardson e gradiente}
+
+Si considerino la matrice:
+\begin{equation*}
+    A = \begin{bmatrix}
+        9 & -3 & 1 & & & & \\
+        -3 & 9 & -3 & 1 & & & \\
+        1 & -3 & 9 & -3 & 1 & & \\
+        & 1 & -3 & 9 & -3 & 1 & \\
+        && 1 & -3 & 9 & -3 & 1 \\
+        &&& 1 & -3 & 9 & -3 \\
+        &&&& 1 & -3 & 9 
+    \end{bmatrix}
+\end{equation*}
+E il termine noto:
+\begin{equation*}
+    \mathbf{b} = \begin{bmatrix}
+        7 & 4 & 5 & 5 & 5 & 4 & 7
+    \end{bmatrix}^{T}
+\end{equation*}
+\begin{enumerate}
+    \item Costruire la matrice $A$ (utilizzando i comandi Matlab \texttt{diag} e \texttt{ones}).
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/richardson_1.m}
+
+
+    \item Calcolare l'intervallo di valori di $\alpha$ per cui il metodo di Richardson stazionario non precondizionato converge. Determinare il valore ottimale di $\alpha$ per avere massima velocità di convergenza.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/richardson_2.m}
+
+
+    \item Scrivere una funzione Matlab che implementi il metodo di Richardson stazionario non precondizionato per il sistema lineare $A\mathbf{x} = \mathbf{b}$. I parametri in ingresso richiesti dalla funzione sono la matrice $A$, il termine noto $\mathbf{b}$, il guess iniziale $\mathbf{x}^{\left(0\right)}$, il coefficiente $\alpha$, la tolleranza per il criterio d'arresto \texttt{toll} e il numero massimo di iterazioni ammesse \texttt{nmax}. La funzione restituisce la soluzione numerica $\mathbf{x}$ e il numero di iterazioni effettuate $k$.
+
+    L'intestazione della funzione sarà la seguente:
+    \begin{center}
+        [x, k] = richardson(A, b, x0, alpha, toll, nmax)
+    \end{center}
+    Il processo iterativo si arresta quando:
+    \begin{equation*}
+        \dfrac{\left|\left| \mathbf{r}^{\left(k\right)} \right|\right|}{\left|\left| \mathbf{b} \right|\right|} \le \texttt{toll}
+    \end{equation*}
+    (criterio d'arresto del residuo normalizzato).
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/richardson.m}
+
+
+    \item Costruire il termine noto $\mathbf{b}$. Utilizzando la funzione scritta al punto precedente, determinare la soluzione del sistema lineare $A\mathbf{x} = \mathbf{b}$, con $A$ data dal punto 1. 
+    
+    Si ponga $\mathbf{x}^{\left(0\right)} = \left[0, 0, \dots, 0\right]^{T}$, $\texttt{toll} = 10^{-6}$ e $\texttt{nmax} = 1000$. Si verifichi sperimentalmente che il metodo di Richardson stazionario non precondizionato converge solo se $\alpha$ appartiene all'intervallo trovato nel punto 2. In particolare, si scelga un $\alpha$ al di fuori dell'intervallo e si verifichi che il metodo diverge. Si provi, inoltre, sperimentalmente, che per $\alpha_{\text{opt}}$ il metodo converge più velocemente. In particolare, si scelga un $\alpha$ nell'intervallo di convergenza e si osservi il numero di iterazioni per aggiungere a convergenza è maggiore di quello ottenuto utilizzando $\alpha_{\text{opt}}$.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/richardson_3.m}
+\end{enumerate}
+
+\longline
+
+\noindent
+Adesso si passa al gradiente. Si consideri il problema lineare $A\mathbf{x} = \mathbf{b}$, dove la matrice $A \in \mathbb{R}^{n \times n}$ è pentadiagonale:
+\begin{equation*}
+    A = \begin{bmatrix}
+        4 & -1 & -1 & & & & \\
+        -1 & 4 & -1 & -1 & & & \\
+        -1 & 4 & -1 & -1 & -1 & & \\
+         & \ddots & \ddots & \ddots & \ddots & \ddots & \\
+         & & -1 & -1 & 4 & -1 & -1 \\
+         & & & -1 & -1 & 4 & -1 \\
+         & & & & -1 & -1 & 4 \\
+    \end{bmatrix}
+    \hspace{1em}
+    \mathbf{b} = \begin{bmatrix}
+        0.2 \\ 0.2 \\ 0.2 \\ \vdots \\ 0.2 \\ 0.2 \\ 0.2
+    \end{bmatrix}
+\end{equation*}
+Si vuole risolvere tale problema con il metodo del gradiente, soddisfando una tolleranza di $10^{-5}$ per il criterio relativo al residuo normalizzato, a partire dal vettore iniziale $\mathbf{x}_{0} = \left[0, \dots, 0\right]^{T}$.
+\begin{enumerate}
+    \item Costruire la matrice $A$ con $n = 50$, il termine noto $\mathbf{b}$ ed il vettore soluzione iniziale $\mathbf{x}_{0}$. La matrice $A$ è simmetrica e definita positiva? Se ne calcoli il numero di condizionamento, senza utilizzare il comando \texttt{cond} di Matlab.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradiente_1.m}
+    \newpage
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.6\textwidth]{img/gradiente-1.pdf}
+    \end{figure}
+
+    \item Si scriva una funzione che implementi il metodo del gradiente e la si usi per risolvere il sistema lineare $A\mathbf{x} = \mathbf{b}$. L'intestazione della funzione sarà ad esempio:
+    \begin{center}
+        \texttt{[x, iter, err] = graddyn(A, b, x0, nmax, toll)}
+    \end{center}
+    Dove \texttt{err} è il vettore contenente il residuo normalizzato ad ogni iterazione.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/graddyn.m}
+
+    \item Utilizzare la funzione scritta al punto precedente per determinare la soluzione del sistema lineare $A\mathbf{x} = \mathbf{b}$.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradiente_2.m}
+
+    \item A partire dal \texttt{graddyn.m}, si scriva una funzione \texttt{gradprec.m} che implementi il metodo del gradiente precondizionato. L'intestazione della funzione sarà ad esempio:
+    \begin{center}
+        \texttt{[x, iter, err] = gradprec(A, b, x0, nmax, toll)}
+    \end{center}
+    Si risolva il sistema lineare $A\mathbf{x} = \mathbf{b}$ applicando il metodo del gradiente precondizionato con il precondizionatore:
+    \begin{equation*}
+        P = \begin{bmatrix}
+            2 & -1 & & & \\
+            -1 & 2 & -1 & & \\
+             & \ddots & \ddots & \ddots & \\
+             & & -1 & 2 & -1 \\
+             & & & -1 & 2 \\
+        \end{bmatrix}
+    \end{equation*}
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradprec.m}
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradiente_3.m}
+
+    \item Disegnare su un grafico l'andamento del residuo normalizzato:
+    \begin{equation*}
+        \dfrac{\left|\left| \mathbf{r}^{\left(k\right)} \right|\right|}{\left|\left| \mathbf{b} \right|\right|}
+    \end{equation*}
+    In funzione delle iterazioni $k$ nei due casi (gradiente e gradiente precondizionato), e confrontare le curve ottenute.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradiente_4.m}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.7\textwidth]{img/gradiente-2.pdf}
+    \end{figure}
+
+    \item A partire da \texttt{richardson.m}, si scriva una funzione \texttt{richprec.m} che implementi il metodo di Richardson precondizionato. L'intestazione della funzione sarà ad esempio:
+    \begin{center}
+        \texttt{[x, iter, err] = richprec(A, b, P, alpha, x0, nmax, toll)}
+    \end{center}
+    Si risolva il sistema lineare $A\mathbf{x} = \mathbf{b}$ applicando il metodo di Richardson precondizionato utilizzando la relativa $\alpha_{\text{opt}}$ e il precondizionatore $P$ implementato al punto 4.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/richprec.m}
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradiente_5.m}
+
+    \item Si risolva il sistema lineare $A\mathbf{x} = \mathbf{b}$ con il metodo di Richardson. Disegnare su un grafico l'andamento del residuo normalizzato:
+    \begin{equation*}
+        \dfrac{\left|\left| \mathbf{r}^{\left(k\right)} \right|\right|}{\left|\left| \mathbf{b} \right|\right|}
+    \end{equation*}
+    In funzione delle iterazioni $k$ nei due casi (Richardson e Richardson precondizionato), e confrontare le curve ottenute.
+    \lstinputlisting[language=MATLAB]{code/risoluzione-di-sistemi-di-equazioni-lineari/metodi-iterativi/gradiente_6.m}
+    \newpage
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.7\textwidth]{img/gradiente-3.pdf}
+    \end{figure}
+\end{enumerate}

@@ -244,7 +244,7 @@ Per questa ragione la matrice $P$ deve essere scelta in modo tale che il costo c
     \textcolor{Green3}{\faIcon{question-circle} \textbf{Quando converge?}}
 \end{flushleft}
 Per studiare la convergenza, si definisce la \definition{norma dell'energia} associata alla matrice $A$:
-\begin{equation}
+\begin{equation}\label{eq: norma dell'energia}
     \left|\left| \mathbf{v} \right|\right|_{A} = \sqrt{\mathbf{v}^{T} A \mathbf{v}} \hspace{2em} \forall\mathbf{v} \in \mathbb{R}^{n}
 \end{equation}
 E si definisce la seguente definizione.
@@ -293,4 +293,180 @@ E si definisce la seguente definizione.
     \end{equation}
 \end{definitionbox}
 
+\newpage
 
+\subsubsection{Il metodo del Gradiente e del Gradiente Coniugato}
+
+Si definisce la funzione $\varPhi: \mathbb{R}^{n} \rightarrow \mathbb{R}$:
+\begin{equation}
+    \varPhi\left(\mathbf{x}\right) = \dfrac{1}{2}\mathbf{x}^{T} A \mathbf{x} - \mathbf{x}^{T}\mathbf{b}
+\end{equation}
+Nel caso in cui la matrice $A$ è simmetrica\footnote{Quindi corrisponde con la sua trasposta} e definita positiva\footnote{Definizione a pagina: \pageref{matrice definita positiva}}, $\varPhi$ è una funzione convessa, cioè tale che ogni per ogni $\mathbf{x}, \mathbf{y} \in \mathbb{R}^{n}$ e per ogni $\alpha \in \left[0,1\right]$ vale:
+\begin{equation}
+    \varPhi\left(
+        \alpha\mathbf{x} + \left(1-\alpha\right) \mathbf{y}
+    \right)
+    \le
+    \alpha\varPhi\left(\mathbf{x}\right) + \left(1-\alpha\right)\varPhi\left(\mathbf{y}\right)
+\end{equation}
+Ed ammette un unico punto stazionario $\mathbf{x}^{*}$ che è anche un \textbf{punto di minimo locale ed assoluto}. Quindi:
+\begin{equation}\label{eq: problema di minimo - metodo del gradiente}
+    \mathbf{x}^{*} = \underset{\mathbf{x} \in \mathbb{R}^{n}}{\mathrm{argmin}} \: \varPhi\left(\mathbf{x}\right)
+\end{equation}
+È l'unica soluzione dell'equazione:
+\begin{equation}\label{eq: direzione massima crescita}
+    \nabla\varPhi\left(\mathbf{x}\right) = A\mathbf{x} - \mathbf{b} = \mathbf{0}
+\end{equation}
+\textbf{Risolvere} il \textbf{problema di minimo} dell'equazione \ref{eq: problema di minimo - metodo del gradiente} \textbf{equivale} pertanto a \textbf{risolvere il sistema lineare}\footnote{Il gradiente è un argomento del calcolo differenziale vettoriale e il vettore gradiente di una funzione scalare punta secondo la direzione di massima crescita della funzione stessa. Se si è un po' arrugginiti a riguardo, si può dare un'occhiata su \href{https://it.wikipedia.org/wiki/Gradiente}{Wikipedia} o su \href{https://www.youmath.it/lezioni/analisi-due/varie/2275-gradiente.html}{YouMath}}.
+
+\highspace
+Per un generico $\overline{\mathbf{x}} \in \mathbb{R}^{n}$ diverso da $\mathbf{x}^{*}$, $\nabla\varPhi\left(\mathbf{x}\right)$ è un vettore non nullo di $\mathbb{R}^{n}$ che individua la direzione lungo cui avviene:
+\begin{itemize}
+    \item La \textbf{massima \underline{crescita}} di $\varPhi$;
+    \item Di conseguenza $-\nabla\varPhi\left(\overline{\mathbf{x}}\right)$ individua la direzione di \textbf{massima \underline{decrescita}} di $\varPhi$ a partire da $\overline{\mathbf{x}}$.
+\end{itemize}
+Inoltre, ricordando che il vettore residuo nel punto $\overline{\mathbf{x}}$ è $\overline{\mathbf{r}} = \mathbf{b} - A\overline{\mathbf{x}}$, grazie alla direzione lungo cui avviene la massima crescita \ref{eq: direzione massima crescita}, si ha che il \textbf{vettore residuo} è uguale a:
+\begin{equation}
+    \overline{\mathbf{r}} = -\nabla\varPhi\left(\overline{\mathbf{x}}\right)
+\end{equation}
+Cioè il residuo \textbf{individua una possibile direzione lungo cui muoversi per avvicinarsi al punto di minimo} $\mathbf{x}^{*}$.
+
+\highspace
+In generale, un vettore $\mathbf{d}$ rappresenta una \definition{direzione di discesa per $\varPhi$} nel punto $\overline{\mathbf{x}}$ se si verificano le seguenti condizioni:
+\begin{equation}
+    \begin{array}{rcl}
+        \nabla\varPhi\left(\overline{\mathbf{x}}\right) \ne \mathbf{0} &\Rightarrow& \mathbf{d}^{T}\nabla\varPhi\left(\overline{\mathbf{x}}\right) < 0 \\ [.5em]
+        \nabla\varPhi\left(\overline{\mathbf{x}}\right) = \mathbf{0} &\Rightarrow& \mathbf{d} = \mathbf{0}
+    \end{array}
+\end{equation}
+Il \textbf{residuo} è pertanto una \textbf{direzione di discesa}. È banale dire che quindi per \textbf{avvicinarsi al punto di minimo} ci si \textbf{muoverà lungo opportune direzioni di discesa}. I \definition{metodi di discesa} sono definiti nel seguente modo.
+
+\begin{definitionbox}[: metodi di discesa]
+    Assegnato un vettore $\mathbf{x}^{\left(0\right)} \in \mathbb{R}^{n}$, per $k = 0, 1, \dots$ fino a convergenza:
+    \begin{enumerate}
+        \item Si determina una direzione di discesa $\mathbf{d}^{\left(k\right)} \in \mathbb{R}^{n}$
+        \item Si determina un passo $\alpha_{k} \in \mathbb{R}$
+        \item Si pone $\mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)} + \alpha_{k}\mathbf{d}^{\left(k\right)}$
+    \end{enumerate}
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Ma quindi quale è la differenza tra Gradiente e Gradiente Coniugato?}}
+\end{flushleft}
+I metodi del gradiente e del gradiente coniugato sono metodi di discesa che si \textbf{differenziano nella scelta delle direzioni di discesa}, mentre la scelta dei passi $\alpha_{k}$ è \emph{comune} ad entrambi. Per cui, qua di seguito si esami la scelta dei passi, supponendo di aver già calcolato la nuova direzione $\mathbf{d}^{\left(k\right)}$.
+
+\highspace
+La \textbf{scelta del passo} $\alpha_{k}$ è comune ad entrambi, quindi:
+\begin{equation}
+    \alpha_{k} = \underset{\alpha \in \mathbb{R}^{n}}{\mathrm{argmin}} \: \varPhi\left(\mathbf{x}^{\left(k\right)} + \alpha\mathbf{d}^{\left(k\right)}\right)
+\end{equation}
+Ovvero un passo $\alpha_{k}$ tale che $\varPhi\left(\mathbf{x}^{\left(k+1\right)}\right)$ sia il \textbf{minimo} di $\varPhi$ lungo la direzione $\mathbf{d}^{\left(k\right)}$ passante per $\mathbf{x}^{\left(k\right)}$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{bookmark} \textbf{Definizione metodo del gradiente}}
+\end{flushleft}
+Adesso si può dare la definizione del Gradiente. Il \definition{metodo del gradiente} è caratterizzato dalla scelta:
+\begin{equation}
+    \mathbf{d}^{\left(k\right)} = \mathbf{r}^{\left(k\right)} = -\nabla\varPhi\left(\mathbf{x}^{\left(k\right)}\right) \hspace{2em} k = 0, 1, \dots
+\end{equation}
+Quindi la \textbf{direzione di discesa ad ogni passo $k$ è la direzione opposta a quella del gradiente} (come si vede dal meno davanti a $\nabla$) della funzione $\varPhi$.
+
+\highspace
+L'\definition{algoritmo del metodo del gradiente} è: dato $\mathbf{x}^{\left(0\right)} \in \mathbb{R}^{n}$, si definisce $\mathbf{r}^{\left(0\right)} = \mathbf{b} - A\mathbf{x}^{\left(0\right)}$ e si calcola:
+\begin{equation}
+    \begin{array}{rl}
+        \text{per } k = 0, 1, \dots & \\
+        & \alpha_{k} = \dfrac{
+            \left(\mathbf{r}^{\left(k\right)}\right)^{T} \mathbf{r}^{\left(k\right)}
+        }{
+            \left(\mathbf{r}^{\left(k\right)}\right)^{T} A \mathbf{r}^{\left(k\right)}
+        } \\ [2em]
+        & \mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)} + \alpha_{k}\mathbf{r}^{\left(k\right)} \\ [1em]
+        & \mathbf{r}^{\left(k+1\right)} = \mathbf{r}^{\left(k\right)} - \alpha_{k} A \mathbf{r}^{\left(k\right)}
+    \end{array}
+\end{equation}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Quando converge il metodo del gradiente?}}
+\end{flushleft}
+Se $A \in \mathbb{R}^{n \times n}$ è simmetrica\footnote{Quindi corrisponde con la sua trasposta} e definita positiva\footnote{Definizione a pagina: \pageref{matrice definita positiva}} il metodo del gradiente converge alla soluzione del sistema lineare $A\mathbf{x} = \mathbf{b}$ per ogni dato iniziale $\mathbf{x}^{\left(0\right)} \in \mathbb{R}^{n}$ e inoltre vale la seguente \textbf{stima dell'errore}:
+\begin{equation}
+    \left|\left| \mathbf{e}^{\left(k\right)} \right|\right|_{A} \le \left(\dfrac{K\left(A\right)-1}{K\left(A\right)+1}\right)^{k} \left|\left| \mathbf{e}^{\left(0\right)} \right|\right|_{A} \hspace{2em} k \ge 0
+\end{equation}
+Dove $\left|\left| \cdot \right|\right|$ è la \definition{norma dell'energia} definita a pagina \pageref{eq: norma dell'energia} e $K\left(A\right)$ è il numero di condizionamento (spettrale) della matrice $A$ definito a pagina \pageref{eq: numero di condizionamento (spettrale)}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Ma si può fare di meglio! Ed ecco che arriva il metodo del gradiente coniugato...}}
+\end{flushleft}
+È possibile costruire delle direzioni di discesa \dquotes{migliori} al fine di \textbf{giungere a convergenza in un numero di iterazioni inferiore rispetto a quelle del metodo del gradiente}. Partendo dunque dal metodo del gradiente e sfruttando la definizione ricorsiva dei vettori $\mathbf{x}^{\left(k\right)}$, si può ottenere:
+\begin{equation}\label{eq: metodo del gradiente migliorato}
+    \begin{array}{rcl}
+        \mathbf{x}^{\left(k+1\right)} &=& \mathbf{x}^{\left(k\right)} + \alpha_{k}\mathbf{d}^{\left(k\right)} \\ [.5em]
+        &=& \mathbf{x}^{\left(k-1\right)} + \alpha_{k-1} \mathbf{d}^{\left(k-1\right)} + \alpha_{k}\mathbf{d}^{\left(k\right)} \\ [.5em]
+        &=& \dots \\ [.5em]
+        &=& \mathbf{x}^{\left(0\right)} + \displaystyle\sum_{j=0}^{k} \alpha_{j}\mathbf{d}^{\left(j\right)}
+    \end{array}
+\end{equation}
+Si deduce che il vettore $\left(\mathbf{x}^{\left(k+1\right)} - \mathbf{x}^{\left(0\right)}\right) \in \mathbb{R}^{n}$ è una combinazione lineare delle direzioni di discesa $\left\{\mathbf{d}^{\left(j\right)}\right\}_{j=0}^{k}$.
+
+\highspace
+Il \definition{metodo del gradiente coniugato} costruisce un sistema di direzioni di discesa in $\mathbb{R}^{n}$ che siano tutte linearmente indipendenti fra di loro (quindi $\left\{\mathbf{d}^{\left(k\right)}\right\}_{k=0}^{n-1}$ sarà una base di $\mathbb{R}^{n}$) e tali che i valori $\left\{\alpha_{k}\right\}_{k=0}^{n-1}$ siano proprio i coefficienti dello sviluppo di $\left(\mathbf{x}^{*} - \mathbf{x}^{\left(0\right)}\right)$ rispetto alla base $\left\{\mathbf{d}^{\left(k\right)}\right\}_{k=0}^{n-1}$. Questo comporta che l'$n$-simo termine $\mathbf{x}^{\left(n\right)}$ della successione (eq. \ref{eq: metodo del gradiente migliorato}) coincide con la soluzione esatta $\mathbf{x}^{*}$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Quando converge il metodo del gradiente coniugato?}}
+\end{flushleft}
+Sia $A \in \mathbb{R}^{n \times n}$ una matrice simmetrica e definita positiva. Il metodo del gradiente coniugato per risolvere un sistema lineare \textbf{converge al più in $n$ iterazioni} (in aritmetica esatta). Inoltre, il residuo $\mathbf{r}^{\left(k\right)}$ alla $k$-esima iterazione (con $k < n$) è ortogonale a $\mathbf{d}^{\left(j\right)}$ per $j = 0, \dots, k-1$ e:
+\begin{equation}
+    \left|\left| \mathbf{e}^{\left(k\right)} \right|\right|_{A} \le \dfrac{2c^{k}}{1+c^{2k}} \: \left|\left| \mathbf{e}^{\left(0\right)} \right|\right|_{A}
+\end{equation}
+Con:
+\begin{equation}
+    c = \dfrac{
+        \sqrt{K\left(A\right)}-1
+    }{
+        \sqrt{K\left(A\right)}+1
+    }
+\end{equation}
+In aritmetica esatta il metodo del gradiente coniugato è pertanto un \textbf{metodo diretto in quanto termina dopo un numero finito di iterazioni}!
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{book} \textbf{Il precondizionamento migliora il metodo del gradiente}}
+\end{flushleft}
+Le iterazioni del metodo del gradiente, quando convergono alla soluzione esatta $\mathbf{x}^{*}$, sono caratterizzate da una \textbf{velocità di convergenza dipendente dal numero di condizionamento} della matrice $A$: \textbf{più grande è il numero di condizionamento di $A$ e tanto più lenta sarà la convergenza}. Quindi, invece di risolvere il sistema lineare, si può risolvere il cosiddetto \definition{sistema precondizionato} (equivalente):
+\begin{equation}
+    P_{L}^{-1}A P_{R}^{-1} \widehat{\mathbf{x}} = P_{L}^{-1}\mathbf{b} \hspace{2em} \text{con } \widehat{\mathbf{x}} = P_{R}\mathbf{x}
+\end{equation}
+Dove $P_{L}$ e $P_{R}$ sono opportune matrici non singolari tali che:
+\begin{enumerate}
+    \item La matrice:
+    \begin{equation}
+        P = P_{L}P_{R}
+    \end{equation}
+    è detta \definition{precondizionatore}, è simmetrica e definita positiva;
+
+    \item $K\left(P^{-1}A\right) \ll K\left(A\right)$
+    
+    \item La risoluzione di sistemi lineari della forma:
+    \begin{equation}
+        P_{L}\mathbf{s} = \mathbf{t} \hspace{2em} P_{R}\mathbf{v} = \mathbf{w}
+    \end{equation}
+    è computazionalmente molto meno costosa della risoluzione del sistema originario $A\mathbf{x} = \mathbf{b}$.
+\end{enumerate}
+Se si sceglie $P_{R}$ uguale alla matrice identità, la matrice $P = P_{L}$ è detta \definition{precondizionatore sinistro}, ed il sistema precondizionato assume la forma:
+\begin{equation}
+    P^{-1}A\mathbf{x} = P^{-1}\mathbf{b}
+\end{equation}
+Analogamente, se $P_{L}$ è la matrice identità, la matrice $P = P_{R}$ è detta \definition{precondizionatore destro}, ed il sistema precondizionato assume la forma:
+\begin{equation}
+    AP^{-1}\widehat{\mathbf{x}} = \mathbf{b} \hspace{2em} \text{con }\widehat{\mathbf{x}} = P\mathbf{x}
+\end{equation}
+Il \definition{metodo del gradiente precondizionato} si ottiene applicando il metodo del gradiente al sistema precondizionato in cui si prenda $P_{R} = P_{L}^{T}$ e quindi $P_{R}^{-1} = P_{L}^{-T} \equiv \left(P_{L}^{-1}\right)^{T}$. Più precisamente, riscrivendo:
+\begin{equation}
+    \underbracket{P_{L}^{-1}AP_{L}^{-T}}_{\widehat{A}} \underbracket{P_{L}^{T}\mathbf{x}}_{\widehat{\mathbf{x}}} = \underbracket{P_{L}^{-1} \mathbf{b}}_{\widehat{\mathbf{b}}}
+\end{equation}

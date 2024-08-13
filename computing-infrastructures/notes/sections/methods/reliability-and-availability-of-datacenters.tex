@@ -179,7 +179,7 @@ Some metrics exist for reliability and availability.
     \end{equation}
     
     \item The \definition{Failure Rate $\lambda$} is the relationship between the number of failures and the total operating time:
-    \begin{equation}
+    \begin{equation}\label{eq: failure rate lambda}
         \text{Failure Rate }\lambda = \dfrac{\text{number of failures}}{\text{total operating time}}
     \end{equation}
     If we observe closely, it equals $MTBF^{-1}$, then:
@@ -284,4 +284,228 @@ Then, to refer to it, we use the correct terminology.
         \item Failure: the drone safely lands.
     \end{itemize}
     Here, there is no propagated (or absorbed error).
+\end{examplebox}
+
+\newpage
+
+\subsubsection{Reliability Block Diagrams}
+
+The \definition{Reliability Block Diagram (RBD)}\footnote{The RBD argument was already treated in the \href{https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/tree/main/software-engineering-for-hpc}{Software Engineering for HPC notes}.} is an \textbf{inductive model in which a system is divided into blocks representing distinct elements}, such as components or subsystems. \textbf{Each element in the RBD has its reliability} (previously calculated or modelled). All blocks are then combined to model all the possible success paths.
+
+\highspace
+The diagram follows strict rules. To represent:
+\begin{itemize}
+    \item \definition{Components in series}: the \textbf{system failure} is \textbf{determined by the failure of the \emph{first} component}.
+    \begin{equation}
+        R_{s}\left(t\right) = \prod_{i=1}^{n} R_{i}\left(t\right)
+    \end{equation}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.8\textwidth]{img/RBD-1.pdf}
+    \end{figure}
+
+    For example, in the previous illustration, reliability is calculated as:
+    \begin{equation*}
+        R_{s}\left(t\right) = R_{C1}\left(t\right) \times R_{C2}\left(t\right)
+    \end{equation*}
+
+    In general, if the system $S$ consists of \textbf{components with a reliability with an exponential distribution} (the only case considered in this course), the reliability can be calculated as:
+    \begin{equation}
+        R_{s}\left(t\right) = e^{-\lambda_{s} \: t}
+    \end{equation}
+    Where $t$ is the time and $\lambda_{s}$ is the \definition{Failure in time}:
+    \begin{equation}
+        \lambda_{s} = \displaystyle\sum_{i=1}^{n}\lambda_{i}
+    \end{equation}
+    Note that the $\lambda_{i}$ value is explained on page \pageref{eq: failure rate lambda} (eq. \ref{eq: failure rate lambda}). The Mean Time To Failure of a system is $S$:
+    \begin{equation}
+        \texttt{MTTF}_{s} = \dfrac{1}{\lambda_{s}} = \dfrac{1}{\displaystyle\sum_{i=1}^{n}\lambda_{i}} = \dfrac{1}{
+            \displaystyle\sum_{i=1}^{n} \dfrac{1}{\texttt{MTTF}_{i}}
+        }
+    \end{equation}
+
+    If \textbf{all components are identical}:
+    \begin{equation}
+        R_{s}\left(t\right) = e^{- n \lambda t} = \exp\left(- \dfrac{n t}{\texttt{MTTF}_{1}}\right)
+    \end{equation}
+    \begin{equation}
+        \texttt{MTTF}_{s} = \dfrac{\texttt{MTTF}_{1}}{n}
+    \end{equation}
+
+    Finally, the \textbf{availability} is:
+    \begin{equation}
+        A_{s} = \prod_{i=1}^{n} \dfrac{\texttt{MTTF}_{i}}{\texttt{MTTF}_{i} + \texttt{MTTR}_{i}}
+    \end{equation}
+    Where \texttt{MTTR} is the \definition{Mean Time To Repair (MTTR)}.
+
+    If \textbf{all components are identical}:
+    \begin{equation}
+        A_{s}\left(t\right) = A_{1}\left(t\right)^{n}
+    \end{equation}
+    \begin{equation}
+        A = \left(\dfrac{
+            \texttt{MTTF}_{1}
+        }{
+            \texttt{MTTF}_{1} + \texttt{MTTR}_{1}
+        }\right)^{n}
+    \end{equation}
+
+
+    \item \definition{Components in parallel}: the \textbf{system fails when the \emph{last} component fails}.
+    \begin{equation}
+        R_{s}\left(t\right) = 1 - \prod_{i=1}^{n} \left(1 - R_{i}\left(t\right)\right)
+    \end{equation}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.8\textwidth]{img/RBD-2.pdf}
+    \end{figure}
+
+    For example, in the previous illustration, reliability is calculated as:
+    \begin{equation*}
+        R_{s}\left(t\right) = 1 - \left[\left(1-R_{C1}\left(t\right)\right) \times \left(1-R_{C2}\left(t\right)\right)\right]
+    \end{equation*}
+
+    Consider a system $P$ composed of $n$ components, the \textbf{reliability} is:
+    \begin{equation}
+        R_{p}\left(t\right) = 1 - \prod_{i=1}^{n} \left(1 - R_{i}\left(t\right)\right)
+    \end{equation}
+    And the \textbf{availability} is:
+    \begin{equation}
+        \begin{array}{rcl}
+            A_{p}\left(t\right) &=& 1 - \displaystyle\prod_{i=1}^{n} \left(1 - A_{i}\left(t\right)\right) \\ [1em]
+            &=& 1 - \displaystyle\prod_{i=1}^{n} \dfrac{\texttt{MTTR}_{i}}{\texttt{MTTF}_{i} + \texttt{MTTR}_{i}}
+        \end{array}
+    \end{equation}
+\end{itemize}
+The difference between these two representations is that if a \textbf{component in the series is unhealthy}, \textbf{the whole system is unhealthy}. Instead, in the \textbf{parallel architecture}, the \textbf{system can work properly if a component is unhealthy}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bookmark} \textbf{A quick recap}}
+\end{flushleft}
+\begin{itemize}
+    \item \underline{\textbf{Series}}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.6\textwidth]{img/RBD-1.pdf}
+    \end{figure}
+
+    Reliability:
+    \begin{equation*}
+        R_{s} = \displaystyle\prod_{i}^{n} R_{i} \Longrightarrow R_{s} = R_{C1} \cdot R_{C2}
+    \end{equation*}
+    
+
+    \item \underline{\textbf{Parallel}}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.6\textwidth]{img/RBD-2.pdf}
+    \end{figure}
+
+    Reliability:
+    \begin{equation*}
+        R_{s} = 1 - \displaystyle\prod_{i}^{n} \left(1 - R_{i}\right) \Longrightarrow R_{s} = 1 - \left[\left(1 - R_{C1}\right) \cdot \left(1 - R_{C2}\right)\right]
+    \end{equation*}
+
+
+    \item \underline{\textbf{Series-Parallel}} (component redundancy).
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/RBD-3.pdf}
+    \end{figure}
+
+    Reliability:
+    \begin{equation*}
+        R_{s} = \left\{1 - \left[\left(1 - R_{C1}\right) \cdot \left(1 - R_{C2}\right)\right]\right\} \cdot \left\{1 - \left[\left(1 - R_{C3}\right) \cdot \left(1 - R_{C4}\right)\right]\right\}
+    \end{equation*}
+
+
+    \item \underline{\textbf{Parallel-Series}} (system redundancy).
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/RBD-4.pdf}
+    \end{figure}
+
+    Reliability:
+    \begin{equation*}
+        R_{s} = 1 - \left[\left(1 - R_{C1} \cdot R_{C3}\right) \cdot \left(1 - R_{C2} \cdot R_{C4}\right)\right]
+    \end{equation*}
+\end{itemize}
+
+\newpage
+
+\begin{examplebox}[: calculate the reliability of the system]
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Question}}
+    \end{flushleft}
+    What is the Reliability of the entire system knowing the reliability of each component?
+    \begin{center}
+        \includegraphics[width=\textwidth]{img/RBD-5.pdf}
+    \end{center}
+    \begin{multicols}{3}
+        \begin{itemize}
+            \item $R_{C1} = 0.95$
+            \item $R_{C2} = 0.97$
+            \item $R_{C3} = 0.99$
+            \item $R_{C4} = 0.99$
+            \item $R_{C5} = 0.92$
+            \item $R_{C6} = 0.92$
+        \end{itemize}
+    \end{multicols}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check} \textbf{Solution}}
+    \end{flushleft}
+    \begin{enumerate}
+        \item Consider components $C1$ and $C2$. The reliability, which we will call $R_{G}$, is then calculated as a \emph{series}:
+        \begin{equation*}
+            R_{G} = R_{C1} \cdot R_{C2} = 0.95 \cdot 0.97 = 0.9215
+        \end{equation*}
+
+        \item Consider components $C3$ and $C4$. The reliability, which we will call $R_{H}$, is then calculated as a \emph{parallel}:
+        \begin{equation*}
+            \begin{array}{rcl}
+                R_{H} &=& 1 - \left[\left(1-R_{C3}\right) \cdot \left(1-R_{C4}\right)\right] \\ [.5em]
+                &=& 1 - \left[\left(1 - 0.99\right) \cdot \left(1 - 0.99\right)\right] \\ [.5em]
+                &=& 1 - 0.0001 \\ [.5em]
+                &=& 0.9999
+            \end{array}
+        \end{equation*}
+
+        \item Consider components $C5$ and $C6$. The reliability, which we will call $R_{I}$, is then calculated as in the previous step:
+        \begin{equation*}
+            \begin{array}{rcl}
+                R_{I} &=& 1 - \left[\left(1-R_{C5}\right) \cdot \left(1-R_{C6}\right)\right] \\ [.5em]
+                &=& 1 - \left[\left(1 - 0.92\right) \cdot \left(1 - 0.92\right)\right] \\ [.5em]
+                &=& 1 - 0.0064 \\ [.5em]
+                &=& 0.9936
+            \end{array}
+        \end{equation*}
+
+        \item Finally, we calculate the reliability of the system by multiplying each calculated component reliability:
+        \begin{equation*}
+            \begin{array}{rcl}
+                R_{s} &=& R_{G} \cdot R_{H} \cdot R_{I} \\ [.5em]
+                &=& 0.9215 \cdot 0.9999 \cdot 0.9936 \\ [.5em]
+                &=& 0.91551083976 \approx 0.9155
+            \end{array}
+        \end{equation*}
+    \end{enumerate}
+\end{examplebox}
+
+\begin{examplebox}[: calculate reliability without numbers]
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Question}}
+    \end{flushleft}
+    The system consists of 2 control blocks and 3 voice channels. The system is up when at least 1 control channel and at least 1 voice channel are up.
+    \begin{center}
+        \includegraphics[width=\textwidth]{img/RBD-6.pdf}
+    \end{center}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check} \textbf{Solution}}
+    \end{flushleft}
+    Reliability can be calculated in parallel, as it takes almost a component to work properly. Each control channel has reliability $R_{c}$ and each voice channel has reliability $R_{v}$:
+    \begin{equation*}
+        R = \left[1 - \left(1 - R_{c}\right)^{2}\right] \cdot \left[1 - \left(1 - R_{v}\right)^{3}\right]
+    \end{equation*}
 \end{examplebox}

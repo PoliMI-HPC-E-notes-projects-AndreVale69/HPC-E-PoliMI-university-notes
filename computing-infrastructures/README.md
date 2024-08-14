@@ -1,8 +1,14 @@
 # (2023/2024) Computing Infrastructures
+
+These notes are an unofficial resource and shouldn't replace the course material or any other book on _computing infrastructure_. It is not made for commercial purposes. I've made the following notes to help me improve my knowledge and maybe it can be helpful for everyone.
+
+As I have highlighted, a student should choose the teacher's material or a book on the topic. These notes can only be a helpful material.
+
 The notes are taken from the books required for the course: 
 
 - L.A. Barroso, U. Hölzle, and P. Ranganathan. _The Datacenter as a Computer: Designing Warehouse-Scale Machines, Third Edition_. Synthesis Lectures on Computer Architecture. Springer International Publishing, 2022.
 - E.D. Lazowska. _Quantitative System Performance: Computer System Analysis Using Queueing Network Models_. Prentice-Hall, 1984.
+- Course slides.
 
 You can view/download the PDF [here](notes/computing-infrastructures.pdf). In the [notes folder](notes/), you can also see the source code.
 

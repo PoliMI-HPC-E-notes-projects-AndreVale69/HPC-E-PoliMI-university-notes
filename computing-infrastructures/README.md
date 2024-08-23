@@ -9,6 +9,7 @@ The notes are taken from the books required for the course:
 - L.A. Barroso, U. Hölzle, and P. Ranganathan. _The Datacenter as a Computer: Designing Warehouse-Scale Machines, Third Edition_. Synthesis Lectures on Computer Architecture. Springer International Publishing, 2022.
 - E.D. Lazowska. _Quantitative System Performance: Computer System Analysis Using Queueing Network Models_. Prentice-Hall, 1984.
 - Course slides.
+- Course slides.
 
 You can view/download the PDF [here](notes/computing-infrastructures.pdf). In the [notes folder](notes/), you can also see the source code.
 

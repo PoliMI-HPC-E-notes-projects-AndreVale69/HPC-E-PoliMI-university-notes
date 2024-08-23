@@ -9,6 +9,7 @@ As I have highlighted, a student should choose the teacher's material or a book 
 The notes are taken from the books required for the course: 
 
 - A. Quarteroni, F. Saleri, and P. Gervasio. _Calcolo Scientifico: Esercizi e problemi risolti con MATLAB e Octave_. UNITEXT. Springer Milan, 2017.
+- Course slides.
 
 You can view/download the PDF [here](notes/calcolo-numerico.pdf). In the [notes folder](notes/), you can also see the source code.
 

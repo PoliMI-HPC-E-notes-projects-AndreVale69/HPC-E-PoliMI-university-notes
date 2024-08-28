@@ -1,0 +1,6 @@
+figure(1)
+axes('FontSize', 12)
+plot(sigma, epsilon, 'ko', 'LineWidth', 2)
+title('Dati sperimentali')
+xlabel('Sforzo')
+ylabel('Deformazione')

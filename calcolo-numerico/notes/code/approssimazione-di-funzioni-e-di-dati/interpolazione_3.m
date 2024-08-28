@@ -1,0 +1,1 @@
+f_nod = fun(x_nod);

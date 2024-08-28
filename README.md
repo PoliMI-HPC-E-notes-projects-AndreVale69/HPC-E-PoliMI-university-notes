@@ -27,7 +27,7 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
         <td><a href="applied-statistics/README.md">Course Details</a> - <a href="applied-statistics/notes/applied-statistics.pdf">PDF</a></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2023/2024</td>
         <td>Calcolo Numerico</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=717400" target="_blank">Botti Michele</a></td>

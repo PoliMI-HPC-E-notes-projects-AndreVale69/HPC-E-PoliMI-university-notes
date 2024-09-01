@@ -13,6 +13,8 @@ The notes are taken from the books required for the course:
 
 You can view/download the PDF [here](notes/computing-infrastructures.pdf). In the [notes folder](notes/), you can also see the source code.
 
+In the [CHANGELOG](CHANGELOG.md) file you can see the changes made to each version of the PDF file. The versioning can be helpful if you want to understand if there are any new features/fixes in the file.
+
 For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
 ## Course Syllabus

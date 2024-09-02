@@ -9,8 +9,19 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.3.0
+
+- fix(computing-infrastructures): fix typos
+- feat(computing-infrastructures): add 'Evaluate system quality' topic
+- feat(computing-infrastructures): add 'Queueing Networks' topic
+- feat(computing-infrastructures): add 'Definition' topic
+- feat(computing-infrastructures): add 'Characteristics' topic
 
 --------------------
 

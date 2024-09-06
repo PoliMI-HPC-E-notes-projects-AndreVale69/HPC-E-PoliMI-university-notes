@@ -9,7 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.5.0](#v050)
+- [v1.0.0](#v100)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
@@ -17,7 +17,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
-### v0.5.0
+### v1.0.0
 
 - feat(computing-infrastructures): add 'Bounding Analysis' topic
 - feat(computing-infrastructures): add 'Introduction' topic

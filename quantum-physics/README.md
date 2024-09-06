@@ -1,4 +1,4 @@
-# (2023/2024) Quantum Physics
+# (2024/2025) Quantum Physics
 The notes are taken from the books required for the course: 
 
 - A. Berera and L.D. Debbio. _Quantum Mechanics_. Cambridge University Press, 2021.
@@ -11,7 +11,7 @@ For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-not
 
 ## Course Syllabus
 
-According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=811796&polij_device_category=DESKTOP&__pj0=0&__pj1=6f90ce131c2c4da935b47fc46d0f53c4):
+According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=838219&__pj0=0&__pj1=25bb03069ce19484c18dbe8da0047a02):
 
 - **Quantum states**
   - Introduction to quantum phenomena.

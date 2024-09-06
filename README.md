@@ -2,6 +2,8 @@
 
 This archive contains my notes while pursuing my master's degree in [High Performance Computing Engineering](https://masterhpc.polimi.it/) at Politecnico di Milano.
 
+Want a *user-friendly* navigation? Look at my [Notion website](https://sky-bagpipe-e5d.notion.site/PoliMI-High-Performance-Computing-Engineering-Notes-and-Projects-AndreVale69-6de0ce81a91248d6a279e33104b308c8?pvs=4). It is very simple, not spectacular, but functional.
+
 Actually, I haven't got my Master's degree yet, so the notes are still incomplete. In the table below you can check the courses I've completed (✅) and the courses I'm still doing (❌).
 
 <table>

@@ -34,13 +34,6 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
         <td><a href="calcolo-numerico/README.md">Course Details</a> - <a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF</a></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
-        <td>2023/2024</td>
-        <td>Code Transformation and Optimization</td>
-        <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=6353" target="_blank">Agosta Giovanni</a></td>
-        <td><a href="code-transformation-and-optimization/README.md">Course Details</a> - <a href="code-transformation-and-optimization/notes/code-transformation-and-optimization.pdf">PDF</a></td>
-    </tr>
-    <tr>
         <td align="center">✅</td>
         <td>2023/2024</td>
         <td>Computing Infrastructures</td>

@@ -16,3 +16,5 @@ Each version follows the Conventional Commits structure. For more information on
 ### v0.1.0
 
 - feat(structure): add CHANGELOG.md
+- feat(foundations-of-or): add 'Introduction' topic
+- feat(foundations-of-or): partially add 'Decision-making problems' topic

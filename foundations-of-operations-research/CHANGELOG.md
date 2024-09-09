@@ -9,7 +9,20 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.2.0-dev](#v020-dev)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.2.0-dev
+
+- fix(foundations-of-or): add uppercase letters in references
+- feat(foundations-of-or): finish 'Decision-making problems' topic
+- feat(foundations-of-or): add 'Assignment problem' topic
+- feat(foundations-of-or): add 'Network design' topic
+- feat(foundations-of-or): add 'Shortest path' topic
+- feat(foundations-of-or): add 'Other problems' topic
+- feat(foundations-of-or): add 'Scheme of an OR study' topic
 
 --------------------
 

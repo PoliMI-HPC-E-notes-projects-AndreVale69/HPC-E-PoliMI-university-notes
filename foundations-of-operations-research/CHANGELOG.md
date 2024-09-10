@@ -23,6 +23,7 @@ Each version follows the Conventional Commits structure. For more information on
 - feat(foundations-of-or): add 'Shortest path' topic
 - feat(foundations-of-or): add 'Other problems' topic
 - feat(foundations-of-or): add 'Scheme of an OR study' topic
+- feat(foundations-of-or): add 'Mathematical programming/optimization' topic
 
 --------------------
 

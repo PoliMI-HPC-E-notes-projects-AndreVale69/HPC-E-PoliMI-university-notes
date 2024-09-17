@@ -9,10 +9,12 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.1.0](#v010)
+- [v0.1.0-dev](#v010-dev)
 
 --------------------
 
-### v0.1.0
+### v0.1.0-dev
 
 - feat(structure): add CHANGELOG.md
+- feat: add 'Introduction' topic
+- feat: add 'Notation' topic

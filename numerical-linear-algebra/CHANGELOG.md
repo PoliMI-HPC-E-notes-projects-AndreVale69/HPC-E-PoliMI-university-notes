@@ -18,3 +18,4 @@ Each version follows the Conventional Commits structure. For more information on
 - feat(structure): add CHANGELOG.md
 - feat: add 'Introduction' topic
 - feat: add 'Notation' topic
+- feat: add 'Matrix Operations' topic

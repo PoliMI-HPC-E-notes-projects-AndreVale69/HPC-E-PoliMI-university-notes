@@ -20,3 +20,4 @@ Each version follows the Conventional Commits structure. For more information on
 - feat: add 'Notation' topic
 - feat: add 'Matrix Operations' topic
 - feat: add 'Basic matrix decomposition' topic
+- feat: add 'Determinants' topic

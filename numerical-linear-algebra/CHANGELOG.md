@@ -9,11 +9,11 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.1.0-dev](#v010-dev)
+- [v0.1.0](#v010)
 
 --------------------
 
-### v0.1.0-dev
+### v0.1.0
 
 - feat(structure): add CHANGELOG.md
 - feat: add 'Introduction' topic
@@ -21,3 +21,5 @@ Each version follows the Conventional Commits structure. For more information on
 - feat: add 'Matrix Operations' topic
 - feat: add 'Basic matrix decomposition' topic
 - feat: add 'Determinants' topic
+- feat: add 'Sparse matrices' topic
+- feat: add 'Storage schemes' topic

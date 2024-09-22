@@ -9,8 +9,15 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.2.1](#v021)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.2.1
+
+- fix(foundations-of-or): add arc in Figure 1, page 6
 
 --------------------
 

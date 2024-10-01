@@ -24,6 +24,7 @@ Each version follows the Conventional Commits structure. For more information on
   - feat(foundations-of-or): add 'Graphical representation' topic
   - feat(foundations-of-or): add 'Graph reachability problem' topic
     - feat(foundations-of-or): add 'Description and algorithm' topic
+    - feat(foundations-of-or): add 'Complexity of algorithm' topic
 
 --------------------
 

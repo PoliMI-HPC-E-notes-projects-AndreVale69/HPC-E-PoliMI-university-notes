@@ -9,7 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.4.1-dev](#v041-dev)
+- [v0.4.1](#v041)
 - [v0.3.1](#v031)
 - [v0.2.1](#v021)
 - [v0.2.0](#v020)
@@ -17,7 +17,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
-### v0.4.1-dev
+### v0.4.1
 
 - feat(foundations-of-or): add 'Trees' section
   - feat(foundations-of-or): add 'Definitions and characteristics' section
@@ -25,6 +25,7 @@ Each version follows the Conventional Commits structure. For more information on
   - feat(foundations-of-or): add 'Optimal cost spanning trees' section
     - feat(foundations-of-or): add 'Prim's algorithm' section
     - feat(foundations-of-or): add 'Implementation of Prim's algorithm in O(n^{2})' section
+    - feat(foundations-of-or): add 'Optimality condition' section
 
 --------------------
 

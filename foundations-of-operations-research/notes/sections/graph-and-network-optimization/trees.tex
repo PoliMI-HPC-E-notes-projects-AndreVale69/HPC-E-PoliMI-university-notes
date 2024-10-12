@@ -333,20 +333,71 @@ A minimum cost spanning tree consists of the edges:
 \begin{lstlisting}[language=pseudo-code, caption={Minimum spanning tree (MST) problem: Prim's $O\left(n^{2}\right)$}]
 S $\leftarrow$ $\{$u$\}$; $\label{prims-imp: s-definition}$
 T $\leftarrow$ $\emptyset$; $\label{prims-imp: t-definition}$
-for $j \in N \setminus S$ do
+for $j \in N \setminus S$ do: $\label{prims-imp: for j in N setminus S}$
     $C_{j} \leftarrow c_{uj}$; // or $+\infty$ if $\left\{u,j\right\} \notin E$
-    $\text{closest}_{j} \leftarrow u$;
-for $k = 1, \dots, n-1$ do
-    min $\leftarrow +\infty$; // select min edge in $\delta(S)$
-    for $j = 1, \dots, n$ do
-        if $j \notin S$ and $C_{j} <$ min then
+    $\text{closest}_{j} \leftarrow u$; $\label{prims-imp: end for}$
+for $k = 1, \dots, n-1$ do: $\label{prims-imp: for k from 1 to n-1}$
+    // select min edge in $\delta(S)$
+    min $\leftarrow +\infty$; $\label{prims-imp: start select minimum edge}$
+    for $j = 1, \dots, n$ do: $\label{prims-imp: third for}$
+        if $j \notin S$ and $C_{j} <$ min:
             min $\leftarrow C_{j}$;
-            v $\leftarrow$ j;
-    S $\leftarrow$ S $\cup \left\{v\right\}$;
-    T $\leftarrow$ T $\cup \left\{\left\{\text{closest}_{v}, v\right\}\right\}$; // extend S and T
-    for $j = 1, \dots, n$ do
-        if $j \notin S$ and $c_{vj} < C_{j}$ then
-            // update $C_{j}$ and $\text{closest}_{j}$, $\forall j \notin S$
+            v $\leftarrow$ j; $\label{prims-imp: end select minimum edge}$
+    // extend S and T
+    S $\leftarrow$ S $\cup \left\{v\right\}$; $\label{prims-imp: start extend S and T}$
+    T $\leftarrow$ T $\cup \left\{\left\{\text{closest}_{v}, v\right\}\right\}$; $\label{prims-imp: end extend S and T}$
+    // update $C_{j}$ and $\text{closest}_{j}$, $\forall j \notin S$
+    for $j = 1, \dots, n$ do: $\label{prims-imp: for j from 1 to n}$
+        if $j \notin S$ and $c_{vj} < C_{j}$:
             $C_{j} \leftarrow c_{vj}$;
-            $\text{closest}_{j} \leftarrow v$;
+            $\text{closest}_{j} \leftarrow v$; $\label{prims-imp: end for j from 1 to n}$
 \end{lstlisting}
+\begin{itemize}
+    \item[Rows \ref{prims-imp: s-definition}-\ref{prims-imp: t-definition}.] Declare the general sets $S$ and $T$. The first is filled with the starting node $u$ and the second is empty, because the core of the algorithm has not yet started.
+
+    \item[Rows \ref{prims-imp: for j in N setminus S}-\ref{prims-imp: end for}.] The first for statement is used to initialize the two vectors $C_{j}$ and $\text{closest}_{j}$. It inserts the edge weight into $C_{j}$ if there is a direct edge from $u$ to $j$, otherwise infinity is used. Meanwhile, the \emph{closest} vector consists only of the starting node $u$ at the beginning of the algorithm.
+
+    \item[Row \ref{prims-imp: for k from 1 to n-1}.] The second for statement is the core of the algorithm. Here the index goes from one to the number of nodes minus one.
+    
+    \item[Rows \ref{prims-imp: start select minimum edge}-\ref{prims-imp: end select minimum edge}.] This piece of code is used to select the minimum edge available in the $C_{j}$ vector. It starts by setting the \texttt{min} variable to infinity, to ensure that a value is selected. Therefore, the for statement iterates over each node; at each iteration, if the selected node is not in the $S$ set (so it has not already been evaluated) and the value at the corresponding position in the vector $C_{j}$ is less than minimum, then assign to the minimum the value of the vector $C_{j}$ at position $j$ and to $v$ the index $j$.
+
+    \item[Rows \ref{prims-imp: start extend S and T}-\ref{prims-imp: end extend S and T}.] Now it updates the variable $S$ with the node $v$ and the transitions set with the tuple (value at the corresponding position in the vector $\text{closest}_{v}$, node $v$).
+
+    \item[Rows \ref{prims-imp: for j from 1 to n}-\ref{prims-imp: end for j from 1 to n}.] There is another for statement similar to the previous one, because here it needs to update the vectors $C_{j}$ and $\text{closest}_{j}$ with the new values. The for iterates over every node of the graph. So at each iteration it checks that the selected vertex is not in the $S$-set (not already evaluated) and that the weight of the edge from vertex $v$ to $j$ (if it exists, otherwise infinity) is less than the value $C_{j}$. If the double condition is true, it updates the two vectors at position $j$.
+\end{itemize}
+The overall complexity is given by:
+\begin{itemize}
+    \item The number of iterations of the first for at row \ref{prims-imp: for j in N setminus S}, which is: $\left(n-1\right)$
+
+    \item Plus the number of iterations of the second for at row \ref{prims-imp: for k from 1 to n-1}, which is: $\left(n-1\right)$
+    
+    \item Times the number of iterations of the third and fourth for at lines \ref{prims-imp: third for} and \ref{prims-imp: for j from 1 to n}, which is: $\left(n-1+n-1\right)$
+\end{itemize}
+The result is $O\left(n^{2}\right)$. For sparse graphs, a more sophisticated data structure leads to an $O\left(m \log n\right)$ complexity.
+
+\longline
+
+\paragraph{Optimality condition}
+
+Given a spanning tree $T$, an \textbf{edge} $e \notin T$ is \definitionWithSpecificIndex{cost decreasing}{Edge cost decreasing} if when $e$ is added to $T$ it creates a cycle $C$ with $C \subseteq T \cup \left\{e\right\}$ and $\exists f \in C \setminus \left\{e\right\}$ such that $c_{e} < c_{f}$.
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.5\textwidth]{img/trees-opt-condition.pdf}
+\end{figure}
+
+\noindent
+Because $c\left(T \cup \left\{e\right\} \setminus \left\{f\right\}\right) = c\left(T\right) + c_{e} - c_{f}$, if $e$ is cost decreasing, then:
+\begin{equation*}
+    c\left(T \cup \left\{e\right\} \setminus \left\{f\right\}\right) < c\left(T\right)
+\end{equation*}
+\begin{theorem}[Tree optimality condition]
+    A tree $T$ is of minimum total cost if and only if no cost-decreasing edge exists.
+\end{theorem}
+\begin{proof}
+    $\Rightarrow$ If a cost-decreasing edge exists, then $T$ is not of minimum total cost.
+
+    $\Leftarrow$ if no cost-decreasing edge exists, then $T$ is of minimum total cost. Let $T^{*}$ be a minimum cost spanning tree found by Prim's algorithm. It can be verified that, by exchanging one edge at a time, $T^{*}$ can be iteratively transformed into $T$ without modifying the total cost. Thus, $T$ is also optimal.
+\end{proof}
+
+\noindent
+Testing optimality is quite simple. The optimality condition allows to verify whether a spanning tree $T$ is optimal: it suffices to check that each $e \in E \setminus T$ is not a cost-decreasing edge.

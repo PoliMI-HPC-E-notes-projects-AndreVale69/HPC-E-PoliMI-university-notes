@@ -9,7 +9,15 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.2.0-dev](#v020-dev)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.2.0-dev
+
+- feat(parallel-computing): add 'PRAM' section
+  - feat(parallel-computing): add 'Prerequisites' section
 
 --------------------
 

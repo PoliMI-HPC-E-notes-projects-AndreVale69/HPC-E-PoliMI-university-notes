@@ -19,6 +19,11 @@ Each version follows the Conventional Commits structure. For more information on
 - feat(parallel-computing): add 'PRAM' section
   - feat(parallel-computing): add 'Prerequisites' section
   - feat(parallel-computing): add 'Definition' section
+  - feat(parallel-computing): add 'How it works' section
+    - feat(parallel-computing): add 'Computation' section
+    - feat(parallel-computing): add 'PRAM Classification' section
+    - feat(parallel-computing): add 'Strengths of PRAM' section
+    - feat(parallel-computing): add 'How to compare PRAM models' section
 
 --------------------
 

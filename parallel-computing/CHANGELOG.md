@@ -26,6 +26,7 @@ Each version follows the Conventional Commits structure. For more information on
     - feat(parallel-computing): add 'How to compare PRAM models' section
   - feat(parallel-computing): add 'MVM algorithm' section
   - feat(parallel-computing): add 'SPMD sum' section
+  - feat(parallel-computing): add 'MM algorithm' section
 
 --------------------
 

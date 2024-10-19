@@ -9,12 +9,12 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.2.0-dev](#v020-dev)
+- [v0.2.0](#v020)
 - [v0.1.0](#v010)
 
 --------------------
 
-### v0.2.0-dev
+### v0.2.0
 
 - feat(parallel-computing): add 'PRAM' section
   - feat(parallel-computing): add 'Prerequisites' section
@@ -29,6 +29,7 @@ Each version follows the Conventional Commits structure. For more information on
   - feat(parallel-computing): add 'MM algorithm' section
   - feat(parallel-computing): add 'PRAM variants and Lemmas' section
   - feat(parallel-computing): add 'PRAM implementation' section
+  - feat(parallel-computing): add 'Amdahl's and Gustafson's Laws' section
 
 --------------------
 

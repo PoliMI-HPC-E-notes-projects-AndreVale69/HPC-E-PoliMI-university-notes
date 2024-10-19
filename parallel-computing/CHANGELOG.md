@@ -12,6 +12,10 @@
 
 - add `Fundamentals of architecture` section
   - add `Introduction` section
+    - add `Simplest processor` section
+    - add `Superscalar processor` section
+    - add `Single Instruction, Multiple Data (SIMD) processor` section
+    - add `Multi-Core Processor` section
 
 --------------------
 

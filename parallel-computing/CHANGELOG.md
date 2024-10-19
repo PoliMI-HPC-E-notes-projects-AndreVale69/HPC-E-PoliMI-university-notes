@@ -2,8 +2,16 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.3.0-dev](#v030-dev)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.3.0-dev
+
+- add `Fundamentals of architecture` section
+  - add `Introduction` section
 
 --------------------
 

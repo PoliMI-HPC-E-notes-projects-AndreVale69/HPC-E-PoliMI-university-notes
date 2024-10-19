@@ -1,3 +1,5 @@
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+
 # HPC Engineering PoliMI - University Notes
 
 This archive contains my notes while pursuing my master's degree in [High Performance Computing Engineering](https://masterhpc.polimi.it/) at Politecnico di Milano.

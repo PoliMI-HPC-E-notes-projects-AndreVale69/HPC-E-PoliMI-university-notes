@@ -2,13 +2,13 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.3.0-dev](#v030-dev)
+- [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
 
 --------------------
 
-### v0.3.0-dev
+### v0.3.0
 
 - add `Fundamentals of architecture` section
   - add `Introduction` section
@@ -16,6 +16,11 @@
     - add `Superscalar processor` section
     - add `Single Instruction, Multiple Data (SIMD) processor` section
     - add `Multi-Core Processor` section
+  - add `Accessing Memory` section
+    - add `What is a memory?` section
+    - add `How to reduce processor stalls` section
+      - add `Cache` section
+      - add `Multi-threading` section
 
 --------------------
 

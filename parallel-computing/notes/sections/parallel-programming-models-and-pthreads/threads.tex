@@ -1,0 +1,149 @@
+\subsection{Threads}
+
+\subsubsection{Flynn's taxonomy}
+
+\definition{Flynn's taxonomy} is a \textbf{classification of computer architectures}, proposed by Michael J. Flynn. The classification system has been used as a tool in the design of modern processors and their functionalities. Since the rise of multiprocessing central processing units (CPUs), a multiprogramming context has evolved as an extension of the classification system.
+
+\highspace
+The four initial classifications defined by Flynn are based upon the number of concurrent instruction (or control) streams and data streams available in the architecture:
+\begin{itemize}
+    \item \textbf{Single Instruction stream, Single Data stream (SISD)}
+    \item \textbf{Single Instruction stream, Multiple Data streams (SIMD)}
+    \item \textbf{Multiple Instruction stream, Single Data stream (MISD)}
+    \item \textbf{Multiple Instruction stream, Multiple Data stream (MISD)}
+\end{itemize}
+It is important to quote it because it is the basis for the development of many advanced technologies.
+
+\longline
+
+\subsubsection{Definition}
+
+A UNIX process can be created by the operating system and contains information about program resources and program execution status.
+
+\begin{definitionbox}[: Thread]
+    A \definitionWithSpecificIndex{thread}{Thread}{} is an \textbf{independent stream of instructions within a process}. Threads can be scheduled by the operating system, and each thread can run concurrently with other threads. A thread also has local resources and can access the shared process resources.
+\end{definitionbox}
+
+\noindent
+In other words, a thread can be thought of as any \textbf{procedure that runs independently of its main program}. We can create each thread dynamically during execution. A good point is that a multi-threaded program is lighter than a multi-process program.
+
+\newpage
+\noindent
+When a thread exists within a process, it shares most of the process resources, for example:
+\begin{itemize}
+    \item Changes made by one thread to shared system resources (such as closing a file) will be seen by all other threads.
+    \item Two pointers having the same value point to the same data.
+    \item \textbf{Implicit communication} by reading and writing shared variables.
+    \item \textbf{Reading and writing to the same memory locations requires explicit synchronization by the programmer}. If this rule is not followed, the code may suffer from a data race or race condition \footnote{In parallel computing, a \definition{Data Race} or \definition{Race Condition} is a software problem that occurs when two threads (or processes) access the same variables, and at least one does a write. They can finish in a different order than expected.} problem.
+\end{itemize}
+The most common models for threaded programs are the manager / worker model\footnote{The manager/worker pattern is described as follows. The idea is that the work that needs to be done can be divided by a \dquotes{manager} into separate pieces and the pieces can be assigned to individual \dquotes{worker} processes. Thus the manager executes a different algorithm from that of the workers, but all of the workers execute the same algorithm. Most implementations of MPI allow MPI processes to be running different programs (executable files), but it is often convenient (and in some cases required) to combine the manager and worker code into a single program.} and pipeline.
+
+\highspace
+This chapter introduces the POSIX threads model.
+\begin{definitionbox}[: pthreads]
+    \definition{POSIX Threads}, commonly known as \textbf{pthreads}, is an \textbf{execution model} that exists independently from a programming language, as well as a parallel execution model. It \textbf{allows a program to control multiple different flows of work that overlap in time}. Each flow of work is referred to as a thread, and creation and control over these flows is achieved by making calls to the POSIX Threads API.
+\end{definitionbox}
+
+\noindent
+POSIX threads and OpenMP are two \textbf{implementations of a shared memory parallel programming model using threads}. The \textbf{programmer is responsible for handling parallelism and synchronization}, usually through a library of subroutines or a set of compiler directives. Typically, hardware vendors have implemented their own proprietary versions of threads, but in this course we will look at POSIX threads (pthreads) and OpenMP.
+
+\newpage
+
+\subsubsection{pthreads API}
+
+In 1995, the IEEE POSIX 1003.1c standard specified the API for explicitly managing threads. An \textbf{API is a set of C language programming types and procedure calls}.
+\begin{itemize}
+    \item \textbf{Header file} to include in the main file: \texttt{pthread.h}.
+    \item To \textbf{compile} and use it, it is necessary to add the \textbf{flag} \texttt{-pthread} to the gcc (or g++) options.
+\end{itemize}
+The API are divided by what we want to do. In general, there are two sets: thread management and thread synchronization.
+\begin{itemize}
+    \item Thread Management
+    \begin{itemize}
+        \item Creation (page \pageref{paragraph: Creation})
+        \item Termination (page \pageref{paragraph: Termination})
+        \item Joining (page \pageref{paragraph: Joining})
+        \item Detaching (page \pageref{paragraph: Detaching})
+    \end{itemize}
+    \item Thread Synchronization
+    \begin{itemize}
+        \item Mutexes (page \pageref{paragraph: Mutexes})
+        \item Condition variables (page \pageref{paragraph: Condition variables})
+    \end{itemize}
+\end{itemize}
+
+\longline
+
+\paragraph{Creation}\label{paragraph: Creation}
+
+Once threads are created, they are peers, and \textbf{may create other threads}. There is \textbf{no implied hierarchy or dependency between threads}. The \textbf{maximum number of threads depends on the implementation}.
+\marginpar{
+    \href{https://man7.org/linux/man-pages/man3/pthread_create.3.html} {Doc. \faIcon{book}}
+}
+\begin{definitionbox}[: pthread creation]
+    \begin{lstlisting}[language=c++]
+int pthread_create(
+    pthread_t * thread,
+    const pthread_attr_t * attr,
+    void * (* start_routine) (void *),
+    void * arg
+)\end{lstlisting}
+\end{definitionbox}
+
+\noindent
+\begin{itemize}
+    \item \textbf{Return value}: on success, \texttt{pthread\_create()} returns 0; on error, it returns an error number, and the contents of \texttt{*thread} are undefined.
+    \item \textbf{Arguments}:
+    \begin{itemize}
+        \item \texttt{thread}: identifier for the new thread returned by the subroutine.
+        \item \texttt{attr}: used to set thread attributes, such as joinable, detached, scheduling and stack size.
+        \item \texttt{start\_routine}: the C routine that the thread will execute once it is created.
+        \item \texttt{arg}: argument passed to \texttt{start\_routine}. It must be passed by address as a pointer cast of type void.
+    \end{itemize}
+\end{itemize}
+
+
+\paragraph{Termination}\label{paragraph: Termination}
+
+The thread returns from its startup routine when its \dquotes{life} ends. The thread makes a call to the \texttt{pthread\_exit} subroutine.
+\marginpar{
+    \href{https://man7.org/linux/man-pages/man3/pthread_exit.3.html} {Doc. \faIcon{book}}
+}
+\begin{definitionbox}[: pthread termination]
+    \begin{lstlisting}[language=c++]
+void pthread_exit(void *retval)\end{lstlisting}
+\end{definitionbox}
+\begin{itemize}
+    \item \textbf{Return value}: this function does not return to the caller.
+    \item \textbf{Arguments}:
+    \begin{itemize}
+        \item \texttt{retval}: function terminates the calling thread and returns a value via \texttt{retval}.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+The thread is canceled by another thread via the \texttt{pthread\_cancel} routine.
+\marginpar{
+    \href{https://man7.org/linux/man-pages/man3/pthread_cancel.3.html} {Doc. \faIcon{book}}
+}
+\begin{definitionbox}[: pthread cancel]
+    \begin{lstlisting}[language=c++]
+int pthread_cancel(pthread_t thread);\end{lstlisting}
+\end{definitionbox}
+\begin{itemize}
+    \item \textbf{Return value}: on success, \texttt{pthread\_cancel()} returns 0; on error, it returns a nonzero error number.
+    \item \textbf{Arguments}:
+    \begin{itemize}
+        \item \texttt{thread}: the \texttt{pthread\_cancel()} function sends a cancellation request to the thread \texttt{thread}.
+    \end{itemize}
+\end{itemize}
+
+\longline
+
+\paragraph{Joining}\label{paragraph: Joining}
+
+\paragraph{Detaching}\label{paragraph: Detaching}
+
+\paragraph{Mutexes}\label{paragraph: Mutexes}
+
+\paragraph{Condition variables}\label{paragraph: Condition variables}

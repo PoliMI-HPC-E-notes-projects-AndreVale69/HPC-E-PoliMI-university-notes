@@ -16,6 +16,12 @@
   - add `How to create parallel algorithms and programs`
   - add `Analyze parallel algorithms`
   - add `Technologies`
+  - add `Threads`
+    - add `Flynn's taxonomy`
+    - add `Definition`
+    - add `pthreads API`
+      - add `Creation`
+      - add `Termination`
 
 --------------------
 

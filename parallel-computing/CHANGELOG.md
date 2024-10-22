@@ -15,6 +15,7 @@
 - add `Parallel Programming Models and pthreads`
   - add `How to create parallel algorithms and programs`
   - add `Analyze parallel algorithms`
+  - add `Technologies`
 
 --------------------
 

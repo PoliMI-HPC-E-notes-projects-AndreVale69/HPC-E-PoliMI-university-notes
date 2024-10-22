@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.5.0-dev](#v050-dev)
+- [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
@@ -10,7 +10,7 @@
 
 --------------------
 
-### v0.5.0-dev
+### v0.5.0
 
 - add `Parallel Programming Models and pthreads`
   - add `How to create parallel algorithms and programs`
@@ -22,6 +22,11 @@
     - add `pthreads API`
       - add `Creation`
       - add `Termination`
+      - add `Joining`
+      - add `Detaching`
+      - add `Joining through Barriers`
+      - add `Mutexes`
+      - add `Condition variables`
 
 --------------------
 

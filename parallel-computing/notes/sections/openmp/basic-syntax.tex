@@ -1,0 +1,107 @@
+\subsection{Basic syntax}
+
+We can manage OpenMP work flow using the directive syntax. We remember that the reference guide of OpenMP is available on their website:
+\begin{center}
+    \href{https://www.openmp.org/resources/refguides/}{Reference Guide} \hspace{2em} \qrcode{https://www.openmp.org/resources/refguides/}
+\end{center}
+
+\highspace
+A \textbf{directive} is a combination of the base-language mechanism and a \emph{directive-specification} (the \emph{directive-name} followed by \emph{optional clauses}). A construct consists of a directive and, often, additional base language code. In C++ directives are formed from either pragmas or attributes.
+\begin{openmpbox}[: \texttt{pragma omp}]
+\begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp $\texttt{\emph{directive-specification}}$
+\end{lstlisting}
+\end{openmpbox}
+
+\noindent
+The \textbf{number of OpenMP threads can be set} using:
+\begin{itemize}
+    \item At compilation time: using the environment variable \texttt{OMP\_NUM\_THREADS}
+    \item At runtime: using the function
+    \begin{openmpbox}[: omp\_set\_num\_threads]
+        \begin{lstlisting}[language=C++]
+void omp_set_num_threads(int num_threads)\end{lstlisting}
+    \end{openmpbox}
+\end{itemize}
+Other useful function to get information about threads:
+\begin{itemize}
+    \item The \textbf{number of threads in the current team}:
+    \begin{openmpbox}[: \texttt{omp\_get\_num\_threads}]
+        \begin{lstlisting}[language=C++]
+int omp_get_num_threads()\end{lstlisting}
+    \end{openmpbox}
+    The binding region for an \texttt{omp\_get\_num\_threads} region is the innermost enclosing \texttt{parallel} region. If called from the sequential part of a program, this routine returns 1.
+
+    \newpage
+
+    \item The \textbf{upper bound on the number of threads} that could be used to form a new team if a \texttt{parallel} construct without a \texttt{num\_threads} clause were encountered after execution returns from this routine.
+    \begin{openmpbox}[: \texttt{omp\_get\_max\_threads}]
+        \begin{lstlisting}[language=C++]
+int omp_get_max_threads()\end{lstlisting}
+    \end{openmpbox}
+
+    \item The \textbf{thread number of the calling thread}, within the current team.
+    \begin{openmpbox}[: \texttt{omp\_get\_thread\_num}]
+        \begin{lstlisting}[language=C++]
+int omp_get_thread_num()\end{lstlisting}
+    \end{openmpbox}
+\end{itemize}
+
+\highspace
+OpenMP programs execute serially until they reach a \texttt{parallel} directive. As we have explained at page \pageref{figure: how OpenMP works}, the thread that was executing the code spawns a group of \dquotes{slave} threads and becomes the \dquotes{master} (thread ID 0). The code in the structured block is replicated, each thread executes a copy. At the end of the block there is an implied barrier, only the \dquotes{master} thread continues.
+\begin{openmpbox}[: \texttt{pragma omp parallel}]
+\begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp parallel $\texttt{\emph{optional-clauses}}$\end{lstlisting}
+\end{openmpbox}
+
+\noindent
+The parallel directive has \textbf{optional} clauses, the most commonly used are:
+\begin{itemize}
+    \item Specify the \textbf{number of threads to spawn}:
+    \begin{lstlisting}[language=C++]
+#pragma omp parallel num_threads(int)\end{lstlisting}
+
+    \item Conditional parallelization with:
+\begin{lstlisting}[language=C++]
+#pragma omp parallel if (condition)\end{lstlisting}
+    \begin{examplebox}[: parallel if condition]
+\begin{lstlisting}[language=C++]
+#include <stdio.h>
+#include <omp.h>
+
+void test(int val)
+{
+    #pragma omp parallel if (val != 0)
+    if (omp_in_parallel()) {
+        #pragma omp single
+        printf_s(
+            "val = %d, parallelized with %d threads\n",
+            val, omp_get_num_threads()
+        );
+    } else {
+        printf_s("val = %d, serialized\n", val);
+    }
+}
+
+int main( )
+{
+    omp_set_num_threads(2);
+    test(0);
+    test(2);
+}\end{lstlisting}
+    The output will be:
+\begin{lstlisting}
+val = 0, serialized
+val = 2, parallelized with 2 threads\end{lstlisting}
+    \end{examplebox}
+
+    \item Data scope clauses (explained in the following pages).
+\end{itemize}
+The \textbf{number of threads in a parallel region is determined by the following factors}, in order of priority (high to low):
+\begin{enumerate}
+    \item Evaluation of the \texttt{if} clause;
+    \item Value of the \texttt{num\_threads} clause;
+    \item Use of the \texttt{omp\_set\_num\_threads()} library function;
+    \item Setting of the \texttt{OMP\_NUM\_THREADS} environment variable;
+    \item Implementation default, e.g., the number of CPUs on a node.
+\end{enumerate}

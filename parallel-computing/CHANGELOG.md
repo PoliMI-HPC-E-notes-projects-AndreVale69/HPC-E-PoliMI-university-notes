@@ -15,6 +15,7 @@
 
 - add `OpenMP v5.2`
   - add `Introduction`
+  - add `Basic syntax`
 
 --------------------
 

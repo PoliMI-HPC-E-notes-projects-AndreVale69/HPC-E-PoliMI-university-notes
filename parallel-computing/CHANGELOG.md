@@ -16,6 +16,10 @@
 - add `OpenMP v5.2`
   - add `Introduction`
   - add `Basic syntax`
+  - add `Work sharing`
+    - add `For`
+    - add `Sections`
+    - add `Single/Master`
 
 --------------------
 

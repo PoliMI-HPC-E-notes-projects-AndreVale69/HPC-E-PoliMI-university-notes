@@ -20,6 +20,7 @@
     - add `For`
     - add `Sections`
     - add `Single/Master`
+    - add `Tasks`
 
 --------------------
 

@@ -30,6 +30,10 @@ The for directive parallelize execution of iterations. The number of iteration c
     \begin{itemize}
         \item \texttt{\emph{static}}. Loop \textbf{iterations are divided into blocks of size \texttt{chunk}} and then statically allocated to threads. If \texttt{chunk} is \textbf{\underline{not} specified}, the \textbf{iterations are divided evenly} (if possible) \textbf{among the threads}.
         \newpage
+        \begin{openmpbox}[: \texttt{static schedule}]
+\begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp for schedule(static, $\emph{chunk-size}$)\end{lstlisting}
+        \end{openmpbox}
         \begin{figure}[!htp]
             \centering
             \includegraphics[width=\textwidth]{img/openmp-for-2.pdf}
@@ -37,6 +41,10 @@ The for directive parallelize execution of iterations. The number of iteration c
         \end{figure}
 
         \item \texttt{\emph{dynamic}}. Loop \textbf{iterations are divided into blocks of size \texttt{chunk}} and \textbf{distributed among the threads \emph{at runtime}}; when a thread completes one chunk, it is \textbf{dynamically allocated another}. The default chunk size is 1. In fact, we can see in the image that the order is not always the same.
+        \begin{openmpbox}[: \texttt{dynamic schedule}]
+\begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp for schedule(dynamic, $\emph{chunk-size}$)\end{lstlisting}
+        \end{openmpbox}
         \begin{figure}[!htp]
             \centering
             \includegraphics[width=\textwidth]{img/openmp-for-3.pdf}
@@ -46,13 +54,16 @@ The for directive parallelize execution of iterations. The number of iteration c
         \item \texttt{\emph{runtime}}. Depends on environment variable \texttt{OMP\_SCHEDULE}.
 
         \item \texttt{\emph{guided}}. Static, gradually decreases the chunk size (\texttt{chunk} specifies the smallest one).
+        \begin{openmpbox}[: \texttt{guided schedule}]
+\begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp for schedule(guided)\end{lstlisting}
+        \end{openmpbox}
         \begin{figure}[!htp]
             \centering
             \includegraphics[width=\textwidth]{img/openmp-for-4.pdf}
             \caption{\texttt{guided} schedule.}
         \end{figure}
     \end{itemize}
-    \newpage
     \begin{examplebox}[: \texttt{schedule} types]
 \begin{lstlisting}[language=C++]
 #include <stdio.h>
@@ -162,7 +173,6 @@ int main( )
 ------------------------------------------------\end{lstlisting}
     \end{examplebox}
 
-    \newpage
     \item \texttt{\emph{nowait}} to \textbf{avoid synchronization at the end of the parallel loop}. It overrides the barrier implicit in a directive.
     \begin{lstlisting}[language=C++]
 #pragma omp for nowait\end{lstlisting}
@@ -214,4 +224,166 @@ int main( )
 
 \subsubsection{Sections}
 
+\textbf{Section} identifies code \textbf{sections to be divided among all threads}.
+
+\highspace
+Sections allow to specify that the enclosed section(s) of code are to be executed in parallel. \textbf{Each section is executed once by a thread in the team}.
+
+\begin{openmpbox}[: sections]
+\begin{lstlisting}[language=C++]
+#pragma omp [parallel] sections [clauses]
+{
+    #pragma omp section
+    {
+        code_block
+    }
+}\end{lstlisting}
+\end{openmpbox}
+
+\noindent
+The sections directive identifies a noniterative work-sharing construct that specifies a set of constructs that are to be divided among threads in a team. Each section is executed once by a thread in the team.
+
+\highspace
+Each section is preceded by a \texttt{section} directive, although the \texttt{section} directive is optional for the first section. The \texttt{section} directives must appear within the lexical extent of the \texttt{sections} directive. There's an \textbf{implicit barrier} at the end of a \texttt{sections} construct, unless a \texttt{nowait} is specified.
+
+\highspace
+Restrictions to the sections directive are as follows:
+\begin{itemize}
+    \item A \texttt{section} directive must not appear outside the lexical extent of the \texttt{sections} directive.
+    \item Only a single \texttt{nowait} clause can appear on a \texttt{sections} directive.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.45\textwidth]{img/openmp-sections-1.pdf}
+    \caption{Breaks work into separate, discrete sections, each executed by a thread (functional parallelism).}
+\end{figure}
+
+\newpage
+
 \subsubsection{Single/Master}
+
+A \textbf{section} (not the directive) \textbf{of code should be executed on a single thread, not necessarily the main (master) thread}. The \texttt{single} directive identifies a construct that specifies that the associated structured block is executed by only one thread in the team (not necessarily the master thread).
+
+\begin{openmpbox}[: \texttt{single} and \texttt{master}]
+\begin{lstlisting}[language=C++]
+#pragma omp parallel
+{
+    #pragma omp single
+    {
+        /* code section */
+    }
+    # pragma omp master
+    {
+        /* code section */
+    }
+}\end{lstlisting}
+\end{openmpbox}
+
+\begin{itemize}
+    \item \texttt{single} specifies that a section of a code is \textbf{executed only by a single thread}.
+
+    \item \texttt{master} specifies that a section of a code is \textbf{executed only by the master}.
+\end{itemize}
+
+\noindent
+There's an \textbf{implicit barrier} after the \texttt{single} construct unless a \texttt{nowait} clause is specified.
+
+\newpage
+
+\subsubsection{Tasks}
+
+The following section has been enhanced with slides from Senior Principal Engineer Mattson Tim. He's a senior principal engineer at Intel, where he's been since 1993. His profile can be seen \href{https://www.intel.com/content/www/us/en/research/featured-researchers/tim-mattson.html}{here} and the slides are available online \href{https://www.openmp.org/wp-content/uploads/Intro_To_OpenMP_Mattson.pdf}{here}. He has also made an interesting \href{https://youtube.com/playlist?list=PLLX-Q6B8xqZ8n8bwjGdzBJ25X2utwnoEG&si=OBjyY4AI4zWfA-vB}{YouTube series} on the introduction to OpenMP.
+
+\highspace
+Tasks are \textbf{independent units of work}. They consist of: \emph{code to execute}, \emph{data environment}, and \emph{internal control variables} (ICV). \textbf{Threads perform the work of each task}. The runtime \textbf{system decides when to execute tasks}; each task can be deferred or executed immediately.
+
+\highspace
+Some useful terminology:
+\begin{itemize}
+    \item \textbf{\emph{Task construct}}. It identifies the \textbf{task directive plus the structured block}.
+    
+    \item \textbf{\emph{Task}}. It is the \textbf{package of code and instructions} for \textbf{allocating data} created when a \textbf{thread encounters a task construct}.
+    
+    \item \textbf{\emph{Task region}}. It is the dynamic sequence of \textbf{instructions generated by the execution of a task by a thread}.
+\end{itemize}
+Tasks are guaranteed to complete at thread barriers (using the \texttt{barrier} directive) or at task barriers (using the \texttt{taskwait} directive):
+\begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp parallel // omp directive to parallel the code
+{
+    #pragma omp task // multiple $\textcolor{codegreen}{\emph{foo}}$ tasks created here, 
+                     // one for each thread
+    foo();
+    #pragma omp barrier // all $\textcolor{codegreen}{\emph{foo}}$ tasks guaranteed 
+                        // to be completed here
+    #pragma omp single  // only one thread can access to 
+                        // this piece of code
+    {
+        #pragma omp task // one $\textcolor{codegreen}{\emph{bar}}$ task created here
+        bar();
+    }
+    // $\textcolor{codegreen}{\emph{foo}}$ task guaranteed to be completed here
+}
+\end{lstlisting}
+\begin{examplebox}[: Fibonacci with tasks]
+    Let us see a Fibonacci example of data scoping using the tasks. In the following code, we create the Fibonacci function and we create two tasks, but each task has a private variable and these variables are also used in the return statement:
+    \begin{lstlisting}[language=C++]
+int fib(int n) {
+    int x, y;
+    if(n < 2)
+        return n;
+    #pragma omp task
+    x = fib(n-1);
+    #pragma omp task
+    y = fib(n-2);
+    #pragma omp taskwait
+    return x + y;
+}\end{lstlisting}
+    A good solution is to \dquotes{share} the \texttt{x} and \texttt{y} variables because we need both values to calculate the sum.
+    \begin{lstlisting}[language=C++]
+int fib(int n) {
+    int x, y;
+    if(n < 2)
+        return n;
+    #pragma omp task shared(x)
+    x = fib(n-1);
+    #pragma omp task shared(y)
+    y = fib(n-2);
+    #pragma omp taskwait
+    return x + y;
+}\end{lstlisting}
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Main advantage}}
+\end{flushleft}
+Note the following code:
+\begin{lstlisting}[language=C++]
+// create a team of threads
+#pragma omp parallel
+{
+    // one thread executes the single construct
+    // and other threads wait at the implied 
+    // barrier at the end of the single construct
+    #pragma omp single
+    { // block 1
+        node *p = head;
+        while(p) { // block 2
+            // the single thread creates a task
+            // with its own value for the pointer p
+            #pragma omp task firstprivate(p)
+                process(p);
+            p = p -> next; // block 3
+        }
+        // execution moves beyond the barrier 
+        // once all the tasks are complete
+    }
+}
+\end{lstlisting}
+The tasks have the \textbf{potential to parallelize irregular patterns and recursive function calls}. See Figure \ref{figure: openmp tasks 1} (page \pageref{figure: openmp tasks 1}) to understand how the runtime system can optimize execution using the tasks.
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.6\textwidth]{img/openmp-tasks-1.pdf}
+    \caption{The main advantage of the tasks is to parallelize irregular patterns and recursive function calls.}
+    \label{figure: openmp tasks 1}
+\end{figure}

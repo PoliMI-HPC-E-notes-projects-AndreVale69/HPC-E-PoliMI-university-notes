@@ -1,0 +1,328 @@
+\subsection{Data environment}
+
+OpenMP is based on the shared memory programming model, so most \textbf{variables are shared by default}. \textbf{Global variables are also shared between threads}. But not everything is shared; for example, \emph{stack variables} in functions called from parallel regions are \textbf{private}, as are \emph{automatic variables} within a statement block.
+
+\begin{examplebox}[: data sharing]
+    In the following code, the variable \texttt{temp} is private (local to each thread) because it is in the stack of the function \texttt{work}; meanwhile, the variables \texttt{A}, \texttt{index}, and \texttt{count} are shared by all threads.
+    \begin{lstlisting}[language=C++]
+double A[10];
+int main() {
+    int index[10];
+    #pragma omp parallel
+        work(index);
+    printf("%d\n", index[0]);
+}
+
+void work(int *index) {
+    double temp[10];
+    static int count;
+    /* other code */
+}\end{lstlisting}
+\end{examplebox}
+
+\noindent
+We can refer to these arguments as \textbf{Data Scope Attribute Clauses} because the issue is really about the visibility and value of each data in each scope. Although OpenMP shares variables by default, there is (and it is a very common and \emph{best practice}) the option to:
+\begin{itemize}
+    \item Selectively \textbf{change storage attributes for construct} using the following clauses: \texttt{shared}, \texttt{private} and \texttt{firstprivate}.
+    \item The \textbf{final value} of a private inside a parallel loop can be \textbf{transmitted to the shared variable outside the loop} with: \texttt{lastprivate}.
+    \item The \textbf{default attributes can be overridden} with:
+    \vspace{-.8em}
+    \begin{center}
+        \texttt{default(private | shared | none)}
+    \end{center}
+    \vspace{-.8em}
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Note that when we say \dquotes{copy} we mean the \emph{shallow copy}, not the \emph{deep copy}. So when the following clauses create a local copy, they create a \emph{shallow copy}.}}
+
+\highspace
+\textbf{\underline{\texttt{private} clause}}. The statement \texttt{private(var)} creates a \textbf{new local copy} of \texttt{var} \textbf{for each thread}. The value of the private copies is \textbf{\emph{uninitialized}} and also the \textbf{original variable value remains unchanged after the region}.
+\begin{openmpbox}[: \texttt{private(\emph{...})}]
+    \begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp parallel $\emph{directive}$ private($\emph{var1-name}$, $\emph{var2-name}$, ...)\end{lstlisting}
+\end{openmpbox}
+\begin{examplebox}[: \texttt{private} clause and \emph{dirty memory location}]
+    In the following code we try to use the private clause inside a parallel for. The code is very trivial, we set the number of threads to two for better understanding, so we start the parallel code with the for directive and the private clause. It has \texttt{private\_test} as a private variable. So each thread will copy the variable and the initial value will be undefined.
+    \begin{lstlisting}[language=C++]
+#include <iostream>
+#include "omp.h"
+#define MAX 6
+
+int main(int argc, char const *argv[])
+{
+    int i, private_test = 10;
+    printf("Memory location of private_test: %p\n",
+           &private_test);
+    // set limit to 2 threads for better understanding
+    omp_set_num_threads(2);
+    printf("Master will execute for in parallel!\n");
+    #pragma omp parallel for private(private_test)
+    for(i = 0; i < MAX; ++i) {
+        // initialize private_test
+        private_test = i == 0 ? 0 : ++private_test;
+        printf(
+            "Thread #%i, iter_i: %d, private_test: %d\n", 
+            omp_get_thread_num(), i, private_test
+        );
+    }
+    printf(
+        "private_test outside the parallel region: %d\n", 
+        private_test
+    );
+    return 0;
+}\end{lstlisting}
+    Unfortunately, when we examine the output, we see a problem. Thread zero (\emph{master}) executes the \texttt{for} statement for the first 3 iterations, while thread one (\emph{slave}) executes the \texttt{for} statement for the last 3 iterations. The zero thread behaves as expected because we initialize the \texttt{private\_test} variable to zero on the first \texttt{for} iteration (when \texttt{i} is 0). The thread one, has made a copy of the variable in another memory location and the value is unknown; so it continues to add a single value to each iteration in a \emph{dirty memory location}. This is a trivial example that highlights the unknown values that we can find inside the private variables if we don't do any initialization.
+    \begin{lstlisting}[mathescape=false]
+$ g++ -fopenmp example.cpp -o example
+$ ./example
+Memory location of private_test: 0x7ffecdfa3aa4
+Master will execute the for statement in parallel!
+Thd #0, i:0, private_test:0,         mem: 0x7ffecdfa3a40
+Thd #0, i:1, private_test:1,         mem: 0x7ffecdfa3a40
+Thd #0, i:2, private_test:2,         mem: 0x7ffecdfa3a40
+Thd #1, i:3, private_test:687869953, mem: 0x76a0297ffdd0
+Thd #1, i:4, private_test:687869954, mem: 0x76a0297ffdd0
+Thd #1, i:5, private_test:687869955, mem: 0x76a0297ffdd0
+private_test outside the parallel region: 10\end{lstlisting}
+\end{examplebox}
+
+\newpage
+
+\noindent
+\textbf{\underline{\texttt{firstprivate} clause}}. The \textbf{variables are initialized from the shared variable}, but as in the \texttt{private} clause, the updated value doesn't leave the parallel region.
+\begin{openmpbox}[: \texttt{firstprivate(\emph{...})}]
+    \begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp parallel $\emph{directive}$ firstprivate($\emph{var1-name}$, ...)\end{lstlisting}
+\end{openmpbox}
+\begin{examplebox}[: \texttt{firstprivate} clause]
+    A very trivial example to see how the firstprivate clause works. The variable \texttt{private\_test} is copied to local and initialized with the value outside the parallel region.
+    \begin{lstlisting}[language=C++]
+#include <iostream>
+#include "omp.h"
+#define MAX 6
+
+int main(int argc, char const *argv[])
+    int i, private_test = 10;
+    printf("Memory location of private_test: %p\n",
+           &private_test);
+    // set limit to 2 threads for better understanding
+    omp_set_num_threads(2);
+    printf("Master will execute for in parallel!\n");
+    #pragma omp parallel for firstprivate(private_test)
+    for(i = 0; i < MAX; ++i) {
+        // initialize private_test
+        ++private_test;
+        printf(
+            "Thd #%i, i:%d, private_test:%d, mem: %p\n", 
+            omp_get_thread_num(), i,
+            private_test, &private_test
+        );
+    }
+    printf(
+        "private_test outside the parallel region: %d\n", 
+        private_test
+    );
+    return 0;
+}\end{lstlisting}
+    Note that the value is not propagated outside the parallel region.
+    \begin{lstlisting}[mathescape=false]
+$ g++ -fopenmp example.cpp -o example
+$ ./example
+Memory location of private_test: 0x7ffc5cd153b0
+Master will execute for in parallel!
+Thd #0, i:0, private_test:11, mem: 0x7ffc5cd15350
+Thd #0, i:1, private_test:12, mem: 0x7ffc5cd15350
+Thd #0, i:2, private_test:13, mem: 0x7ffc5cd15350
+Thd #1, i:3, private_test:11, mem: 0x77001d9ffdd0
+Thd #1, i:4, private_test:12, mem: 0x77001d9ffdd0
+Thd #1, i:5, private_test:13, mem: 0x77001d9ffdd0
+private_test outside the parallel region: 10\end{lstlisting}
+\end{examplebox}
+
+\newpage
+
+\begin{examplebox}[: be careful with pointers using the \texttt{firstprivate} clause]
+    The following code is very similar to the previous one. The difference here is that the parallel region also gets a pointer. Note that the pointer is in C style, because using the unique pointer technique (suggested in C++) will create an exception, because C++ doesn't allow the copy of a unique pointer. However, each thread creates a shallow copy of the pointer, but not a copy of the value pointed to! In this test, we use the pointer to the value of \texttt{private\_test} to modify the value of \texttt{private\_test}.
+    \begin{lstlisting}[language=C++]
+#include <iostream>
+#include "omp.h"
+#define MAX 6
+
+int main(int argc, char const *argv[]) {
+    bool print_flag = true;
+    int i, private_test = 10;
+    // C pointer, not a good practice in C++...
+    // used only for the example
+    int *ptr_private_test = &private_test;
+    printf("Memory location of private_test    : %p\n", 
+           &private_test);
+    printf("Memory location of ptr_private_test: %p\n",
+           &ptr_private_test);
+    // set limit to 2 threads for better understanding
+    omp_set_num_threads(2);
+    printf("Master will execute for in parallel!\n\n");
+    #pragma omp parallel for firstprivate(private_test, ptr_private_test, print_flag)
+    for(i = 0; i < MAX; ++i) {
+        if (print_flag) {
+            printf("Memory location ptr %p\n", 
+                   &ptr_private_test);
+            print_flag = false;
+        }
+        // increase value pointed to by ptr
+        ++*ptr_private_test;
+        // increase simple variable
+        ++private_test;
+        printf(
+            "Thread #%i, i:%d\n- private_test:%d, ptr_private_test:%d, mem: %p\n\n", 
+            omp_get_thread_num(), i, private_test,
+            *ptr_private_test, &private_test
+        );
+    }
+    printf(
+        "private_test outside the parallel region: %d\n", 
+        private_test
+    );
+    return 0;
+}\end{lstlisting}
+    Note an interesting observation. The variable \texttt{private\_test} is incremented at each iteration; in the same way, the value pointed to by the pointer \texttt{ptr\_private\_test} is also incremented. Finally, the variable \texttt{private\_test} is modified because the pointer was copied in each thread and each slave, including the master, increased the value. This is a very bad practice and we want to suggest to use unique pointers of C++ or to avoid shallow copies.
+    \begin{lstlisting}[mathescape=false]
+Memory location of private_test    : 0x7fff3849c224
+Memory location of ptr_private_test: 0x7fff3849c228
+Master will execute for in parallel!
+
+Memory location ptr 0x7fff3849c1a0
+Thread #0, i:0
+- private_test:11, ptr_private_test:11, mem: 0x7fff3849c198
+
+Thread #0, i:1
+- private_test:12, ptr_private_test:12, mem: 0x7fff3849c198
+
+Thread #0, i:2
+- private_test:13, ptr_private_test:13, mem: 0x7fff3849c198
+
+Memory location ptr 0x7b710cfffdb0
+Thread #1, i:3
+- private_test:11, ptr_private_test:14, mem: 0x7b710cfffda8
+
+Thread #1, i:4
+- private_test:12, ptr_private_test:15, mem: 0x7b710cfffda8
+
+Thread #1, i:5
+- private_test:13, ptr_private_test:16, mem: 0x7b710cfffda8
+
+private_test outside the parallel region: 16\end{lstlisting}
+    The expected value for \texttt{private\_test} should remain 10 because the firstprivate doesn't affect the values of the variables after the parallel region, but in this case we are using a pointer and a bad practice.
+\end{examplebox}
+
+\highspace
+\textbf{\underline{\texttt{lastprivate} clause}}. The variables \textbf{update shared variables with the value from the last iteration}, so the order of execution of the threads is important here.
+\begin{openmpbox}[: \texttt{lastprivate(...)}]
+    \begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp parallel $\emph{directive}$ lastprivate($\emph{var1-name}$, ...)\end{lstlisting}
+\end{openmpbox}
+\begin{examplebox}[: \texttt{lastprivate} clause]
+    In the following example, the value of the last iteration is passed (and overwritten) to the original value:
+    \begin{lstlisting}[language=C++]
+#include <iostream>
+#include "omp.h"
+#define MAX 6
+
+int main(int argc, char const *argv[]) {
+    int i, private_test = 10;
+    printf("Memory location of private_test: %p\n", 
+           &private_test);
+    // set limit to 2 threads for better understanding
+    omp_set_num_threads(2);
+    printf("Master will execute for in parallel!\n");
+    #pragma omp parallel for lastprivate(private_test)
+    for(i = 0; i < MAX; ++i) {
+        // initialize private_test
+        private_test = i;
+        printf(
+            "Thd #%i, i:%d, private_test:%d, mem: %p\n", 
+            omp_get_thread_num(), i,
+            private_test, &private_test
+        );
+    }
+    printf(
+        "private_test outside the parallel region: %d\n", 
+        private_test
+    );
+    return 0;
+}\end{lstlisting}
+    The \texttt{private\_test} variable initially has a value equal to 10, but with \texttt{lastprivate} we have overwritten it.
+    \begin{lstlisting}
+Memory location of private_test: 0x7ffc4c82b8c0
+Master will execute for in parallel!
+Thd #0, i:0, private_test:0, mem: 0x7ffc4c82b860
+Thd #0, i:1, private_test:1, mem: 0x7ffc4c82b860
+Thd #0, i:2, private_test:2, mem: 0x7ffc4c82b860
+Thd #1, i:3, private_test:3, mem: 0x72c7dddffdd0
+Thd #1, i:4, private_test:4, mem: 0x72c7dddffdd0
+Thd #1, i:5, private_test:5, mem: 0x72c7dddffdd0
+private_test outside the parallel region: 5\end{lstlisting}
+\end{examplebox}
+
+\newpage
+
+\noindent
+\textbf{\underline{\texttt{default} clause}}. The default storage attribute is \texttt{default(shared)}. To\break change the default we can write simply the value shared or none inside the brackets:
+\begin{itemize}
+    \item \texttt{default(share)} is the default choice for OpenMP, so there is no need to use it except for the clause \texttt{pragma omp task}.
+    \begin{openmpbox}[: \texttt{default(share)}]
+        \begin{lstlisting}[language=C++]
+#pragma omp parallel $\emph{directive}$ default(share)\end{lstlisting}
+    \end{openmpbox}
+    Against the \texttt{private} clauses, if we want to share some variables, we can use \texttt{shared} clause.
+    \begin{openmpbox}[: \texttt{shared}]
+        \begin{lstlisting}[language=C++]
+#pragma omp parallel $\emph{directive}$ shared($\emph{var1-name}$, ...)\end{lstlisting}
+    \end{openmpbox}
+
+    \item \texttt{default(private)}, each variable in the construct is made private as if specified in private clause.
+    \begin{openmpbox}[: \texttt{default(private)}]
+        \begin{lstlisting}[language=C++]
+#pragma omp parallel $\emph{directive}$ default(private)\end{lstlisting}
+    \end{openmpbox}
+
+    \item \texttt{default(none)}, no default for variables in static extent. Must list storage attribute for each variable in static extent. It is a good programming practice.
+    \begin{openmpbox}[: \texttt{default(none)}]
+        \begin{lstlisting}[language=C++]
+#pragma omp parallel $\emph{directive}$ default(none)\end{lstlisting}
+    \end{openmpbox}
+    \newpage
+    \begin{examplebox}[: \texttt{default(none)}]
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include "omp.h"
+#define MAX 6
+
+int main(int argc, char const *argv[]) {
+    double private_test = 10.0;
+    int i;
+    // set limit to 2 threads for better understanding
+    omp_set_num_threads(2);
+    #pragma omp parallel for default(none) private(i, private_test)
+    for(i = 0; i < MAX; i++) {
+        private_test = i;
+        printf(
+            "Thread #%i, value: %f\n", 
+            omp_get_thread_num(), private_test
+        );
+    }
+    printf(
+        "private_test outside the parallel region: %f\n", 
+        private_test
+    );
+    return 0;
+}\end{lstlisting}
+
+    \begin{lstlisting}[mathescape=false]
+Thread #0, value: 0.000000
+Thread #0, value: 1.000000
+Thread #0, value: 2.000000
+Thread #1, value: 3.000000
+Thread #1, value: 4.000000
+Thread #1, value: 5.000000
+private_test outside the parallel region: 10.000000\end{lstlisting}
+    \end{examplebox}
+\end{itemize}

@@ -22,6 +22,7 @@
     - add `Single/Master`
     - add `Tasks`
   - add `Synchronization`
+  - add `Data environment`
 
 --------------------
 

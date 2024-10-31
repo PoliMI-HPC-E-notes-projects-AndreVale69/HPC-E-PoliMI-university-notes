@@ -23,6 +23,7 @@
     - add `Tasks`
   - add `Synchronization`
   - add `Data environment`
+  - add `Memory model`
 
 --------------------
 

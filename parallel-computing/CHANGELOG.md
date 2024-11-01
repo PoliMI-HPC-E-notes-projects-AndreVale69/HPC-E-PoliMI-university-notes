@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.6.0-dev](#v060-dev)
+- [v0.6.0](#v060)
 - [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
@@ -11,7 +11,7 @@
 
 --------------------
 
-### v0.6.0-dev
+### v0.6.0
 
 - add `OpenMP v5.2`
   - add `Introduction`
@@ -24,6 +24,7 @@
   - add `Synchronization`
   - add `Data environment`
   - add `Memory model`
+  - add `Nested Parallelism`
 
 --------------------
 

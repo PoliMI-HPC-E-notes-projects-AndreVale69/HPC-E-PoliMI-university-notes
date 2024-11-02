@@ -9,17 +9,25 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.2.0-dev](#v020-dev)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.2.0-dev
+
+- add `Iterative methods for linear systems of equations`
+  - add `Why not use the directive methods?`
 
 --------------------
 
 ### v0.1.0
 
-- feat(structure): add CHANGELOG.md
-- feat: add 'Introduction' topic
-- feat: add 'Notation' topic
-- feat: add 'Matrix Operations' topic
-- feat: add 'Basic matrix decomposition' topic
-- feat: add 'Determinants' topic
-- feat: add 'Sparse matrices' topic
-- feat: add 'Storage schemes' topic
+- add CHANGELOG.md
+- add `Introduction` topic
+- add `Notation` topic
+- add `Matrix Operations` topic
+- add `Basic matrix decomposition` topic
+- add `Determinants` topic
+- add `Sparse matrices` topic
+  - add `Storage schemes` topic

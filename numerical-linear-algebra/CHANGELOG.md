@@ -18,6 +18,11 @@ Each version follows the Conventional Commits structure. For more information on
 
 - add `Iterative methods for linear systems of equations`
   - add `Why not use the directive methods?`
+  - add `Linear iterative methods`
+    - add `Definition`
+    - add `Jacobi method`
+    - add `Gauss-Seidel method`
+    - add `Convergence of Jacobi and Gauss-Seidel methods`
 
 --------------------
 

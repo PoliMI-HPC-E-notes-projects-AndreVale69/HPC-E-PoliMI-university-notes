@@ -28,6 +28,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `Preconditioning techniques`
     - add `Preconditioned Richardson method`
   - add `Gradient method`
+  - add `Conjugate Gradient method`
 
 --------------------
 

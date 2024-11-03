@@ -27,6 +27,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `Stopping Criteria`
   - add `Preconditioning techniques`
     - add `Preconditioned Richardson method`
+  - add `Gradient method`
 
 --------------------
 

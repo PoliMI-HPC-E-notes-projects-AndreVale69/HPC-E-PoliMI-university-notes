@@ -25,6 +25,8 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Convergence of Jacobi and Gauss-Seidel methods`
     - add `The stationary Richardson method`
   - add `Stopping Criteria`
+  - add `Preconditioning techniques`
+    - add `Preconditioned Richardson method`
 
 --------------------
 

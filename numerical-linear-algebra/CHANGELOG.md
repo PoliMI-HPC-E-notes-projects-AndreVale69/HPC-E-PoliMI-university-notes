@@ -23,6 +23,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Jacobi method`
     - add `Gauss-Seidel method`
     - add `Convergence of Jacobi and Gauss-Seidel methods`
+    - add `The stationary Richardson method`
   - add `Stopping Criteria`
 
 --------------------

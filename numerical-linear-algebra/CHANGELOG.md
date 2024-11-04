@@ -19,6 +19,8 @@ Each version follows the Conventional Commits structure. For more information on
 
 - add `Solving large scale eigenvalue problems`
   - add `Eigenvalue problems`
+  - add `Power method`
+    - add `Deflation method`
 
 --------------------
 

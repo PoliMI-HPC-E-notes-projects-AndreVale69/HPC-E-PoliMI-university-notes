@@ -21,6 +21,8 @@ Each version follows the Conventional Commits structure. For more information on
   - add `Eigenvalue problems`
   - add `Power method`
     - add `Deflation method`
+  - add `Inverse power method`
+    - add `Inverse power method with shift`
 
 --------------------
 

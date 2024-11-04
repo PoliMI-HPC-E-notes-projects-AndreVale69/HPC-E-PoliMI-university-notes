@@ -9,8 +9,16 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.3.0-dev](#v030-dev)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.3.0-dev
+
+- add `Solving large scale eigenvalue problems`
+  - add `Eigenvalue problems`
 
 --------------------
 

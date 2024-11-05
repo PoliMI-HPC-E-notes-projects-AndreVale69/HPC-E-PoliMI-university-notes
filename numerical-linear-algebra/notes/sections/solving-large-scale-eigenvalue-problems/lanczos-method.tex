@@ -1,0 +1,139 @@
+\subsection{Lanczos method}
+
+The \definition{Lanczos algorithm} is an iterative method for \textbf{finding the eigenvalues and eigenvectors} of a large, sparse, symmetric (or Hermitian) matrix. It's particularly \textbf{useful for computing the extremal (largest or smallest) eigenvalues and their corresponding eigenvectors}. The algorithm generates a sequence of vectors, called \emph{Lanczos vectors}, which are used to form a tridiagonal matrix that approximates the original matrix. Finally, this method is also used to \textbf{find a low-rank approximation} of the input matrix; by low-rank, we mean a \textbf{technique} used in numerical linear algebra to simplify a matrix while preserving its most important properties. It is particularly useful \textbf{for reducing the complexity of large data sets, compressing information, and speeding up computations}.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Good prerequisites of the matrix}}
+\end{flushleft}
+Some good prerequisites necessary to get the best performance with the Lanczos algorithm are:
+\begin{itemize}
+    \item Sparse matrix;
+    \item Symmetric (or Hermitian) matrix;
+    \item Square matrix, then a size of $n \times n$.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Mathematical point of view}}
+\end{flushleft}
+Let a symmetric matrix $A$ of size $n \times n$, the Lanczos algorithm is based on computing the following decomposition of $A$:
+\begin{equation}
+    A = QTQ^{T}
+\end{equation}
+Where $Q$ is an orthonormal basis of vectors $\mathbf{q}_{1}, \dots, \mathbf{q}_{n}$ and $T$ is tri-diagonal:
+\begin{equation*}
+    Q = \left[\mathbf{q}_{1}, \mathbf{q}_{2}, \dots, \mathbf{q}_{n}\right] \hspace{2em} T = \begin{bmatrix}
+        \alpha_{1} & \beta_{1} & 0 & \cdots & 0 \\
+        \beta_{1} & \alpha_{2} & \beta_{2} & \cdots & 0 \\
+        0 & \ddots & \ddots & \ddots & 0 \\
+        0 & \ddots & \ddots & \ddots & \beta_{n-1} \\
+        0 & \cdots & 0 & \beta_{n-1} & \alpha_{n}
+    \end{bmatrix}
+\end{equation*}
+The \textbf{decomposition always exists} and is \textbf{unique} if $\mathbf{q}_{1}$ was specified. 
+
+Since we know that $T = Q^{T} A Q$ which gives:
+\begin{equation*}
+    \alpha_{k} = \mathbf{q}_{k}^{T} A \mathbf{q}_{k} \hspace{2em} \beta_{k} = \mathbf{q}_{k+1}^{T} A \mathbf{q}_{k}
+\end{equation*}
+The full decomposition is obtained by imposing $AQ = QT$:
+\begin{gather*}
+    \left[A\mathbf{q}_{1}, A\mathbf{q}_{2}, \dots, A\mathbf{q}_{n}\right] = \\
+    [
+        \underbrace{\alpha_{1}\mathbf{q}_{1} + \beta_{1}\mathbf{q}_{2}}_{\text{1st row}}, \:
+        \underbrace{\beta_{1}\mathbf{q}_{1} + \alpha_{2}\mathbf{q}_{2} + \beta_{2}\mathbf{q}_{3}}_{\text{\text{2nd row}}}, \:
+        \dots, \:
+        \underbrace{\beta_{n-1}\mathbf{q}_{n-1} + \alpha_{n}\mathbf{q}_{n}}_{n \text{ row}}
+    ]
+\end{gather*}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Algorithm}}
+\end{flushleft}
+Note that at iteration $k$, the algorithm generates intermediate matrices $Q_{k}$ and $T_{k}$ satisfying $T_{k} = Q_{k}^{T} A Q_{k}$.
+\begin{enumerate}
+    \item \textbf{Residual, Lanczos vector and scalar initialization}. We set the residual to the value of the lanczos vector $\mathbf{q}_{1}$ which is set randomly; the Lanczos vector is set to zero and finally the scalar $\beta$ is set to one.
+    \begin{equation*}
+        \mathbf{r}_{0} = \mathbf{q}_{1}
+        \hspace{2em}
+        \mathbf{q}_{0} = \mathbf{0}
+        \hspace{2em}
+        \beta = 1
+    \end{equation*}
+
+    \item \textbf{Iteration}. For each $k = 1, \dots, n$:
+    \begin{enumerate}
+        \item \textbf{Check if the previously calculated $\beta$ is zero}. If zero, stop the algorithm, otherwise continue the iteration.
+
+        \item \textbf{Compute Lanczos vector $\mathbf{q}_{k}$}:
+        \begin{equation*}
+            \mathbf{q}_{k} = \dfrac{\mathbf{r}_{k-1}}{\beta_{k-1}}
+        \end{equation*}
+
+        \item \textbf{Compute scalar $\alpha_{k}$}:
+        \begin{equation*}
+            \alpha_{k} = \mathbf{q}_{k}^{T} \mathbf{A} \mathbf{q}_{k}
+        \end{equation*}
+
+        \item \textbf{Compute the residual $\mathbf{r}_{k}$}:
+        \begin{equation*}
+            \mathbf{r}_{k} = \left(\mathbf{A} - \alpha_{k}\right)\mathbf{q}_{k} - \beta_{k-1}\mathbf{q}_{k-1}
+        \end{equation*}
+
+        \item \textbf{Compute scalar $\beta_{k}$}:
+        \begin{equation*}
+            \beta_{k} = \left|\mathbf{r}_{k}\right|
+        \end{equation*}
+    \end{enumerate}
+
+    \item \textbf{Results}. It produces the tridiagonal symmetric matrix $T$ that is an approximation of the original matrix $A$ and the orthonormal basis $Q_{k}$.
+\end{enumerate}
+At iteration $k$, the $k$-th Lanczos vector $\mathbf{q}_{k}$ is proven to maximize the left hand side of:
+\begin{equation*}
+    \underset{\mathbf{y} \ne \mathbf{0}}{\max} \dfrac{
+        \mathbf{y}^{T} \left(Q_{k}^{T}A Q_{k}\right) \mathbf{y}
+    }{
+        \mathbf{y}^{T} \mathbf{y}
+    }
+    =
+    \lambda_{1}\left(T_{k}\right) \le \lambda_{1}\left(A\right) = \lambda_{1}\left(T\right)
+\end{equation*}
+And to simultaneously minimize the left hand side of:
+\begin{equation*}
+    \underset{\mathbf{y} \ne \mathbf{0}}{\min} \dfrac{
+        \mathbf{y}^{T} \left(Q_{k}^{T}A Q_{k}\right) \mathbf{y}
+    }{
+        \mathbf{y}^{T} \mathbf{y}
+    }
+    =
+    \lambda_{n}\left(T_{k}\right) \le \lambda_{n}\left(A\right) = \lambda_{n}\left(T\right)
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\lambda_{1}\left(A\right)$ is the \textbf{\emph{maximum} eigenvalue} of $A$;
+    \item $\lambda_{n}\left(A\right)$ is the \textbf{\emph{minimum} eigenvalue} of $A$.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{dollar-sign} \textbf{How much does it cost?}}
+\end{flushleft}
+Although the algorithm is quite complex to understand, the computational cost is very competitive. If we respect all the prerequisites that we have said, then for \textbf{large}, \textbf{symmetric}, \textbf{sparse} and \textbf{square matrices}, the primary cost is proportional to the \textbf{number of non-zero elements} in the matrix. Thus, the cost of each iteration is only $\approx \nnz\left(A\right)$ \textbf{operations} (where $A$ is the input matrix).
+
+\highspace
+The reasoning changes for \textbf{dense matrices}, although still feasible, the cost can be higher due to the $\approx n^{2}$ \textbf{operations}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{network-wired} \textbf{Can it be parallelized?}}
+\end{flushleft}
+The Lanczos method is widely used in practice, and obviously it \textbf{fits very well with parallel patterns}. The Lanczos parallelization focuses on matrix-vector multiplication and orthogonalization steps. If the reader wants to delve deeper into this parallelization, we suggest an interesting scientific paper:
+\begin{center}
+    \href{https://link.springer.com/chapter/10.1007/978-3-642-11322-2_25}{Parallelization of the Lanczos Algorithm on Multi-core Platforms} \qrcode{https://link.springer.com/chapter/10.1007/978-3-642-11322-2_25}
+
+    \highspace
+    \href{https://cse.iitkgp.ac.in/~abhij/publications/ParLanczos10.pdf}{Link to the paper} \hspace{2em} \qrcode{https://cse.iitkgp.ac.in/~abhij/publications/ParLanczos10.pdf}
+\end{center}

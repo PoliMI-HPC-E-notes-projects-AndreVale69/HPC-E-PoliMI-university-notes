@@ -25,6 +25,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Inverse power method with shift`
   - add `QR Factorization`
     - add `Schur decomposition applied to QR algorithm`
+    - add `Hessenberg applied to QR algorithm`
 
 --------------------
 

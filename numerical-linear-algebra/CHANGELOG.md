@@ -23,6 +23,8 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Deflation method`
   - add `Inverse power method`
     - add `Inverse power method with shift`
+  - add `QR Factorization`
+    - add `Schur decomposition applied to QR algorithm`
 
 --------------------
 

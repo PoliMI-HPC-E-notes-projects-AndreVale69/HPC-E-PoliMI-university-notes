@@ -1,0 +1,106 @@
+\subsubsection{Schur decomposition applied to QR algorithm}
+
+Instead of analyzing the classical QR algorithm, which is very general and applicable to any mathematical problem, here we present the powerful \definitionWithSpecificIndex{Schur decomposition}{Schur decomposition applied to QR algorithm}, which is applied with the aim of finding a QR decomposition.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need a variant of the QR decomposition algorithm?}}
+\end{flushleft}
+Before presenting and explaining how to apply it, we think that the motivations are fundamental:
+\begin{itemize}
+    \item \emph{What is the purpose of using the QR algorithm with the Schur variant?} To transform a matrix into an upper triangular form with eigenvalues on the diagonal.
+    
+    \item \emph{And why should this be useful? We could get the same result using the theoretical QR decomposition (e.g. Gram-Schmidt).} Obviously, but the Schur decomposition provides \textbf{more numerical stability}. In addition, it is very useful for analyzing eigenvalues and eigenvectors, and it simplifies the computation of matrix functions.
+    
+    \item \emph{So the Schur decomposition is the best! We will only use that.} Not at all. After explaining the algorithm, we will see why there are other better alternatives.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Required prerequisites}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Schur decomposition} is a mathematical concept used to transform a square matrix into a quasi-upper triangular form. If $A \in \mathbb{C}^{n \times n}$ then there is a unitary matrix $U \in \mathbb{C}^{n \times n}$ such that:
+    \begin{equation*}
+        U^{H} A U = T
+    \end{equation*}
+    And $U$ is upper triangular. The diagonal elements of $T$ are the eigenvalues of $A$. The Schur vectors are $U = \left|\mathbf{u}_{1}, \mathbf{u}_{2}, \dots, \mathbf{u}_{n}\right|$ and they are in general not eigenvectors.
+
+    \item The $k$-th column of $U^{H} A U = T$ read:
+    \begin{equation*}
+        A\mathbf{u}_{k} = \lambda_{k}\mathbf{u}_{k} + \displaystyle\sum_{i=1}^{k-1} t_{ik}\mathbf{u}_{i}
+    \end{equation*}
+    That is:
+    \begin{equation*}
+        A\mathbf{u}_{k} \in \mathrm{span}\left\{\mathbf{u}_{1}, \dots, \mathbf{u}_{k}\right\} \hspace{2em} \forall k
+    \end{equation*}
+    The first \textbf{Schur vector} $\mathbf{u}_{1}$ is an eigenvector of $A$. The first $k$ Schur vectors $\mathbf{u}_{1}, \dots, \mathbf{u}_{k}$ form an invariant subspace for $A$. The Schur decomposition is not unique.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Algorithm}}
+\end{flushleft}
+\textbf{Goal}: let $A \in \mathbb{C}^{n \times n}$, the QR algorithm computes an upper triangular matrix $T$ and a unitary matrix $U$ such that $A = UTU^{H}$ is the Schur decomposition of $A$.
+\begin{enumerate}
+    \item \textbf{Initialization}. $A$ is the \emph{original matrix} we start with; at the beginning, the initial guess $A^{\left(0\right)}$ is equal to the original $A^{\left(0\right)} = A$. It is transformed iteratively by the QR decompositions and updates. Meanwhile, $U$ is the \emph{accumulation of orthogonal transformations} applied to $A$. Initially, $U$ is set to the identity matrix $U^{\left(0\right)} = I$.
+    \begin{equation*}
+        \begin{array}{rcl}
+            A^{\left(0\right)} &=& A \\ [.3em]
+            U^{\left(0\right)} &=& I
+        \end{array}
+    \end{equation*}
+
+    \item \textbf{Iteration}. For each $k \ge 1$:
+    \begin{enumerate}
+        \item \textbf{QR Decomposition}. Decompose the matrix $A^{\left(k-1\right)}$ into the product of an orthogonal matrix $Q^{\left(k\right)}$ and an upper triangular matrix $R^{\left(k\right)}$:
+        \begin{equation*}
+            A^{\left(k-1\right)} = Q^{\left(k\right)} R^{\left(k\right)}
+        \end{equation*}
+
+        \item \textbf{Update the matrix $A$} to be used in next iteration by multiplying $R^{\left(k\right)}$ and $Q^{\left(k\right)}$:
+        \begin{equation*}
+            A^{\left(k\right)} = R^{\left(k\right)} Q^{\left(k\right)}
+        \end{equation*}
+
+        \item \textbf{Update the Transformations matrix $U$} to keep track of the cumulative orthogonal transformations:
+        \begin{equation*}
+            U^{\left(k\right)} = U^{\left(k-1\right)} Q^{\left(k\right)}
+        \end{equation*}
+    \end{enumerate}
+
+    \item \textbf{Repeat until we meet a specific stopping criteria}.
+    
+    \item \textbf{Results}. If a certain stopping criterion is met, we have the upper triangular matrix $A^{\left(k\right)}$ and the orthogonal matrix $U^{\left(k\right)}$. The Schur decomposition gives us an important result:
+    \begin{equation*}
+        T = A^{\left(k\right)} \: \land \: U^{\left(k\right)} = U \: \Longrightarrow \: A = U T U^{H} \: \equiv \: U^{H} A U = T
+    \end{equation*}
+\end{enumerate}
+About the convergence, we need to show some interesting details. Let us assume that all the eigenvalues are isolated:
+\begin{equation*}
+    \left|\lambda_{1}\right| > \left|\lambda_{2}\right| > \dots > \left|\lambda_{n}\right|
+\end{equation*}
+Then the elements of $A^{\left(k\right)}$ below the diagonal converge to zero:
+\begin{equation*}
+    \lim\limits_{k \rightarrow \infty} a_{ij}^{\left(k\right)} = 0 \hspace{2em} \forall i > j
+\end{equation*}
+Moreover, it can be shown that:
+\begin{equation*}
+    a_{ij}^{\left(k\right)} = O\left(
+        \left|\dfrac{\lambda_{i}}{\lambda_{i}}\right|^{k}
+    \right) \hspace{2em} i > j
+\end{equation*}
+Thus, \textbf{\underline{convergence} is low when the eigenvalues are close}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{dollar-sign} \textbf{How much does it cost?}}
+\end{flushleft}
+The QR algorithm enhanced with Schur decomposition is powerful for finding eigenvalues and eigenvectors, but the \textbf{high iteration cost} of $\approx n^{3}$ operations is a tradeoff for its robustness and accuracy.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{network-wired} \textbf{Can it be parallelized?}}
+\end{flushleft}
+The Schur decomposition applied to the QR algorithm is \textbf{difficult} to parallelize due to its sequential dependencies.

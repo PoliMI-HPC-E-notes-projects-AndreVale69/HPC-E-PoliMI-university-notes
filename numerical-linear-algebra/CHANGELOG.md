@@ -9,17 +9,18 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.4.0-dev](#v040-dev)
+- [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
 
 --------------------
 
-### v0.4.0-dev
+### v0.4.0
 
 - add `Numerical methods for overdetermined linear systems and SVD`
   - add `Overdetermine systems and Least Squares`
+  - add `Singular Value Decomposition (SVD)`
 
 --------------------
 

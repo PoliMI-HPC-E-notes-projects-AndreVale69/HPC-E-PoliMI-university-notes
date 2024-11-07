@@ -25,6 +25,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Coarse Grids`
     - add `Correction`
     - add `Interpolation Operator`
+    - add `Restriction Operator`
 
 --------------------
 

@@ -1,1 +1,103 @@
 \subsubsection{Interpolation Operator}\label{subsubsection: Interpolation Operator}
+
+\textbf{\underline{Purpose}}. The Interpolation Operator transfers corrections from the coarse grid back to the fine grid, refining the fine grid solution with broader adjustments. In other words, it is a powerful operator for \textbf{mapping values from a coarse grid} $\mathcal{F}_{2h}$ \textbf{to a fine grid} $\mathcal{F}_{h}$. This process is essential to transfer the error corrections or residuals from a coarse grid back to a fine grid, thereby increasing the accuracy of the solution.
+
+\highspace
+Mathematically, the interpolation operator is a linear operator and it is \textbf{denoted} as a matrix $I^{h}_{2h}$:
+\begin{equation}
+    \begin{array}{rcl}
+        I^{h}_{2h}: \mathcal{F}_{2h} & \longrightarrow & \mathcal{F}_{h} \\ [.5em]
+        \mathbb{R}^{n} & \longrightarrow & \mathbb{R}^{m}
+    \end{array}
+\end{equation}
+And it is multiplied by the coarse grid $\mathbf{v}_{2h}$ to get the fine grid with the interpolated values $\mathbf{v}_{h}$:
+\begin{equation}
+    I^{h}_{2h} \mathbf{v}_{2h} = \mathbf{v}_{h}
+\end{equation}
+It isn't a simply multiplication, because each position of the fine grid is given by:
+\begin{equation*}
+    \mathbf{v}_{h,i} = \begin{cases}
+        \mathbf{v}_{2h,i} & \text{if the node } i \text{ is common node of both } \mathcal{F}_{h} \text{ and } \mathcal{F}_{2h} \vspace{.8em}\\
+        \dfrac{
+            \mathbf{v}_{2h,i}^{+} + \mathbf{v}_{2h,i}^{-}
+        }{2} & \text{if the node } i \text{ in } \mathcal{F}_{h} \text{ is not a node in } \mathcal{F}_{2h}
+    \end{cases}
+\end{equation*}
+Perhaps this discussion is easier to understand graphically. As we can see, for nodes that exist only in the fine grid and not in the coarse grid, the value is interpolated as the average of the neighboring coarse grid nodes.
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/interpolation-operator-1.pdf}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Smooth vs Oscillatory errors}}
+\end{flushleft}
+To fully understand the MG method, it is important to understand when to use it. The interpolation operator highlights when and why the method can be effective or ineffective. \textbf{If the exact error on the fine grid} $\mathcal{F}_{h}$ is:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Smooth}}: an interpolation of the coarse grid error $\mathbf{e}_{2h}$ should give a \textbf{good representation} of the exact error.
+    
+    The smooth errors are errors that change gradually over the grid. So if we interpolate a smooth error from a coarse grid to a fine grid (using the interpolation operator), the interpolation will be accurate. This is because the changes in the error are well captured by the averaging, so that the interpolated fine grid values are very similar to the original smooth error. See the Figure \ref{fig: smooth error} to see why this is a good representation of the exact error.
+    
+    \begin{figure}[!htp]
+    	\centering
+    	\resizebox{.9\textwidth}{!}{\input{img/smooth-error.pgf}}
+    	\caption{The figure shows what happens when we encounter a smooth error. As we can see, the coarse grid error gives a good representation of the exact error of the fine grid. As the error changes gradually, the application of the interpolation from the coarse grid to the fine grid guarantees the preservation of the smoothness, so that the interpolated values accurately represent the true error.}
+    	\label{fig: smooth error}
+    \end{figure}
+    
+    \newpage
+    
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Oscillatory}}: an interpolation of the coarse grid error $\mathbf{e}_{2h}$ should give a \textbf{poor representation} of the exact error.
+    
+    The oscillatory errors are errors that change rapidly and frequently over the grid. So if we interpolate an oscillatory error from a coarse grid to a fine grid (using the interpolation operator), the interpolation might not be accurate. This is caused because the rapid changes in the error are not captured well by simple averaging, leading to a less accurate representation. See the Figure \ref{fig: oscillatory error} to see why this is a poor representation of the exact error.
+    
+    \begin{figure}[!htp]
+    	\centering
+    	\resizebox{.9\textwidth}{!}{\input{img/oscillatory-error.pgf}}
+    	\caption{The figure shows what happens when we encounter an oscillatory error. As we can see, the coarse grid error is a very poor representation of the exact fine grid error. This is because the oscillatory errors are smoothed out when interpolating from the coarse grid. The averaging process inherent in the interpolation can't fully capture the high frequency changes, resulting in a loss of accuracy in representing the true error.}
+    	\label{fig: oscillatory error}
+    \end{figure}
+\end{itemize}
+
+\newpage
+
+\noindent
+The Python code used to generate the plots. It requires numpy and matplotlib to be installed:
+\begin{center}
+	\texttt{pip install numpy matplotlib}
+\end{center}
+\begin{lstlisting}[language=Python]
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Coarse grid
+coarse_x = np.linspace(0, 10, 6)
+smooth_coarse_y = np.sin(coarse_x)
+oscillatory_coarse_y = np.sin(5 * coarse_x)
+
+# Fine grid
+fine_x = np.linspace(0, 10, 50)
+smooth_fine_y = np.sin(fine_x)
+oscillatory_fine_y = np.sin(5 * fine_x)
+
+plt.figure(figsize=(12, 6))
+
+# Smooth error
+plt.subplot(1, 2, 1)
+plt.plot(coarse_x, smooth_coarse_y, 'o-', label='Coarse Grid')
+plt.plot(fine_x, smooth_fine_y, 'x-', label='Fine Grid (Interpolated)')
+plt.title('Smooth Error')
+plt.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25))
+
+# Oscillatory error
+plt.subplot(1, 2, 2)
+plt.plot(coarse_x, oscillatory_coarse_y, 'o-', label='Coarse Grid')
+plt.plot(fine_x, oscillatory_fine_y, 'x-', label='Fine Grid (Interpolated)')
+plt.title('Oscillatory Error')
+plt.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25))
+
+plt.tight_layout()
+plt.show()
+\end{lstlisting}

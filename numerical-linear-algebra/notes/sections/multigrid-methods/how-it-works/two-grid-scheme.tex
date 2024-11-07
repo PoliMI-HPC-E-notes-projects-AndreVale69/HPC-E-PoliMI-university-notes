@@ -1,1 +1,63 @@
 \subsubsection{Two-Grid Scheme}\label{subsubsection: Two-Grid Scheme}
+
+\textbf{\underline{Purpose}}. The Two-Grid Scheme is a simple strategy that \textbf{uses only two levels} (a fine grid and a coarse grid) \textbf{to iteratively improve the solution}. The general idea is:
+\begin{enumerate}
+    \item Given an initial guess $\mathbf{x}_{h}^{\left(0\right)}$;
+    \item While the stopping criteria is met:
+        \begin{enumerate}
+            \item Compute:
+            \begin{equation}
+                \mathbf{x}_{h}^{\left(k+1\right)} = \mathrm{MG}\left(\mathbf{x}_{h}^{\left(k\right)}, \mathbf{b}_{h}, \nu_{1}, \nu_{2}\right)
+            \end{equation}
+        \end{enumerate} 
+\end{enumerate}
+The $\mathrm{MG}$ method is invoked and the algorithm is:
+\begin{enumerate}
+    \item \textbf{Apply our favorite method for $\nu_{1}$ times}. Do $\nu_{1}$ iterations using a chosen method (e.g. Jacobi) on the system $A_{h}\mathbf{x}_{h} = \mathbf{b}_{h}$ starting with the initial guess $\mathbf{x}_{h}^{\left(k\right)}$. The solution after these iterations is $\mathbf{y}_{h}^{\left(\nu_{1}\right)}$.
+    \begin{equation*}
+        \mathbf{y}_{h}^{\left(\nu_{1}\right)} \leftarrow \text{Relax } \nu_{1} \text{ times on } A_{h}\mathbf{x}_{h} = \mathbf{b}_{h}
+    \end{equation*}
+
+    \item \textbf{Compute Grid Residual}. Calculate the residual on the fine grid $\mathbf{r}_{h}^{\left(\nu_{1}\right)} = \mathbf{b}_{h} - A_{h}\mathbf{y}_{h}^{\left(\nu_{1}\right)}$:
+    \begin{equation*}
+        \mathbf{r}_{h}^{\left(\nu_{1}\right)} \leftarrow \mathbf{b}_{h} - A_{h}\mathbf{y}_{h}^{\left(\nu_{1}\right)}
+    \end{equation*}
+
+    \item \textbf{Restriction to Coarse Grid}. Move the residual $\mathbf{r}_{h}^{\left(\nu_{1}\right)}$ from the fine grid to the coarse grid to obtain the residual $\mathbf{r}_{2h}^{\left(\nu_{1}\right)} = I_{h}^{2h} \mathbf{r}_{h}^{\left(\nu_{1}\right)}$:
+    \begin{equation*}
+        \mathbf{r}_{2h}^{\left(\nu_{1}\right)} = I_{h}^{2h} \mathbf{r}_{h}^{\left(\nu_{1}\right)}
+    \end{equation*}
+
+    \item \textbf{Solve on Coarse Grid}. Solve the residual equations $A_{2h}\mathbf{e}_{2h} = \mathbf{r}_{2h}^{\left(\nu_{1}\right)}$ on the coarse grid. Where $\mathbf{e}_{2h}$ is the error estimate. This can be helpful because lower frequency errors are harder to smooth on the fine grid.
+    \begin{equation}
+        A_{2h}\mathbf{e}_{2h} = \mathbf{r}_{2h}^{\left(\nu_{1}\right)}
+    \end{equation}
+
+    \item \textbf{Return to Fine Grid}. Move the error calculated previously $\mathbf{e_{2h}}$ from the coarse grid to the fine grid to obtain $\mathbf{e}_{h}$:
+    \begin{equation*}
+        \mathbf{e}_{h} = I_{2h}^{h}\mathbf{e}_{2h}
+    \end{equation*}
+
+    \item \textbf{Update and apply correction}. Correct the approximation obtained on the fine grid with the error estimate obtained on the coarse grid. Applying this correction refines the solution on the fine grid, reducing the overall error:
+    \begin{equation*}
+        \mathbf{y}_{h}^{\left(\nu_{1}+1\right)} \leftarrow \mathbf{y}_{h}^{\left(\nu_{1}\right)} + \mathbf{e}_{h}
+    \end{equation*}
+
+    \item \textbf{Apply $\nu_{2}$ smoothing iterations}. Do $\nu_{2}$ iterations using a chosen\break smoother on the system $A_{h}\mathbf{x}_{h} = \mathbf{b}_{h}$ starting with the updated solution (initial guess) $\mathbf{y}_{h}^{\left(\nu_{1}+1\right)}$. The solution after these iterations is $\mathbf{y}_{h}^{\left(\nu_{1}+1+\nu_{2}\right)}$.
+    
+    These additional smoothing iterations are essential to refine the solution and ensure that both high and low frequency errors are adequately addressed. It can also help stabilize the solution by ensuring that any residual errors are minimized.
+    \begin{equation*}
+        \mathbf{y}_{h}^{\left(\nu_{1} + 1 + \nu_{2}\right)} \leftarrow \text{Relax } \nu_{2} \text{ times on } A_{h}\mathbf{x}_{h} = \mathbf{b}_{h}
+    \end{equation*}
+
+    \item \textbf{Return the result}. The final updated solution $\mathbf{x}_{h}^{\left(k+1\right)}$ is set to $\mathbf{y}_{h}^{\left(\nu_{1} + 1 + \nu_{2}\right)}$.
+    \begin{equation*}
+        \mathbf{x}_{h}^{\left(k+1\right)} \leftarrow \mathbf{y}_{h}^{\left(\nu_{1} + 1 + \nu_{2}\right)}
+    \end{equation*}
+\end{enumerate}
+
+\begin{figure}[!htp]
+    \centering
+    \resizebox{\textwidth}{!}{\input{img/two-grid-scheme.pgf}}
+    \caption{Graphical representation of the Two-Grid Scheme.}
+\end{figure}

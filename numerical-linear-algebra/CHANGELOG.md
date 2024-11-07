@@ -27,6 +27,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Interpolation Operator`
     - add `Restriction Operator`
     - add `Two-Grid Scheme`
+    - add `V-Cycle Scheme`
 
 --------------------
 

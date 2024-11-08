@@ -1,0 +1,90 @@
+\subsubsection{BiConjugate Gradient (BiCG) and BiCGSTAB method}
+
+The \definition{BiConjugate Gradient (BiCG) method} is an iterative algorithm used to \textbf{solve non-symmetric linear systems of equations}, $A\mathbf{x} = \mathbf{b}$. It \textbf{extends the Conjugate Gradient (CG) method to handle matrices that are not symmetric or positive definite}.
+
+\highspace
+BiCG has the peculiarity of \textbf{simultaneously solving} the original system $A\mathbf{x} = \mathbf{b}$ (where $A$ is a square matrix and $\mathbf{x}, \mathbf{b}$ are column vectors) and a dual system $\widehat{\mathbf{x}} A^{T} = \widehat{\mathbf{b}}$ (where the $A^{T} \ne A$ and $\widehat{\mathbf{x}}, \widehat{\mathbf{b}}$ are row vectors).
+
+\highspace
+While CG has mutually orthogonal residual $\mathbf{r}^{\left(k\right)}$, BiCG constructs in the same spaces residuals that are orthogonal to a dual Krylov space spanned by \dquotes{shadow residuals}:
+\begin{equation}
+    \begin{array}{rcl}
+        \tilde{\mathbf{r}}^{\left(k\right)} &=& p_{k}\left(A^{T}\right) \tilde{\mathbf{r}}^{\left(0\right)} \in \mathrm{span} \left\{ \tilde{\mathbf{r}}^{\left(0\right)}, A^{T}\tilde{\mathbf{r}}^{\left(0\right)}, \dots, \left(A^{T}\right)^{k} \tilde{\mathbf{r}}^{\left(0\right)} \right\} \\ [1em]
+        &=& \mathcal{K}_{k+1} \left(A^{T}, \tilde{\mathbf{r}}^{\left(0\right)}\right) \equiv \tilde{\mathcal{K}}_{k+1}
+    \end{array}
+\end{equation}
+The initial shadow residual $\tilde{\mathbf{r}}^{\left(0\right)}$ can be chosen freely. So, BiCG requires two matrix-vector multiplications to extend $\mathcal{K}_{k}$ and $\tilde{\mathcal{K}}_{k}$: one multiplication by $A$ (the original system) and one by $A^{T}$ (the dual system).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{BiCG Algorithm}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{Initial guess}. Start with an initial guess $\mathbf{x}^{\left(0\right)}$ (column vector), $\widehat{\mathbf{x}}^{\left(0\right)}, \widehat{\mathbf{b}}$ (row vectors).
+    
+    \item \textbf{Compute initial residual}. Define the residual $\mathbf{r}^{\left(0\right)} = \mathbf{b} - A\mathbf{x}^{\left(0\right)}$ (column vector) and the shadow residual $\widehat{\mathbf{r}}^{\left(0\right)} = \widehat{\mathbf{b}} - \widehat{\mathbf{x}}^{\left(0\right)}A^{T}$ (row vector).
+    
+    \item \textbf{Initial direction}. The direction is equal to the residual $\mathbf{d}_{0} = \mathbf{r}^{\left(0\right)}$ (column vector), and the shadow direction is equal to the shadow residual $\widehat{\mathbf{d}}_{0} = \widehat{\mathbf{r}}^{\left(0\right)}$ (row vector).
+
+    \item \textbf{Iteration}. Continue to iterate until the stopping criteria is met:
+    \begin{enumerate}
+        \item Parameter $\alpha_{k}$:
+        \begin{equation*}
+            \alpha_{k} = \dfrac{
+                \widehat{\mathbf{r}}^{\left(k\right)} \mathbf{r}^{\left(k\right)}
+            }{
+                \widehat{\mathbf{d}}_{k} A \mathbf{d}_{k}
+            }
+        \end{equation*}
+
+        \item Update the solution for both systems:
+        \begin{equation*}
+            \begin{array}{rcl}
+                \mathbf{x}^{\left(k+1\right)} &=& \mathbf{x}^{\left(k\right)} + \alpha_{k}\mathbf{d}_{k} \\ [.5em]
+                \widehat{\mathbf{x}}^{\left(k+1\right)} &=& \widehat{\mathbf{x}}^{\left(k\right)} + \alpha_{k}\widehat{\mathbf{d}}_{k}
+            \end{array}
+        \end{equation*}
+
+        \item Update the residual for both systems:
+        \begin{equation*}
+            \begin{array}{rcl}
+                \mathbf{r}^{\left(k+1\right)} \left(\equiv \mathbf{b} - A \mathbf{x}^{\left(k+1\right)}\right) &=& \mathbf{r}^{\left(k\right)} + \alpha_{k}A\mathbf{d}_{k} \\ [.5em]
+                \widehat{\mathbf{r}}^{\left(k+1\right)} \left(\equiv \widehat{\mathbf{b}} - \widehat{\mathbf{x}}^{\left(k+1\right)} A^{T} \right) &=& \widehat{\mathbf{r}}^{\left(k\right)} - \alpha_{k}\widehat{\mathbf{d}}_{k} A^{T}
+            \end{array}
+        \end{equation*}
+
+        \item Parameter $\beta_{k}$:
+        \begin{equation*}
+            \alpha_{k} = \dfrac{
+                \widehat{\mathbf{r}}^{\left(k+1\right)} \mathbf{r}^{\left(k+1\right)}
+            }{
+                \widehat{\mathbf{r}}^{\left(k\right)} \mathbf{r}^{\left(k\right)}
+            }
+        \end{equation*}
+
+        \item Update the direction:
+        \begin{equation*}
+            \begin{array}{rcl}
+                \mathbf{d}_{k+1}            &=& \mathbf{r}^{\left(k+1\right)} + \beta_{k} + \mathbf{d}_{k} \\ [.5em]
+                \widehat{\mathbf{d}}_{k+1}  &=& \widehat{\mathbf{r}}^{\left(k+1\right)} + \beta_{k} + \widehat{\mathbf{d}}_{k}
+            \end{array}
+        \end{equation*}
+    \end{enumerate}
+\end{enumerate}
+In practice the $\widehat{\mathbf{x}}^{\left(0\right)} = \left[\mathbf{x}^{\left(0\right)}\right]^{T}$ and $\widehat{\mathbf{b}} = \mathbf{b}^{T}$. We also need to make sure that $\widehat{\mathbf{r}}^{\left(0\right)}\mathbf{r}^{\left(0\right)} \ne 0$.
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{dollar-sign} \textbf{How much does it cost and why do we need to use BiCGSTAB?}}
+\end{flushleft}
+Each iteration costs twice as much as a CG iteration:
+\begin{itemize}
+    \item \textbf{Dense matrix}: the cost of each iteration is about $2n^{2}$ \textbf{operations}.
+    \item \textbf{Sparse matrix}: the cost of each iteration is only about $2n$ \textbf{operations}.
+\end{itemize}
+It also has a \textbf{big problem}: \textbf{numerical stability}. BiCG uses duality, which introduces a level of complexity that can lead to numerical instability, especially because of the \textbf{multiplication of} $A$ and $A^{T}$. Fortunately, the \definition{BiConjugate Gradient Stabilized (BiCGSTAB) method} is a variant of BiCG and has \textbf{faster and smoother convergence than the original BiCG}. The main idea in BiCGSTAB is not to keep track of residuals and search directions, but to use techniques to stabilize the convergence and improve the robustness of the method.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{network-wired} \textbf{Can it be parallelized?}}
+\end{flushleft}
+BiCGSTAB can be \textbf{implemented on GPUs using frameworks like CUDA}. This allows for massive parallelism, as GPUs have thousands of cores that can perform computations simultaneously. BiCGSTAB can also be \textbf{parallelized on distributed memory systems using MPI} (Message Passing Interface). This involves partitioning the matrix and distributing the computations across multiple processors. The communication between processors is managed efficiently to minimize overhead and maximize performance.

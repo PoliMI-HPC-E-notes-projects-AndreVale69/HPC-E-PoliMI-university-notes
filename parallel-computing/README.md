@@ -6,7 +6,16 @@ As I have highlighted, a student should choose the teacher's material or a book 
 
 The notes are taken from the books required for the course: 
 
+- Gene M Amdahl. Validity of the single processor approach to achieving large scale computing capabilities, reprinted from the afips conference proceedings, vol. 30 (atlantic city, nj, apr/ 18-20), afips press, reston, va., 1967, pp. 483-485, when dr. amdahl was at international business machines corporation, sunnyvale, california. *IEEE Solid-State Circuits Society Newsletter*, 12(3):19-20, 2007.
+- Guy E. Blelloch, Laxman Dhulipala and Yihan Sun. Introduction to parallel algorithms. [PDF](https://www.cs.cmu.edu/~guyb/paralg/paralg/parallel.pdf), 2024. [Accessed 22-10-2024]
 - Course slides.
+- John L Gustafson. Reevaluating Amdahl's law. *Communications of the ACM*, 31(5):532-533, 1988.
+- Johnston Hans. OpenMP by Example. [PDF](https://people.math.umass.edu/~johnston/PHI_WG_2014/OpenMPSlides_tamu_sc.pdf), 2024. [Accessed 23-10-2024].
+- Vipin Kumar, Ananth Grama, Anshul Gupta, and George Karypis. *Introduction to parallel computing*, volume 110. Benjamin/Cummings Redwood City, CA, 1994.
+- M. McCool, J. Reinders, and A. Robison. *Structured Parallel Programming: Patterns for Efficient Computation*. ITPro collection. Elsevier Science, 2012.
+- Microsoft. The critical directive. [website](https://learn.microsoft.com/en-us/cpp/parallel/openmp/a-examples?view=msvc-170#a5-the-critical-directive), 2024. [Accessed 29-10-2024].
+- M. Nemirovsky and D. Tullsen. *Multithreading Architecture*. Synthesis Lectures on Computer Architecture. Springer International Publishing, 2022.
+- Wikipedia. Cache (computing) - Wikipedia. [website](https://en.wikipedia.org/wiki/Cache_(computing)). [Accessed 20-10-2024].
 
 You can view/download the PDF [here](notes/parallel-computing.pdf). In the [notes folder](notes/), you can also see the source code.
 

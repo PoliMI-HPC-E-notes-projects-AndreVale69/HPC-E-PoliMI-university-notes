@@ -1,10 +1,19 @@
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fpolimi-hpc-e-notes-projects-andrevale69.github.io%2FHPC-E-PoliMI-university-notes%2F&up_message=online&up_color=green&down_message=offline&down_color=red&logo=githubpages&label=Notes%20Website%20status)
+![Website](https://img.shields.io/website?url=https%3A%2F%2Fandrevale69-hpc-polimi.notion.site%2FPoliMI-High-Performance-Computing-Engineering-Notes-and-Projects-AndreVale69-6de0ce81a91248d6a279e33104b308c8%3Fpvs%3D4&up_message=online&up_color=green&down_message=offline&down_color=red&logo=notion&label=Notion%20Website%20status)
+
+
+If you are looking for a more user-friendly interface, check out the [online website][GitHub Pages website] (simple but efficient).
 
 # HPC Engineering PoliMI - University Notes
 
 This archive contains my notes while pursuing my master's degree in [High Performance Computing Engineering](https://masterhpc.polimi.it/) at Politecnico di Milano.
 
-Want a *user-friendly* navigation? Look at my [Notion website](https://andrevale69-hpc-polimi.notion.site/PoliMI-High-Performance-Computing-Engineering-Notes-and-Projects-AndreVale69-6de0ce81a91248d6a279e33104b308c8?pvs=4) or [GitHub Pages](https://polimi-hpc-e-notes-projects-andrevale69.github.io/HPC-E-PoliMI-university-notes/). They are very simple, not spectacular, but functional.
+These notes are an **unofficial** resource and should not replace the course material or any other book. It is not intended for commercial purposes. I've made the following notes to help me improve my knowledge and maybe it can be helpful for everyone.
+
+I also made a:
+- [Notion website][Notion website] if someone finds it useful (very simple, not spectacular, but functional).
+- [GitHub Pages website][GitHub Pages website], a simple website to avoid interaction with github, more user friendly.
 
 Actually, I haven't got my Master's degree yet, so the notes are still incomplete. In the table below you can check the courses I've completed (✅) and the courses I'm still doing (❌).
 
@@ -94,3 +103,7 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
         <td><a href="software-engineering-for-hpc">Course Details</a> - <a href="software-engineering-for-hpc/notes/software-engineering-for-hpc.pdf">PDF</a></td>
     </tr>
 </table>
+
+
+[GitHub Pages website]: https://polimi-hpc-e-notes-projects-andrevale69.github.io/HPC-E-PoliMI-university-notes/
+[Notion website]: https://andrevale69-hpc-polimi.notion.site/PoliMI-High-Performance-Computing-Engineering-Notes-and-Projects-AndreVale69-6de0ce81a91248d6a279e33104b308c8?pvs=4

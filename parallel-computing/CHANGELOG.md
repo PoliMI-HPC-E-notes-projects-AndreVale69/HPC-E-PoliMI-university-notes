@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.8.0-dev](#v080-dev)
+- [v0.8.0](#v080)
 - [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
@@ -13,7 +13,7 @@
 
 --------------------
 
-### v0.8.0-dev
+### v0.8.0
 
 - add `GPU Architecture`
   - add `Introduction`
@@ -21,6 +21,7 @@
   - add `CUDA`
     - add `Basics of CUDA`
     - add `Memory model`
+    - add `NVIDIA V100 Streaming Multiprocessor (SM)`
 
 --------------------
 

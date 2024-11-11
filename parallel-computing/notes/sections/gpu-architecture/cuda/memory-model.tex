@@ -1,0 +1,64 @@
+\subsubsection{Memory model}
+
+The CUDA memory model consists of several types of memory, each with different characteristics and uses. In general, the \textbf{Host (CPU) and the Device (GPU) have different address spaces}, each one has its private memory address.
+
+\highspace
+For example, the \texttt{cudaMemcpy} function in CUDA is used to \textbf{copy data} between different memory spaces, specifically \textbf{between host (CPU)} memory \textbf{and device (GPU) memory}.
+
+\begin{lstlisting}[language=C++]
+// allocate buffer in host mem
+float* A = new float[N];
+
+// populate host address space pointer A
+for (int i = 0; i < N; ++i) {
+    A[i] = (float)i;
+}
+
+// allocate buffer in device (GPU) address space
+int bytes = sizeof(float) * N;
+float* deviceA;
+cudaMalloc(&deviceA, bytes);
+
+// populate deviceA
+cudaMemcpy(deviceA, A, bytes, cudaMemcpyHostToDevice);
+// deviceA:
+//      Destination memory address (either on the host or device).
+//
+// A:
+//      Source memory address (either on the host or device).
+//
+// bytes:
+//      Number of bytes to copy.
+//
+// cudaMemcpyHostToDevice:
+//      Type of memory copy operation.
+//      Copies data from host memory to device memory.
+\end{lstlisting}
+Note that directly accessing \texttt{deviceA[i]} is an invalid operation, because we cannot manipulate the contents of \texttt{deviceA} directly from host, since \texttt{deviceA} is not a pointer to the host's address space.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{memory} \textbf{Types of CUDA device memory models visible to kernels}}
+\end{flushleft}
+\begin{enumerate}
+    \item \definition{Per-thread Private Memory}. This memory is \textbf{private to each}\break \textbf{thread}. Each thread has its own memory space that other threads cannot access.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Usage.}} It is \textbf{ideal for storing variables that are only relevant to individual threads} and do not need to be shared with other threads.
+    
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Access.}} It has \textbf{fast access}, limited by the number of registers available.
+
+
+    \item \definition{Per-block Shared Memory}. This memory is \textbf{shared by all threads within a block}. It allows threads within the same block to cooperate by sharing data.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Usage.}} It is useful for tasks where \textbf{threads within a block need to communicate or share intermediate results}. It is often used to optimize memory access patterns and reduce global memory accesses.
+    
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Access.}} It is \textbf{much faster than global memory, but limited in size}. Access is almost as fast as registers when used properly.
+
+
+    \item \definition{Device Global Memory}. This memory is \textbf{accessible to all threads across all blocks}. It provides a large amount of memory, but has higher latency and lower bandwidth than shared memory.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Usage.}} It is \textbf{suitable} for storing large amounts of \textbf{data that must be accessed by threads in different blocks}.
+    
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Access.}} It has the \textbf{slowest access} of the three types, but is necessary for large data storage and inter-block communication.
+\end{enumerate}

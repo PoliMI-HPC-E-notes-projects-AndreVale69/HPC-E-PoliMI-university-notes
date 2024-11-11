@@ -20,6 +20,7 @@
   - add `GPU compute mode`
   - add `CUDA`
     - add `Basics of CUDA`
+    - add `Memory model`
 
 --------------------
 

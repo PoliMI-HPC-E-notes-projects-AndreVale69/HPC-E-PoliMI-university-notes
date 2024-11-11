@@ -17,6 +17,7 @@
 
 - add `GPU Architecture`
   - add `Introduction`
+  - add `GPU compute mode`
 
 --------------------
 

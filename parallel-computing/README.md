@@ -12,6 +12,7 @@ The notes are taken from the books required for the course:
 - John L Gustafson. Reevaluating Amdahl's law. *Communications of the ACM*, 31(5):532-533, 1988.
 - Johnston Hans. OpenMP by Example. [PDF](https://people.math.umass.edu/~johnston/PHI_WG_2014/OpenMPSlides_tamu_sc.pdf), 2024. [Accessed 23-10-2024].
 - Vipin Kumar, Ananth Grama, Anshul Gupta, and George Karypis. *Introduction to parallel computing*, volume 110. Benjamin/Cummings Redwood City, CA, 1994.
+- Erik Lindholm, John Nickolls, Stuart Oberman, and John Montrym. Nvidia tesla: A unified graphics and computing architecture. *IEEE micro*, 28(2):39-55, 2008. [PDF](https://ieeexplore.ieee.org/document/4523358).
 - M. McCool, J. Reinders, and A. Robison. *Structured Parallel Programming: Patterns for Efficient Computation*. ITPro collection. Elsevier Science, 2012.
 - Microsoft. The critical directive. [website](https://learn.microsoft.com/en-us/cpp/parallel/openmp/a-examples?view=msvc-170#a5-the-critical-directive), 2024. [Accessed 29-10-2024].
 - M. Nemirovsky and D. Tullsen. *Multithreading Architecture*. Synthesis Lectures on Computer Architecture. Springer International Publishing, 2022.

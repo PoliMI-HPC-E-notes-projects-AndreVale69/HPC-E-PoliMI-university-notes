@@ -17,6 +17,7 @@
 ### v0.9.0-dev
 
 - add `Cancellation`
+- add `synchronization` topic in the subsubsection `Tasks`
 
 --------------------
 

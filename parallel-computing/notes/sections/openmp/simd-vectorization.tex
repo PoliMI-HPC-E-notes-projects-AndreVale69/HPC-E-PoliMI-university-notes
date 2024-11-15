@@ -1,0 +1,96 @@
+\subsection{SIMD Vectorization}
+
+A \textbf{SIMD processor exploits data parallelism by providing instructions that operate on blocks of data} (called \textbf{vectors}). SIMD provides \textbf{data parallelism at the instruction level} and can be combined with other OpenMP constructs to achieve multi-level parallelism.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{What compilers must do to understand whether a loop can be vectorized}}
+\end{flushleft}
+SIMD instructions use \textbf{SIMD registers}. The compilers deal with \textbf{several issues to determine whether a loop can be vectorized by SIMD instructions}. It does:
+\begin{itemize}
+    \item An analysis of the dependencies across iterations;
+    \item An alias analysis of pointers;
+    \item An analysis of the data layout/alignment issues;
+    \item An analysis of conditional executions;
+    \item Checks of the loop bounds that must not be multiple of vector length.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Other compiler problems: Loop Peeling and Loop Tail}}
+\end{flushleft}
+Also, the \textbf{loop iterations at the beginning and end may not be vectorized} (loop peeling, tail). This is because when a compiler tries to optimize a loop using vectorization (i.e., applying the same operation to multiple data points simultaneously to speed up execution), it often encounters problems with the iterations at the beginning and end of the loop. These iterations may not fit neatly into the vectorized operations because the total number of iterations of the loop may not be a perfect multiple of the vector length.
+
+\highspace
+Essentially, the \textbf{compiler may have to split the loop into three parts}:
+\begin{enumerate}
+    \item \definition{Loop Peeling}. Handle the initial few iterations that don't align with vector boundaries.
+
+    \item \textbf{Vectorized Main Loop}. Process the majority of the loop iterations using vectorized operations.
+
+    \item \definition{Loop Tail}. Handle the remaining iterations that can't be processed with vector operations due to their small number.
+\end{enumerate}
+This approach ensures that the loop is as optimized as possible, even if some parts of it cannot be vectorized efficiently.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Use OpenMP SIMD}}
+\end{flushleft}
+The \texttt{simd} construct can be applied to a loop to indicate that the loop can be transformed into a SIMD loop (i.e., multiple iterations of the loop can be executed simultaneously using SIMD instructions).
+
+\marginpar{
+    \href{https://www.openmp.org/spec-html/5.0/openmpsu42.html\#x65-1390002.9.3} {Doc. \faIcon{book}}
+}
+\begin{openmpbox}[: \texttt{pragma omp simd}]
+    \begin{lstlisting}[language=C++]
+#pragma omp simd\end{lstlisting}
+\end{openmpbox}
+
+\noindent
+The \textbf{loop is divided into chunks}, and \textbf{all iterations are executed by a single thread using SIMD vector instructions}. The \textbf{chunks should fit into a vector register} for \textcolor{Green4}{\textbf{performance}}, and \textbf{each iteration is executed by a \emph{SIMD lane}}. The compiler will generate SIMD instructions, it is \textbf{up to the user to ensure this maintains correct behavior}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Possible clauses}}
+\end{flushleft}
+\begin{itemize}
+    \item Data scope clauses (page \pageref{subsection: Data environment}) can be used in a \texttt{simd} directive.
+
+    \item A \texttt{collapse} clause can be \textbf{used to fuse two perfectly nested loops, but the complexity can be increase}.
+    
+    \item The \texttt{simdlen(\emph{size})} clause suggests a \textbf{preferred vector length}. Maybe the code will work better with a specific vector length, but the compiler is free to ignore it (is only a suggestion make by the programmer). It can also hurt performance but the results remain correct.
+    
+    \item The \texttt{safelen(\emph{size})} clause sets an \textbf{upper limit to the vector length that the compiler cannot exceed}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{For SIMD}}
+\end{flushleft}
+The \texttt{omp for simd} directive \textbf{distributes the iterations of one or more associated loops across the threads} that already exist in the team \textbf{and indicates that the iterations executed by each thread can be executed concurrently using SIMD instructions}.
+
+\begin{openmpbox}[: \texttt{pragma omp for simd}]
+    \begin{lstlisting}[language=C++]
+#pragma omp for simd\end{lstlisting}
+\end{openmpbox}
+
+\noindent
+The \textbf{number of threads and scheduling policy greatly affect performance}. If the \textbf{number of threads increases, work for each thread is smaller}. \textbf{Each thread should work with a chunk corresponding to the vector length}. Ideally, it is correct to distribute iterations among threads in a team, then each thread uses SIMD instructions.
+
+\newpage
+
+\noindent
+The clause \texttt{schedule} \textbf{avoid performance degradation specifying the scheduling type and chunk size for the loop iterations}. The \texttt{static} schedule divides the iterations into chunks of \texttt{\emph{chunk-size}}, distributing them to the threads.
+\begin{openmpbox}[: \texttt{pragma omp declare simd}]
+    \begin{lstlisting}[language=C++, mathescape=true]
+#pragma omp for simd schedule(simd:static, $\emph{chunk-size}$)\end{lstlisting}
+\end{openmpbox}
+
+\highspace
+Finally, we can also \textbf{declare a function to be compiled for calls inside a SIMD loop}.
+\begin{openmpbox}[: \texttt{pragma omp declare simd}]
+    \begin{lstlisting}[language=C++]
+#pragma omp declare simd
+    /* function definition */\end{lstlisting}
+\end{openmpbox}

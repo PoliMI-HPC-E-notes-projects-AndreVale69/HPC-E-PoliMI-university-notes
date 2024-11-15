@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.9.0-dev](#v090-dev)
+- [v0.9.0](#v090)
 - [v0.8.0](#v080)
 - [v0.7.0](#v070)
 - [v0.6.0](#v060)
@@ -14,11 +14,12 @@
 
 --------------------
 
-### v0.9.0-dev
+### v0.9.0
 
 - add `Cancellation`
 - add `synchronization` topic in the subsubsection `Tasks`
 - add `Task dependences` as paragraph in `Tasks`
+- add `SIMD Vectorization`
 
 --------------------
 

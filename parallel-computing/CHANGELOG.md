@@ -18,6 +18,7 @@
 
 - add `Cancellation`
 - add `synchronization` topic in the subsubsection `Tasks`
+- add `Task dependences` as paragraph in `Tasks`
 
 --------------------
 

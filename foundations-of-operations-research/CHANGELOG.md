@@ -9,6 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.5.1](#v051)
 - [v0.4.1](#v041)
 - [v0.3.1](#v031)
 - [v0.2.1](#v021)
@@ -17,53 +18,59 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
+### v0.5.1
+
+- refactor $\LaTeX$ files, change PDF a bit
+
+--------------------
+
 ### v0.4.1
 
-- feat(foundations-of-or): add 'Trees' section
-  - feat(foundations-of-or): add 'Definitions and characteristics' section
-  - feat(foundations-of-or): add 'Properties' section
-  - feat(foundations-of-or): add 'Optimal cost spanning trees' section
-    - feat(foundations-of-or): add 'Prim's algorithm' section
-    - feat(foundations-of-or): add 'Implementation of Prim's algorithm in O(n^{2})' section
-    - feat(foundations-of-or): add 'Optimality condition' section
+- add `Trees` section
+  - add `Definitions and characteristics` section
+  - add `Properties` section
+  - add `Optimal cost spanning trees` section
+    - add `Prim`s algorithm` section
+    - add `Implementation of Prim's algorithm in O(n^{2})` section
+    - add `Optimality condition` section
 
 --------------------
 
 ### v0.3.1
 
-- feat(foundations-of-or): add 'Graph and network optimization' section
-- feat(foundations-of-or): add 'Graphs' topic:
-  - feat(foundations-of-or): add 'Definitions and characteristics' topic
-  - feat(foundations-of-or): add 'Graphical representation' topic
-  - feat(foundations-of-or): add 'Graph reachability problem' topic
-    - feat(foundations-of-or): add 'Description and algorithm' topic
-    - feat(foundations-of-or): add 'Complexity of algorithm' topic
+- add `Graph and network optimization` section
+- add `Graphs` topic:
+  - add `Definitions and characteristics` topic
+  - add `Graphical representation` topic
+  - add `Graph reachability problem` topic
+    - add `Description and algorithm` topic
+    - add `Complexity of algorithm` topic
 
 --------------------
 
 ### v0.2.1
 
-- fix(foundations-of-or): add arc in Figure 1, page 6
+- add arc in Figure 1, page 6
 
 --------------------
 
 ### v0.2.0
 
-- fix(foundations-of-or): add uppercase letters in references
-- feat(foundations-of-or): finish 'Decision-making problems' topic
-  - feat(foundations-of-or): add 'Assignment problem' topic
-  - feat(foundations-of-or): add 'Network design' topic
-  - feat(foundations-of-or): add 'Shortest path' topic
-  - feat(foundations-of-or): add 'Other problems' topic
-- feat(foundations-of-or): add 'Scheme of an OR study' topic
-- feat(foundations-of-or): add 'Mathematical programming/optimization' topic
-- feat(foundations-of-or): add 'Multi-objective programming' topic
-- feat(foundations-of-or): add 'Mathematical Programming or Simulation?' topic
+- add uppercase letters in references
+- finish `Decision-making problems` topic
+  - add `Assignment problem` topic
+  - add `Network design` topic
+  - add `Shortest path` topic
+  - add `Other problems` topic
+- add `Scheme of an OR study` topic
+- add `Mathematical programming/optimization` topic
+- add `Multi-objective programming` topic
+- add `Mathematical Programming or Simulation?` topic
 
 --------------------
 
 ### v0.1.0
 
-- feat(structure): add CHANGELOG.md
-- feat(foundations-of-or): add 'Introduction' topic
-- feat(foundations-of-or): partially add 'Decision-making problems' topic
+- add CHANGELOG.md
+- add `Introduction` topic
+- partially add `Decision-making problems` topic

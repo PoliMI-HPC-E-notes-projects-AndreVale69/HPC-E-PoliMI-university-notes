@@ -24,6 +24,7 @@ Each version follows the Conventional Commits structure. For more information on
 - add `Laboratory`
   - add `Introduction`
     - add `Diet problem`
+    - add `Oil blending problem`
 
 --------------------
 

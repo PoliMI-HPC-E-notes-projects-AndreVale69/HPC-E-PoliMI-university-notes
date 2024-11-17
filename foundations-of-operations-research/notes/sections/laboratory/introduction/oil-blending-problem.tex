@@ -1,0 +1,186 @@
+\subsubsection{Oil blending problem}
+
+A refinery has to blend 4 types of oil to obtain 3 types of gasoline. The following table reports the available quantity of oil of each type (in barrels) and the respective unit cost (Euro per barrel):
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        \textbf{Oil type} & \textbf{Cost} & \textbf{Availability} \\
+        \midrule
+        1 & 9   & 5000 \\
+        2 & 7   & 2400 \\
+        3 & 12  & 4000 \\
+        4 & 6   & 1500 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Blending constraints are to be taken into account, since each type of gasoline must contain at least a specific, predefined, quantity of each type of oil, as indicated in the next table. The unit revenue of each type of gasoline (Euro per barrel) is also indicated:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        \textbf{Gasoline type} & \textbf{Requirements} & \textbf{Revenue} \\
+        \midrule
+        A & $\geq$ 20\% of type 2 & 12 \\
+        A & $\leq$ 30\% of type 3 & 12 \\
+        B & $\geq$ 40\% of type 3 & 18 \\
+        C & $\leq$ 50\% of type 2 & 10 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Oil blending problem formulation}}
+\end{flushleft}
+\begin{itemize}
+    \item Sets
+    \begin{itemize}
+        \item $I$: set of oil types
+        \item $J$: set of gasoline types
+    \end{itemize}
+
+    \item Parameters
+    \begin{itemize}
+        \item $c_i$: unit cost for oil of type $i \in I$ 
+        \item $b_i$: availability of oil of type $i \in I$
+        \item $r_j$: price of gasoline of type $i \in I$
+        \item $b_i$: minimum quantity of nutrient $i \in I $ required
+        \item $q_{ij}^{\max}$: maximum quantity (percentage) of oil of type $i \in I$ for gasoline of type $j \in J$
+        \item $q_{ij}^{\min}$: minimum quantity (percentage) of oil of type $i \in I$ for gasoline of type $j \in J$
+    \end{itemize}
+
+    \newpage
+
+    \item Variables
+    \begin{itemize}
+        \item $x_{ij}$: units of oil of type $i \in I$ used for gasoline of type $j \in J$
+        \item $y_j$: units of gasoline of type $j \in J$ that are produced
+    \end{itemize}
+
+    \item Model
+    \begin{equation*}
+        \begin{array}{llll}
+            \max & \displaystyle\sum_{j \in J}r_j y_j-\displaystyle\sum_{i \in I,j\in J} c_{j} x_{ij} \qquad & & \text{(revenue)} \\ [1.5em]
+            \textrm{s. t.} & \displaystyle\sum_{j \in J}x_{ij} \leq b_i & i \in I & \text{(availability)} \\ [1.5em]
+            & \displaystyle\sum_{i \in I}x_{ij}  = y_j & j \in J & \text{(conservation)} \\ [1.4em]
+            & x_{ij} \leq q_{ij}^{\max}y_j & i \in I, j \in J & \text{(maximum qty)} \\ [.8em]
+            & x_{ij} \geq q_{ij}^{\min}y_j & i \in I, j \in J & \text{(minimum qty)} \\ [.8em]
+            & x_{ij},y_j \geq 0 &  i \in I,j \in J & \text{(nonnegativity)}
+          \end{array}
+    \end{equation*}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{laptop-code} \textbf{Oil blending problem implementation}}
+\end{flushleft}
+\begin{enumerate}
+    \item Write the dataset specified by input:
+    \begin{lstlisting}[language=Python]
+# Set of oil types
+I = range(4)
+
+# Set of gasoline types
+J = {'A', 'B', 'C'}
+
+# Unit cost for oil of type i 
+c = {0:9, 1:7, 2:12, 3:6}
+
+# Availability of oil type i
+b = {0:5000, 1:2400, 2:4000, 3:1500}
+
+# Price of gasoline of type j
+r = {'A':12, 'B':18, 'C':10}
+
+# Maximum quantity (percentage) of oil
+q_max = {}
+for i in I:
+    for j in J:
+        q_max[(str(i), j)] = 1
+q_max[('2', 'A')] = 0.3
+q_max[('1', 'C')] = 0.5
+
+# Minimum quantity (percentage) of oil
+q_min = {}
+for i in I:
+    for j in J:
+        q_min[(str(i), j)] = 0
+q_min[('1', 'A')] = 0.2
+q_min[('2', 'B')] = 0.4\end{lstlisting}
+
+    \item Now we create an empty model and add the variables:
+    \begin{lstlisting}[language=Python]
+# Define a model
+model2 = mip.Model()
+
+# Define variables
+x = {
+    (str(i), j): model2.add_var(name=str(i)+','+j, lb=0)
+    for i in I for j in J
+}
+y = {
+    j: model2.add_var(name=j, lb=0) for j in J
+}\end{lstlisting}
+
+    \item Let us write the objective function: in the general case, it can be written as a sum over the set of models.
+    \begin{lstlisting}[language=Python]
+# Define the objective function
+model2.objective = mip.maximize(
+    mip.xsum(y[j]*r[j] for j in J) - 
+    mip.xsum(c[i]*x[str(i), j] for i in I for j in J)
+)\end{lstlisting}
+
+    \item The constraints can be generated in loops:
+    \begin{lstlisting}[language=Python]
+# CONSTRAINTS
+# Availability constraint
+for i in I:
+    model2.add_constr(mip.xsum(x[str(i), j] for j in J) <= b[i])
+
+# Conservation constraint
+for j in J:
+    model2.add_constr(mip.xsum(x[str(i), j] for i in I) == y[j])
+# Maximum quantity
+for i in I:
+    for j in J:
+        model2.add_constr(x[str(i), j] <= q_max[str(i),j]*y[j])
+# Minimum quantity
+for i in I:
+    for j in J:
+        model2.add_constr(x[str(i), j] >= q_min[str(i),j]*y[j])\end{lstlisting}
+
+\newpage
+    \item The model is complete. Let's solve it and print the optimal solution.
+    \begin{lstlisting}[language=Python]
+# Optimizing command
+print(model2.optimize())
+# OptimizationStatus.OPTIMAL
+
+# Optimal objective function value
+print(model2.objective.x)
+# 96000.0
+
+# Printing the variables values
+for i in model2.vars:
+    print(i.name, i.x)
+# 0,C   0.0
+# 0,A   500.0
+# 0,B   4500.0
+# 1,C   0.0
+# 1,A   2400.0
+# 1,B   0.0
+# 2,C   0.0
+# 2,A   0.0
+# 2,B   4000.0
+# 3,C   0.0
+# 3,A   0.0
+# 3,B   1500.0
+# C     0.0
+# A     2900.0
+# B     10000.0\end{lstlisting}
+\end{enumerate}

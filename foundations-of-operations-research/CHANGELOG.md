@@ -21,6 +21,9 @@ Each version follows the Conventional Commits structure. For more information on
 ### v0.5.1
 
 - refactor $\LaTeX$ files, change PDF a bit
+- add `Laboratory`
+  - add `Introduction`
+    - add `Diet problem`
 
 --------------------
 

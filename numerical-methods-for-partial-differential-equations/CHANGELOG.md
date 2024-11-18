@@ -18,6 +18,8 @@ Each version follows the Conventional Commits structure. For more information on
 
 - add `Basic Concepts`
   - add `Mathematical Models and Scientific Computing`
+  - add `Differential Models and PDEs`
+    - add `ODEs`
 
 --------------------
 

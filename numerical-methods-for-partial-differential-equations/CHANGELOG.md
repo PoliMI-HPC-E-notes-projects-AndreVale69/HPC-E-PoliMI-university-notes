@@ -25,6 +25,8 @@ Each version follows the Conventional Commits structure. For more information on
     - add `PDE, boundary value problem in multidimensional domains`
     - add `Classification of PDEs`
   - add `Numerical Methods`
+  - add `From Mathematical to Numerical Problem`
+    - add `The mathematical problem`
 
 --------------------
 

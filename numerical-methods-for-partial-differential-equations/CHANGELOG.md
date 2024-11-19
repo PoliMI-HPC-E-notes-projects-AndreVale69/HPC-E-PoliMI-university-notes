@@ -9,12 +9,12 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.2.0-dev](#v020-dev)
+- [v0.2.0](#v020)
 - [v0.1.0](#v010)
 
 --------------------
 
-### v0.2.0-dev
+### v0.2.0
 
 - add `Basic Concepts`
   - add `Mathematical Models and Scientific Computing`
@@ -26,7 +26,8 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Classification of PDEs`
   - add `Numerical Methods`
   - add `From Mathematical to Numerical Problem`
-    - add `The mathematical problem`
+    - add `The Mathematical Problem (MP)`
+    - add `The Numerical Problem (NP)`
 
 --------------------
 

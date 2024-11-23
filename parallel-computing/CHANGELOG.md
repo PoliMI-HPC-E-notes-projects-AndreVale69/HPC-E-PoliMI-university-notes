@@ -18,6 +18,7 @@
 ### v0.10.0-dev
 
 - add `Running a CUDA program on a GPU`
+- add `Implementation of CUDA abstractions`
 
 --------------------
 

@@ -19,6 +19,7 @@
 
 - add `Running a CUDA program on a GPU`
 - add `Implementation of CUDA abstractions`
+- add `Advanced thread scheduling`
 
 --------------------
 

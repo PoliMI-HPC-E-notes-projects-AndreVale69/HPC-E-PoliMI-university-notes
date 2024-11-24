@@ -1,0 +1,56 @@
+\subsubsection{Memory and Data Locality in Depth}
+
+In CUDA programming, understanding memory and data locality is crucial for achieving high performance. 
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Memory Hierarchy and Data Locality Matter}}
+\end{flushleft}
+We propose a piece of code of a kernel function where there is a computation of the blur in an image:
+\begin{lstlisting}[language=C++]
+// get the average of the surrounding 2xBLUR_SIZE x 2xBLUR_SIZE box
+for(int blurRow = -BLUR_SIZE; blurRow < BLUR_SIZE+1; ++blurRow)
+{
+    for(int blurCol = -BLUR_SIZE; blurCol < BLUR_SIZE+1; ++blurCol)
+    {
+        int curRow = Row + blurRow;
+        int curCol = Col + blurCol;
+        // Verify we have a valid image pixel
+        if(curRow > -1 && curRow < h && curCol > -1 && curCol < w)
+        {
+            pixVal += in[curRow * w + curCol]; $\label{code: access global var}$
+            // keep track of number of pixels
+            // in the accumulated total
+            pixels++;
+        }
+    }
+}
+
+// write our new pixel value out
+out[Row * w + Col] = (unsigned char)(pixVal / pixels);
+\end{lstlisting}
+
+\noindent
+The \textbf{code accesses global memory for input matrix elements}. This is evident from the line \ref{code: access global var} where \texttt{in} is likely a pointer to the global memory holding the image data. Therefore, each thread accesses global memory to read the pixel values within a 2xBLUR\_SIZE x 2xBLUR\_SIZE box around the current pixel.
+\begin{itemize}
+    \item Each \textbf{memory access is 4 bytes} per floating point addition.
+    \item The \textbf{memory bandwidth is 4 bytes per second per FLOP}, 4B/s of memory bandwidth/FLOPS.
+\end{itemize}
+Assuming a GPU with a peak floating point rate of 1,600 GigaFLOPS and a DRAM bandwidth of 600 GB/s, then 1,600 GigaFLOPS would require 6,400 GB/s of memory bandwidth to achieve the peak FLOPS. However, the 600 GB/s memory bandwidth limits execution to 150 GFLOPS, which is only 9.3\% of the peak floating point execution rate. \textbf{To get close to the 1,600 GigaFLOPS, it is necessary to drastically cut down memory accesses}.
+
+\highspace
+In other words, there is an \textbf{evident Memory Bandwidth Bottleneck}. Even with a high peak floating-point rate, the actual performance can be limited by memory bandwidth (to achieve 1,600 GigaFLOPS, the kernel would require 6,400 GB/s of memory bandwidth, but the available bandwidth is only 600 GB/s).
+
+\newpage
+
+\noindent
+Therefore, it is important to understand that \textbf{minimizing global memory access and optimizing data locality are essential strategies in CUDA programming to achieve high performance}. This is because accessing global memory often results in high latency, which can significantly degrade the performance of our GPU application.
+\begin{itemize}
+    \item \definition{Global memory access}. Global memory is the largest and slowest memory available on a GPU. \textbf{Frequent accesses to global memory can cause significant performance bottlenecks due to high latency}.
+    
+    \item \definition{Bandwidth and Latency}. While global memory provides high bandwidth, the latency associated with \textbf{accessing it can slow overall performance}, especially when multiple threads are accessing it simultaneously.
+    
+    \item \definition{Memory hierarchy}. GPUs have a hierarchical memory structure that includes registers, shared memory, and global memory. \textbf{Using a proper memory structure} can improve performance and reduce memory bandwidth. We discussed these topics in Section \ref{CUDA memory: Types of CUDA device memory models visible to kernels}, page \pageref{CUDA memory: Types of CUDA device memory models visible to kernels}.
+
+    \item \definition{Data Locality and Caching}. Optimizing data locality (keeping frequently accessed data close to where it is processed) is key to improving performance. \textbf{Using shared memory to cache data that is accessed multiple times by threads can significantly reduce the need for global memory accesses}.
+\end{itemize}

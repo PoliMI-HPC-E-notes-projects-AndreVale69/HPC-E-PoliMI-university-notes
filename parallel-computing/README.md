@@ -4,7 +4,7 @@ These notes are an unofficial resource and shouldn't replace the course material
 
 As I have highlighted, a student should choose the teacher's material or a book on the topic. These notes can only be a helpful material.
 
-The notes are taken from the books required for the course: 
+<details><summary>(<i>expandable</i>) The notes are taken from the books and other resources required for the course.</summary>
 
 - Gene M Amdahl. Validity of the single processor approach to achieving large scale computing capabilities, reprinted from the afips conference proceedings, vol. 30 (atlantic city, nj, apr/ 18-20), afips press, reston, va., 1967, pp. 483-485, when dr. amdahl was at international business machines corporation, sunnyvale, california. *IEEE Solid-State Circuits Society Newsletter*, 12(3):19-20, 2007.
 - Guy E. Blelloch, Laxman Dhulipala and Yihan Sun. Introduction to parallel algorithms. [PDF](https://www.cs.cmu.edu/~guyb/paralg/paralg/parallel.pdf), 2024. [Accessed 22-10-2024]
@@ -16,7 +16,10 @@ The notes are taken from the books required for the course:
 - M. McCool, J. Reinders, and A. Robison. *Structured Parallel Programming: Patterns for Efficient Computation*. ITPro collection. Elsevier Science, 2012.
 - Microsoft. The critical directive. [website](https://learn.microsoft.com/en-us/cpp/parallel/openmp/a-examples?view=msvc-170#a5-the-critical-directive), 2024. [Accessed 29-10-2024].
 - M. Nemirovsky and D. Tullsen. *Multithreading Architecture*. Synthesis Lectures on Computer Architecture. Springer International Publishing, 2022.
+- University of Michigan. EECS Department. Prof. Ronald Dreslinski. Lecture 5, Synchronization I - EECS 570, 2024. [PDF](https://www.eecs.umich.edu/courses/eecs570/lectures/5.pdf). [Accessed 24-11-2024].
 - Wikipedia. Cache (computing) - Wikipedia. [website](https://en.wikipedia.org/wiki/Cache_(computing)). [Accessed 20-10-2024].
+
+</details>
 
 You can view/download the PDF [here](notes/parallel-computing.pdf). In the [notes folder](notes/), you can also see the source code.
 

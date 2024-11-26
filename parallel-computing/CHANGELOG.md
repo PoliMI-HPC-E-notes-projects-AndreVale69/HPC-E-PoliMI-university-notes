@@ -22,6 +22,7 @@
 - add `Advanced thread scheduling`
 - add `Memory and Data Locality in Depth`
 - add `Tiling Technique`
+  - add `Tiled Matrix Multiplication`
 
 --------------------
 

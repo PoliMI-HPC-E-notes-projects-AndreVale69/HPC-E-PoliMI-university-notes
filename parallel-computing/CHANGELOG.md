@@ -23,6 +23,7 @@
 - add `Memory and Data Locality in Depth`
 - add `Tiling Technique`
   - add `Tiled Matrix Multiplication`
+  - add `Implementation Tiled Matrix Multiplication`
 
 --------------------
 

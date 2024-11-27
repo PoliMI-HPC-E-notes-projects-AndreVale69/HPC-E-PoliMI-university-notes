@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.10.0-dev](#v0100-dev)
+- [v0.10.0](#v0100)
 - [v0.9.0](#v090)
 - [v0.8.0](#v080)
 - [v0.7.0](#v070)
@@ -15,7 +15,7 @@
 
 --------------------
 
-### v0.10.0-dev
+### v0.10.0
 
 - add `Running a CUDA program on a GPU`
 - add `Implementation of CUDA abstractions`

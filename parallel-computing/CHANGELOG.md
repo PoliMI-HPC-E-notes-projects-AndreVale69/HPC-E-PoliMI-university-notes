@@ -24,6 +24,7 @@
 - add `Tiling Technique`
   - add `Tiled Matrix Multiplication`
   - add `Implementation Tiled Matrix Multiplication`
+  - add `Any size matrix handling`
 
 --------------------
 

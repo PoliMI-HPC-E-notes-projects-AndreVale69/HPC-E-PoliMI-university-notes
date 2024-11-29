@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.11.0-dev](#v0110-dev)
+- [v0.11.0](#v0110)
 - [v0.10.0](#v0100)
 - [v0.9.0](#v090)
 - [v0.8.0](#v080)
@@ -16,9 +16,10 @@
 
 --------------------
 
-### v0.11.0-dev
+### v0.11.0
 
 - add `Optimizing Memory Coalescing`
+- finish `GPU Architecture` section
 
 --------------------
 

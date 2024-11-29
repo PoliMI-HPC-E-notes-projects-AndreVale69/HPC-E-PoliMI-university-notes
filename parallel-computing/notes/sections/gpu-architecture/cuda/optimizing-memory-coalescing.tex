@@ -119,3 +119,166 @@ The \textbf{consequences of un-coalesced access} are:
 
     In contrast, if the same warp accesses memory in a non-sequential manner (thread 0 accesses element 0, thread 1 accesses element 4, thread 2 accesses element 8, and so on), \textbf{multiple memory transactions are required}, reducing efficiency.
 \end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we guarantee coalesced access?}}
+\end{flushleft}
+Accesses in a warp are to consecutive locations \textbf{if the index in an array access is in the form of}:
+\begin{equation}
+    \texttt{(expression with terms independent of threadIdx.x) + threadIdx.x}
+\end{equation}
+This formula ensures coalesced memory access in GPU programming.
+\begin{itemize}
+    \item \texttt{threadIdx.x}: represents the \textbf{thread index} within a warp.
+
+    \item \texttt{Expression Independent of threadIdx.x}: this part of the formula ensures that the \textbf{base index is the same for all threads within a warp}. It's crucial for aligning memory access.
+\end{itemize}
+But \emph{why does it work?} For two main reasons:
+\begin{enumerate}
+    \item \textbf{Consecutive Access}: if the base index (the part of the expression that is independent of \texttt{threadIdx.x}) is the same for all threads, then adding \texttt{threadIdx.x} to that base index means that each thread is accessing a consecutive location.
+
+    \item \textbf{Memory Coalescing}: using this formula ensures that all threads within a warp are accessing adjacent memory locations, resulting in coalesced access.
+\end{enumerate}
+
+\highspace
+Before we continue, we need to understand \textbf{how a matrix is stored in memory}. It depends on the language, the implementation, and so on, but in general, when we say \emph{linear memory space}, a 2-dimensional matrix is stored as in Figure \ref{fig: linear memory space} (page \pageref{fig: linear memory space}).
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.9\textwidth]{img/cuda-linear-memory-space-1.pdf}
+    \caption{Linear memory space.}
+    \label{fig: linear memory space}
+\end{figure}
+
+\noindent
+In GPU programming, matrix multiplication involves two main access patterns:
+\begin{itemize}
+    \item Matrix \texttt{A} (left operator): the access pattern is \texttt{A[Row * n + i]}
+    \begin{itemize}
+        \item \texttt{i} is the \textbf{loop counter} in the inner product loop of the kernel code;
+        \item \texttt{Row} is the \textbf{current row being processed};
+        \item \texttt{n} is the \textbf{number of columns} in matrix \texttt{A}.
+    \end{itemize}
+
+    \item Matrix \texttt{B} (right operator): the access pattern is \texttt{B[i * k + Col]}
+    \begin{itemize}
+        \item \texttt{i} is the \textbf{loop counter};
+        \item \texttt{k} is the \textbf{number of columns} in matrix \texttt{B};
+        \item \texttt{Col} is calculated as:
+        \begin{equation*}
+            \texttt{blockIdx.x * blockDim.x + threadIdx.x}
+        \end{equation*}
+        This means that \textbf{threads access elements in matrix B based on their column index}.
+    \end{itemize}
+\end{itemize}
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.6\textwidth]{img/cuda-linear-memory-space-2.pdf}
+\end{figure}
+
+\begin{itemize}
+    \item Matrix \texttt{B}. The accesses are \textbf{Coalesced}. As we can see from the figure \ref{fig: coalesced accesses}, the accesses are coalesced. This is because matrix \texttt{B} is stored in memory in a linear, one-dimensional array. For a 2D matrix, the elements are stored row by row.
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/cuda-linear-memory-space-3.pdf}
+        \caption{Coalesced accesses.}
+        \label{fig: coalesced accesses}
+    \end{figure}
+  
+    In a warp, threads are indexed consecutively, like $\texttt{threadIdx.x} = 0, 1, \dots$. When \texttt{i} is fixed for a loop iteration, successive threads access successive memory locations in matrix \texttt{B}. For example:
+    \begin{itemize}
+        \item Thread 0 accesses \texttt{B[i * k + 0]}
+        \item Thread 1 accesses \texttt{B[i * k + 1]}
+        \item Thread 2 accesses \texttt{B[i * k + 2]}
+    \end{itemize}
+    The main reason for coalesced access in matrix \texttt{B} is to \textbf{align thread indexes with contiguous memory addresses}. This optimizes memory transactions, making data retrieval more efficient and increasing overall performance.
+
+
+    \item Matrix \texttt{A}. The accesses are \textbf{Un-Coalesced}. The figure shows why the accesses for matrix A are not coalesced.
+    
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/cuda-linear-memory-space-4.pdf}
+        \caption{Un-Coalesced Accesses.}
+    \end{figure}
+
+    The access pattern \texttt{A[Row * n + i]} means that each thread in a warp accesses different rows of the matrix \texttt{A}. If we consider consecutive threads (e.g. thread 0, thread 1, thread 2, thread 3), they access elements in different rows.
+    
+    Threads in a warp access elements vertically, not horizontally. For example, if \texttt{Row} is fixed for a given iteration of the outer loop, \texttt{i} varies. This means that thread 0 accesses \texttt{A[Row * n + 0]}, thread 1 accesses \texttt{A[Row * n + 1]}, and so on. This results in non-consecutive memory locations being accessed by consecutive threads.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{How to optimize the matrix multiplication to avoid un-coalesced accesses}}
+\end{flushleft}
+\definition{Corner Turning} is a \textbf{technique used in matrix multiplication to optimize memory access patterns}, especially in parallel computing environments like GPU. The goal is to achieve memory coalescing, which improves performance by ensuring that memory accesses are aligned and contiguous.
+
+\highspace
+Corner Turning works as follows:
+\begin{itemize}
+    \item \important{Column-Major Layout}. Normally, matrices are stored in a row-major layout (elements are stored row by row). In corner turning, the \textbf{second matrix} (\texttt{B}) is \textbf{stored in a column-major layout} (elements are stored column by column).
+
+    \item \important{Tiled Access}. The \textbf{matrices are divided into smaller submatrices or tiles}. Each thread loads a tile of the first matrix (\texttt{A}) and a tile of the second matrix (\texttt{B}) into shared memory.
+
+    \item \important{Memory Coalescing}. \textbf{By loading tiles into shared memory},\break \textbf{threads can access consecutive memory locations within the tiles}. This ensures that memory accesses are coalesced, reducing memory latency and increasing bandwidth utilization.
+\end{itemize}
+In practice, it works as shown in the following figure:
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/cuda-corner-turning-1.pdf}
+\end{figure}
+\begin{itemize}
+    \item Original Access Pattern:
+    \begin{itemize}
+        \item Matrix \texttt{d\_M}. The original access pattern is \textbf{horizontal}. \textbf{Each thread accesses consecutive elements in a row}.
+
+        \item Matrix \texttt{d\_N}. The original access pattern is \textbf{vertical}. \textbf{Each thread accesses elements in different rows}.
+    \end{itemize}
+
+    \newpage
+
+    \item Tiled Access Pattern:
+    \begin{itemize}
+        \item Matrix \texttt{d\_M}. The matrix is \textbf{divided into smaller horizontal tiles}. Each tile is a small submatrix that fits into shared memory.
+
+        \item Matrix \texttt{d\_N}. Similarly, this matrix is \textbf{divided into smaller vertical tiles}, which are also small enough to fit into shared memory.
+    \end{itemize}
+
+    \item Shared Memory Operations:
+    \begin{itemize}
+        \item \textbf{Loading Tiles into Shared Memory}. Both tiles from \texttt{d\_M} and \texttt{d\_N} are loaded into shared memory. This allows for \emph{more efficient access patterns}.
+        
+        \item \textbf{Matrix Multiplication}. The \textbf{multiplication of these tiles is performed using the values stored in shared memory}. This step ensures that the data access is coalesced and reduces latency.
+    \end{itemize}
+\end{itemize}
+By dividing matrices into tiles and loading them into shared memory, \textbf{threads can access successive memory locations within a tile}. This \textbf{\emph{ensures that memory accesses are concatenated}}, reducing memory transactions and increasing efficiency.
+
+\highspace
+In addition, using shared memory for these tiles reduces the need to repeatedly access global memory, which is slower. Shared memory access is much faster, further improving the performance of matrix multiplication.
+
+\highspace
+From a code point of view, we see:
+\begin{itemize}
+    \item Original Pattern:
+    \begin{lstlisting}
+Matrix d_M (Row-major):
+Thread 0: M[0][0], M[0][1], ...
+Thread 1: M[1][0], M[1][1], ...
+
+Matrix d_N (Column-major):
+Thread 0: N[0][0], N[1][0], ...
+Thread 1: N[0][1], N[1][1], ...\end{lstlisting}
+
+    \item Tiled Pattern:
+    \begin{enumerate}
+        \item Load Tiles into Shared Memory:
+        \begin{lstlisting}
+Tile from d_M: [[M00, M01], [M10, M11]]
+Tile from d_N: [[N00, N10], [N01, N11]]\end{lstlisting}
+
+        \item Perform Multiplication. Threads use values from shared memory for the multiplication, ensuring coalesced access and reduced memory latency.
+    \end{enumerate}
+\end{itemize}

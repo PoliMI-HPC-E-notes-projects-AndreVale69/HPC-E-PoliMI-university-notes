@@ -1,0 +1,96 @@
+\subsubsection{CUDA Kernel}
+
+Launching a CUDA kernel involves \textbf{defining a function that will run on the GPU and then executing this function from the host (CPU) code}.
+
+\begin{enumerate}
+    \item \important{Defining functions}.
+    \begin{itemize}
+        \item CPU Function:
+\begin{lstlisting}[language=C++]
+void CPUFunction() {
+    printf("This function is defined to run on the CPU.");
+}\end{lstlisting}
+        This function runs on the CPU and prints a message.
+
+        \item GPU Function:
+\begin{lstlisting}[language=C++]
+__global__ void GPUFunction() {
+    printf("This function is defined to run on the GPU.");
+}\end{lstlisting}
+        This function is defined to run on the GPU, indicated by the\break \texttt{\_\_global\_\_} qualifier, and it prints a message when executed.
+    \end{itemize}
+
+
+    \item \important{Launching the Kernel}. In the main function, we launch the GPU function using a special syntax:
+    \begin{lstlisting}[language=C++]
+int main() {
+    CPUFunction();
+
+    // Launch the GPU kernel
+    // with 1 block and 1 thread
+    GPUFunction<<<1, 1>>>();
+    cudaDeviceSynchronize();
+}
+    \end{lstlisting}
+    \begin{itemize}
+        \item The \texttt{CPUFunction()} is called normally, as it's a CPU function.
+        \item The \texttt{GPUFunction<<<1, 1>>>();} syntax launches the GPU kernel with a specified execution configuration: \texttt{<<<1, 1>>>} means 1 block and 1 thread per block.
+        \item \texttt{cudaDeviceSynchronize()} is called to ensure that the CPU waits for the GPU to finish executing the kernel before continuing.
+    \end{itemize}
+\end{enumerate}
+Just like with variables (table \ref{table: CUDA Memory Types, Scope, and Lifetime}, page \pageref{table: CUDA Memory Types, Scope, and Lifetime}), CUDA provides specific keywords that define the scope and lifetime of functions.
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c @{}}
+        \toprule
+        \textbf{Function Declaration} & \textbf{Executed on} & \textbf{Callable from} \\
+        \midrule
+        \texttt{\_\_device\_\_ type DeviceFunc()} & Device & Device \\
+        \texttt{\_\_global\_\_ void KernelFunc()} & Device & Host \\
+        \texttt{\_\_host\_\_ type HostFunc()} & Host & Host \\
+        \bottomrule
+    \end{tabular}
+    \caption{CUDA function qualifiers.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How can we customize the kernel?}}
+\end{flushleft}
+Kernel configuration in CUDA involves specifying \textbf{how many blocks and threads will be used} to execute a kernel on the GPU. The key parameters are:
+\begin{itemize}
+    \item \important{Number of Blocks}. Specifies \textbf{how many blocks} of threads will be launched on the GPU.
+    \item \important{Number of Threads per Block}. Specifies \textbf{how many threads} will be \textbf{in each block}.
+\end{itemize}
+For a \emph{1D hierarchy}, we use simple integer numbers to specify these values because a 1D grid or block can be represented by a single dimension:
+\begin{lstlisting}[language=C++]
+// Example of launching a kernel with 1 block and 256 threads in 1D
+KernelFunc<<<1, 256>>>();    
+\end{lstlisting}
+For \emph{higher dimensions} (2D or 3D), CUDA uses the \texttt{dim3} \textbf{type to represent the grid and block dimensions}. \texttt{dim3} is a CUDA-specific type that can hold three unsigned integer values, representing the dimensions in the $x$, $y$, and $z$ directions. This provides a flexible way to configure more complex thread hierarchies:
+\begin{lstlisting}[language=C++]
+// Example of launching a kernel with a 2D grid and blocks
+dim3 gridDim(16, 16); // 16 blocks in x and y dimensions
+dim3 blockDim(16, 16); // 16 threads per block in x and y dimensions
+KernelFunc<<<gridDim, blockDim>>>();
+\end{lstlisting}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{CPU-GPU Synchronization}}
+\end{flushleft}
+In CUDA, \textbf{kernel executions are asynchronous}, meaning that the \textbf{CPU can continue to execute other instructions while the GPU is running the kernel}. However, there are times when synchronization is required to ensure that the CPU is waiting for the GPU to complete its tasks.
+\begin{itemize}
+    \item \textbf{Asynchronous Kernel Launch}. When a kernel is launched, the CPU can proceed with subsequent instructions without waiting for the GPU to finish.
+\begin{lstlisting}[language=C++]
+KernelFunc<<<1, 256>>>();
+// The CPU immediately continues executing the next instructions
+\end{lstlisting}
+
+    \item \textbf{Synchronizing CPU and GPU}. To synchronize, CUDA provides runtime functions such as \texttt{cudaDeviceSynchronize()}, which ensures that the CPU waits until the GPU has completed all preceding tasks.
+\begin{lstlisting}[language=C++]
+KernelFunc<<<1, 256>>>();
+// Wait for the GPU to finish
+cudaDeviceSynchronize();
+\end{lstlisting}
+\end{itemize}

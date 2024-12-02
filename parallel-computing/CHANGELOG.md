@@ -24,6 +24,8 @@
   - add `CUDA Basics`
     - add `GPGPU Best Practices`
     - add `Compilation`
+    - add `Debugging`
+    - add `CUDA Kernel`
 
 --------------------
 

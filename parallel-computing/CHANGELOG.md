@@ -23,6 +23,7 @@
   - add `Introduction`
   - add `CUDA Basics`
     - add `GPGPU Best Practices`
+    - add `Compilation`
 
 --------------------
 

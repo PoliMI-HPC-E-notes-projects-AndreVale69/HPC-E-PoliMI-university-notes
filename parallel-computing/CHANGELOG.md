@@ -26,6 +26,7 @@
     - add `Compilation`
     - add `Debugging`
     - add `CUDA Kernel`
+  - add `Execution Model`
 
 --------------------
 

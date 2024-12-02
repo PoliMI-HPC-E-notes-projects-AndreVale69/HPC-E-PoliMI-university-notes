@@ -94,3 +94,46 @@ KernelFunc<<<1, 256>>>();
 cudaDeviceSynchronize();
 \end{lstlisting}
 \end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Error handling}}
+\end{flushleft}
+The errors in CUDA can be caught in two ways:
+\begin{itemize}
+    \item Return type: most \textbf{CUDA runtime functions return a variable of type} \texttt{cudaError\_t}. This type is an enumerated value that indicates the success or failure of the function call.
+    
+    \item Kernels return \texttt{void}: CUDA kernel functions return \texttt{void}, meaning they do not provide direct feedback about errors. Instead, \textbf{errors are checked using specific functions}, such as: \texttt{cudaGetLastError()}. It returns the \textbf{last error that occurred during the execution of a CUDA function}.
+    \begin{lstlisting}[language=C++]
+cudaError_t err = cudaGetLastError();
+if (err != cudaSuccess) {
+    printf("CUDA error: %s\n", cudaGetErrorString(err));
+}
+    \end{lstlisting}
+\end{itemize}
+\textbf{Asynchronous errors} (during kernel execution) are reported as error states of \texttt{cudaDeviceSynchronize()}. It \textbf{blocks the CPU thread until the GPU has completed all previously requested tasks}. This includes kernel executions, memory transfers, and other asynchronous operations issued.
+\begin{lstlisting}[language=C++]
+kernel<<<blocks, threads>>>();
+cudaError_t err = cudaDeviceSynchronize();
+if (err != cudaSuccess) {
+    printf("CUDA error: %s\n", cudaGetErrorString(err));
+}
+\end{lstlisting}
+\begin{examplebox}[: error handling]
+    \begin{lstlisting}[language=C++]
+cudaError_t err1, err2;
+err1 = cudaMallocManaged(&a, N);
+SomeKernel<<<1, -1>>>(); // Invalid thread number
+err2 = cudaGetLastError();
+if (err1 != cudaSuccess || err2 != cudaSuccess) {
+    printf("Error 1: %s\n", cudaGetErrorString(err1));
+    printf("Error 2: %s\n", cudaGetErrorString(err2));
+}\end{lstlisting}
+    \begin{itemize}
+        \item \texttt{err1 = cudaMallocManaged(\&a, N);} attempts to allocate managed memory and returns an error code if it fails.
+        \item \texttt{cudaGetErrorString(err1)} converts the error code to a readable string.
+        \item \texttt{SomeKernel<<<1, -1>>>();} intentionally uses an invalid thread configuration to generate an error.
+        \item \texttt{err2 = cudaGetLastError();} captures the error from the kernel launch.
+        \item \texttt{cudaGetErrorString(err2)} converts the kernel launch error code to a readable string.
+    \end{itemize}
+\end{examplebox}

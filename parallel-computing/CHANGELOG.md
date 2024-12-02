@@ -27,6 +27,7 @@
     - add `Debugging`
     - add `CUDA Kernel`
   - add `Execution Model`
+  - add `Querying Device Properties`
 
 --------------------
 

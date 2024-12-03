@@ -1,0 +1,193 @@
+\subsection{Memory hierarchy}
+
+The memory hierarchy in CUDA was explained in Section \ref{subsubsection: Memory model}, page \pageref{subsubsection: Memory model}. Here is a small summary:
+\begin{itemize}
+    \item \important{Per-thread} (registers):
+    \begin{itemize}
+        \item \textbf{Scope}: Per thread.
+        \item \textbf{Lifetime}: Duration of the thread.
+        \item \textbf{Speed}: Fastest memory in the CUDA memory hierarchy.
+        \item \textbf{Usage}: Used for storing frequently accessed variables and temporary data.
+        \item \textbf{Limitations}: Limited in size; excessive usage can lead to spilling into local memory, which is slower.
+    \end{itemize}
+
+    \item \important{Per-block} (shared memory, cache):
+    \begin{itemize}
+        \item \textbf{Scope}: Per block.
+        \item \textbf{Lifetime}: Duration of the block.
+        \item \textbf{Speed}: Much faster than global memory, similar to L1 cache.
+        \item \textbf{Usage}: Used for data sharing among threads within the same block, enabling efficient inter-thread communication.
+        \item \textbf{Configuration}: Typically user-managed, allowing for explicit control over data placement.
+        \item \textbf{Limitations}: Limited in size; excessive usage can limit the number of active blocks per SM.
+    \end{itemize}
+
+    \item \important{Global Memory} (off-chip DRAM):
+    \begin{itemize}
+        \item \textbf{Scope}: All threads.
+        \item \textbf{Lifetime}: Duration of the application.
+        \item \textbf{Speed}: Significantly slower than shared memory and registers due to higher latency.
+        \item \textbf{Usage}: Used for data that needs to be accessed by multiple threads or blocks.
+        \item \textbf{Characteristics}: Large in size, but high latency; optimizing access patterns (coalesced accesses) can improve performance.
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Memory Accessibility}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Per-thread}:
+    \begin{itemize}
+        \item \textbf{Host}: cannot directly access registers.
+        \item \textbf{Device}: registers are accessed exclusively by the thread that owns them.
+        \item \textbf{Operations}:
+        \begin{itemize}
+            \item \textbf{Host}: none. The host cannot allocate, deallocate, or access registers directly.
+            \item \textbf{Device}: each thread can read from and write to its own registers. But registers are private to the thread, meaning \emph{no other thread can access another thread's registers}.
+        \end{itemize}
+    \end{itemize}
+
+    \item \important{Per-block}:
+    \begin{itemize}
+        \item \textbf{Host}: cannot directly access shared memory, but can specify shared memory size for each kernel launch.
+        \item \textbf{Device}: can read from and write to shared memory within a block.
+        \item \textbf{Operations}:
+        \begin{itemize}
+            \item \textbf{Host}: none directly (can specify size in kernel launch).
+            \item \textbf{Device}: Read/Write.
+        \end{itemize}
+    \end{itemize}
+
+    \item \important{Global Memory}:
+    \begin{itemize}
+        \item \textbf{Host}: can allocate and deallocate memory using \texttt{cudaMalloc} and \texttt{cudaFree}. Can copy data to/from global memory using \texttt{cudaMemcpy}.
+        \item \textbf{Device}: can read from and write to global memory directly.
+        \item \textbf{Operations}:
+        \begin{itemize}
+            \item \textbf{Host}: \texttt{cudaMalloc}, \texttt{cudaFree}, \texttt{cudaMemcpy}, \texttt{cudaMemset}.
+            \item \textbf{Device}: Read/Write.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{memory} \textbf{Memory Management APIs}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{\texttt{cudaMalloc}}:
+    \begin{itemize}
+        \item \textbf{Purpose}: allocates memory on the GPU.
+        \item \textbf{Usage}: used when we need to allocate space for variables or arrays that the GPU will use.
+        \item \textbf{Function signature}:
+        \begin{lstlisting}[language=C++]
+cudaError_t cudaMalloc(void** devPtr, size_t size);\end{lstlisting}
+        \item \textbf{Parameters}:
+        \begin{itemize}
+            \item \texttt{devPtr}: pointer to the allocated device memory.
+            \item \texttt{size}: size in bytes of the allocated memory.
+        \end{itemize}
+        \item \example{Example}:
+        \begin{lstlisting}[language=C++]
+float* d_array;
+cudaMalloc((void**)&d_array, N * sizeof(float));\end{lstlisting}
+    \end{itemize}
+
+    \item\important{\texttt{cudaMallocHost}}:
+    \begin{itemize}
+        \item \textbf{Purpose}: allocates pinned memory on the host.
+        \item \textbf{Usage}: used for host memory that can be asynchronously copied to the device, improving transfer efficiency.
+        \item \textbf{Function signature}:
+        \begin{lstlisting}[language=C++]
+cudaError_t cudaMallocHost(void** ptr, size_t size);\end{lstlisting}
+        \item \textbf{Parameters}:
+        \begin{itemize}
+            \item \texttt{ptr}: pointer to the allocated host memory.
+            \item \texttt{size}: size in bytes of the allocated memory.
+        \end{itemize}
+        \item \example{Example}:
+        \begin{lstlisting}[language=C++]
+float* h_array;
+cudaMallocHost((void**)&h_array, N * sizeof(float));\end{lstlisting}
+    \end{itemize}
+
+    \item \important{\texttt{cudaFree}}:
+    \begin{itemize}
+        \item \textbf{Purpose}: frees memory that was allocated on the GPU.
+        \item \textbf{Usage}: used to deallocate memory that was previously allocated with \texttt{cudaMalloc}.
+        \item \textbf{Function signature}:
+        \begin{lstlisting}[language=C++]
+cudaError_t cudaFree(void* devPtr);\end{lstlisting}
+        \item \textbf{Parameters}:
+        \begin{itemize}
+            \item \texttt{devPtr}: pointer to the memory to be freed.
+        \end{itemize}
+        \item \example{Example}:
+        \begin{lstlisting}[language=C++]
+float* d_array;
+cudaFree(d_array);\end{lstlisting}
+    \end{itemize}
+
+    \item \important{\texttt{cudaFreeHost}}:
+    \begin{itemize}
+        \item \textbf{Purpose}: frees pinned memory that was allocated on the host.
+        \item \textbf{Usage}: used to deallocate memory that was previously allocated with \texttt{cudaMallocHost}.
+        \item \textbf{Function signature}:
+        \begin{lstlisting}[language=C++]
+cudaError_t cudaFreeHost(void* ptr);\end{lstlisting}
+        \item \textbf{Parameters}:
+        \begin{itemize}
+            \item \texttt{ptr}: pointer to the memory to be freed.
+        \end{itemize}
+        \item \example{Example}:
+        \begin{lstlisting}[language=C++]
+float* h_array;
+cudaFreeHost(h_array);\end{lstlisting}
+    \end{itemize}
+
+    \item \important{\texttt{cudaMemcpy}}:
+    \begin{itemize}
+        \item \textbf{Purpose}: copies data between host and device, or between different regions of device memory.
+        \item \textbf{Usage}: used for transferring data to and from the GPU, or between different memory regions on the GPU.
+        \item \textbf{Function signature}:
+        \begin{lstlisting}[language=C++]
+cudaError_t cudaMemcpy(void* dst, const void* src, size_t count, cudaMemcpyKind kind);\end{lstlisting}
+        \item \textbf{Parameters}:
+        \begin{itemize}
+            \item \texttt{dst}: destination pointer.
+            \item \texttt{src}: source pointer.
+            \item \texttt{count}: size in bytes of the memory to be copied.
+            \item \texttt{kind}: type of copy operation (e.g., \texttt{cudaMemcpyHostToDevice}, \texttt{cudaMemcpyDeviceToHost}, \texttt{cudaMemcpyDeviceToDevice})
+        \end{itemize}
+        \item \example{Example}:
+        \begin{lstlisting}[language=C++]
+cudaMemcpy(d_array, h_array, N * sizeof(float), cudaMemcpyHostToDevice);\end{lstlisting}
+    \end{itemize}
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{\texttt{cudaMallocHost}/\texttt{cudaFreeHost} can reduce CPU performance}}
+\end{flushleft}
+\definition{Pinned memory} (or page-locked memory) is a \textbf{region of system memory that is \dquotes{locked} and cannot be paged out by the operating system}. This type of memory provides faster data transfer rates between the CPU and GPU because it allows for direct memory access (DMA) without the need for the CPU to perform intermediate steps. Since \texttt{cudaMallocHost} and \texttt{cudaFreeHost} work on this type of memory, the possible worst-case scenarios are:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \important{Limited System Resources}. \textbf{Pinned memory consumes physical RAM}. When we allocate a large amount of pinned memory, it reduces the available RAM for other system tasks, which can lead to increased memory pressure and reduced performance for other applications.
+
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \important{Increased Memory Allocation Time}. \textbf{Allocating pinned memory} (\texttt{cudaMallocHost}) \textbf{is generally more time-consuming} than allocating pageable memory because the operating \textbf{system must ensure that the allocated memory pages are locked in RAM and cannot be paged out}.
+    
+    Similarly, freeing pinned memory (\texttt{cudaFreeHost}) involves \textbf{unlocking these pages, which can also be a time-consuming operation}.
+
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \important{Memory Fragmentation}. \textbf{Frequent allocations and deallocations of pinned memory can lead to memory fragmentation}. Over time, this fragmentation can make it harder for the operating system to find contiguous blocks of free memory, which can slow down memory allocation and deallocation operations.
+
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \important{Reduced Cache Efficiency}. Pinned memory allocations can affect the CPU's cache efficiency. \textbf{When a large portion of memory is pinned, it may reduce the effectiveness of the CPU's memory caching mechanisms}, leading to increased memory access times for other processes.
+\end{itemize}
+Is suggest to use the pinned memory when:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Performance-Critical Data Transfers}}. Use pinned memory for data transfers that are critical for performance, where the speedup from faster data transfer rates outweighs the potential downsides.
+    
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Async Operations}}. Pinned memory is particularly beneficial for asynchronous data transfers between the host and device, enabling overlap of computation and data transfer for better performance.
+\end{itemize}

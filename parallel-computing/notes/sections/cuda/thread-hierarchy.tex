@@ -1,0 +1,137 @@
+\subsection{Thread hierarchy}
+
+The \definition{CUDA thread hierarchy} is a fundamental concept in CUDA programming that allows for organizing and managing parallel computation tasks efficiently on NVIDIA GPUs. As we presented in Section \ref{subsubsection: Basics of CUDA}, on page \pageref{subsubsection: Basics of CUDA}, the hierarchy consists of:
+\begin{enumerate}
+    \item \important{Threads}
+    \begin{itemize}
+    	\item \textbf{Basic Execution Unit}. A thread is the smallest unit of execution in CUDA. Each thread executes a portion of the overall computation.
+    	\item \textbf{Unique Thread ID}. Each thread within a block has a unique ID, which can be accessed using built-in variables like \texttt{threadIdx}.
+    \end{itemize}
+ 
+	\item \important{Thread Blocks}
+	\begin{itemize}
+		\item \textbf{Group of Threads}. Threads are grouped into blocks. A thread block can contain up to 1024 threads, depending on the GPU architecture.
+		\item \textbf{Cooperation and Communication}. Threads within the same block can cooperate and share data through shared memory, and they can synchronize using \texttt{\_\_syncthreads()}.
+		\item \textbf{Unique Block ID}. Each block within a grid has a unique ID, which can be accessed using \texttt{blockIdx}.
+	\end{itemize}
+ 
+ 	\item \important{Grids}
+ 	\begin{itemize}
+ 		\item \textbf{Collection of Blocks}. Blocks are grouped into a grid. A grid can contain up to $2^{31} - 1$ blocks\footnote{The limit of $2^{31} - 1$ blocks in CUDA grid comes from the maximum range of signed 32-bit integer. CUDA uses signed 32-bit integers to represent the indices of blocks within a grid. A signed 32-bit integer can represent values from $-2^{31}$ to $2^{31} - 1$. Since negative block indices don't make sense in the context of a grid, CUDA only uses positive values. Therefore, the maximum positive value that can be used is $2^{31} - 1$, which equals $2'147'483'647$.}.
+ 		\item \textbf{Grid Dimensions}. Grids can be one-dimensional, two-dimensional, or three-dimensional. Each block within a grid has a unique position within the grid, identified using \texttt{blockIdx.x}, \texttt{blockIdx.y}, and \texttt{blockIdx.z}.
+ 	\end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{memory} \textbf{GPU hierarchy}}
+\end{flushleft}
+This hierarchy maps directly to the NVIDIA GPU architecture (\textbf{hardware hierarchy}):
+\begin{enumerate}
+	\item \important{Streaming Multiprocessor (SM)}.
+	\begin{itemize}
+		\item \textbf{Block Execution}. Each Streaming Multiprocessor (SM) on a GPU executes one or more thread blocks.
+		\item \textbf{Warps}. Threads within a block are executed in groups of 32, known as warps. Warps are the basic unit of execution on the GPU.
+	\end{itemize}
+
+	\item \important{GPU Core}.
+	\begin{itemize}
+		\item \textbf{Thread Execution}. Each GPU core executes a single thread from a warp. Multiple GPU cores within an SM work together to execute all the threads in a warp.
+	\end{itemize}
+
+	\item \important{Execution of Grids}.
+	\begin{itemize}
+		\item \textbf{Multiple Grids}. A GPU can execute one or more grids of thread blocks. Each grid corresponds to a single kernel launch.
+		\item \textbf{Interleaved Execution}. If the number of blocks exceeds the number of SMs, the execution of blocks is interleaved among the SMs.
+	\end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to use the hierarchy}}
+\end{flushleft}
+The CUDA thread hierarchy (and hardware hierarchy) provides a structured way to manage and organize parallel computation on the GPU. Unconsciously, when we coordinate parallel threads to execute a task, we leverage this hierarchy to maximize performance and resource utilization:
+\begin{itemize}
+    \item \important{Kernel Launch Configuration}. When launching a kernel, we specify the grid and block dimensions. For example:
+    \begin{lstlisting}[language=C++]
+// 256 threads per block
+dim3 dimBlock(256);
+// Grid size to cover all elements
+dim3 dimGrid((N + 256 - 1) / 256);
+MyKernel<<<dimGrid, dimBlock>>>(a, b, N);\end{lstlisting}
+    This configuration ensures that the kernel has enough threads to process all elements in parallel.
+
+    \item \important{Mapping Threads to Data}. Each thread calculates its unique index based on its position within the block and grid, allowing it to process a specific element of the data array. For example:
+    \begin{lstlisting}[language=C++]
+int i = blockIdx.x * blockDim.x + threadIdx.x;
+if (i < N) {
+	// Each thread processes a unique element
+    a[i] = a[i] + b;
+}\end{lstlisting}
+
+    \item \important{Handling Data Beyond Block Size}. If the data size exceeds the number of threads per block, the grid dimension ensures all data is covered. For example:
+    \begin{lstlisting}[language=C++]
+dim3 dimGrid((N + blocksize - 1) / blocksize);\end{lstlisting}
+    This calculation ensures that even if \texttt{N} is not a multiple of the block size, the entire dataset is processed.
+
+    \item \important{Scalability}. The hierarchy allows the program to scale across different GPU architectures by adjusting the grid and block sizes to match the hardware capabilities (e.g., number of SMs, maximum threads per block).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Thread hierarchy Variables}}
+\end{flushleft}
+CUDA provides several built-in variables to help manage and identify the hierarchy of threads in our parallel computation. These variables are used within kernel functions to determine the unique identity of each thread, block, and grid:
+\begin{itemize}
+    \item \important{Grid and Block Dimensions}:
+    \begin{itemize}
+        \item \texttt{gridDim.x}: represents the number of blocks in the grid along the $x$-axis.
+        \item \texttt{blockDim.x}: represents the number of threads in a block along the $x$-axis.
+    \end{itemize}
+
+    \item \important{Block and Thread Indices}:
+    \begin{itemize}
+        \item \texttt{blockIdx.x}: the block index along the $x$-axis. It ranges from 0 to \texttt{gridDim.x - 1}.
+        \item \texttt{threadIdx.x}: the thread index within a block along the $x$-axis. It ranges from 0 to \texttt{blockDim.x - 1}.
+    \end{itemize}
+
+    \item \important{Global Thread Index Calculation}: to identify the \textbf{unique index of each thread across the entire grid}, we can use the formula:
+    \begin{equation}
+        \texttt{globalID} = \texttt{blockIdx.x} \times \texttt{blockDim.x} + \texttt{threadIdx.x}
+    \end{equation}
+    This formula computes the global thread index by combining the block and thread indices.
+
+    \item \important{2D/3D Structures}: in more complex applications, such as image processing or solving partial differential equations, threads use their IDs to decide which data to process. This simplifies memory addressing when dealing with multidimensional data. Example of thread index calculations in a 2D grid:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \texttt{globalID} &=& \left(\texttt{blockIdx.y} \times \texttt{gridDim.x} + \texttt{blockIdx.x}\right) \times \\ [.3em]
+            %
+            && \left(\texttt{blockDim.x} \times \texttt{blockDim.y}\right) + \\ [.3em]
+            %
+            && \left(\texttt{threadIdx.y} \times \texttt{blockDim.x} + \texttt{threadIdx.x}\right)
+        \end{array}
+    \end{equation*}
+
+    \item \important{Threads Per Block and Thread Number in Block}:
+    \begin{itemize}
+        \item \texttt{threadsPerBlock}: total \textbf{number of threads in a block}.
+        \begin{equation*}
+            \texttt{threadsPerBlock} = \texttt{blockDim.x} \times \texttt{blockDim.y} = 8
+        \end{equation*}
+
+        \item \texttt{threadNumInBlock}: unique \textbf{thread number} within a block.
+        \begin{equation*}
+            \texttt{threadNumInBlock} = \texttt{threadIdx.x} + \texttt{blockDim.x} \times \texttt{threadIdx.y}
+        \end{equation*}
+
+        \item \texttt{blockNumInGrid}: unique \textbf{block number} within the grid.
+        \begin{equation*}
+            \texttt{blockNumInGrid} = \texttt{blockIdx.x} + \texttt{gridDim.x} \times \texttt{blockIdx.y}
+        \end{equation*}
+
+        \item \texttt{tid} (Global Thread ID): unique \textbf{thread ID across the entire grid}.
+        \begin{equation*}
+            \texttt{tid} = \texttt{blockNumInGrid} \times \texttt{threadsPerBlock} + \texttt{threadNumInBlock}
+        \end{equation*}
+    \end{itemize}
+\end{itemize}

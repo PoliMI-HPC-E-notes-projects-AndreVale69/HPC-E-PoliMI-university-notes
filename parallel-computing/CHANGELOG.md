@@ -28,6 +28,7 @@
     - add `CUDA Kernel`
   - add `Execution Model`
   - add `Querying Device Properties`
+  - add `Thread hierarchy`
 
 --------------------
 

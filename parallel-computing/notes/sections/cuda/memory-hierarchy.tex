@@ -191,3 +191,134 @@ Is suggest to use the pinned memory when:
     
     \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Async Operations}}. Pinned memory is particularly beneficial for asynchronous data transfers between the host and device, enabling overlap of computation and data transfer for better performance.
 \end{itemize}
+
+\begin{examplebox}[: Manual Memory Management - Vector Addition]
+    \begin{lstlisting}[language=C++]
+% allocate h_A, h_B, h_C
+void vecAdd(float *h_A, float *h_B, float *h_C, int n) {
+    int size = n * sizeof(float);
+    float *d_A, *d_B, *d_C;
+
+    // Allocate memory on the GPU (device)
+    // for arrays d_A, d_B, d_C
+    cudaMalloc((void**)&d_A, size);
+    cudaMalloc((void**)&d_B, size);
+    cudaMalloc((void**)&d_C, size);
+
+    // Copy data from host arrays h_A and h_B
+    // to device arrays d_A and d_B
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    // Kernel invocation code (not shown in the image)
+    // Example kernel launch:
+    // vecAddKernel<<<blocks, threads>>>(d_A, d_B, d_C, n);
+
+    // Copy the result from device array
+    // d_C back to host array h_C
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    // Free the allocated memory on the device
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+}
+% free h_A, h_B, h_C\end{lstlisting}
+    
+    \begin{itemize}
+        \item \textbf{Allocate Host Memory}. Before the \texttt{vecAdd} function is called, host memory for arrays \texttt{h\_A}, \texttt{h\_B}, and \texttt{h\_C} is allocated. This memory is used to store the input data and the result on the host (CPU).
+
+        \item \textbf{Function Definition}. The \texttt{vecAdd} function performs the steps in the code.
+
+        \item \textbf{Memory Allocation on Device}. \texttt{cudaMalloc} allocates memory on the GPU for \texttt{d\_A}, \texttt{d\_B}, and \texttt{d\_C}. The size of each array is determined by \texttt{n * sizeof(float)}.
+        
+        \item \textbf{Copy Data from Host to Device}. \texttt{cudaMemcpy} copies data from the host arrays \texttt{h\_A} and \texttt{h\_B} to the device arrays \texttt{d\_A} and \texttt{d\_B} using the \texttt{cudaMemcpyHostToDevice} flag. This step transfers the input data from the CPU to the GPU for processing.
+
+        \item \textbf{Kernel Invocation}. The CUDA kernel (not shown in the image) is invoked to perform vector addition on the device. Each thread on the GPU computes one element of the result vector.
+
+        \item \textbf{Copy Data from Device to Host}. \texttt{cudaMemcpy} copies the result from the device array \texttt{d\_C} back to the host array \texttt{h\_C} using the \texttt{cudaMemcpyDeviceToHost} flag. This step transfers the computed result from the GPU to the CPU.
+
+        \item \textbf{Free Allocated Memory}. \texttt{cudaFree} frees the allocated memory on the GPU for \texttt{d\_A}, \texttt{d\_B}, and \texttt{d\_C}. This ensures that no memory leaks occur on the GPU.
+    \end{itemize}
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How can we allocate memory that is shared between CPU and GPU?}}
+\end{flushleft}
+\definition{Unified Memory in CUDA} is a \textbf{single memory space that is accessible by both the host (CPU) and the device (GPU)}. It abstracts away the complexities of explicit memory management, making it easier to develop CUDA applications. Its features:
+\begin{itemize}
+    \item \important{Single Address Space}. Both the \textbf{CPU and GPU can access the same memory location}, \emph{eliminating the need for explicit data transfers between them}. This means that the same pointer can be used on both the host and the device.
+
+    \item \important{Automatic Data Migration}. The CUDA runtime system handles the movement of data between the host and device automatically. When the GPU accesses data that resides in the host memory, the CUDA runtime migrates the data to the GPU memory and vice versa.
+
+    \item \important{On-Demand (Page) Migration}. Unified Memory uses a demand-\break paging mechanism similar to virtual memory in operating systems. \textbf{When a page of memory is accessed by the CPU or GPU, and it is not currently resident in the respective memory, it is migrated on demand}.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Simplified Memory Management}}. Developers do not need to worry about explicit memory copies (\texttt{cudaMemcpy}). The \textbf{CUDA runtime manages data movement automatically}.
+        
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Ease of Programming}}. Writing CUDA programs becomes easier, especially for those new to CUDA, as \textbf{the same pointer can be used for both host and device operations}.
+        
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Efficient Use of Memory}}. Reduces code complexity, as there is \textbf{no need for separate host and device memory allocations and management}.
+    \end{itemize}
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Potential Performance Overhead}}. The \textbf{automatic data migration can introduce runtime overhead due to page faults}\footnote{
+            Modern operating systems use a virtual memory system where the physical memory (RAM) is abstracted as a larger virtual memory space. This allows programs to use more memory than physically available by using disk storage (paging). A \definitionWithSpecificIndex{page fault}{Page Fault}{} occurs when \textbf{a program tries to access a part of the memory that is not currently in the physical memory (RAM)}. The operating system intervenes to load the required memory page from disk into RAM, allowing the program to continue execution.
+        } when data is accessed. 
+        
+        Unified Memory uses a similar (to operating system) paging mechanism to manage memory across the CPU and GPU. When a memory page is accessed by the CPU or GPU and is not present in the respective memory (host or device), a page fault occurs. The CUDA runtime automatically migrates the page from the current memory location (host to device or device to host) to the memory where the access occurred.
+
+        This can be less efficient compared to explicitly managed memory transfers.
+        
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Limited Control}}. Developers have less control over when and where data is moved. For performance-critical applications, \textbf{manual memory management can sometimes yield better performance}.
+        
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Memory Contention}}. Sharing the same memory space between the CPU and GPU can lead to contention, \textbf{potentially impacting performance if both are trying to access the same memory simultaneously}.
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\noindent
+\texttt{cudaMallocManaged} is a function in CUDA that \textbf{allocates managed memory}, \textbf{which is accessible by both the host (CPU) and the device (GPU)}. This unified memory simplifies the programming model by allowing both the CPU and GPU to share a single memory space.
+\begin{lstlisting}[language=C++]
+cudaError_t cudaMallocManaged(void **devPtr, size_t size);  
+\end{lstlisting}
+\begin{itemize}
+    \item \texttt{devPtr}: pointer to the allocated unified memory.
+    \item \texttt{size}: size in bytes of the allocated memory.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How to avoid page faults with \texttt{cudaMallocManaged}}}
+\end{flushleft}
+\definition{Asynchronous memory prefetching} is a \textbf{technique used to proactively move data between the host and device to avoid page faults} and improve performance. This is particularly useful in Unified Memory, where data can be accessed by both the CPU and GPU.
+
+\highspace
+Instead of waiting for a page fault to occur (which would trigger an on-demand data transfer, a scenario we would avoid due to performance overhead), we prefetch the required data to the desired memory location before it is needed. This \textbf{operation is done asynchronously}, meaning that it \textbf{does not block the execution of other operations}. This allows the program to continue running while the data is being transferred in the background.
+
+\highspace
+In CUDA, this technique is used with the function \texttt{cudaMemPrefetchAsync}:
+\begin{lstlisting}[language=C++]
+cudaError_t cudaMemPrefetchAsync(
+    void *devPtr, size_t count, int dstDevice, cudaStream_t stream = 0
+);
+\end{lstlisting}
+\begin{itemize}
+    \item \texttt{devPtr}: pointer to the memory to be prefetched.
+    \item \texttt{count}: size of the memory to be prefetched, in bytes.
+    \item \texttt{dstDevice}: the destination device (can be a GPU device ID or the result of the function \texttt{cudaCpuDeviceId} for the host).
+    \item \texttt{stream}: the stream to perform the operation in (optional).
+\end{itemize}
+An \example{example} of use:
+\begin{lstlisting}[language=C++]
+int deviceId;
+cudaGetDevice(&deviceId);
+
+// Prefetch data to the device
+cudaMemPrefetchAsync(pointerToSomeUMData, size, deviceId);
+
+// Prefetch data back to the host
+cudaMemPrefetchAsync(pointerToSomeUMData, size, cudaCpuDeviceId);
+\end{lstlisting}

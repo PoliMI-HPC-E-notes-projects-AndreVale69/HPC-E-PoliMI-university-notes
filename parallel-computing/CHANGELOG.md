@@ -29,6 +29,7 @@
   - add `Execution Model`
   - add `Querying Device Properties`
   - add `Thread hierarchy`
+  - add `Memory hierarchy`
 
 --------------------
 

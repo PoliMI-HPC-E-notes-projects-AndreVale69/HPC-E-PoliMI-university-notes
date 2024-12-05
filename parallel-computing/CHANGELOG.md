@@ -31,6 +31,8 @@
   - add `Thread hierarchy`
   - add `Memory hierarchy`
   - add `Streams`
+  - add `CUDA and OpenMP or MPI`
+    - add `Motivations`
 
 --------------------
 

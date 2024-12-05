@@ -1,0 +1,160 @@
+\subsection{CUDA and OpenMP or MPI}
+
+\subsubsection{Motivations}
+
+In today's computing landscape, \textbf{achieving high performance and efficiency in complex applications} often requires the power of parallel processing. This need has given rise to several parallel computing frameworks, each designed to address specific aspects of parallelism. Among these, CUDA, OpenMP, and MPI stand out as key technologies that enable efficient utilization of computing resources, whether on a single machine with multiple GPUs or across distributed clusters.
+
+\highspace
+\begin{flushleft}
+  \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Systems with multiple GPUs - CUDA + OpenMP}}
+\end{flushleft}
+\begin{itemize}
+  \item \important{OpenMP}
+  \begin{itemize}
+    \item \textbf{Purpose}: used to dispatch parallel tasks across multiple GPUs.
+    \item \emph{Why OpenMP?}
+    \begin{itemize}
+      \item \textbf{Simplified Parallelism}. OpenMP provides a straightforward way to parallelize tasks using compiler directives.
+      \item \textbf{Task Scheduling}. It allows for efficient scheduling and management of tasks across multiple GPUs.
+      \item \textbf{Shared Memory Model}. OpenMP works well with shared memory systems, making it easier to manage and synchronize tasks.
+    \end{itemize}
+  \end{itemize}
+
+  \item \important{CUDA}
+  \begin{itemize}
+    \item \textbf{Purpose}: used for programming NVIDIA GPUs to perform parallel computations.
+    \item \emph{Why CUDA?}
+    \begin{itemize}
+      \item \textbf{Fine-Grained Control}. CUDA provides detailed control over GPU resources and performance optimization.
+      \item \textbf{Massive Parallelism}. Enables the execution of thousands of threads in parallel, maximizing GPU utilization.
+      \item \textbf{Optimized Performance}. Designed specifically for NVIDIA GPUs, ensuring optimal performance and efficiency.
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+OpenMP is particularly useful for tasks that benefit from shared memory parallelism, making it easier to write efficient and portable code for multi-core processors. It is often used in conjunction with CUDA to manage the CPU-side parallelism, thereby optimizing the performance of the entire system.
+
+\newpage
+
+\begin{flushleft}
+  \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Distributed Clusters with Multiple Nodes Containing GPUs - CUDA + MPI}}
+\end{flushleft}
+\definition{MPI (Message Passing Interface)} is a \textbf{standardized and portable\break message-passing system designed for parallel computing in distributed memory environments, such as clusters} of computers. MPI excels in managing communication between nodes in a distributed system, allowing for efficient coordination and data exchange. When combined with CUDA, MPI enables developers to scale their applications across multiple nodes, each leveraging the power of GPUs, thus tackling larger and more complex problems than would be possible on a single machine.
+\begin{itemize}
+  \item \important{MPI}
+  \begin{itemize}
+    \item \textbf{Purpose}: used for communication across nodes in a distributed system.
+    \item \emph{Why OpenMP?}
+    \begin{itemize}
+      \item \textbf{Scalability}. MPI is designed for high-performance communication in distributed memory systems, allowing for efficient parallel computing across multiple nodes.
+      \item \textbf{Inter-Node Communication}. Provides robust mechanisms for data exchange between nodes, ensuring coordination and synchronization in distributed environments.
+      \item \textbf{Flexibility}. Works with various hardware and software configurations, making it versatile for different parallel computing scenarios.
+    \end{itemize}
+  \end{itemize}
+
+  \item \important{CUDA}
+  \begin{itemize}
+    \item \textbf{Purpose}: used within each node's GPU to perform parallel computations.
+    \item \emph{Why CUDA?}
+    \begin{itemize}
+      \item \textbf{Performance}. Ensures that computations within each GPU are optimized for maximum throughput.
+      \item \textbf{Integration with MPI}. CUDA can be effectively combined with MPI to handle local computations within each node, while MPI manages communication between nodes.
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{examplebox}[: Scenario CUDA + MPI]
+  A distributed cluster with multiple nodes, each containing one or more GPUs. MPI processes (e.g., MPI \texttt{Process N}, MPI \texttt{Process N+1}) manage communication across nodes, while CUDA handles computations within each GPU.
+\end{examplebox}
+
+\newpage
+
+\begin{table}[!htp]
+  \centering
+  \begin{tabular}{@{} l p{25em} @{}}
+    \toprule
+    \textbf{Technology} & \textbf{When?} \\
+    \midrule
+    OpenMP  & \begin{itemize}
+      \item Ideal for managing parallel tasks within a single system with multiple GPUs.
+      \item Simplifies task scheduling and synchronization in shared memory environments.
+    \end{itemize} \\
+    MPI     & \begin{itemize}
+      \item Essential for communication in distributed clusters with multiple nodes containing GPUs.
+      \item Provides scalable and efficient data exchange between nodes.
+    \end{itemize} \\
+    CUDA    & \begin{itemize}
+      \item Used for fine-grained parallel computations within each GPU.
+      \item Ensures optimized performance and maximum GPU utilization.
+    \end{itemize} \\
+    \bottomrule
+  \end{tabular}
+  \caption{When to use each technology.}
+\end{table}
+
+\begin{flushleft}
+  \textcolor{Green3}{\faIcon{balance-scale} \textbf{Batch processing vs Cooperative patterns}}
+\end{flushleft}
+The computation patterns in a Multi-GPU environment are divided into batch and cooperative patterns.
+\begin{itemize}
+  \item \definition{Batch Processing}. Batch processing is ideal for \textbf{scenarios where the same task needs to be performed multiple times with different data sets}. It's a simple way to \textbf{maximize GPU utilization}. In other words, run the same independent task multiple times with different data.
+
+  Steps involved:
+  \begin{enumerate}
+    \item \important{Identify the number of available GPUs}. Use CUDA APIs to determine how many GPUs are available for processing.
+    \item \important{Initialize and allocate memory}. Allocate necessary memory on each GPU. This step involves copying the data required for computation from the host (CPU) to the device (GPU).
+    \item \important{Create CUDA streams}. CUDA streams enable concurrent execution of kernels. Creating multiple streams allows us to run multiple tasks in parallel on the GPU.
+    \item \important{Launch the kernel}. Dispatch the kernels for execution. Each GPU runs its own copy of the kernel, processing a different subset of the data.
+    \item \important{Synchronize}. Ensure all GPU tasks are complete. Use synchronization mechanisms to manage dependencies and ensure data integrity.
+    \item \important{Retrieve results}. Copy the results from the device back to the host.
+  \end{enumerate}
+
+  \begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+  \end{flushleft}
+  \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{High throughput}}. Efficiently handles repetitive tasks.
+    \item \textcolor{Green3}{\textbf{Scalability}}. Easy to scale by adding more GPUs.
+  \end{itemize}
+  \begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+  \end{flushleft}
+  \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Limited to independent tasks}}. Not suitable for tasks that require inter-GPU communication.
+  \end{itemize}
+
+
+  \item \definition{Cooperative Patterns}. \textbf{Tasks need to work together to achieve a common goal}. These tasks are interdependent and \textbf{require communication between GPUs}.
+
+  Steps involved:
+  \begin{enumerate}
+    \item \important{Task division}. Split the task into smaller sub-tasks that can be distributed across GPUs.
+    \item \important{Memory allocation and initialization}. Allocate memory for each sub-task and initialize the required data.
+    \item \important{Kernel execution}. Launch kernels that perform the sub-tasks. Unlike batch processing, these kernels may need to communicate with each other.
+    \item \important{Inter-GPU communication}. Implement communication protocols to share data and results between GPUs. This can involve techniques like GPU direct RDMA (Remote Direct Memory Access).
+    \item \important{Synchronization and coordination}. Use synchronization mechanisms to coordinate the execution of sub-tasks and ensure they are completed in the correct order.
+    \item \important{Result aggregation}. Combine the results from all GPUs to produce the final output.
+  \end{enumerate}
+
+  \begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+  \end{flushleft}
+  \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Solves complex tasks}}. Suitable for problems that require collaborative computation.
+    \item \textcolor{Green3}{\textbf{Efficient use of resources}}. Leverages the combined power of multiple GPUs.
+  \end{itemize}
+  \begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+  \end{flushleft}
+  \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Complex implementation}}. Requires careful design and management of inter-GPU communication.
+    \item \textcolor{Red2}{\textbf{Potential bottlenecks}}. Synchronization and communication can introduce delays.
+  \end{itemize}
+\end{itemize}
+The main differences are:
+\begin{itemize}
+  \item \important{Task Independence vs. Interdependence}. \textbf{Batch processing excels with independent tasks}, whereas cooperative patterns manage interdependent tasks.
+  \item \important{Communication Needs}. Batch processing minimizes communication between tasks, while \textbf{cooperative patterns facilitate necessary inter-task communication}.
+  \item \important{Implementation Complexity}. \textbf{Batch processing is generally simpler to implement}, whereas cooperative patterns require more sophisticated design and coordination.
+\end{itemize}
+By dividing the computation patterns this way, it becomes easier to choose the most appropriate approach for different types of workloads, ensuring optimal performance and efficient use of GPU resources.

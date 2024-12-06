@@ -33,6 +33,7 @@
   - add `Streams`
   - add `CUDA and OpenMP or MPI`
     - add `Motivations`
+    - add `CUDA API for Multi-GPUs`
 
 --------------------
 

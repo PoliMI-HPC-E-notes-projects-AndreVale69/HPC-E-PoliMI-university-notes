@@ -1,0 +1,209 @@
+\subsubsection{Memory Management with Multiple GPUs}
+
+In systems with multiple GPUs, \textbf{efficient memory management is critical to optimizing performance and ensuring smooth operation}. There are two primary approaches to memory management in such environments: manual memory management and unified memory.
+\begin{itemize}
+  \item \important{Manual Memory Management} requires \textbf{setting the active device using the} \texttt{cudaSetDevice()} (page \pageref{code: cudaSetDevice}) \textbf{function before any memory allocation or kernel launch}. This ensures that subsequent operations are directed to the specified GPU.
+  
+  For \example{example}, setting GPU 0 as the active device allows for memory allocation on that particular GPU. This method provides fine-grained control over which GPU handles specific tasks, allowing for optimized resource utilization.
+
+  \item \important{Unified Memory}, on the other hand, offers a \textbf{more automated approach}. If the flag \texttt{cudaDevAttrConcurrentManagedAccess}:
+  \begin{itemize}
+    \item Is \underline{set for all devices}, \textbf{memory can be allocated using} the function \texttt{cudaMallocManaged()} \textbf{without the need to set the active device}. This simplifies the process by allowing all GPUs to access the allocated memory automatically.
+
+    \item Is \underline{not set}, \textbf{but devices can still access each other's memory, it becomes necessary to set the active device before memory allocation}. This setup ensures that all other devices can access the data through PCIe, facilitating efficient data transfer and resource sharing.
+  \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{examplebox}[: vector addition with multiple GPUs]
+  This example demonstrates how to perform vector addition using multiple GPUs.
+  \begin{lstlisting}[language=C++, mathescape=true]
+float *m_A0, float *m_B0, *m_A1, float *m_B1, int n;
+int size = n * sizeof(float);
+
+// Set the active device to GPU 0
+cudaSetDevice(0);$\label{code: Setting the Active Device}$
+// Allocate memory on GPU (device) 0
+cudaMalloc((void**) &m_A0, size);$\label{code: Memory Allocation on GPU 0-start}$
+cudaMalloc((void**) &m_B0, size);$\label{code: Memory Allocation on GPU 0-end}$
+
+// Set the active device to GPU 1
+cudaSetDevice(1);$\label{code: Setting the Active Device to GPU 1}$
+// Allocate memory on GPU (device) 1
+cudaMalloc((void**) &m_A1, size);$\label{code: Memory Allocation on GPU 1-start}$
+cudaMalloc((void**) &m_B1, size);$\label{code: Memory Allocation on GPU 1-end}$
+
+// Memory initialization on the host (CPU) and memory transfers$\label{code: Memory Initialization and Transfers}$
+
+// Set the device for kernel execution
+cudaSetDevice(0);$\label{code: Kernel Execution-start}$
+// Launch kernel on GPU 0
+vecAdd<<<gridDim, blockDim>>>(m_A0, m_B0);$\label{code: Kernel Execution-end}$
+
+// Set the device for kernel execution
+cudaSetDevice(1);$\label{code: Kernel Execution on GPU 1-start}$
+// Launch kernel on GPU 1
+vecAdd<<<gridDim, blockDim>>>(m_A1, m_B1);$\label{code: Kernel Execution on GPU 1-end}$
+
+// Free memory on GPU 0 and GPU 1
+cudaFree(m_A0); cudaFree(m_B0);$\label{code: Freeing Allocated Memory-start}$
+cudaFree(m_A1); cudaFree(m_B1);$\label{code: Freeing Allocated Memory-end}$\end{lstlisting}
+
+  \begin{itemize}
+    \item Row \ref{code: Setting the Active Device}. Setting the Active Device: it sets GPU 0 as the active device. Any subsequent CUDA operations, such as memory allocation or kernel launches, will be directed to GPU 0.
+
+    \item Rows \ref{code: Memory Allocation on GPU 0-start}-\ref{code: Memory Allocation on GPU 0-end}. Memory Allocation on GPU 0: memory is allocated on GPU 0 for two arrays, \texttt{m\_A0} and \texttt{m\_B0}, each of size \texttt{n * sizeof(float)}.
+
+    \item Row \ref{code: Setting the Active Device to GPU 1}. Setting the Active Device to GPU 1: it changes the active device to GPU 1, directing subsequent operations to this device.
+
+    \item Rows \ref{code: Memory Allocation on GPU 1-start}-\ref{code: Memory Allocation on GPU 1-end}. Memory Allocation on GPU 1: similar to GPU 0, memory is allocated on GPU 1 for two arrays, \texttt{m\_A1} and \texttt{m\_B1}.
+    
+    \item Row \ref{code: Memory Initialization and Transfers}. Memory Initialization and Transfers: the comment mentions initializing memory on the host and transferring it to the devices, although the specific code for this is not shown. Typically, we would use \texttt{cudaMemcpy()} to transfer data from the host to the device.
+
+    \item Rows \ref{code: Kernel Execution-start}-\ref{code: Kernel Execution-end}. Kernel Execution: after setting GPU 0 as the active device, the \texttt{vecAdd} kernel is launched to perform vector addition on the arrays \texttt{m\_A0} and \texttt{m\_B0}.
+
+    \item Row \ref{code: Kernel Execution on GPU 1-start}-\ref{code: Kernel Execution on GPU 1-end}. Kernel Execution on GPU 1: similarly, GPU 1 is set as the active device, and the \texttt{vecAdd} kernel is launched on \texttt{m\_A1} and \texttt{m\_B1}.
+
+    \item Row \ref{code: Freeing Allocated Memory-start}-\ref{code: Freeing Allocated Memory-end}. Freeing Allocated Memory: after the computations are complete, the allocated memory on both GPUs is freed to avoid memory leaks.
+  \end{itemize}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+  \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Memory transfers between GPUs}}
+\end{flushleft}
+In CUDA, there are several methods for transferring data between GPUs, each providing a different level of control and ease of use. The three main methods for transferring memory regions between GPUs are:
+\begin{itemize}
+  \item \important{Fully Explicit Transfer}. In this method, we \textbf{explicitly specify both the source and destination devices for the memory transfer}. This approach gives us full control over the transfer process, but requires more detailed management of the transfer operation.
+
+  How it works:
+  \begin{enumerate}
+    \item Set the source device using \texttt{cudaSetDevice()}.
+    \item Allocate memory and perform the necessary operations on the source device.
+    \item Set the destination device using \texttt{cudaSetDevice()}.
+    \item Allocate memory on the destination device.
+    \item Use \texttt{cudaMemcpyPeerAsync()} to transfer data asynchronously between the two devices.
+  \end{enumerate}
+  \begin{examplebox}[: Fully Explicit Transfer]
+    \begin{lstlisting}[language=C++]
+int srcDevice = 0;
+int dstDevice = 1;
+float *d_src, *d_dst;
+size_t size = n * sizeof(float);
+
+cudaSetDevice(srcDevice); // Set source device
+cudaMalloc(&d_src, size); // Allocate memory on source device
+
+cudaSetDevice(dstDevice); // Set destination device
+cudaMalloc(&d_dst, size); // Allocate memory on destination device
+
+// Transfer data from source to destination device
+cudaMemcpyPeerAsync(d_dst, dstDevice, d_src, srcDevice, size, stream);\end{lstlisting}
+  \end{examplebox}
+  \texttt{cudaMemcpyPeerAsync()} is a CUDA runtime API function used to \textbf{perform asynchronous memory transfers between two devices}. This function is particularly useful in multi-GPU systems, where it allows for non-blocking data transfers, enabling concurrent execution of other operations. Function Prototype:
+  \begin{lstlisting}[language=C++]
+cudaError_t cudaMemcpyPeerAsync(
+void* dst,          // Destination pointer
+int dstDevice,      // Destination device ID
+const void* src,    // Source pointer
+int srcDevice,      // Source device ID
+size_t count,       // Size of the memory to be transferred in bytes
+cudaStream_t stream // CUDA stream (optional)
+);\end{lstlisting}
+  Parameters:
+  \begin{itemize}
+    \item \texttt{dst}: pointer to the destination memory on the destination device.
+    \item \texttt{dstDevice}: ID of the destination device.
+    \item \texttt{src}: pointer to the source memory on the source device.
+    \item \texttt{srcDevice}: ID of the source device.
+    \item \texttt{count}: size of the memory to be transferred in bytes.
+    \item \texttt{stream}: CUDA stream in which the transfer should be performed (optional). If no stream is specified, the default stream is used.
+  \end{itemize}
+
+
+  \item \important{Partially Explicit Transfer}. This \textbf{method uses unified addressing}, which \textbf{simplifies the transfer process by allowing us to use a unified address space}. We only need to specify one of the devices explicitly, while the CUDA runtime handles the rest.
+
+  How it works:
+  \begin{enumerate}
+    \item Check if unified addressing is supported using:
+    \begin{equation*}
+      \texttt{cudaDeviceGetAttribute()}
+    \end{equation*}
+    \item Allocate memory on one device (e.g., the source device).
+    \item Use \texttt{cudaMemcpy()} with the \texttt{cudaMemcpyDefault} flag to transfer data to the destination device.
+  \end{enumerate}
+  \begin{examplebox}[: Fully Explicit Transfer]
+    \begin{lstlisting}[language=C++]
+int srcDevice = 0;
+int dstDevice = 1;
+float *d_src;
+size_t size = n * sizeof(float);
+
+// Check if unified addressing is supported
+int unifiedAddressing = 0;
+cudaDeviceGetAttribute(&unifiedAddressing, cudaDevAttrUnifiedAddressing, srcDevice);
+
+if (unifiedAddressing) {
+    cudaSetDevice(srcDevice); // Set source device
+    cudaMalloc(&d_src, size); // Allocate memory on source device
+
+    // Transfer data to destination device using unified addressing
+    cudaMemcpy(d_dst, d_src, size, cudaMemcpyDefault);
+}\end{lstlisting}
+  \end{examplebox}
+
+  \newpage
+
+  \item \important{Implicit Transfer}. In this method, the \textbf{CUDA driver automatically handles the transfer of memory between devices without explicit intervention from the programmer}. This is the simplest method in terms of coding effort, as the driver takes care of the details.
+
+  How it works:
+  \begin{itemize}
+    \item The CUDA driver internally manages memory transfers between\break GPUs. This typically involves:
+    \begin{enumerate}
+      \item Allocate memory (unified memory) on the source device using \texttt{cudaMallocManaged()}. This memory is accessible to all GPUs and the host, allowing CUDA to implicitly handle data transfers.
+      \item Using unified memory or other mechanisms to handle the data transfer transparently. In other words, access the managed memory from any GPU by setting the active device and performing operations on it. CUDA internally manages the data transfer to ensure the memory is available on the device that needs it.
+      \begin{lstlisting}[language=C++]
+cudaSetDevice(0); // Set device 0 and use the memory
+kernel<<<gridDim, blockDim>>>(d_managed);
+
+cudaSetDevice(1); // Set device 1 and use the memory
+kernel<<<gridDim, blockDim>>>(d_managed);\end{lstlisting}
+    \end{enumerate}
+  \end{itemize}
+  \begin{examplebox}[: Fully Explicit Transfer]
+    \begin{lstlisting}[language=C++]
+float *d_managed;
+size_t size = n * sizeof(float);
+
+// Allocate managed memory accessible by both devices
+cudaMallocManaged(&d_managed, size);
+
+// Now d_managed can be accessed by any device as needed
+cudaSetDevice(0); // Set device 0 and use the memory
+kernel<<<gridDim, blockDim>>>(d_managed);
+
+cudaSetDevice(1); // Set device 1 and use the memory
+kernel<<<gridDim, blockDim>>>(d_managed);\end{lstlisting}
+  \end{examplebox}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+  \textcolor{Green3}{\faIcon{question-circle} \textbf{Communication Channels}}
+\end{flushleft}
+There are two main types of communication channels connecting GPUs together:
+\begin{itemize}
+  \item \definition{Standard PCIe 3.0 Link}
+  \begin{itemize}
+    \item \important{Speed}: 32 GB/s
+    \item \important{Description}: PCIe (Peripheral Component Interconnect Express) is a standard communication interface used to connect GPUs to the CPU and other peripherals. While widely used, PCIe 3.0 has limitations in terms of bandwidth, which can impact performance in data-intensive applications.
+  \end{itemize}
+
+  \item \definition{NVLink}
+  \begin{itemize}
+    \item \important{Speed}: 300 GB/s (on the Tesla V100)
+    \item \important{Description}: NVLink is a high-speed interconnect technology developed by NVIDIA. It provides significantly higher bandwidth compared to PCIe, allowing for faster data transfer between GPUs. This can greatly improve performance in applications that require rapid communication and data exchange between multiple GPUs.
+  \end{itemize}
+\end{itemize}

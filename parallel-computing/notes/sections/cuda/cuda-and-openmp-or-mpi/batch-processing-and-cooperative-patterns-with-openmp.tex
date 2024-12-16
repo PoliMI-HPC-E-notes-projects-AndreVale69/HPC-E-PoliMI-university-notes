@@ -1,0 +1,92 @@
+\subsubsection{Batch Processing and Cooperative Patterns with OpenMP}
+
+In this section, we show how to implement batch processing and cooperative patterns using OpenMP.
+
+\begin{flushleft}
+   \textcolor{Green3}{\faIcon{book} \textbf{Batch Processing OpenMP}}
+\end{flushleft}
+The code snippet shows how to manage multiple GPU devices using OpenMP. The process includes:
+\begin{lstlisting}[language=C++, mathescape=true]
+#include <cuda_runtime.h>
+#include <omp.h>
+#include <vector>
+
+__global__ void kernel(float* data, int size) {
+    // Kernel code here
+}
+
+int main() {
+    int deviceCount;$\label{code: Getting the Device Count - start}$
+    cudaGetDeviceCount(&deviceCount);
+    std::vector<cudaStream_t> streams(deviceCount);$\label{code: Getting the Device Count - end}$
+
+    // Initialize devices and streams in parallel
+    #pragma omp parallel for num_threads(deviceCount)$\label{code: Allocating Memory and Initializing Streams - start}$
+    for(int dev = 0; dev < deviceCount; ++dev) {
+        cudaSetDevice(dev);
+        cudaStreamCreate(&streams[dev]);
+        // Allocate memory and initialize data
+    }$\label{code: Allocating Memory and Initializing Streams - end}$
+
+    // Launch kernels in parallel
+    #pragma omp parallel for num_threads(deviceCount)$\label{code: Launching Kernels - start}$
+    for(int dev = 0; dev < deviceCount; ++dev) {
+        cudaSetDevice(dev);
+        kernel<<<gridDim, blockDim, 0, streams[dev]>>>(/* arguments */);
+    }$\label{code: Launching Kernels - end}$
+
+    // Synchronize streams and clean up
+    #pragma omp parallel for num_threads(deviceCount)
+    for(int dev = 0; dev < deviceCount; ++dev) {
+        cudaSetDevice(dev);
+        cudaStreamSynchronize(streams[dev]);
+        cudaStreamDestroy(streams[dev]);
+        // Free allocated memory
+    }
+
+    return 0;
+}
+\end{lstlisting}
+\begin{enumerate}
+    \item Rows \ref{code: Getting the Device Count - start}-\ref{code: Getting the Device Count - end}. \important{Getting the Device Count}. This part of the code retrieves the number of CUDA-capable devices (GPUs) in the system using \texttt{cudaGetDeviceCount()}. It then creates a vector of CUDA streams, with each stream corresponding to a GPU.
+    
+    \item Rows \ref{code: Allocating Memory and Initializing Streams - start}-\ref{code: Allocating Memory and Initializing Streams - end}. \important{Allocating Memory and Initializing Streams}. This OpenMP parallel for loop iterates over the number of devices. For each device, it sets the current device using \texttt{cudaSetDevice()}, creates a CUDA stream using \texttt{cudaStreamCreate()}, and then allocates memory and initializes it. By using \texttt{num\_threads(deviceCount)}, the loop is parallelized to run on multiple threads, each handling a different GPU.
+
+    \item Rows \ref{code: Launching Kernels - start}-\ref{code: Launching Kernels - end}. \important{Launching Kernels}. This OpenMP parallel for loop is similar to the previous one. It sets the current device and launches a kernel on each GPU using the corresponding CUDA stream. The function:
+    \begin{center}
+        \texttt{kernel<<<gridDim, blockDim, streams[dev]>>>(...)}
+    \end{center}
+    Specifies the grid and block dimensions, along with the stream to be used for the kernel execution.
+\end{enumerate}
+Here, the OpenMP code creates some tasks associated with CUDA streams.
+
+\highspace
+\begin{flushleft}
+   \textcolor{Green3}{\faIcon{book} \textbf{Cooperative Patterns OpenMP}}
+\end{flushleft}
+The following enumeration extends the concept of cooperative patterns using OpenMP. The code snippet shows how to synchronize CUDA streams using OpenMP:
+\begin{enumerate}
+   \item Initialization of Streams:
+   \begin{lstlisting}[language=C++]
+std::vector<cudaStream_t> streams;
+// Initialization of the streams on each device
+// ...\end{lstlisting}
+
+   \item Launching Kernels:
+   \begin{lstlisting}[language=C++]
+#pragma omp parallel
+{
+      // Launch the different kernels on the streams.
+}\end{lstlisting}
+
+   \item Synchronizing Streams:
+   \begin{lstlisting}[language=C++]
+#pragma omp for num_threads(streams.size())
+for(auto& stream : streams)
+   cudaStreamSynchronize(stream);\end{lstlisting}
+
+   \item Barrier Synchronization:
+   \begin{lstlisting}[language=C++]
+#pragma omp barrier\end{lstlisting}
+\end{enumerate}
+Instead of creating each task independently, OpenMP creates streams but waits for each to finish using a barrier.

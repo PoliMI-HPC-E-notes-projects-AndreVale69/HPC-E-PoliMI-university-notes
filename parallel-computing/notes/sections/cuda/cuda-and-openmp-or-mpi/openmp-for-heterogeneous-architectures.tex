@@ -1,0 +1,125 @@
+\subsubsection{OpenMP for heterogeneous architectures}
+
+Recent versions of OpenMP support parallel execution on heterogeneous architectures, including:
+\begin{itemize}
+    \item \textbf{Host CPU}: the main processor of the system.
+    \item \textbf{Attached Accelerators}: additional hardware such as GPUs, FPGAs, DSPs, etc. Useful for handling specific tasks to increase performance.
+\end{itemize}
+In other words, \textbf{OpenMP allows the same code to run on both the host (CPU) and the target device (accelerator)}. This means that different types of hardware can be used together to perform parallel computation more effectively.
+
+\highspace
+To offload the execution of code to an accelerator device, such as a GPU, we use the \texttt{target} directive in OpenMP.
+\marginpar{
+    \href{https://www.openmp.org/spec-html/5.0/openmpsu60.html} {Doc. \faIcon{book}}
+}
+\begin{openmpbox}[: \texttt{pragma omp target}]
+    \begin{lstlisting}[language=C++]
+#pragma omp target\end{lstlisting}
+\end{openmpbox}
+\begin{itemize}
+    \item \important{Offloading Execution}. The \textbf{code within the region is executed on the accelerator device} if one is present.
+    \begin{itemize}
+        \item If no accelerator device is available, the code continues to run on the host (CPU).
+        \item If there is an \texttt{if} clause that evaluates to false, the code also continues execution on the host.
+    \end{itemize}
+
+    \item \important{Device Thread Execution}. A \textbf{thread on the target device} (e.g., GPU) \textbf{executes the code}.
+
+    \item \important{Synchronous Execution}. By default, the \textbf{host thread blocks (waits) until the device thread has completed execution}. To avoid this blocking, we can use the \texttt{nowait} clause.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bookmark} \textbf{\texttt{map} clause}}
+\end{flushleft}
+\begin{openmpbox}[: \texttt{map}]
+    \begin{lstlisting}[language=C++]
+#pragma omp target map($\texttt{\emph{map-type}}$: $\texttt{\emph{variables}}$)\end{lstlisting}
+\end{openmpbox}
+
+\noindent
+The \texttt{map} clause in OpenMP is used to \textbf{specify how variables are mapped from the host to the target device} (such as a GPU) \textbf{and back}. This is crucial for ensuring that the data required by the target region is available on the target device and that any results are brought back to the host. It is used mainly to:
+\begin{itemize}
+    \item \textbf{Copying Variables to Device}: the variables listed in the \texttt{map} clause are copied from the host to the target device.
+    \item \textbf{Copying Variables Back to Host}: after the \texttt{target} region execution, the updated variables can be copied back to the host.
+\end{itemize}
+There are several types of \textsl{map} \textbf{clauses that are used to give information to the compiler to avoid unnecessary data transfers}:
+\begin{itemize}
+    \item \important{\texttt{to} clause}.
+    \begin{itemize}
+        \item Syntax: \texttt{map(to: lst)}
+        \item Description: \textbf{copies variables} (\texttt{list}) \textbf{from the host to the target device}.
+        \item Summary: Host $\rightarrow$ Target Device
+    \end{itemize}
+
+    \item \important{\texttt{from} clause}.
+    \begin{itemize}
+        \item Syntax: \texttt{map(from: lst)}
+        \item Description: \textbf{copies variables} (\texttt{list}) \textbf{from the target device to the host after the target region execution}.
+        \item Summary: Host $\leftarrow$ Target Device
+    \end{itemize}
+
+    \item \important{\texttt{tofrom} clause}.
+    \begin{itemize}
+        \item Syntax: \texttt{map(tofrom: lst)}
+        \item Description: \textbf{copies variables from the host to the target device before the target region and back from the device to the host after execution}.
+        \item Summary: Host $\leftrightarrow$ Target Device
+    \end{itemize}
+\end{itemize}
+The default value is \texttt{tofrom}. Because these operations copy memory from one device to another, it is \textbf{important to limit their use}. For example, in the following code:
+\begin{lstlisting}[language=C++]
+#pragma omp target map(a, b, c, d)
+{
+    #pragma parallel for
+    for (i = 0; i < N; ++i) {
+        a[i] = b[i] * c + d;
+    }
+} // End of target
+\end{lstlisting}
+At \texttt{map-enter}, there is a copy of the variables in device memory (expensive). There is a computation phase where the device memory uses the variables. Finally, at the \texttt{map-exit}, the device copies the variables to host memory (expensive).
+
+\newpage
+
+\begin{examplebox}[: SAXPY operation]
+    This example demonstrates how to perform a SAXPY operation (Single-Precision A·X Plus Y) using OpenMP. The SAXPY operation is a basic linear algebra operation, and here it is implemented to run on a target device like a GPU.
+    
+    \begin{lstlisting}[language=C++]
+void saxpy() {
+    double a, x[SZ], y[SZ];
+    double t = 0.0;
+    double tb, te;
+    tb = omp_get_wtime();
+    #pragma omp target map(to:x[0:SZ]) \
+                       map(tofrom:y[0:SZ])
+    for (int i = 0; i < SZ; i++) {
+        y[i] = a * x[i] + y[i];
+    }
+    te = omp_get_wtime();
+    t = te - tb;
+    printf("Time of kernel: %lf\n", t);
+}\end{lstlisting}
+
+    \begin{itemize}
+        \item Variables Initialization.
+        \begin{itemize}
+            \item \texttt{a}, \texttt{x[SZ]} and \texttt{y[SZ]} are the main variables involved in the SAXPY operation.
+            \item \texttt{t}, \texttt{tb}, and \texttt{te} are used for timing the operation.
+        \end{itemize}
+
+        \item Timing the Operation.
+        \begin{itemize}
+            \item \texttt{tb = omp\_get\_wtime();} records the start time before the computation begins.
+            \item \texttt{te = omp\_get\_wtime();} records the end time after the computation.
+        \end{itemize}
+
+        \item OpenMP Target Directive.
+        \begin{itemize}
+            \item \texttt{map(to:x[0:SZ])}: copies the array \texttt{x} from the host to the target device.
+            \item \texttt{map(tofrom:y[0:SZ])}: copies the array \texttt{y} to the target device and copies it back to the host after execution.
+        \end{itemize}
+
+        \item SAXPY Operation. The \texttt{for} loop performs the SAXPY computation on the target device.
+
+        \item Printing the Time. Finally, calculates the elapsed time for the kernel execution and prints the time.
+    \end{itemize}
+\end{examplebox}

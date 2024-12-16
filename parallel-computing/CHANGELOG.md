@@ -36,6 +36,7 @@
     - add `CUDA API for Multi-GPUs`
     - add `Memory Management with Multiple GPUs`
     - add `Batch Processing and Cooperative Patterns with OpenMP`
+    - add `OpenMP for heterogeneous architectures`
 
 --------------------
 

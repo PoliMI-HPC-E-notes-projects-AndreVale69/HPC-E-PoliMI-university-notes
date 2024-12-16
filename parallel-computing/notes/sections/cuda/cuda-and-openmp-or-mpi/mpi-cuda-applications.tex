@@ -1,0 +1,150 @@
+\subsubsection{MPI-CUDA applications}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is MPI?}}
+\end{flushleft}
+MPI stands for \textbf{Message Passing Interface}. It is a standardized and portable message-passing system designed to function on a wide variety of parallel computing architectures.
+\begin{itemize}
+    \item \important{Process Communication}: MPI allows \textbf{multiple processes to communicate with each other by sending and receiving messages}. This is essential for coordinating tasks in parallel computing environments.
+    \item \important{Distributed Computing}: MPI is commonly \textbf{used in distributed\break computing}, where processes run on different nodes (computers) in a network and need to work together on a common task.
+    \item \important{Parallel Execution}: \textbf{Each process in an MPI program runs independently} and can perform computations on different parts of the data, leading to efficient parallel execution.
+    \item \important{Scalability}: MPI can scale \textbf{from a few processes} on a single computer to thousands of processes on a \textbf{supercomputer}.
+\end{itemize}
+In the real-world scenario, it is common to use MPI and CUDA together to solve a computational problem, specifically focusing on wave propagation and heat transfer.
+
+\highspace
+On the next page we see the Wave Propagation Stencil. It is a computational pattern to solve wave propagation problems, such as those found in seismic imaging or heat transfer simulations. It involves calculating the value of a point in a grid based on the values of its neighbors, typically using finite difference methods.
+
+\highspace
+The calculation involves a weighted sum of values from neighboring points in the volume, which is typical in numerical simulations of physical processes such as heat transfer. The volume is divided into subdomains (D1, D2, D3, D4) to parallelize the computation. Domain decomposition is a technique that divides the computational domain (the volume) into smaller parts that can be processed simultaneously by different processors or GPUs. This approach increases computational efficiency by distributing the workload across multiple processing units.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How is the workload shared between MPI and CUDA?}}
+\end{flushleft}
+\begin{itemize}
+    \item MPI is used for communication between different processes handling different subdomains. It processes exchange boundary data to ensure continuity and accuracy of the simulation.
+
+    \item CUDA is used for performing the calculations on each subdomain. Each GPU handles the computations for its assigned subdomain, performing the weighted sum calculations at each time step.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Implementation}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Main program}: initialize communication, execute process, finalize communication.
+    \begin{lstlisting}[language=C++]
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+MPI_Comm_size(MPI_COMM_WORLD, &np);
+
+if(np < 3) {
+    if(0 == pid)
+        printf("Needed 3 or more processes.\n");
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    return 1;
+}
+
+if(pid < np - 1)
+    compute_node(dimx, dimy, dimz / (np - 1), nreps);
+else
+    data_server(dimx, dimy, dimz, nreps);
+
+MPI_Finalize();\end{lstlisting}
+    
+    The program starts by initializing MPI, getting the rank of the process (its ID), and the total number of processes.
+    \begin{itemize}
+        \item Initializes the MPI environment.
+        \item Gets the rank (ID) of the calling process.
+        \item Gets the number of processes.
+    \end{itemize}
+    
+    So it checks if there are at least 3 processes. If not, it prints an error message and aborts. Furthermore, the program decides based on the process ID (\texttt{pid}) whether the process will be a compute node or a data server. Finally, the program closes the MPI environment.
+
+    \item \important{Server process}: partition and distribute data.
+    \begin{lstlisting}[language=C++]
+/* Find number of MPI processes */
+/* Allocate input data */
+/* Initialize input data */
+/* Calculate number of points per compute process */
+for (int process = 1; process <= last_node; process++) {
+    MPI_Send(send_address, int_num_points, MPI_FLOAT, process, DATA_DISTRIBUTE, MPI_COMM_WORLD);
+    send_address += dimx * dimy * (dimz / num_comp_nodes);
+}
+
+/* Wait for nodes to compute */
+MPI_Barrier(MPI_COMM_WORLD);
+
+/* Collect output data */
+MPI_Status status;
+for (int process = 0; process < num_comp_nodes; process++) {
+    MPI_Recv(output + process * num_points / num_comp_nodes, num_points / num_comp_nodes, MPI_FLOAT, process, DATA_COLLECT, MPI_COMM_WORLD, &status);
+}\end{lstlisting}
+
+    The server process first initializes MPI and determines the total number of MPI processes and the number of compute nodes. It also allocates and initializes the input data and calculates the number of points per compute process.
+
+    After that, the server process uses a loop to send data to each compute node.
+
+    It calls \texttt{MPI\_Barrier} to synchronize all processes. This ensures that all compute nodes have completed their calculations before continuing.
+
+    Finally, the server process uses another loop to receive the computed results from each compute node.
+
+
+    \item \important{Compute process}: receive data and offload computation to the GPU.
+    \begin{lstlisting}[language=C++]
+/* Part 1 */
+
+/* Alloc host memory */
+float *h_input = (float *)malloc(num_bytes);
+/* Alloc device memory for input and output data */
+float *d_input = NULL;
+cudaMalloc((void **)&d_input, num_bytes);
+/* Receive data and move it to device memory */
+float *rcv_address = h_input + num_halo_points * (0 == pid);
+MPI_Recv(rcv_address, num_points, MPI_FLOAT, server_process,
+         MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+cudaMemcpy(d_input, h_input, num_bytes, cudaMemcpyHostToDevice);
+
+/* Part 2 */
+void launch_kernel(float *next, float *in, float *prev, float *velocity, int dimx, int dimy, int dimz)
+{
+    dim3 Gd, Bd, Vd;
+
+    Vd.x = dimx; Vd.y = dimy; Vd.z = dimz;
+
+    Bd.x = BLOCK_DIM_X; Bd.y = BLOCK_DIM_Y; Bd.z = BLOCK_DIM_Z;
+
+    Gd.x = (dimx + Bd.x - 1) / Bd.x;
+    Gd.y = (dimy + Bd.y - 1) / Bd.y;
+    Gd.z = (dimz + Bd.z - 1) / Bd.z;
+
+    wave_propagation<<<Gd, Bd>>>(next, in, prev, velocity, Vd);
+}
+
+/* Part 3 */
+MPI_Status status;
+int left_neighbor = (pid > 0) ? (pid - 1) : MPI_PROC_NULL;
+int right_neighbor = (pid < np - 2) ? (pid + 1) : MPI_PROC_NULL;
+
+/* Upload stencil coefficients */
+/* Calculate offsets */
+
+MPI_Barrier( MPI_COMM_WORLD );
+/* Compute boundary values needed by other nodes first */
+launch_kernel(d_output + left_stage1_offset, d_input + left_stage1_offset, dimx, dimy, 1/2, stream0);
+launch_kernel(d_output + right_stage1_offset, d_input + right_stage1_offset, dimx, dimy, 1/2, stream0);
+/* Compute the remaining points */
+launch_kernel(d_output + stage2_offset, d_input + stage2_offset, dimx, dimy, dimz, stream1);
+/* Copy the data needed by other nodes to the host */
+cudaMemcpyAsync(h_left_boundary, d_output + num_halo_points, num_halo_bytes, cudaMemcpyDeviceToHost, stream0);
+cudaMemcpyAsync(h_right_boundary, d_output + right_stage1_offset + num_halo_points, num_halo_bytes, cudaMemcpyDeviceToHost, stream0);
+cudaStreamSynchronize(stream0);
+    \end{lstlisting}
+
+    \begin{enumerate}
+        \item Part 1: Receiving Data and Allocating Memory. This part shows how the compute process receives data and prepares for computation on the GPU.
+        \item Part 2: Launching the Kernel. This part shows how to set up and launch a CUDA kernel for computation.
+        \item Part 3: Managing Neighbors and Synchronizing Streams. This part shows how to handle boundary conditions and synchronize computations.
+    \end{enumerate}
+\end{itemize}

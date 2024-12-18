@@ -20,6 +20,9 @@
 
 ### v0.13.0-dev
 
+- add `Memory Consistency`
+  - add `Coherence vs Consistency`
+
 --------------------
 
 ### v0.12.0

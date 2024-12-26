@@ -22,6 +22,7 @@
 
 - add `Memory Consistency`
   - add `Coherence vs Consistency`
+  - add `Definition`
 
 --------------------
 

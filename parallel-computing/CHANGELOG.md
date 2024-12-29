@@ -23,6 +23,7 @@
 - add `Memory Consistency`
   - add `Coherence vs Consistency`
   - add `Definition`
+  - add `Sequential Consistency Model`
 
 --------------------
 

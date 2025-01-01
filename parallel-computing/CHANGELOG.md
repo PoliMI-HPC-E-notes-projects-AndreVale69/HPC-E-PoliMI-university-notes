@@ -24,6 +24,10 @@
   - add `Coherence vs Consistency`
   - add `Definition`
   - add `Sequential Consistency Model`
+  - add `Memory Models with Relaxed Ordering`
+    - add `Allowing Reads to Move Ahead of Writes`
+    - add `Allowing writes to be reordered`
+    - add `Allowing all reorderings`
 
 --------------------
 

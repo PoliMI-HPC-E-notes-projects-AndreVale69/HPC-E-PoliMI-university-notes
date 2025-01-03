@@ -28,6 +28,7 @@
     - add `Allowing Reads to Move Ahead of Writes`
     - add `Allowing writes to be reordered`
     - add `Allowing all reorderings`
+  - add `Languages Need Memory Models Too`
 
 --------------------
 

@@ -29,6 +29,10 @@
     - add `Allowing writes to be reordered`
     - add `Allowing all reorderings`
   - add `Languages Need Memory Models Too`
+  - add `Implementing Locks`
+    - add `Introduction`
+    - add `Test-and-Set based lock`
+    - add `Test-and-Test-and-Set lock`
 
 --------------------
 

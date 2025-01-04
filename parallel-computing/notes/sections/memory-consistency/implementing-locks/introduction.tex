@@ -1,0 +1,66 @@
+\subsection{Implementing Locks}
+
+\subsubsection{Introduction}
+
+Locks are essential in concurrent programming for managing access to shared resources and preventing data races. A common mistake in implementing locks is using a simple Load-Test-Store lock sequence, which can lead to severe issues such as data races due to its non-atomic nature.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Simple but Incorrect Lock Implementation: Load-Test-Store lock}}
+\end{flushleft}
+The idea behind the \definition{Load-Test-Store lock} is to \textbf{check if the lock is available} (i.e., not held by any other processor) \textbf{and then acquire it by setting it}. This process involves loading the current value of the lock, checking its state, and storing a new value if it's free. Here's the pseudo-code for the implementation:
+\begin{lstlisting}
+lock:
+    // Load the value at address into register R0
+    ld  R0, mem[addr]
+
+    // Compare the value in R0 to 0
+    cmp R0, #0
+
+    // If R0 is not zero, jump back to 'lock' (retry)
+    bnz lock
+
+    // Store 1 at the address to indicate the lock is acquired
+    st  mem[addr], #1
+
+unlock:
+    // Store 0 at the address to release the lock
+    st  mem[addr], #0
+\end{lstlisting}
+In this implementation, a processor repeatedly loads and checks a memory address, acquiring the lock by storing a value to indicate it is locked. However, \textbf{this sequence is not atomic}, leading to a \important{potential data race}:
+\begin{itemize}
+    \item Processor 0 (\texttt{P0}) attempts to acquire the lock:
+    \begin{itemize}
+      \item \texttt{ld R0, mem[addr]}: \texttt{P0} loads the value from memory address \texttt{addr} into register \texttt{R0}. Suppose the value is \texttt{0} (lock is \emph{free}).
+    
+      \item \texttt{cmp R0, \#0}: \texttt{P0} compares \texttt{R0} with \texttt{0}. Since \texttt{R0} is \texttt{0}, the comparison is true.
+      
+      \item \texttt{st mem[addr], \#1}: \texttt{P0} stores \texttt{1} at \texttt{mem[addr]}, indicating \textbf{it has acquired the lock}.
+    \end{itemize}  
+    
+    \item Processor 1 (\texttt{P1}) attempts to acquire the lock \underline{simultaneously}:
+    \begin{itemize}
+      \item \texttt{ld R1, mem[addr]}: \texttt{P1} loads the value from memory address \texttt{addr} into register \texttt{R1}. Suppose the value is still \texttt{0} (before \texttt{P0} updates the lock).
+      
+      \item \texttt{cmp R1, \#0}: \texttt{P1} compares \texttt{R1} with \texttt{0}. Since \texttt{R1} is \texttt{0}, the comparison is true.
+      
+      \item \texttt{st mem[addr], \#1}: \texttt{P1} stores \texttt{1} at \texttt{mem[addr]}, indicating \textbf{it has acquired the lock}.
+    \end{itemize}
+\end{itemize}
+Both \texttt{P0} and \texttt{P1} believe they have acquired the lock because they both observed the lock as free (\texttt{0}) and updated it to \texttt{1}. This leads to a \textbf{data race where two processors think they have the lock, causing inconsistent states and potential conflicts in accessing the critical section}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Why does Load-Test-Store suffer from Data Race?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Non-Atomic Operations}: The sequence of load, compare, and store operations are not atomic. During this sequence, \emph{other processors can interrupt and perform their own operations}, leading to race conditions.
+
+    \item \textbf{Lack of Synchronization}: There is no mechanism to ensure that the load-test-store sequence is executed as a single, uninterruptible operation, which is necessary to prevent data races.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Advanced Locking Techniques}}
+\end{flushleft}
+To address these issues, more sophisticated lock implementations are necessary. The following sections will explore \emph{Test-and-Set Based Lock} (page \hqpageref{subsubsection: Test-and-Set based lock}) and \emph{Test-and-Test-and-Set Lock} (page \hqpageref{subsubsection: Test-and-Test-and-Set lock}), which provide reliable and efficient synchronization mechanisms to prevent data races and ensure proper access control.

@@ -23,6 +23,8 @@ Each version follows the Conventional Commits structure. For more information on
 
 - add `Domain Decomposition Methods`
   - add `Introduction`
+  - add `Overlapping Subdomains`
+    - add `Alternating Schwarz Method`
 
 --------------------
 

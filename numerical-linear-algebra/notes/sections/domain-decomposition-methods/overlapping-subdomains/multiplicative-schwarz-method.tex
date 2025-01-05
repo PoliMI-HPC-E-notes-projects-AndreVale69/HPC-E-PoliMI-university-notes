@@ -1,0 +1,83 @@
+\subsubsection{Multiplicative Schwarz method}
+
+The \definition{Multiplicative Schwarz Method} is an \textbf{iterative technique used to solve discretized linear systems}, particularly in the context of domain decomposition methods. It is similar to the block Gauss-Seidel method but uses overlapping blocks. The method involves breaking down a large system into smaller subproblems that can be solved more easily.
+
+\begin{enumerate}
+    \item \textbf{Principal Submatrices}. The matrix $A$ is decomposed into principal submatrices $A_{1}$ and $A_{2}$, corresponding to two subdomains. These submatrices are given by (with eq. \ref{eq: principal submatrices - discretized schwarz methods}, page \pageref{eq: principal submatrices - discretized schwarz methods}):
+    \begin{equation*}
+        \begin{array}{rcl}
+            A_{1} &=& R_{1} A R_{1}^{T} \\ [.5em]
+            A_{2} &=& R_{2} A R_{2}^{T}
+        \end{array}
+    \end{equation*}
+    Where $R_{1}$ and $R_{2}$ are restriction operators that extract the relevant components for each subdomain.
+
+    \item \textbf{Alternating Schwarz Iteration}. For a discretized problem, the alternating Schwarz iteration takes the following form:
+    \begin{equation*}
+        \begin{array}{rcl}
+            x^{(k+\frac{1}{2})} &=& x^{(k)} + R_{1}^{T} A_{1}^{-1} R_{1} (b - A x^{(k)}) \\ [.5em]
+            x^{(k+1)} &=& x^{(k+\frac{1}{2})} + R_{2}^{T} A_{2}^{-1} R_{2} (b - A x^{(k+\frac{1}{2})}
+        \end{array}
+    \end{equation*}
+    These equations update the solution vector $x$ by solving the subproblems within each subdomain iteratively.
+
+    \item \textbf{Error Update}. The overall error $e^{(k)} = x - x^{(k)}$ is updated as:
+    \begin{equation*}
+        e^{(k+1)} = B_{MS} e^{(k)}
+    \end{equation*}
+    Where:
+    \begin{equation*}
+        B_{MS} = \left(I - R_{2}^{T} A_{2}^{-1} R_{2} A\right)\left(I - R_{1}^{T} A_{1}^{-1} R_{1} A\right)
+    \end{equation*}
+    The \textbf{error propagation matrix} $B_{MS}$ shows how the \textbf{error evolves through each iteration}, ensuring convergence of the method.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Sequential Nature of the Multiplicative Schwarz Method}}
+\end{flushleft}
+The Multiplicative Schwarz Method involves \textbf{sequential computation}, which can be both a strength and a limitation depending on the context of its application. 
+\begin{itemize}
+    \item \important{Subdomain Dependency}. In the Multiplicative Schwarz Method, \textbf{each subdomain's solution depends on the updated solution of the previous subdomain}. This dependency requires that subdomains be solved in a specific sequence. For example, subdomain $\Omega_{2}$ uses the updated boundary conditions from the solution of subdomain $\Omega_{1}$.
+
+
+    \item \important{Iteration Steps}. The method alternates between solving subdomain problems, updating the boundary conditions iteratively. Here's the typical update process:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \mathbf{x}^{(k+\frac{1}{2})} &=& \mathbf{x}^{(k)} + R_{1}^{T} A_{1}^{-1} R_{1} (\mathbf{b} - A \mathbf{x}^{(k)}) \\ [.7em]
+            \mathbf{x}^{(k+1)} &=& \textcolor{Red2}{\mathbf{x}^{(k+\frac{1}{2})}} + R_{2}^{T} A_{2}^{-1} R_{2} (\mathbf{b} - A \textcolor{Red2}{\mathbf{x}^{(k+\frac{1}{2})}})
+        \end{array}
+    \end{equation*}
+    Subdomain $\Omega_{2}$ cannot be updated until subdomain $\Omega_{1}$ has been solved and its results incorporated.
+\end{itemize}
+In fact, the method is called \emph{multiplicative} because:
+\begin{enumerate}
+    \item Each subdomain solution depends on the updated boundary conditions from the previous subdomain, effectively \emph{multiplying} the effect of each update;
+    \item The error update formula for the Multiplicative Schwarz Method involves the sequential multiplication of error reduction operators for each subdomain.
+\end{enumerate}
+However, there are limitations:
+\begin{itemize}
+    \item \important{Lack of Parallelism}. Because of the sequential nature, \textbf{subdomains must be processed one after the other}, making it difficult to exploit parallel computing resources effectively. This limits the scalability of the method on modern high-performance computing systems, where parallelism is crucial for handling large-scale problems efficiently.
+
+    \item \important{Longer Computation Times}. Sequential updates mean that each iteration can take longer compared to methods that allow for parallel processing. The overall computation time increases, especially for problems with many subdomains or very large domains.
+
+    \item \important{Communication Overhead}. In distributed computing environments, the sequential nature can result in increased communication overhead between processors, as each processor must wait for the previous one to complete its computation before starting.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Gauss-Seidel Analogy}}
+\end{flushleft}
+The Multiplicative Schwarz Method is analogous to the block Gauss-Seidel method. Just like the Gauss-Seidel method updates the solution iteratively using previously computed values, the Multiplicative Schwarz Method updates the solution sequentially by \emph{multiplying} the effect of each subdomain's solution.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+\end{flushleft}
+Can lead to \textbf{faster convergence for certain problems} due to the sequential dependency of updates.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+Limited by its sequential nature, making it \textbf{less suitable for parallel processing}.

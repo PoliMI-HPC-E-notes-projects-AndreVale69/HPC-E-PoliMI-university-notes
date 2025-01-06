@@ -1,0 +1,111 @@
+\paragraph{Additive Schwarz method}
+
+The \definition{Additive Schwarz method} is a \textbf{domain decomposition method that allows subproblems to be solved in parallel}, unlike the Multiplicative Schwarz Method. This method is particularly suitable for parallel computing environments, making it \textbf{highly efficient for large-scale problems}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Main features}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Parallelism}}. The Additive Schwarz Method achieves \textbf{parallelism by solving subproblems simultaneously}. This is in contrast to the sequential approach of the Multiplicative Schwarz Method, where subproblems are solved one after another.
+
+    \item \important{Block Jacobi Approach}. The method uses a \textbf{block Jacobi approach} instead of a block Gauss-Seidel approach. In the block Jacobi approach, \textbf{each subdomain problem is solved independently}, allowing for parallel execution.
+    
+    \item \important{Equations and Iteration Steps}. The iterative process involves updating the solution vector $\mathbf{x}$ by combining the solutions from all subdomains additively:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \mathbf{x}^{\left(k+\frac{1}{2}\right)} &=& \mathbf{x}^{(k)} + R_{1}^{T} A_{1}^{-1} R_{1} \left(\mathbf{b} - A \mathbf{x}^{(k)}\right) \\ [.7em]
+            \mathbf{x}^{(k+1)} &=& \mathbf{x}^{\left(k+\frac{1}{2}\right)} + \underbrace{R_{2}^{T} A_{2}^{-1} R_{2} \left(\mathbf{b} - A \mathbf{x}^{(k)}\right)}_{\text{independently of }\mathbf{x}^{\left(k+\frac{1}{2}\right)}}
+        \end{array}
+    \end{equation*}
+    These equations indicate that the solutions for subdomains $\Omega_{1}$ and $\Omega_{2}$ can be \textbf{computed simultaneously}.
+
+    \item \important{Error Update}. The overall error $\mathbf{e}^{(k)} = \mathbf{x} - \mathbf{x}^{(k)}$ is updated as:
+    \begin{equation*}
+        \mathbf{e}^{(k+1)} = B_{AS} \mathbf{e}^{(k)}
+    \end{equation*}
+    where:
+    \begin{equation*}
+        B_{AS} = (R_{2}^{T} A_{2}^{-1} R_{2} + R_{1}^{T} A_{1}^{-1} R_{1}) A
+    \end{equation*}
+    The error propagation matrix $B_{AS}$ reflects the additive nature of the method, combining the effects of all subdomain solutions.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Additive Schwarz Preconditioner}}
+\end{flushleft}
+The two separate equations for the Additive Schwarz Method can be \textbf{combined into a single update equation by introducing an} \definition{Additive Schwarz Preconditioner}. This preconditioner combines the effects of all subdomain solutions into one equation, simplifying the iterative process. The combined update equation is:
+\begin{equation}
+    x^{\left(k+1\right)} = x^{\left(k\right)} + P_{ad}^{-1}\mathbf{r}^{\left(k\right)} \hspace{2em} k \ge 0
+\end{equation}
+where $P_{ad}^{-1}$ is the additive Schwarz preconditioner:
+\begin{equation}
+    P_{ad}^{-1} = \left(
+        R_{1}^{T}A_{1}^{-1}R_{1} +
+        R_{2}^{T}A_{2}^{-1}R_{2}
+    \right)
+\end{equation}
+\begin{proof}
+    To simplify the formulation, we can eliminate the intermediate step $x^{\left(k+\frac{1}{2}\right)}$ to obtain a direct update equation:
+    \begin{equation*}
+        x^{\left(k+1\right)} = x^{\left(k\right)} + R_{1}^{T}A_{1}^{-1}R_{1}\left(\mathbf{b} - A\mathbf{x}^{\left(k\right)}\right) + R_{2}^{T}A_{2}^{-1}R_{2}\left(\mathbf{b} - A\mathbf{x}^{\left(k\right)}\right)
+    \end{equation*}
+    This simplifies to:
+    \begin{equation*}
+        \begin{array}{rcl}
+            x^{\left(k+1\right)} &=& x^{\left(k\right)} + \left(
+                R_{1}^{T}A_{1}^{-1}R_{1} + R_{2}^{T}A_{2}^{-1}R_{2}
+            \right) \left(\mathbf{b} - A\mathbf{x}^{\left(k\right)}\right) \\ [.7em]
+            &=& x^{\left(k\right)} + \left(
+                R_{1}^{T}A_{1}^{-1}R_{1} + R_{2}^{T}A_{2}^{-1}R_{2}
+            \right) \left(\mathbf{r}^{\left(k\right)}\right)
+        \end{array}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $\mathbf{r}^{\left(k\right)}$ is the residual vector $\mathbf{b} - A\mathbf{x}^{\left(k\right)}$;
+        \item $\left(R_{1}^{T}A_{1}^{-1}R_{1} + R_{2}^{T}A_{2}^{-1}R_{2}\right)$ is the preconditioner $P_{ad}^{-1}$.
+    \end{itemize}
+\end{proof}
+
+\noindent
+The additive Schwarz preconditioner is \textbf{used to improve the convergence rate} of the iterative solver by combining the effects of all subdomain solutions.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Symmetry of Preconditioner (and PCG)}}
+\end{flushleft}
+The preconditioner $P_{ad}^{-1}$ retains the \textbf{symmetry} of the original matrix $A$. This is important because it \textbf{ensures compatibility with the Preconditioned Conjugate Gradient (PCG) method}, which requires the system to be symmetric and positive-definite. It is an iterative solver for symmetric positive-definite linear systems. However, the equation for \textbf{PCG with the additive Schwarz preconditioner} is:
+\begin{equation}
+    \mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)} + \alpha_{k}P^{-1}_{ad}\mathbf{p}^{\left(k\right)} \hspace{2em} k \ge 0
+\end{equation}
+Here, $\alpha_{k}$ is a step size, and $\mathbf{p}^{\left(k\right)}$ is the search direction at iteration $k$ (see chapter \ref{subsection: Conjugate Gradient method}, on page \pageref{subsection: Conjugate Gradient method}, for a refresher on Conjugate Gradient).
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Symmetrized Multiplicative Schwarz Preconditioner}}
+\end{flushleft}
+The \textbf{standard multiplicative Schwarz iteration matrix is not symmetric}, which can be a limitation when using methods like PCG that require symmetry. To address this, an additional step involving $A_{1}^{-1}$ is introduced to make the preconditioner symmetric:
+\begin{enumerate}
+    \item First Symmetric Step:
+    \begin{equation}
+        \mathbf{x}^{\left(k+\frac{1}{3}\right)} = \mathbf{x}^{\left(k\right)} + R_{1}^{T}A_{1}^{-1}R_{1}\left(\mathbf{b}-A\mathbf{x}^{\left(k\right)}\right)
+    \end{equation}
+
+    \item Second Symmetric Step:
+    \begin{equation}
+        \mathbf{x}^{\left(k+\frac{2}{3}\right)} = \mathbf{x}^{\left(k+\frac{1}{3}\right)} + R_{2}^{T}A_{2}^{-1}R_{2}\left(\mathbf{b}-A\mathbf{x}^{\left(k+\frac{1}{3}\right)}\right)
+    \end{equation}
+
+    \item Third Symmetric Step:
+    \begin{equation}
+        \mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k+\frac{2}{3}\right)} + R_{1}^{T}A_{1}^{-1}R_{1}\left(\mathbf{b}-A\mathbf{x}^{\left(k+\frac{2}{3}\right)}\right)
+    \end{equation}
+\end{enumerate}
+This process results in a symmetric preconditioner $P_{mus}^{-1}$ that can be used effectively with the PCG method to accelerate convergence:
+\begin{equation}
+    \mathbf{x}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)} + \alpha_{k}P_{mus}^{-1}\mathbf{r}^{\left(k\right)} \hspace{2em} k \ge 0
+\end{equation}

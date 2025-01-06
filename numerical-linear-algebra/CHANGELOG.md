@@ -29,6 +29,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `Multiplicative Schwarz method`
       - add `Additive Schwarz method`
     - add `Many Overlapping Subdomains`
+    - add `Coloring Technique`
 
 --------------------
 

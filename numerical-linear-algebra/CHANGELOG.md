@@ -32,6 +32,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Coloring Technique`
   - add `Non-Overlapping Subdomains`
     - add `Introduction`
+    - add `The Schur Complement`
 
 --------------------
 

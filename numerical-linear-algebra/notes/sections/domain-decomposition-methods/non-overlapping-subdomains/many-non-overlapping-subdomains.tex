@@ -1,0 +1,67 @@
+\subsubsection{Many Non-Overlapping Subdomains}
+
+To improve parallelism in solving large linear systems, we use many non-\break overlapping subdomains. This section explains how to partition matrices and right-hand vectors and solve the resulting system using the Schur complement method. In other words, the goal is to \textbf{improve parallelism by using many non-overlapping subdomains with the Schur method}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does it work?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Definitions}.
+    \begin{itemize}
+        \item Let $I$ be the set of indices of \textbf{interior nodes of subdomains}.
+        \item Let $\Gamma$ be the set of indices of \textbf{interface nodes}.
+    \end{itemize}
+
+    \item \textbf{Discrete Linear System}. The system is represented in block form as:
+    \begin{equation*}
+        \begin{pmatrix}
+            A_{II} & A_{I\Gamma} \\
+            A_{II\Gamma}^{T} & A_{\Gamma \Gamma}
+        \end{pmatrix}
+        \begin{pmatrix}
+            x_{I} \\ x_{\Gamma}
+        \end{pmatrix}
+        =
+        \begin{pmatrix}
+            b_{I} \\ b_{\Gamma}
+        \end{pmatrix}
+    \end{equation*}
+    Here, $A_{II}$ is block diagonal with the structure:
+    \begin{equation*}
+        A_{II} = \begin{pmatrix}
+            A_{11}  & 0         & \cdots    & 0         \\
+            0       & A_{22}    & \cdots    & 0         \\
+            0       & \vdots    & \ddots    & 0         \\
+            0       & \cdots    & 0         & A_{NN}
+        \end{pmatrix}
+    \end{equation*}
+
+    \item \textbf{Block LU Factorization}. 
+    \begin{itemize}
+        \item The factorization of matrix $A$ yields a system:
+        \begin{equation*}
+            S \mathbf{x}_{\Gamma} = \widetilde{\mathbf{b}}_{\Gamma}
+        \end{equation*}
+
+        \item The Schur complement matrix $S$ is given by:
+        \begin{equation*}
+            S = A_{\Gamma \Gamma} - A_{I\Gamma}^T A_{II}^{-1} A_{I\Gamma}
+        \end{equation*}
+        And:
+        \begin{equation*}
+            \widetilde{\mathbf{b}}_{\Gamma} = \mathbf{b}_{\Gamma} - A_{I\Gamma}^{T} A_{II}^{-1} \mathbf{b}_{I}
+        \end{equation*}
+    \end{itemize}
+
+    \item \textbf{Solution Method}.
+    \begin{itemize}
+        \item This system can be \textbf{solved iteratively without forming} $S$ \textbf{explicitly}.
+        \item Suitable interface \textbf{preconditioners can be used to accelerate convergence}.
+        \item \textbf{Interior unknowns} are then given by:
+        \begin{equation*}
+            x_{I} = A_{II}^{-1} (\mathbf{b}_{I} - A_{I\Gamma} \mathbf{x}_{\Gamma})
+        \end{equation*}
+        \item All occurrences of $A_{II}^{-1}$ can be \textbf{performed on all subdomains in parallel} because $A_{II}$ is block diagonal.
+    \end{itemize}
+\end{itemize}

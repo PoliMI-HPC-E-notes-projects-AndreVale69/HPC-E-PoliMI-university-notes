@@ -33,6 +33,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `Non-Overlapping Subdomains`
     - add `Introduction`
     - add `The Schur Complement`
+    - add `Many Non-Overlapping Subdomains`
 
 --------------------
 

@@ -24,6 +24,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 - add `Direct Methods for Linear Systems`
   - add `LU Factorization`
+  - add `Gaussian elimination`
 
 --------------------
 

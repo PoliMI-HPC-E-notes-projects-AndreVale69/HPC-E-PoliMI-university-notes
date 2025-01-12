@@ -1,3 +1,13 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=${{ secrets.GOOGLE_ANALYTICS }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', ${{ secrets.GOOGLE_ANALYTICS }});
+</script>
+
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
 ![Website](https://img.shields.io/website?url=https%3A%2F%2Fpolimi-hpc-e-notes-projects-andrevale69.github.io%2FHPC-E-PoliMI-university-notes%2F&up_message=online&up_color=green&down_message=offline&down_color=red&logo=githubpages&label=Notes%20Website%20status)
 

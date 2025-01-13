@@ -9,7 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v0.8.0-dev](#v080-dev)
+- [v0.8.0](#v080)
 - [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
@@ -20,12 +20,16 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
-### v0.8.0-dev
+### v0.8.0
 
 - add `Direct Methods for Linear Systems`
   - add `LU Factorization`
   - add `Gaussian elimination`
   - add `Cholesky Factorization`
+  - add `Pivoting`
+    - add `Pivoting by rows (partial pivoting)`
+    - add `Complete Pivoting`
+  - add `Fill-In`
 
 --------------------
 

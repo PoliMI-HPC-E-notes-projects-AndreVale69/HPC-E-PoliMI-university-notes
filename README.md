@@ -135,5 +135,16 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
     </tr>
 </table>
 
+<details><summary></summary>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-4QGXD9XC50"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-4QGXD9XC50');
+</script>
+</details>
 
 [GitHub Pages website]: https://polimi-hpc-e-notes-projects-andrevale69.github.io/HPC-E-PoliMI-university-notes/

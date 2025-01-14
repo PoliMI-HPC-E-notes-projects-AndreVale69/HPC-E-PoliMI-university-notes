@@ -14,6 +14,10 @@ In the [CHANGELOG](CHANGELOG.md) file you can see the changes made to each versi
 
 For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
+## Correlated Projects
+
+During the Numerical Linear Algebra for HPC course, I was part of a team where we created a project that included two challenges related to the course. See more details in the [corresponding repository](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NLA-challenges).
+
 ## Course Syllabus
 
 According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=837635&__pj0=0&__pj1=c14afe0b1a27f6df8728d3432f9a6132):

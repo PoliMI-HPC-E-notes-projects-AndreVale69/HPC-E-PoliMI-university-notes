@@ -9,6 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v1.0.0](#v100)
 - [v0.8.0](#v080)
 - [v0.7.0](#v070)
 - [v0.6.0](#v060)
@@ -17,6 +18,12 @@ Each version follows the Conventional Commits structure. For more information on
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.0.0
+
+- add `Correlated Projects` in the Preface section
 
 --------------------
 

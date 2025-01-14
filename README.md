@@ -84,7 +84,7 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
         </ul></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2024/2025</td>
         <td>Numerical Linear Algebra</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=300134&aa=2024&n_docente=Antonietti%20Paola%20Francesca&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Antonietti Paola Francesca</a></td>

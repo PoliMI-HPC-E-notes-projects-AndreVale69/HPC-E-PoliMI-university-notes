@@ -9,7 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
-- [v1.1.0-dev](#v110-dev)
+- [v1.1.0](#v110)
 - [v1.0.0](#v100)
 - [v0.8.0](#v080)
 - [v0.7.0](#v070)
@@ -22,11 +22,12 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
-### v1.1.0-dev
+### v1.1.0
 
 - add `Exams`
   - add `Year 2024`
     - add `July 03`
+    - add `June 17`
 
 --------------------
 

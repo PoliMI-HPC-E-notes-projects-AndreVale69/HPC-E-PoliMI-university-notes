@@ -74,7 +74,7 @@
 
     \textbf{Answer}: The \textbf{\emph{necessary and sufficient condition}} for the existence and uniqueness of the LU factorization of a matrix $A$ is that all leading principal minors\footnote{A \definition{Leading Principal Minor} is the determinant of a top-left submatrix of $A$.} of $A$ are non-zero.
     
-    Formally, let $A$ be an $n \times n$ matrix. The LU factorization $A = LU$ exists and is unique if and only if the leading principal minors of $A$, i.e., the determinants of the submatrices $A_{1:k, 1:k}$ for $k = 1, 2, \ldots, n$, are non-zero:
+    Formally, let $A$ be an $n \times n$ matrix. The LU factorization $A = LU$ exists and is unique if and only if the leading principal minors of $A$, i.e., the determinants of the submatrices $A_{1:k, 1:k}$ for $k = 1, 2, \ddots, n$, are non-zero:
     \begin{equation*}
         \exists\left(A = LU\right) \iff \det(A_{1:k, 1:k}) \neq 0 \hspace{2em} \forall k = 1, 2, \dots, n
     \end{equation*}
@@ -309,4 +309,319 @@ printf("Comparison solutions: %g\n", (x - x12).norm());\end{lstlisting}
 Solution with Schur complement
 Norm of the absolute residual: 1.29778e-13
 Comparison solutions: 1.13896e-13\end{lstlisting}
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+
+\subsubsection*{Exercise 2 - Theory}
+
+\begin{enumerate}[label=\textcolor{Green3}{\textbf{\arabic*.}}]
+    \item \textcolor{Green3}{\textbf{%
+        Consider the following eigenvalue problem: $A\mathbf{x} = \lambda\mathbf{x}$, where $A \in \mathbb{R}^{n \times n}$ is given. Describe the inverse power method for the numerical approximation of the smallest in modulus eigenvalue of $A$. Introduce the notation and discuss the applicability conditions.
+    }}
+
+    \textbf{Answer}: The inverse power method is an iterative technique used to find the smallest eigenvalues of a matrix.
+
+    The inverse power method leverages the fact that applying the power method to the inverse of a matrix $A$ will converge to the eigenvalue of $A^{-1}$ with the largest magnitude. Since the eigenvalues of $A^{-1}$ are the reciprocals of the eigenvalues of $A$, the inverse power method converges to the eigenvalue of $A$ with the smallest absolute value.
+
+    \textbf{\emph{Notation}}
+    \begin{itemize}
+        \item $A$: An $n \times n$ real matrix.
+        \item $\mathbf{x}$: An eigenvector corresponding to the eigenvalue $\lambda$.
+        \item $\lambda$: The eigenvalue associated with the eigenvector $\mathbf{x}$.
+        \item $\mathbf{x}^{(k)}$: The approximation of the eigenvector at iteration $k$.
+        \item $\lambda^{(k)}$: The approximation of the eigenvalue at iteration $k$.
+    \end{itemize}
+
+    \textbf{\emph{Applicability Conditions}}
+    \begin{enumerate}
+        \item \textbf{\emph{Invertibility}}: The matrix $A$ must be invertible, i.e., it should have a non-zero determinant.
+        \item \textbf{\emph{Distinct Smallest Eigenvalue}}: The smallest eigenvalue in magnitude should be distinct and well-separated from the other eigenvalues. This ensures rapid convergence.
+        \item \textbf{\emph{Initial Vector}}: The initial vector $\mathbf{x}^{(0)}$ should have a non-zero component in the direction of the eigenvector corresponding to the smallest eigenvalue. Random vectors typically satisfy this condition. Also, its Euclidean norm should be one.
+        \item \textbf{\emph{Numerical Stability}}: Solving the linear system $A \mathbf{y}^{(k+1)} = \mathbf{x}^{(k)}$ at each iteration can introduce numerical instability, especially if $A$ is ill-conditioned. Preconditioning or regularization techniques might be needed.
+    \end{enumerate}
+
+    \begin{tipbox}
+        How can we remember the \dquotes{Applicability Conditions}?
+        \begin{enumerate}
+            \item \textbf{\emph{Invertibility}}. If the matrix $A$ is not invertible, then the matrix $A^{-1}$ doesn't exist. This means that the step in the algorithm $A\mathbf{y}^{\left(k+1\right)} = \mathbf{x}^{\left(k\right)}$ cannot be solved if the matrix is not invertible!
+            \item \textbf{\emph{Distinct Smallest Eigenvalue}}. Having a distinct smallest eigenvalue ensures that the inverse power method can effectively and accurately converge to the correct smallest eigenvalue. It guarantees that the iterative process is dominated by the single smallest eigenvalue, leading to reliable and stable convergence.
+            \item \textbf{\emph{Initial Vector}}. In each iteration of the inverse power method, the vector is multiplied by $A^{-1}$. This process amplifies the components of the vector in the direction of the eigenvector corresponding to the smallest eigenvalue. If the initial vector $\mathbf{x}^{0}$ has a zero component in this direction, the iterative process will not capture or amplify this component, leading to incorrect convergence.
+            \item \textbf{\emph{Numerical Stability}}. The first operation of the algorithm at each step can introduce some instability, so preconditioning and pivoting techniques are used to massage the matrices during factorization.
+        \end{enumerate}
+    \end{tipbox}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+    \item \textcolor{Green3}{\textbf{Write the (pseudo) algorithm.}}
+    
+    \textbf{Answer}:
+    \begin{enumerate}
+        \item Choose an initial non-zero vector $\mathbf{x}^{(0)}$, such that its norm is one $\left\| \mathbf{x}^{\left(0\right)} \right\| = 1$. Often, a random vector or a vector of all ones is chosen.
+
+        \item For $k \ge 0$ until convergence:
+        \begin{enumerate}
+            \item Solve the linear system:
+            \begin{equation*}
+                A \mathbf{y}^{(k+1)} = \mathbf{x}^{(k)}
+            \end{equation*}
+            \item Normalize the resulting vector to prevent it from growing too large:
+            \begin{equation*}
+                \mathbf{x}^{(k+1)} = \frac{\mathbf{y}^{(k+1)}}{\left\|\mathbf{y}^{(k+1)}\right\|}
+            \end{equation*}
+            \item Approximate the eigenvalue:
+            \begin{equation*}
+                \lambda^{(k+1)} = \left[\mathbf{x}^{\left(k+1\right)}\right]^{H} A \mathbf{x}^{\left(k+1\right)}
+            \end{equation*}
+        \end{enumerate}
+
+        \item Repeat until we meet a specific stopping criteria, for example:
+        \begin{equation*}
+            \left|\lambda^{(k+1)} - \lambda^{(k)}\right| < \varepsilon
+        \end{equation*}
+    \end{enumerate}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \newpage
+
+    \item \textcolor{Green3}{\textbf{State the main theoretical result.}}
+    
+    \textbf{Answer}: 
+    \begin{itemize}
+        \item \textbf{\emph{Convergence}}. The inverse power method converges to the eigenvalue of $A$ with the smallest absolute value. This is because applying the power method to $A^{-1}$ targets the largest eigenvalue of $A^{-1}$, which corresponds to the smallest eigenvalue of $A$.
+        
+        \item \textbf{\emph{Rate of Convergence}}. The rate of convergence of the inverse power method depends on the ratio of the second smallest eigenvalue to the smallest eigenvalue.
+        
+        If $\lambda_{1}$ is the smallest eigenvalue and $\lambda_{2}$ is the second smallest eigenvalue in magnitude, the error in the $k$-th iteration decreases proportionally to:
+        \begin{equation*}
+            \left( \frac{\lambda_{1}}{\lambda_{2}} \right)^{k}
+        \end{equation*}
+        A larger gap between the smallest and the second smallest eigenvalues results in faster convergence.
+
+        Faster convergence when:
+        \begin{equation*}
+            \dfrac{\left|\lambda_{1}\right|}{\left|\lambda_{2}\right|} \ll 1
+        \end{equation*}
+
+        \item \textbf{\emph{Computational Cost}}. For the dense matrices it takes $n^{3}$ flops, while for the sparse matrices it takes only $n \cdot m$ flops (where $n$ is the number of rows in the square matrix, and $m$ is the number of non-zero elements).
+    \end{itemize}
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+
+\subsubsection*{Exercise 2 - Laboratory}
+
+The solution code snippet is available here:
+\begin{center}
+    \qrcode{https://gist.github.com/AndreVale69/a1fed38529d02eaa59bd0025dc8ded68#file-exer2-cpp}
+\end{center}
+\begin{enumerate}[label=\textcolor{Green3}{\textbf{\arabic*.}}]
+    \item \textcolor{Green3}{\textbf{%
+        Let $A$ be a $100 \times 100$ tetradiagonal matrix defined such that:
+    }
+    \begin{equation*}
+        \begin{pmatrix}
+            8 & -4 & -1 & 0 & 0 & \cdots & 0 \\
+            -2 & 8 & -4 & -1 & 0 & \cdots & 0 \\
+            0 & -2 & 8 & -4 & -1 & \ddots & \vdots \\
+            0 & 0 & \ddots & \ddots & \ddots & \ddots & 0 \\
+            0 & \ddots & \ddots & \ddots & \ddots & \ddots & -1 \\
+            \vdots & \vdots & \vdots & 0 & -2 & 8 & -4 \\
+            0 & 0 & \cdots & 0 & 0 & -2 & 8
+        \end{pmatrix}
+    \end{equation*}
+    \textbf{In a new file called \texttt{exer2.cpp}, define the matrix $A$ in the sparse format. Report $\left\| A \right\|$ on the \texttt{.txt} file, where $\left\| \cdot \right\|$ denotes the Euclidean norm.}}
+
+    \textbf{Answer}:
+    \begin{lstlisting}[language=C++]
+#include <unsupported/Eigen/SparseExtra>
+
+int main() {
+    // Create matrix A 100x100
+    constexpr int rows = 100;
+    constexpr int cols = 100;
+    Eigen::SparseMatrix<double> A(rows, cols);
+    // Insert on the matrix A:
+    // * 8 on the main diagonal
+    // * -2 on the first subdiagonal
+    // * -4 on the first superdiagonal
+    // * -1 on the second superdiagonal
+    //  8 -4 -1
+    // -2  8 -4 -1
+    //    -2  8 -4 -1
+    //       -2  8 -4 -1
+    for (int row = 0; row < rows; ++row) {
+        A.insert(row, row) = 8;
+        if (row > 0) A.insert(row, row-1) = -2;
+        if (row < rows-1) A.insert(row, row+1) = -4;
+        if (row < rows-2) A.insert(row, row+2) = -1;
+    }
+    // Make matrix A compressed
+    A.makeCompressed();
+    printf("Euclidean norm of A: %g\n", A.norm());
+}\end{lstlisting}
+    And the result is:
+    \begin{lstlisting}
+Euclidean norm of A: 92.0761\end{lstlisting}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \newpage
+
+    \item \textcolor{Green3}{\textbf{%
+        Solve the eigenvalue problem $A\mathbf{x} = \lambda\mathbf{x}$ using the proper solver provided by \texttt{Eigen}. Report on the \texttt{.txt} fle the computed smallest and largest (in modulus) eigenvalues of $A$.
+    }}
+
+    \textbf{Answer}:
+    \begin{lstlisting}[language=C++]
+#include <unsupported/Eigen/SparseExtra>
+#include <Eigen/Dense>
+
+int main() {
+    // ...
+    // Check if the matrix is symmetric to use the correct eigenvalue solver
+    const Eigen::SparseMatrix<double> A_transpose = A.transpose();
+    const Eigen::SparseMatrix<double> B = A_transpose - A;
+    const bool is_symmetric = B.norm() < 1e-10;
+    printf("Norm of A.t - A: %g\n", B.norm());
+    printf("The matrix A is %s\n", is_symmetric ? "symmetric" : "not symmetric");
+    // Copy the original matrix
+    const auto A_sparse_copy = Eigen::SparseMatrix(A);
+    // Found the largest/smallest eigenvalue of A
+    if (is_symmetric) {
+        const Eigen::SelfAdjointEigenSolver<Eigen::SparseMatrix<double>> eigen_solver(A_sparse_copy);
+        if (eigen_solver.info() != Eigen::Success) {
+            printf("Eigen solver failed\n");
+            return 1;
+        }
+        printf("Largest eigenvalue of A: %g\n", eigen_solver.eigenvalues()[rows-1]);
+        printf("Smallest eigenvalue of A: %g\n", eigen_solver.eigenvalues()[0]);
+    } else {
+        const Eigen::EigenSolver<Eigen::MatrixXd> eigen_solver(A_sparse_copy.toDense());
+        if (eigen_solver.info() != Eigen::Success) {
+            printf("Eigen solver failed\n");
+            return 1;
+        }
+        // Dense matrix, 1x100, of complex numbers
+        const Eigen::Matrix<std::complex<double>, -1, 1>& eigenvalues = eigen_solver.eigenvalues();
+        printf("Largest eigenvalue of A: %g\n", eigenvalues[rows-1].real());
+        printf("Smallest eigenvalue of A: %g\n", eigenvalues[0].real());
+    }
+}\end{lstlisting}
+    And the result is:
+    \begin{lstlisting}
+Norm of A.t - A: 31.4325
+The matrix A is not symmetric
+Largest eigenvalue of A: 11.1048
+Smallest eigenvalue of A: 1.91332\end{lstlisting}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \newpage
+
+    \item \textcolor{Green3}{\textbf{%
+        Using the \texttt{unsupported/Eigen/SparseExtra} module, export matrix $A$ in the matrix market format (save as \texttt{Aex2.mtx}) and move it to the folder \texttt{lis-2.0.34/test}. Using the proper iterative solver available in the LIS library compute the largest eigenvalue $\lambda_{\max}$ of $A$ up to a tolerance of $10^{-7}$. Report on the \texttt{.txt} file the computed eigenvalue and the number of iterations required to achieve the prescribed tolerance.
+    }}
+
+    \textbf{Answer}: We export the matrix:
+    \begin{lstlisting}[language=C++]
+// Save the matrix A to a file
+saveMarket(A, "Aex2.mtx");
+printf("Matrix A saved to Aex2.mtx\n");\end{lstlisting}
+    We \href{https://www.ssisc.org/lis/dl/lis-2.1.6.zip}{download} and unzip into the lis folder. Then we move the matrix to the test folder. After have compiled \texttt{eigen1.c}, we run the command:
+    \begin{lstlisting}[mathescape=false]
+$ ./eigen1 Aex2.mtx eigvec.txt hist.txt -e pi -etol 1.e-7 -emaxiter 50000
+
+number of processes = 1
+matrix size = 100 x 100 (396 nonzero entries)
+
+initial vector x      : all components set to 1
+precision             : double
+eigensolver           : Power
+convergence condition : ||lx-(B^-1)Ax||_2 <= 1.0e-07 * ||lx||_2
+matrix storage format : CSR
+shift                 : 0.000000e+00
+eigensolver status    : normal end
+
+Power: mode number          = 0
+Power: eigenvalue           = 1.299901e+01
+Power: number of iterations = 39800
+Power: elapsed time         = 3.054283e-02 sec.
+Power:   preconditioner     = 0.000000e+00 sec.
+Power:     matrix creation  = 0.000000e+00 sec.
+Power:   linear solver      = 0.000000e+00 sec.
+Power: relative residual    = 9.997934e-08\end{lstlisting}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \newpage
+
+    \item \textcolor{Green3}{\textbf{%
+        Find a shift $\mu \in \mathbb{R}$ yielding an acceleration of the previous eigensolver. Report $\mu$ and the number of iterations required to achieve a tolerance of $10^{-7}$.
+    }}
+
+    \textbf{Answer}:
+    \begin{lstlisting}[mathescape=false]
+$ ./eigen1 Aex2.mtx eigvec.txt hist.txt -e pi -etol 1.e-7 -emaxiter 50000 -shift 7.0
+
+number of processes = 1
+matrix size = 100 x 100 (396 nonzero entries)
+
+initial vector x      : all components set to 1
+precision             : double
+eigensolver           : Power
+convergence condition : ||lx-(B^-1)Ax||_2 <= 1.0e-07 * ||lx||_2
+matrix storage format : CSR
+shift                 : 7.000000e+00
+eigensolver status    : normal end
+
+Power: mode number          = 0
+Power: eigenvalue           = 1.299901e+01
+Power: number of iterations = 19920
+Power: elapsed time         = 1.569868e-02 sec.
+Power:   preconditioner     = 0.000000e+00 sec.
+Power:     matrix creation  = 0.000000e+00 sec.
+Power:   linear solver      = 0.000000e+00 sec.
+Power: relative residual    = 9.997483e-08\end{lstlisting}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+    \item \textcolor{Green3}{\textbf{%
+        Using the proper iterative solver available in the LIS library compute the smallest eigenvalue $\lambda_{\min}$ of $A$ up to a tolerance of $10^{-7}$. Report the computed eigenvalue and the number of iterations required to achieve the prescribed tolerance.
+    }}
+    
+    \textbf{Answer}:
+    \begin{lstlisting}[mathescape=false]
+$ ./eigen1 Aex2.mtx eigvec.txt hist.txt -e ii -etol 1.e-7 -emaxiter 50000
+
+number of processes = 1
+matrix size = 100 x 100 (396 nonzero entries)
+
+initial vector x      : all components set to 1
+precision             : double
+eigensolver           : Inverse
+convergence condition : ||lx-(B^-1)Ax||_2 <= 1.0e-07 * ||lx||_2
+matrix storage format : CSR
+shift                 : 0.000000e+00
+linear solver         : BiCG
+preconditioner        : none
+eigensolver status    : normal end
+
+Inverse: mode number          = 0
+Inverse: eigenvalue           = 1.913297e+00
+Inverse: number of iterations = 1348
+Inverse: elapsed time         = 2.169116e-02 sec.
+Inverse:   preconditioner     = 1.313231e-03 sec.
+Inverse:     matrix creation  = 2.978600e-05 sec.
+Inverse:   linear solver      = 1.501240e-02 sec.
+Inverse: relative residual    = 9.946932e-08\end{lstlisting}
 \end{enumerate}

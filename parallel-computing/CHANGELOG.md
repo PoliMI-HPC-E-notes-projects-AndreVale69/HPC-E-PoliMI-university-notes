@@ -22,6 +22,9 @@
 ### v0.14.0-dev
 
 - add `Heterogeneous Processing`
+  - add `Energy Constrained Computing`
+  - add `Compute Specialization`
+  - add `Challenges of heterogeneous designs`
 
 --------------------
 

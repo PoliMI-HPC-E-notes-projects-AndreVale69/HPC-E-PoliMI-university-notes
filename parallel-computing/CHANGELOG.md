@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.14.0-dev](#v0140-dev)
+- [v0.14.0](#v0140)
 - [v0.13.0](#v0130)
 - [v0.12.0](#v0120)
 - [v0.11.0](#v0110)
@@ -19,12 +19,13 @@
 
 --------------------
 
-### v0.14.0-dev
+### v0.14.0
 
 - add `Heterogeneous Processing`
   - add `Energy Constrained Computing`
   - add `Compute Specialization`
   - add `Challenges of heterogeneous designs`
+  - add `Reducing energy consumption`
 
 --------------------
 

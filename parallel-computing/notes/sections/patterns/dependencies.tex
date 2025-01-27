@@ -105,3 +105,173 @@ Dependencies can be categorized into several types:
         There is an anti-dependency where \texttt{S1} reads \texttt{b}, and \texttt{S2} writes to \texttt{b}. The execution order affects the value read by \texttt{S1}.
     \end{itemize}
 \end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Dependency Graph}}
+\end{flushleft}
+Dependencies can be represented as a graph, also known as a \definition{dependency graph}.
+\begin{itemize}
+    \item \textbf{Nodes (statements)}. Each node represents a statement in the program. For example:
+    \begin{itemize}
+        \item Statement 1: \texttt{a = 1;}
+        \item Statement 2: \texttt{b = a;}
+        \item Statement 3: \texttt{a = b + 1;}
+        \item Statement 4: \texttt{c = a;}
+    \end{itemize}
+    The dependency graph is:
+    \begin{center}
+        \begin{tikzpicture}[->, >=stealth, node distance=3cm]
+            \tikzstyle{state} = [circle, draw, fill=gray!20, text centered, minimum height=2em]
+
+            % Nodes
+            \node[state] (S1) {\texttt{S1}};
+            \node[state] (S2) [right of=S1] {\texttt{S2}};
+            \node[state] (S3) [right of=S2] {\texttt{S3}};
+            \node[state] (S4) [right of=S3] {\texttt{S4}};
+
+            % Edges
+            \path (S1) edge [bend left] node[above] {\emph{output}} (S3);
+            \path (S1) edge node[below] {\emph{flow}} (S2);
+            \path (S2) edge (S3);
+            \path (S2) edge [bend right] node[below] {\emph{anti}} (S3);
+            \path (S3) edge (S4);
+
+        \end{tikzpicture}
+    \end{center}
+
+    \item \textbf{Edges (dependencies)}. Arrows between nodes indicate dependencies between statements. Here are the key types of dependencies shown (in the previous dependency graph):
+    \begin{itemize}
+        \item \important{True (flow) dependency}:
+        \begin{equation*}
+            \texttt{S2} \hspace{1em} \delta \hspace{1em} \texttt{S3}
+        \end{equation*}
+        An arrow from \texttt{S2} to \texttt{S3} signifies that \texttt{S3} depends on \texttt{S2} for the value of \texttt{a}.
+        \item \important{Output dependency}:
+        \begin{equation*}
+            \texttt{S1} \hspace{1em} \delta^{0} \hspace{1em} \texttt{S3}
+        \end{equation*}
+        An arrow from \texttt{S1} to \texttt{S3} indicates that both \texttt{S1} and \texttt{S3} write to \texttt{a}.
+        \item \important{Anti dependency}:
+        \begin{equation*}
+            \texttt{S2} \hspace{1em} \delta^{-1} \hspace{1em} \texttt{S3}
+        \end{equation*}
+        An arrow from \texttt{S2} to \texttt{S3} shows that \texttt{S2} reads \texttt{a}, while \texttt{S3} writes to \texttt{a}.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we compute dependencies?}}
+\end{flushleft}
+Computing data dependencies is important for several reasons, such as optimizing code (compilers can reorder or optimize code better if they know which statements depend on each other), avoiding data hazards (in hardware design, understanding dependencies is essential to avoid hazards), debugging and maintenance (understanding dependencies helps debugging by showing how data flows through the program), etc.
+
+\highspace
+Therefore, by \textbf{computing data dependencies, we get a clear picture of how data is used and modified throughout the program}. This systematic approach can lead to more efficient, reliable, and maintainable code.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we compute dependencies?}}
+\end{flushleft}
+Data dependency relationships can be found by comparing the $IN$ and $OUT$ sets of each node. The $IN$ and $OUT$ sets of a statement $S$ are defined as:
+\begin{itemize}
+    \item \important{$IN\left(S\right)$}: set of memory locations (\textbf{variables}) that may be \textbf{used} in $S$.
+    \item \important{$OUT\left(S\right)$}: set of memory locations (\textbf{variables}) that may be \textbf{modified} by $S$.
+\end{itemize}
+In other words, $IN\left(S\right)$ and $OUT\left(S\right)$ sets represent \textbf{all possible memory locations} (variables) \textbf{that might be read from or written to by a statement $S$}.
+
+\highspace
+Note that the $IN$ and $OUT$ \textbf{sets are often larger than the actual number of locations used or modified} in practice.
+
+\highspace
+This conservativeness comes from a need to be cautious. When compiling or analyzing code, it is \textbf{better to consider more memory locations than to miss any, ensuring that dependencies are fully captured}. This way, no potential dependencies are overlooked, even if it means including some memory locations that may not be actively used in all scenarios.
+
+\highspace
+\begin{examplebox}[: Simple analogy]
+    Imagine we are listing all the books we might need for a project. We list every possible book we could \emph{potentially} read, even if we end up only needing to read a few of them. This conservative approach ensures we won't miss a book we might actually need later.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Properties when we compute data dependencies}}
+\end{flushleft}
+Assuming that there is a path from \texttt{S1} to \texttt{S2}, the following shows interesting properties about intersection between the $IN$ and $OUT$ sets:
+\begin{itemize}
+    \item \important{Flow Dependency (True Dependency)}:
+    \begin{equation*}
+        \mathrm{out}\left(\texttt{S1}\right) \cap \mathrm{in}\left(\texttt{S2}\right) \ne \emptyset \hspace{2em} \texttt{S1} \: \delta \: \texttt{S2}
+    \end{equation*}
+    Statement \texttt{S1} writes to a location that statement \texttt{S2} reads from later.
+
+    \item \important{Anti Dependency}:
+    \begin{equation*}
+        \mathrm{in}\left(\texttt{S1}\right) \cap \mathrm{out}\left(\texttt{S2}\right) \ne \emptyset \hspace{2em} \texttt{S1} \: \delta^{-1} \: \texttt{S2}
+    \end{equation*}
+    Statement \texttt{S1} reads from a location that statement \texttt{S2} writes to later.
+
+    \item \important{Output Dependency}:
+    \begin{equation*}
+        \mathrm{out}\left(\texttt{S1}\right) \cap \mathrm{out}\left(\texttt{S2}\right) \ne \emptyset \hspace{2em} \texttt{S1} \: \delta^{0} \: \texttt{S2}
+    \end{equation*}
+    Both \texttt{S1} and \texttt{S2} write to the same location.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Loop Dependencies}}
+\end{flushleft}
+In a loop, we generally encounter two main types of dependencies:
+\begin{itemize}
+    \item \definition{Loop-Carried Dependencies}. These occur when an \textbf{iteration of a loop depends on data from a previous iteration}.
+    
+    \begin{examplebox}
+        In the following loop, each iteration depends on the result of the previous iteration, making it parallelizable only in a pipeline manner.
+        \begin{lstlisting}[language=c]
+for (i=1; i<100; i++) {
+    a[i] = a[i-1] + 1;
+}\end{lstlisting}
+    \end{examplebox}
+
+    \item \definition{Loop-Independent Dependencies}: These exist if \textbf{iterations do not rely on results from each other directly}.
+    \begin{examplebox}
+        In the following loop, each iteration can be executed independently, allowing for parallelization.
+        \begin{lstlisting}[language=c]
+for (i=0; i<100; i++) {
+    a[i] = i;
+}\end{lstlisting}
+    \end{examplebox}
+\end{itemize}
+Furthermore, the dependency is:
+\begin{itemize}
+    \item \definition{Lexically Forward Dependency} occurs when the source statement (the one that produces the value) appears \textbf{before} the target statement (the one that consumes the value) within the same iteration of code. Essentially, it follows the natural top-to-bottom order of reading code.
+
+    \begin{definitionbox}[: Lexically Forward Dependency]
+        \definition{Lexically Forward Dependency}, when the source statement appears before the target statement in the loop body.
+    \end{definitionbox}
+    
+    \begin{examplebox}[: Lexically Forward Dependency]
+        In the following code, \texttt{a = b + 1} (the source) comes before \texttt{c = a + 2} (the target) within the same loop iteration.
+        \begin{lstlisting}[language=c]
+for (i=0; i<5; i++) {
+    a = b + 1;  // Source statement
+    c = a + 2;  // Target statement
+}\end{lstlisting}
+    \end{examplebox}
+
+    \item \definition{Lexically Backward Dependency} occurs when the source statement comes \textbf{after} the target statement within the same iteration. It's a bit counterintuitive since it involves looking back to an earlier point in the code to resolve a dependency.
+
+    \begin{definitionbox}[: Lexically Backward Dependency]
+        \definition{Lexically Backward Dependency}, when the source comes after the target.
+    \end{definitionbox}
+
+    \begin{examplebox}[: Lexically Backward Dependency]
+        In the following code, \texttt{c = a + 2} (the target) relies on the value of \texttt{a} which is produced later by \texttt{a = b + 1} (the source) within the same iteration.
+        \begin{lstlisting}[language=c]
+for (i=0; i<5; i++) {
+    c = a + 2;  // Target statement
+    a = b + 1;  // Source statement
+}\end{lstlisting}
+    \end{examplebox}
+\end{itemize}
+Lexically forward dependencies are generally easier to manage since they fit the natural flow of code execution, whereas backward dependencies can complicate matters by requiring more intricate handling to ensure proper execution order.

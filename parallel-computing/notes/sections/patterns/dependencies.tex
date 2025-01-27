@@ -1,0 +1,107 @@
+\section{Patterns}
+
+\subsection{Dependencies}
+
+\definition{Dependencies} are critical when designing parallel programs as they directly influence the program's correctness and potential for parallelism.
+
+\begin{definitionbox}
+    A \textbf{dependency} arises when one operation depends on an earlier operation to complete and produce a result before this later operation can be performed.
+\end{definitionbox}
+
+\noindent
+Non-directly, dependencies \textbf{determine the order in which operations must be executed to maintain correctness}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is sequential consistency important?}}
+\end{flushleft}
+\definition{Sequential Consistency} ensures that the results of a parallel program's execution are as if the operations of all processors were executed in some sequential order, while preserving the program order for each processor. It is so important because:
+\begin{itemize}
+    \item \important{Enforcing Dependencies}:
+    \begin{itemize}
+        \item \textbf{Ordered Execution}. Sequential consistency ensures that operations are executed in an order that respects their dependencies.
+
+        \item \textbf{Data Integrity}. By maintaining the correct order of dependent operations, \hl{sequential consistency preserves the integrity of the data being manipulated in parallel programs}.
+    \end{itemize}
+
+    \item \important{Predictable Behavior}:
+    \begin{itemize}
+        \item \textbf{Program Order Preservation}. Dependencies define the required order of operations within a program. Sequential consistency ensures each processor's operations appear in sequence, respecting these dependencies.
+
+        \item \textbf{Non-Interference}. Sequential consistency \hl{guarantees that operations from different processors can interleave their executions in many possible sequences}, but the \hl{final results are consistent with some sequential execution that respects dependencies}.
+    \end{itemize}
+\end{itemize}
+This type of model has already been discussed in Section \ref{subsection: Sequential Consistency Model} on page \pageref{subsection: Sequential Consistency Model}. However, we can summarize the guarantees it provides:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Simplified Reasoning}}. Programmers can reason about parallel programs more easily, as if they were sequential.
+    \item \textcolor{Green3}{\textbf{Correctness}}. It helps maintain the correctness of shared memory operations in concurrent programs.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to detect dependencies?}}
+\end{flushleft}
+By identifying where dependencies occur, we can determine where operations need to be synchronized or reordered to ensure accurate results. But the real dilemma is, \dquotes{\emph{how do we know when two or more statements are interdependent?}}. The short answer is: it is not always that easy. It depends on the complexity of the code, but in general, the definitions are as follows:
+\begin{itemize}
+    \item \definition{Independent Statements}: two statements are independent if their \textbf{execution order does not affect the computation outcome}.
+
+    The implication is that the order of execution is interchangeable without changing the final state.
+
+
+    \item \definition{Dependent Statements}: statements are dependent if the \textbf{order of their execution impacts the computation result}.
+
+    The implication is that changing the order of execution alters the final outcome, so the sequence of operations matters.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Type of dependencies}}
+\end{flushleft}
+Dependencies can be categorized into several types:
+\begin{itemize}
+    \item \definition{Control Dependencies}: execution of one operation depends on the control flow (like \texttt{if} statements or loops).
+
+    \item \definition{Data Dependencies}: one operation requires the result of another operation:
+    \begin{itemize}
+        \item \definition{True Dependency} (Read After Write, RAW): a subsequent operation reads data after it's written.
+        \item \definition{Anti-Dependency} (Write After Read, WAR): a write operation must occur after all preceding read operations.
+        \item \definition{Output Dependency} (Write After Write, WAW): two write operations must occur in a particular sequence.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{examplebox}[: Dependencies]
+    Some dependency scenarios:
+    \begin{itemize}
+        \item \textbf{Independent Statements}
+        \begin{itemize}
+            \item Statement 1: \texttt{a=1;}
+            \item Statement 2: \texttt{b=1;}
+        \end{itemize}
+        Since these two statements do not rely on each other's values, they are independent. Executing them in any order does not change the outcome.
+
+        \newpage
+
+        \item \textbf{True (flow) Dependency}
+        \begin{itemize}
+            \item Statement 1: \texttt{a=1;}
+            \item Statement 2: \texttt{b=a;}
+        \end{itemize}
+        \texttt{S2} depends on the value of \texttt{a} from \texttt{S1}. This is a true (or flow) dependency, as \texttt{S2} requires \texttt{S1} to execute first to produce the correct result.
+
+        \item \textbf{Output Dependency}
+        \begin{itemize}
+            \item Statement 1: \texttt{a=f(x);}
+            \item Statement 2: \texttt{a=b;}
+        \end{itemize}
+        Both statements write to \texttt{a}, creating an output dependency. The order matters because both statements affect the value of \texttt{a}.
+        
+        \item \textbf{Anti-Dependency}
+        \begin{itemize}
+            \item Statement 1: \texttt{a=b;}
+            \item Statement 2: \texttt{b=1;}
+        \end{itemize}
+        There is an anti-dependency where \texttt{S1} reads \texttt{b}, and \texttt{S2} writes to \texttt{b}. The execution order affects the value read by \texttt{S1}.
+    \end{itemize}
+\end{examplebox}

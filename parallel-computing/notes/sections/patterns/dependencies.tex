@@ -244,7 +244,7 @@ for (i=0; i<100; i++) {
 \end{itemize}
 Furthermore, the dependency is:
 \begin{itemize}
-    \item \definition{Lexically Forward Dependency} occurs when the source statement (the one that produces the value) appears \textbf{before} the target statement (the one that consumes the value) within the same iteration of code. Essentially, it follows the natural top-to-bottom order of reading code.
+    \item \definition{Lexically Forward Dependency} occurs when the \textbf{source statement} (the one that produces the value) \textbf{appears \emph{before} the target statement} (the one that consumes the value) within the same iteration of code. Essentially, it follows the natural top-to-bottom order of reading code.
 
     \begin{definitionbox}[: Lexically Forward Dependency]
         \definition{Lexically Forward Dependency}, when the source statement appears before the target statement in the loop body.
@@ -259,7 +259,7 @@ for (i=0; i<5; i++) {
 }\end{lstlisting}
     \end{examplebox}
 
-    \item \definition{Lexically Backward Dependency} occurs when the source statement comes \textbf{after} the target statement within the same iteration. It's a bit counterintuitive since it involves looking back to an earlier point in the code to resolve a dependency.
+    \item \definition{Lexically Backward Dependency} occurs when \textbf{the source statement comes \emph{after} the target statement} within the same iteration. It's a bit counterintuitive since it involves looking back to an earlier point in the code to resolve a dependency.
 
     \begin{definitionbox}[: Lexically Backward Dependency]
         \definition{Lexically Backward Dependency}, when the source comes after the target.
@@ -274,4 +274,84 @@ for (i=0; i<5; i++) {
 }\end{lstlisting}
     \end{examplebox}
 \end{itemize}
-Lexically forward dependencies are generally easier to manage since they fit the natural flow of code execution, whereas backward dependencies can complicate matters by requiring more intricate handling to ensure proper execution order.
+
+\begin{examplebox}[: Lexical dependency analogy]
+    Lexical dependencies are not an easy topic to understand. Here we offer a simple analogy for better understanding.
+
+    \highspace
+    Think of a cooking recipe as a loop iteration. Imagine we have a recipe that lists steps to make a dish. 
+    \begin{itemize}
+        \item \textbf{Lexically Forward Dependency}: This is like following a recipe where we need to boil water (\emph{source step}) before we can add pasta to it (\emph{target step}). The sequence flows naturally from top to bottom.
+        
+        \item \textbf{Lexically Backward Dependency}: Imagine we need to taste the pasta (\emph{target step}) to decide if we should add more salt (\emph{source step}), even though the step to add salt appears later in the list. This means we'd have to look back to the earlier part of the iteration to decide if we need to add more salt.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{I really should understand lexical dependencies?}}
+\end{flushleft}
+Understanding these dependencies helps when we're optimizing loops for parallel execution. \textbf{Lexically forward dependencies are generally simpler to manage since they align with the natural execution order}. Lexically backward dependencies require careful handling to ensure correct results, as they involve \dquotes{looking back} within the iteration.
+
+\newpage
+
+\begin{examplebox}[: Loop dependencies and optimization]
+    Consider the following codes:
+    \begin{itemize}
+        \item First double for loop iteration:
+        \begin{lstlisting}[language=c]
+for (int i = 0; i < 100; i++)
+    for (int j = 1; j < 100; j++)
+        a[i][j] = f(a[i][j - 1]);\end{lstlisting}
+        \item Second double for loop iteration:
+        \begin{lstlisting}[language=c]
+for (int j = 1; j < 100; j++)
+    for (int i = 0; i < 100; i++)
+        a[i][j] = f(a[i][j - 1]);\end{lstlisting}
+    \end{itemize}
+    \begin{remarkbox}[: Cache]
+        When optimizing for cache performance, the goal is to maximize data locality. Data locality can be broken into two types:
+        \begin{enumerate}
+            \item \textbf{Temporal Locality}: Reusing the same data within a short period.
+            \item \textbf{Spatial Locality}: Accessing data locations that are near each other.
+        \end{enumerate}
+    \end{remarkbox}
+
+    We can make the following considerations:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] In the \textbf{first loop}, the inner loop iterates over \texttt{j} while \texttt{i} remains constant. This means that within each iteration of the outer loop, we access consecutive elements in the same row (\texttt{a[i][...]}).
+        
+        Since arrays are usually stored in row-major order (consecutive elements of a row are stored in consecutive memory locations), this loop has \textbf{good spatial locality}. Elements of \texttt{a[i][...]} are likely to be in the cache, reducing cache misses.
+
+
+        \item[\textcolor{Red2}{\faIcon{times}}] In the \textbf{second loop}, the inner loop iterates over \texttt{i} while \textsl{j} remains constant. This means we're accessing elements in the same column across different rows (\texttt{a[...][j]}). Since rows are stored consecutively in memory, accessing elements across rows (column-wise access) leads to poor spatial locality. Each access to \texttt{a[i][j]} is more likely to cause a cache miss because it jumps to a different row.
+    \end{itemize}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Dependencies and Parallelism}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Achieving Parallelism with Dependencies}
+    \begin{itemize}
+        \item \important{Concept}: Even when our code has dependencies, we can still achieve parallelism. The key is to \hl{identify parts of the code that can run independently and execute those in parallel}.
+        \item \textbf{Practice}: Look for \hl{independent computations} that don't rely on each other's results and \hl{schedule} them \hl{for parallel execution}.
+        \item \example{Example}: If some parts of our loop iterations dno't depend on others, those can be parallelized while managing the dependent parts separately.
+    \end{itemize}
+
+    \item \textbf{Control Ordering of Events on Different Processors (Cores)}
+    \begin{itemize}
+        \item \important{Concept}: \hl{Dependencies dictate how different events in our program must be ordered}, especially when running on multiple processors or cores.
+        \item \textbf{Practice}: \hl{Maintain a partial order of execution}, which respects the dependencies and constraints imposed by the code.
+        \item \example{Example}: If one computation depends on the result of another, ensure that the dependent computation only starts once the necessary data is available.
+    \end{itemize}
+
+    \item \textbf{Use Synchronization Mechanisms}
+    \begin{itemize}
+        \item \important{Concept}: \hl{Running code concurrently requires synchronization} to ensure that all dependencies and orderings are respected.
+        \item \textbf{Practice}: \hl{Use synchronization tools} such as locks, semaphores, or barriers to control access to shared resources and manage dependencies.
+        \item \example{Example}: If multiple threads are updating a shared variable, synchronization mechanisms ensure that updates occur in the correct order, preventing race conditions.
+    \end{itemize}
+\end{itemize}

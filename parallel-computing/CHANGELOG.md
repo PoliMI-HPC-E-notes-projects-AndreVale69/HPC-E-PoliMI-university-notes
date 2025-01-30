@@ -24,6 +24,7 @@
 
 - add `Patterns`
   - add `Dependencies`
+  - add `Parallel Patterns`
 
 --------------------
 

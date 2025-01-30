@@ -29,6 +29,7 @@
     - add `Serial Control Patterns`
     - add `Parallel Control Patterns`
     - add `Serial Data Management Patterns`
+    - add `Parallel Data Management Patterns`
 
 --------------------
 

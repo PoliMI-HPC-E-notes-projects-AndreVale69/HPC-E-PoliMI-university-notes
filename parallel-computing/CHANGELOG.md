@@ -27,6 +27,7 @@
   - add `Parallel Patterns`
     - add `Nesting Pattern`
     - add `Serial Control Patterns`
+    - add `Parallel Control Patterns`
 
 --------------------
 

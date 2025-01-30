@@ -1,0 +1,184 @@
+\subsubsection{Parallel Control Patterns}
+
+\definition{Parallel Control Patterns} are \textbf{design patterns used in parallel computing to manage the execution flow of tasks that can run simultaneously}. These patterns help in organizing and structuring parallel code to ensure efficient execution, resource management, and scalability. They are essential for leveraging the power of multi-core processors and distributed computing systems.
+
+\highspace
+In essence, parallel control patterns provide the blueprint for designing and implementing parallel algorithms, ensuring that tasks are executed efficiently and effectively.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Types}}
+\end{flushleft}
+\begin{enumerate}
+    \item \definition{Fork-Join Parallel Pattern}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. The Fork-Join pattern \hl{allows control flow to fork into multiple parallel flows and then rejoin later}.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Implementation}}. Languages like Cilk Plus use \texttt{spawn} and \texttt{sync} to implement this pattern. When a function is spawned, it runs in parallel with the caller. The caller then uses \texttt{sync} to wait for all spawned functions to complete before proceeding.
+
+        \item[\textcolor{Green3}{\faIcon{not-equal}}] \textcolor{Green3}{\textbf{Difference from Barrier}}. A \dquotes{join} involves only one thread continuing, while a \dquotes{barrier} allows all threads to continue.
+    \end{itemize}
+
+
+    \item \definition{Map Parallel Pattern}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. The Map pattern \hl{applies a function to each element of a collection independently}, producing a new collection of results.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Usage}}. It replaces serial iterations where each iteration is independent.
+
+        \item[\textcolor{Green3}{\faIcon{bookmark}}] \textcolor{Green3}{\textbf{Elemental Function}}. The function applied to each element is called an \dquotes{elemental function}.
+    \end{itemize}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.7\textwidth]{img/map-pattern-1.pdf}
+        \caption{Visual representation of the Map Parallel Pattern.}
+    \end{figure}
+
+    \begin{examplebox}[: Map analogy]
+        A good analogy is the \texttt{map} method used in Javascript. The difference is that the \texttt{map} in Javascript is done sequentially, instead the map pattern is done in parallel. However, as we can see from the example provided in the official documentation, a function is applied to each element of the input:
+        \begin{lstlisting}[language=JavaScript]
+// Elemental Function
+function elementalFunction(num) {
+  return num * 2;
+}
+
+// Example array
+const array1 = [1, 4, 9, 16];
+
+// Pass an elementalFunction to map
+const map1 = array1.map((x) => elementalFunction(x));
+
+console.log(map1);
+// Expected output: Array [2, 8, 18, 32]\end{lstlisting}
+        Here the official documentation:
+        \begin{center}
+            \qrcode{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map}
+        \end{center}
+    \end{examplebox}
+
+
+    \item \definition{Stencil Parallel Pattern}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. The Stencil pattern \hl{extends the Map pattern by allowing the elemental function to access neighboring elements}.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Usage}}. Commonly used in iterative solvers or simulations where the state of an element depends on its neighbors.
+
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Consideration}}. Boundary conditions must be handled carefully.
+    \end{itemize}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.44\textwidth]{img/stencil-pattern-1.pdf}
+        \caption{Visual representation of the Stencil Parallel Pattern.}
+    \end{figure}
+
+
+    \item \definition{Reduction Parallel Pattern}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. The Reduction pattern \hl{combines elements of a collection using an associative ``combiner function''} (e.g., addition, multiplication, max, min).
+
+        \item[\textcolor{Green3}{\faIcon{tachometer-alt}}] \textcolor{Green3}{\textbf{Parallelism}}. Different orderings of the reduction are possible due to the associative property, making it suitable for parallel execution.
+    \end{itemize}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.84\textwidth]{img/reduction-pattern-1.pdf}
+        \caption{Visual representation of the Reduction Parallel Pattern.}
+    \end{figure}
+    \begin{examplebox}[: Reduction analogy]
+        A good analogy is the \texttt{reduce} method used in Javascript. The difference is that the \texttt{reduce} in Javascript is done sequentially, instead the reduce pattern is done in parallel.
+        \begin{lstlisting}[language=JavaScript]
+function combinerFun(acc, curVal) {
+    return acc + curVal;
+}
+
+// Example array
+const arrayToReduce = [1, 2, 3, 4];
+
+// 0 + 1 + 2 + 3 + 4
+// steps:
+// 0: 0 + 1
+// 1: 1 + 2
+// 2: 3 + 3
+// 3: 6 + 4
+// result = 10
+const initialValue = 0;
+const sumOfArray = arrayToReduce.reduce(
+  (acc, curVal) => combinerFun(acc, curVal),
+  initialValue
+);
+
+console.log(sumOfArray);
+// Expected output: 10\end{lstlisting}
+        Here the official documentation:
+        \begin{center}
+            \qrcode{https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce}
+        \end{center}
+    \end{examplebox}
+
+
+    \item \definition{Scan Parallel Pattern}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. The Scan pattern \hl{computes all partial reductions of a collection}.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Usage}}. For each element in the output collection, it computes a reduction of the input elements up to that point.
+
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Parallelization}}. Although it has dependencies, the associative nature of the function allows parallelization.
+    \end{itemize}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.84\textwidth]{img/scan-pattern-1.pdf}
+        \caption{Visual representation of the Scan Parallel Pattern.}
+    \end{figure}
+    \begin{examplebox}[: Scan analogy]
+        \begin{lstlisting}[language=JavaScript]
+// JavaScript doesn't provide a native implementation of the scan,
+// but we can build it manually
+// * array - input
+// * fn - reduction to apply to input values
+// * initialValue - initial value of the accumulator
+function scan(array, fn, initialValue) {
+    // create the output array
+    const result = [];
+    // The scan method is a partial reduction,
+    // so we need to apply the partial reduce
+    array.reduce((acc, value, index) => {
+        // combiner function to apply
+        const newAcc = fn(acc, value);
+        // save the calculated value
+        // at the i-th iteration
+        result[index] = newAcc;
+        // returns the calculated value,
+        // since it will be the new accumulator
+        return newAcc;
+    }, initialValue);
+    // return the output
+    return result;
+}
+
+// combiner function of the reduction pattern
+function combinerFunc(accumulator, currentValue) {
+    return accumulator + currentValue;
+}
+
+// Example array
+const arr = [1, 2, 3, 4];
+// Scan
+const sumRes = scan(
+    arr, (a, b) => combinerFunc(a, b), 0
+);
+
+console.log(sumRes);
+// Expected output: [1, 3, 6, 10]\end{lstlisting}
+        To test the execution, here there is a free console (or just open the browser console):
+        \begin{center}
+            \qrcode{https://www.programiz.com/online-compiler/74XgOz49pwsxt}
+        \end{center}
+    \end{examplebox}
+
+
+    \item \definition{Recurrence Parallel Pattern}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. The Recurrence pattern is a more complex version of Map, where \hl{elements can depend on the outputs of adjacent elements}.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Usage}}. Similar to Map, but requires a serial ordering of elements for computability.
+    \end{itemize}
+\end{enumerate}

@@ -28,6 +28,7 @@
     - add `Nesting Pattern`
     - add `Serial Control Patterns`
     - add `Parallel Control Patterns`
+    - add `Serial Data Management Patterns`
 
 --------------------
 

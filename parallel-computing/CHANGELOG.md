@@ -26,6 +26,7 @@
   - add `Dependencies`
   - add `Parallel Patterns`
     - add `Nesting Pattern`
+    - add `Serial Control Patterns`
 
 --------------------
 

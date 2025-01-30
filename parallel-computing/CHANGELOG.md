@@ -25,6 +25,7 @@
 - add `Patterns`
   - add `Dependencies`
   - add `Parallel Patterns`
+    - add `Nesting Pattern`
 
 --------------------
 

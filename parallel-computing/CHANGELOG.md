@@ -33,6 +33,11 @@
     - add `Other Parallel Patterns`
   - add `Map Pattern`
     - add `What is a Map?`
+    - add `Optimizations`
+      - add `Sequences of Maps`
+      - add `Code Fusion`
+      - add `Cache Fusion`
+    - add `Related Patterns`
 
 --------------------
 

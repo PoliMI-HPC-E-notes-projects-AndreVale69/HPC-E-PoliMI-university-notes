@@ -1,0 +1,123 @@
+\subsubsection{Scaled Vector Addition (SAXPY)}
+
+\definition{SAXPY} stands for \definition{Single-Precision A*X Plus Y}. It \textbf{is a fundamental operation in linear algebra} and is part of the Basic Linear Algebra Subprograms (BLAS) library. The operation is defined as:
+\begin{equation}
+    y = \alpha x + y
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\alpha$ is a scalar (a single value).
+    \item $x$ and $y$ are vectors (arrays of numbers).
+\end{itemize}
+The main observations that we can made are: each element in vector $x$ is scaled by $\alpha$; the scaled elements of $x$ are added to the corresponding elements of $y$; but the most important thing is that each element in the vectors $x$ and $y$ is processed independently, making SAXPY \textbf{highly parallelizable}.
+
+\highspace
+Maybe, a visual representation, can be useful to identify which pattern can be applied:
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/saxpy-1.pdf}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Implementations}}
+\end{flushleft}
+\begin{itemize}
+    \item A \textbf{serial implementation} of SAXPY written:
+    \begin{lstlisting}[language=c]
+void saxpy_serial(
+    size_t n,       // the number of elements in the vectors
+    float a,        // scale factor
+    const float x[],// the first input vector
+    float y[]       // the output vector and second input vector
+) {
+    for (size_t i = 0; i < n; ++i)
+        y[i] = a * x[i] + y[i];
+}\end{lstlisting}
+
+    \newpage
+    \item \definition{Threading Building Blocks} (TBB, parallel) implementation:
+    \begin{lstlisting}[language=c]
+void saxpy_tbb(
+    int n,      // the number of elements in the vectors
+    float a,    // scale factor
+    float x[],  // the first input vector
+    float y[]   // the output vector and second input vector
+) {
+    tbb::parallel_for(
+        tbb::blocked_range<int>(0, n),
+        [&](tbb::blocked_range<int> r) {
+            for (size_t i = r.begin(); i != r.end(); i++)
+                y[i] = a * x[i] + y[i];
+        }
+    );
+}\end{lstlisting}
+    Where:
+    \begin{itemize}
+        \item \texttt{tbb::parallel\_for(range, function)}
+        \begin{itemize}
+            \item \texttt{range}: Specifies the range of indices to be processed (\texttt{0} to \texttt{n}).
+            \item \texttt{function}: A lambda function that defines the operation for each subrange.
+        \end{itemize}
+        
+        \item Lambda function: \texttt{[\&](tbb::blocked\_range<int> r)}
+        \begin{itemize}
+            \item \texttt{[\&]}: Capture clause that captures all variables by reference.
+            \item \texttt{(tbb::blocked\_range<int> r)}: Parameter list; in this case, the range \texttt{r} to be processed.
+            \item Function body:
+            \begin{lstlisting}[language=c]
+for (size_t i = r.begin(); i != r.end(); i++)
+    y[i] = a * x[i] + y[i];\end{lstlisting}
+            Each element \texttt{y[i]} is updated independently within the subrange.
+        \end{itemize}
+    \end{itemize}
+    It works like this:
+    \begin{itemize}
+        \item \important{Range Splitting}: \texttt{tbb::blocked\_range} divides the index range into subranges, which are processed in parallel.
+        \item \important{Dynamic Load Balancing}: TBB's scheduler dynamically assigns subranges to available threads, ensuring efficient load balancing.
+        \item \important{Data Independence}: Each update to \texttt{y[i]} is independent of other elements, making it safe for parallel execution.
+    \end{itemize}
+
+    \item Cilk Plus (\textbf{parallel}) \textbf{implementation}:
+    \begin{lstlisting}[language=c]
+void saxpy_cilk(
+    int n,      // the number of elements in the vectors
+    float a,    // scale factor
+    float x[],  // the first input vector
+    float y[]   // the output vector and second input vector
+) {
+    cilk_for (size_t i = 0; i < n; ++i)
+        y[i] = a * x[i] + y[i];
+}\end{lstlisting}
+    It works like this:
+    \begin{itemize}
+        \item \important{Automatic Parallelization}: \texttt{cilk\_for} divides the loop iterations among available threads, balancing the workload dynamically.
+        \item \important{Data Independence}: Each update to \texttt{y[i]} is independent of other elements, making it safe for parallel execution.
+        \item \important{Simplified Syntax}: \texttt{cilk\_for} provides a simple and familiar loop syntax for parallel loops, making it easy to convert serial loops into parallel loops.
+    \end{itemize}
+
+    \item OpenCL (\textbf{parallel}) \textbf{implementation}:
+    \begin{lstlisting}[language=c]
+__kernel void saxpy_opencl(
+    __constant float a,
+    __constant float* x,
+    __constant float* y
+) {
+    int i = get_global_id(0);
+    y[i] = a * x[i] + y[i];
+}\end{lstlisting}
+    It works much like CUDA.
+
+    \item OpenMP (\textbf{parallel}) \textbf{implementation}:
+    \begin{lstlisting}[language=c]
+void saxpy_openmp(
+    int n,      // the number of elements in the vectors
+    float a,    // scale factor
+    float x[],  // the first input vector
+    float y[]   // the output vector and second input vector
+) {
+    #pragma omp parallel for
+    for (int i = 0; i < n; ++i)
+        y[i] = a * x[i] + y[i];
+}\end{lstlisting}
+\end{itemize}

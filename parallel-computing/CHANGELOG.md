@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.15.0-dev](#v0150-dev)
+- [v0.15.0](#v0150)
 - [v0.14.0](#v0140)
 - [v0.13.0](#v0130)
 - [v0.12.0](#v0120)
@@ -20,7 +20,7 @@
 
 --------------------
 
-### v0.15.0-dev
+### v0.15.0
 
 - add `Patterns`
   - add `Dependencies`
@@ -38,6 +38,7 @@
       - add `Code Fusion`
       - add `Cache Fusion`
     - add `Related Patterns`
+    - add `Scaled Vector Addition (SAXPY)
 
 --------------------
 

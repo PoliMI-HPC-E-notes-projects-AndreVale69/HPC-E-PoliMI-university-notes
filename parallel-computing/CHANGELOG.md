@@ -31,6 +31,8 @@
     - add `Serial Data Management Patterns`
     - add `Parallel Data Management Patterns`
     - add `Other Parallel Patterns`
+  - add `Map Pattern`
+    - add `What is a Map?`
 
 --------------------
 

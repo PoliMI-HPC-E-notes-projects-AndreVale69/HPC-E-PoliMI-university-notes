@@ -1,0 +1,204 @@
+\subsubsection{Reduce (or Reduction) Pattern}
+
+The \definition{Reduce Pattern} (or commonly called \definition{Reduction Pattern}) is used to \textbf{combine a collection of elements into a summary value using a combiner function}. This pattern has already been introduced on page \hqpageref{definition: Reduction Parallel Pattern}.
+
+\highspace
+The \textbf{combiner function} combines elements pairwise. It must be associative to be parallelizable. Some common combiner functions include addition, multiplication, and finding the maximum or minimum value.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Is it really important that the combiner function must be associative?}}
+\end{flushleft}
+It is not important, it is essential. Before answering, we need to recall a bit of theory.
+
+\highspace
+A \textbf{binary operation} (like addition) \textbf{is associative if the order in which the operations are performed does not change the result}.
+
+\highspace
+Therefore, for a reduction operation to be parallelizable, the combiner function must be associative. This is because parallel reduction involves combining elements in pairs, \textbf{often in different order}, across multiple operations. If the operation is associative, \textbf{we can divide the work between processes and combine the results in any order without changing the final result}.
+
+\highspace
+In summary, the \hl{combiner function must be associative to ensure that the end result is the same regardless of how the elements are grouped or combined in parallel}.
+
+\highspace
+If the reader is still not convinced, we present the following example as proof.
+
+\highspace
+\begin{examplebox}[: Why associative property is important]
+    It is well know that the addition is associative because:
+    \begin{equation*}
+        \left(A + B\right) + C = A + \left(B + C\right)
+    \end{equation*}
+    This allows us to parallelize addition across multiple processes. The order in which the sums are performed doesn't matter, because the property guarantees that the result is always the same. Instead, subtraction is non-associative because:
+    \begin{equation*}
+        \left(A - B\right) - C \ne A - \left(B - C\right)
+    \end{equation*}
+    This means that we cannot parallelize subtraction in the same way. In this scenario, different executions lead to different execution orders and different results.
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Types of Reduction}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Serial Reduction}. \textbf{Combines elements in a linear fashion}, one after the other.
+    \begin{examplebox}[: Serial Reduction Pattern]
+        Summing elements \texttt{[A, B, C, D]} would be proceed as:
+        \begin{equation*}
+            \left(\left(\texttt{A} + \texttt{B}\right) + \texttt{C}\right) + \texttt{D}
+        \end{equation*}
+    \end{examplebox}
+
+    \item \important{Parallel Reduction}. \textbf{Combines elements in a tree-like structure}, allowing multiple operations to be performed simultaneously.
+    \begin{examplebox}[: Parallel Reduction Pattern]
+        Summing elements \texttt{[A, B, C, D]} in parallel could proceed as $\left(\texttt{A} + \texttt{B}\right)$ and $\left(\texttt{C} + \texttt{D}\right)$ in one step, followed by the final sum of these results.
+    \end{examplebox}
+\end{enumerate}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.84\textwidth]{img/reduction-pattern-1.pdf}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{vector-square} \textbf{Vectorization}}
+\end{flushleft}
+In general, \definition{Vectorization} refers to the \textbf{process of converting an algorithm from operating on single elements at a time to operating on a set of elements simultaneously using vectorized instructions}.
+
+\highspace
+Modern processors have special vector processing units (such as SIMD - Single Instruction, Multiple Data) that can handle multiple data elements in a single instruction.
+
+\highspace
+The Reduction Pattern combines elements in pairs until a single result is obtained. \textbf{Vectorization can be applied to this process to combine multiple pairs simultaneously}.
+
+\begin{examplebox}[: Reduce Pattern Vectorization]
+    Suppose we have an array of numbers that we want to sum. Instead of summing each pair one by one, we can use vectorized instructions to sum several pairs at once. This is especially beneficial for large datasets.
+\end{examplebox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.55\textwidth]{img/reduction-pattern-2.pdf}
+    \caption{Graphical example of the vectorization technique.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Speed}}. Vectorization can greatly speed up the reduction process by making better use of CPU resources.
+
+    \item \textcolor{Green3}{\textbf{Parallelism}}. It enhances the inherent parallelism of the reduction operation, further improving performance.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{th} \textbf{Tiling}}
+\end{flushleft}
+\definition{Tiling} (also known as blocking) is a \textbf{technique where the workload is divided into smaller, more manageable chunks or \dquotes{tiles}}. \hl{Each tile can be processed independently, and the results can then be combined}. We have already seen this topic in the CUDA environment, on page \pageref{subsubsection: Tiling Technique}.
+
+\highspace
+\textcolor{Green3}{\faIcon{star} \textbf{Goal}}. The main goal of tiling is to improve cache efficiency and reduce memory access latency by keeping frequently accessed data within the faster levels of the memory hierarchy (like the CPU cache).
+
+\highspace
+The tiling in the reduction pattern is applied as follows:
+\begin{enumerate}
+    \item \important{Divide Data}. The \textbf{entire dataset is divided into smaller tiles}. Each tile contains a subset of the data.
+
+    \item \important{Process Tiles}. Each tile is processed independently. For the reduction pattern, this means \textbf{performing the reduction operation on the elements within each tile}.
+
+    \item \important{Combine Results}. Once all tiles have been processed, the \textbf{results from each tile are combined to obtain the final result}.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: Tiling with Reduce Pattern]
+    Imagine we have an array of numbers that we want to sum using tiling:
+    \begin{itemize}
+        \item Divide the array into smaller tiles (e.g., blocks of 100 elements each).
+        \item Perform the summation within each tile in parallel.
+        \item Combine the sums of all tiles to get the final result.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Cache Efficiency}}. By working on smaller tiles, the data can fit into the CPU cache, reducing the need to fetch data from slower main memory.
+
+    \item \textcolor{Green3}{\textbf{Parallelism}}. Each tile can be processed in parallel, making it easier to distribute the workload across multiple processes or threads.
+
+    \item \textcolor{Green3}{\textbf{Scalability}}. Tiling allows for better scalability, especially when dealing with large datasets.
+\end{itemize}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.9\textwidth]{img/reduce-tiling-pattern-1.pdf}
+    \caption{Graphical example of the tiling technique applied to the reduce pattern.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}}
+\end{flushleft}
+Unfortunately, the reduce pattern has two major limitations: precision issues and order floating-point dependency.
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Precision Issues}}. Small rounding errors occur because some numbers cannot be represented exactly. For example, the number 0.1 cannot be represented precisely in binary floating-point format.\footnote{Floating-point numbers are represented in a way that allows for a wide range of values but introduces some imprecision. This is because they are stored in a fixed number of bits, which can only approximate most real numbers.}
+
+    \highspace
+    \textbf{When performing a reduction operation} (e.g., summing a large array of floating-point numbers), these \textbf{small rounding errors can accumulate}. Each addition introduces a tiny error, and the more additions we perform, the larger the cumulative error becomes.
+
+    \highspace
+    \begin{examplebox}[: Precision Issues]
+        Suppose we sum the numbers \texttt{[0.1, 0.2, 0.3, 0.4]}. Ideally, the result should be \texttt{1.0}. However, due to rounding errors, we might get something like \texttt{0.9999999999999999} instead.
+
+        In large datasets, this effect can be more pronounced, leading to significant deviations from the expected result.
+    \end{examplebox}
+
+    \newpage
+
+    \item \textcolor{Red2}{\textbf{Order Floating-Point Dependency}}. Floating-point addition is not associative. This means that the order in which we add the numbers can affect the result.
+
+    \highspace
+    In a parallel reduction, elements are combined in different orders depending on how they are distributed across processes. \textbf{Different orders of combination can lead to different results due to the non-associative nature of floating-point addition}.
+
+    \highspace
+    \begin{examplebox}[: Order Floating-Point Dependency]
+        Suppose we have three numbers \texttt{1e20}, \texttt{-1e20}, and \texttt{1.0}. If we add them as:
+        \begin{equation*}
+            \texttt{(1e20 + -1e20) + 1.0} = \texttt{0.0 + 1.0} = 1.0
+        \end{equation*}
+        But if we add them as:
+        \begin{equation*}
+            \texttt{1e20 + (-1e20 + 1.0)} \approx \texttt{1.0}
+        \end{equation*}
+        Due to the large magnitude difference between \texttt{1e20} and \texttt{1.0}.
+    \end{examplebox}
+\end{itemize}
+These problems can be partially solved using some intelligent techniques such as:
+\begin{multicols}{2}
+    \begin{itemize}
+        \item Kahan Summation Algorithm:
+        \begin{center}
+            \qrcode{https://en.wikipedia.org/wiki/Kahan_summation_algorithm}
+        \end{center}
+        \item Pairwise Summation:
+        \begin{center}
+            \qrcode{https://en.wikipedia.org/wiki/Pairwise_summation}
+        \end{center}
+        \item Higher Precision:
+        \begin{center}
+            \qrcode{https://en.wikipedia.org/wiki/Extended_precision}
+        \end{center}
+        \item Consistent Order:
+        \begin{center}
+            \qrcode{https://www.intel.com/content/dam/develop/external/us/en/documents/pdf/fp-consistency-121918.pdf}
+        \end{center}
+    \end{itemize}
+\end{multicols}
+However, in this course we don't delve into these topics.

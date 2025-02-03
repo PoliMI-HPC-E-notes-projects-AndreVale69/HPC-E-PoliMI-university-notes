@@ -24,6 +24,7 @@
 ### v0.16.0-dev
 - add `Patterns`
   - add `Collectives operations`
+    - add `Reduce (or Reduction) Pattern`
 
 --------------------
 

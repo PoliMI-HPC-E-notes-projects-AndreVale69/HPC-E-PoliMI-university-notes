@@ -25,6 +25,7 @@
 - add `Patterns`
   - add `Collectives operations`
     - add `Reduce (or Reduction) Pattern`
+    - add `Scan Pattern`
 
 --------------------
 

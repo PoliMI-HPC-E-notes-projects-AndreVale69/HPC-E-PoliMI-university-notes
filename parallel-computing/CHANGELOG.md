@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.16.0-dev](#v0160-dev)
+- [v0.16.0](#v0160)
 - [v0.15.0](#v0150)
 - [v0.14.0](#v0140)
 - [v0.13.0](#v0130)
@@ -21,7 +21,7 @@
 
 --------------------
 
-### v0.16.0-dev
+### v0.16.0
 - add `Patterns`
   - add `Collectives operations`
     - add `Reduce (or Reduction) Pattern`

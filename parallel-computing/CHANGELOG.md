@@ -27,6 +27,7 @@
   - add `Gather Pattern`
     - add `What is a Gather?`
     - add `Shift`
+    - add `Zip`
 
 --------------------
 

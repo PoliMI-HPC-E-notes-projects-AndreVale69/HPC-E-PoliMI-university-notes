@@ -1,0 +1,177 @@
+\subsection{Gather Pattern}
+
+\subsubsection{What is a Gather?}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is the need for the gather pattern born?}}
+\end{flushleft}
+There are two main reasons for this:
+\begin{enumerate}
+    \item \important{Data Movement}.
+
+    \textcolor{Red2}{\faIcon{question} \textbf{Problem}}. Data movement is often more costly than computation, especially when transferring data across memory layers or networks. This includes factors like:
+    \begin{itemize}
+        \item Locality optimization. \hl{Reducing data access times} by keeping frequently accessed data close to the processing unit.
+        \item Efficient data access. Improving performance by \hl{minimizing the cost of accessing scattered data locations}.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Solution}}. The gather pattern addresses these issues by efficiently \hl{collecting data from multiple, scattered memory locations into a contiguous structure}.
+
+
+    \item \important{Parallel Data Reorganization}.
+    
+    \textcolor{Red2}{\faIcon{question} \textbf{Problem}}. To achieve performance gains in parallel algorithms, data often needs to be reorganized efficiently. This involves:
+    \begin{itemize}
+        \item Parallel data movement. \hl{Moving large datasets simultaneously} rather than sequentially.
+        \item Consistency management. \hl{Ensuring data integrity} while reorganizing in parallel.
+        \item Intermediate data structures. \hl{Holding temporary results during reorganization}.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Solution}}. The gather pattern is crucial for parallel data reorganization because it:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \hl{Enables parallel data movement}, allowing multiple data points to be gathered simultaneously from different sources.
+        \item \hl{Maintains data consistency}, ensuring that the reorganization process doesn't introduce errors.
+        \item \hl{Supports intermediate structures}, making it easier to manage data during complex transformations.
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{What is a Gather Pattern?}}
+\end{flushleft}
+The \definition{Gather Pattern} is a data movement operation that \textbf{creates a new (\emph{source}) collection of data by reading elements from an existing (\emph{input}) data collection}. It is commonly used in parallel computing to efficiently \hl{reorganize} or \hl{extract data based on specific indices}. At first it might seem complicated, but with some simple examples it will be very easy.
+
+\highspace
+In general, it works like this:
+\begin{enumerate}
+    \item \textbf{Read} data from the input collection at positions specified.
+    \item \textbf{Write} the gathered data to the output collection in the same order as the indexes specified in Input.
+    \item Returns an output collection that has the same shape (or dimensionality) as the index collection.
+\end{enumerate}
+It can be seen as a \textbf{combination} of \texttt{map} and \texttt{random read} operations because it \textbf{performs multiple reads from non-contiguous memory locations}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{\underline{Serial} Implementation}}
+\end{flushleft}
+The following pseudocode shows a serial implementation of the gather pattern:
+\begin{lstlisting}[language=c++]
+template<typename Data, typename Idx>
+void gather(
+    size_t n,    // number of elements in data collection
+    size_t m,    // number of elements in index collection
+    Data a[],    // input data collection (n elements)
+    Data A[],    // output data collection (m elements)
+                 // used to modify the output in place
+    Idx idx[]    // input index collection (m elements)
+) {
+    // Iterate over index collection
+    for (size_t i = 0; i < m; ++i) {
+        // Get the i-th index
+        size_t j = idx[i];
+        // Ensure index is within bounds;
+        // It avoids buffer overflow,
+        // and ensure memory safety
+        assert(0 <= j && j < n);
+        // Perform random read and write to output
+        A[i] = a[j];
+    }
+}
+\end{lstlisting}
+The pseudo-signature of the function is:
+\begin{itemize}
+    \item Input:
+    \begin{itemize}
+        \item \texttt{a[]}: original data collection (size \texttt{n}).
+        \item \texttt{idx[]}: index collection specifying which elements to gather (size \texttt{m}).
+    \end{itemize}
+
+    \item Output:
+    \begin{itemize}
+        \item \texttt{A[]}: output collection to store gathered elements (size \texttt{m}, trivial since we iterate over the input indices \texttt{idx})
+    \end{itemize}
+\end{itemize}
+The process performs the following operations:
+\begin{enumerate}
+    \item \textbf{Loop through each index} \texttt{i} in the index collection (\texttt{idx[]}).
+    \item \textbf{Access the data} at position \texttt{idx[i]} in \texttt{a[]}.
+    \item \textbf{Assertion} ensures that the index is valid (within the bounds of \texttt{a[]}).
+    \item \textbf{Copy the data} from \texttt{a[idx[i]]} to the corresponding position \texttt{A[i]} in the output collection.
+\end{enumerate}
+It is interesting to note that there are good \textbf{opportunities to parallelize} the code thanks to the for loop. In fact, \hl{each iteration is independent} of the others (no data dependencies between iterations). More precisely, \hl{each thread writes to a unique position in the output} array (collection) \texttt{A}. Also, \hl{each position is valid} thanks to the assert boundary check.
+
+\highspace
+\begin{examplebox}[: Gather Pattern]
+    Let the following arguments:
+    \begin{itemize}
+        \item Source Array, contains the original data elements:
+        \begin{equation*}
+            \texttt{A = [A, B, C, D, E, F, G, H]}
+        \end{equation*}
+        Indices \texttt{0} through \texttt{7}, so the \texttt{n} argument is \texttt{8}.
+
+        \item Index Array, specifies which elements from the source array to retrieve:
+        \begin{equation*}
+            \texttt{idx = [1, 5, 0, 2, 2, 4]}
+        \end{equation*}
+        Indices \texttt{0} through \texttt{5}, so the \texttt{m} argument is \texttt{6}.
+
+        \item Output Array, will store the gathered elements in the order of the indices \texttt{idx}:
+        \begin{equation*}
+            \texttt{B = []}
+        \end{equation*}
+        Empty initially, will be filled based on \texttt{idx}.
+    \end{itemize}
+    The function calculates:
+    \begin{enumerate}
+        \item First iteration:
+        \begin{enumerate}
+            \item Get \emph{0}-th index: \texttt{idx[0] = 1}
+            \item Boundary check? \texttt{0 <= idx[0] $\land$ idx[0] < 8} \textcolor{Green3}{\faIcon{check}}
+            \item Perform random read: \texttt{B[0] = A[idx[0]] = A[1] = B}
+        \end{enumerate}
+        \item Second iteration:
+        \begin{enumerate}
+            \item Get \emph{1}-th index: \texttt{idx[1] = 5}
+            \item Boundary check? \texttt{0 <= idx[1] $\land$ idx[1] < 8} \textcolor{Green3}{\faIcon{check}}
+            \item Perform random read: \texttt{B[1] = A[idx[1]] = A[5] = F}
+        \end{enumerate}
+        \newpage
+        \item Third iteration:
+        \begin{enumerate}
+            \item Get \emph{2}-th index: \texttt{idx[2] = 0}
+            \item Boundary check? \texttt{0 <= idx[2] $\land$ idx[2] < 8} \textcolor{Green3}{\faIcon{check}}
+            \item Perform random read: \texttt{B[2] = A[idx[2]] = A[0] = A}
+        \end{enumerate}
+        \item Fourth iteration:
+        \begin{enumerate}
+            \item Get \emph{3}-th index: \texttt{idx[3] = 2}
+            \item Boundary check? \texttt{0 <= idx[3] $\land$ idx[3] < 8} \textcolor{Green3}{\faIcon{check}}
+            \item Perform random read: \texttt{B[3] = A[idx[3]] = A[2] = C}
+        \end{enumerate}
+        \item Fifth iteration:
+        \begin{enumerate}
+            \item Get \emph{4}-th index: \texttt{idx[4] = 2}
+            \item Boundary check? \texttt{0 <= idx[4] $\land$ idx[4] < 8} \textcolor{Green3}{\faIcon{check}}
+            \item Perform random read: \texttt{B[4] = A[idx[4]] = A[2] = C}
+        \end{enumerate}
+        \item Sixth iteration:
+        \begin{enumerate}
+            \item Get \emph{5}-th index: \texttt{idx[5] = 4}
+            \item Boundary check? \texttt{0 <= idx[5] $\land$ idx[5] < 8} \textcolor{Green3}{\faIcon{check}}
+            \item Perform random read: \texttt{B[5] = A[idx[5]] = A[4] = E}
+        \end{enumerate}
+    \end{enumerate}
+    The returned output collection is:
+    \begin{equation*}
+        \texttt{B = [B, F, A, C, C, E]}
+    \end{equation*}
+\end{examplebox}
+
+\noindent
+Some interesting observations we can make are:
+\begin{itemize}
+    \item \textbf{Same dimensionality}: output data collection (array \texttt{B}) has the same number of elements as the number of indexes in the index collection (value \texttt{m}).
+    \item \textbf{Same types}: elements of the output collection are of the same type as the input data collection.
+\end{itemize}

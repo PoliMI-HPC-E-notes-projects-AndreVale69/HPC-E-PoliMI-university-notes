@@ -29,6 +29,8 @@
     - add `Shift`
     - add `Zip`
     - add `Unzip`
+  - add `Scatter Pattern`
+    - add `What is a Scatter?`
 
 --------------------
 

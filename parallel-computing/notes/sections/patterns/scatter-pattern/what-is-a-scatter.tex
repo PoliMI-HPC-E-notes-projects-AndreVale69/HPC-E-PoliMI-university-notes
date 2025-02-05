@@ -1,0 +1,95 @@
+\subsection{Scatter Pattern}
+
+\subsubsection{What is a Scatter?}
+
+The \definition{Scatter Pattern} is a data movement pattern where \textbf{elements from a source array are distributed (or scattered) to various locations in a destination array based on specified indices}. Essentially, it's about writing data to random locations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Key Features}}
+\end{flushleft}
+In general, the \textbf{input} of the scatter pattern is:
+\begin{itemize}
+    \item \textbf{Source data array}: value to be written.
+    \item \textbf{Index array}: specifies where each value should be written in the destination.
+\end{itemize}
+Each element from the source is written to the position in the target array specified by the corresponding index. The \textbf{output is a target array where the data is scattered across the positions}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Gather vs. Scatter}}
+\end{flushleft}
+The main differences between gather and scatter are:
+\begin{itemize}
+    \item \important{Gather} (read focused): Involves \textbf{random reads} where the read \textbf{locations are provided as input}.
+    \item \important{Scatter} (write focused): Involves \textbf{random writes} with write \textbf{locations provided as input}, which can lead to race conditions.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{\underline{Serial} implementation}}
+\end{flushleft}
+The following pseudocode shows a serial implementation of the scatter pattern:
+\begin{lstlisting}[language=c++]
+template<typename Data, typename Idx>
+void scatter(
+    size_t n,     // Number of elements
+                  // in the output data collection
+    size_t m,     // Number of elements
+                  // in the input data and index collection
+    Data a[],     // Input data collection (m elements)
+    Data A[],     // Output data collection (n elements)
+    Idx idx[]     // Input index collection (m elements)
+) {
+    // Loop through each input element
+    for (size_t i = 0; i < m; ++i) {
+        // Get the target index from the index array
+        size_t j = idx[i];
+        // Ensure the index is within output array bounds
+        assert(0 <= j && j < n);
+        // Perform the scatter: write a[i] to A[j]
+        A[j] = a[i];
+    }
+}
+\end{lstlisting}
+The method is characterized by:
+\begin{itemize}
+    \item \important{Loop} (\texttt{for}): Iterates through each element in the input array \texttt{a[]} (length \texttt{m}).
+    \item \important{Indexing} (\texttt{j = idx[i]}): Determines \textbf{where to place} \texttt{a[i]} in the output array \texttt{A[]}.
+    \item \important{Boundary Check} (\texttt{assert}): Ensures the index \texttt{j} is \textbf{valid} (avoids out-of-bounds errors).
+    \item \important{Write Operation} (\texttt{A[j] = a[i]}): \textbf{Scatters} the data from \texttt{a[i]} to \texttt{A[j]}.
+\end{itemize}
+The possibilities to parallelize the code are interesting, but instead of the gather pattern, here we have a problem with race conditions on write operations. So the code can be parallelized (\textbf{parallelize over for loop to perform random write}), but we \hl{need to find some strategies to avoid race conditions}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Race Conditions in Scatter}}
+\end{flushleft}
+Unfortunately, the scatter pattern can lead to race conditions because of the way it handles writes to memory. As we know, a race condition occurs when two or more operations try to access and modify the same data at the same time, and the final result depends on the order in which the operations are performed.
+
+\highspace
+In the scatter pattern, we're performing random writes to different locations in memory. The \textbf{problem arises when multiple write operations target the same location at the same time}. Because the \hl{writes happen in parallel}, we can't predict:
+\begin{enumerate}
+    \item Which write will happen first
+    \item Which value will be stored last
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: Race Condition in Scatter]
+    Consider this:
+    \begin{itemize}
+        \item Source Data:
+        \begin{equation*}
+            \texttt{A = [A, B, C, D, E, F]}
+        \end{equation*}
+        \item Index Array (write locations):
+        \begin{equation*}
+            \texttt{idx = [1, 5, 0, 2, 2, 4]}
+        \end{equation*}
+    \end{itemize}
+    This means that the two threads that will handle the 3rd and 4th positions on the index array will suffer from a race condition. Because if they try to write at the same time, the result will depend on which thread finishes last:
+    \begin{itemize}
+        \item If thread A (writing \texttt{D}) finishes last, position \texttt{2} will be equal to \texttt{D}.
+        \item If thread B (writing \texttt{E}) finishes last, position \texttt{2} will be equal to \texttt{E}.
+    \end{itemize}
+\end{examplebox}

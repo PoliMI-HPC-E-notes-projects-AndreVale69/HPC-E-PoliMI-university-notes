@@ -28,6 +28,7 @@
     - add `What is a Gather?`
     - add `Shift`
     - add `Zip`
+    - add `Unzip`
 
 --------------------
 

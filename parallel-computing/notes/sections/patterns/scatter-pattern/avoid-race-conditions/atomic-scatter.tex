@@ -1,0 +1,68 @@
+\subsubsection{Avoid race conditions}
+
+\paragraph{Atomic Scatter}
+
+\definition{Atomic Scatter} is a \textbf{collision resolution strategy} used when multiple threads attempt to write to the same memory location simultaneously. It is based on one of the most common and famous topic: \textbf{atomic operations}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does it work?}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Atomic Writes}}. \textbf{Each write is atomic}, meaning it either \hl{completes fully or doesn't happen at all}. No partial writes.
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Non-Deterministic Outcome}}. Since it relies solely on atomic writes, this doesn't mean that there is a mechanism to check which thread should write before another. \hl{When a collision occurs, the outcome depends on which write completes first}. There's no predefined rule for determining which value to store.
+\end{itemize}
+
+\highspace
+\begin{examplebox}[: Atomic Scatter]
+    Consider this:
+    \begin{itemize}
+        \item Source Data:
+        \begin{equation*}
+            \texttt{A = [A, B, C, D, E, F]}
+        \end{equation*}
+        \item Index Array (write locations):
+        \begin{equation*}
+            \texttt{idx = [1, 5, 0, 2, 2, 4]}
+        \end{equation*}
+    \end{itemize}
+    Notice that each thread is assigned to every position of the \texttt{idx} array. This means that threads \#4 and \#5 must write to the same position on the output array. However, we adopt the atomic strategies so that what happens depends on the order of writing.
+
+    \highspace
+    A possibles scenario:
+    \begin{enumerate}
+        \item Thread \#4 asks to do an atomic write to position 2 of the output array. The operation is marked atomic and can be done safely. The value written to \texttt{A[2]} is \texttt{D}.
+        \item Then thread \#5 performs the same steps and overwrites the value written by thread \#4 and writes the value \texttt{E} to \texttt{A[2]}.
+    \end{enumerate}
+    This is non-deterministic, so this is a possible scenario, but it could also be the other way around and the final value could be \texttt{D}.
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Simple to implement}}. No need for complex locking mechanisms.
+    \item \textcolor{Green3}{\textbf{Fast}}. Atomic \hl{operations are optimized in hardware}, making them efficient for parallel execution.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Unpredictable results}}. Non-determinism can be \hl{problematic for algorithms that require consistent outputs}.
+    \item \textcolor{Red2}{\textbf{Data loss}}. \hl{One of the colliding values will be lost} without any mechanism to combine or preserve both.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When to use Atomic Scatter?}}
+\end{flushleft}
+Atomic scatter is suitable when:
+\begin{itemize}
+    \item \textbf{Collisions are rare}: so the occasional data loss or non-determinism is acceptable.
+    \item \textbf{We don't care which value is kept}: for example, in random sampling or approximate algorithms.
+\end{itemize}

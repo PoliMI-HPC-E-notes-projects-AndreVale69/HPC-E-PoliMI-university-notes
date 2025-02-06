@@ -1,0 +1,99 @@
+\subsection{Pack Pattern}
+
+\subsubsection{What is a Pack?}
+
+The \definition{Pack Pattern} is used to \textbf{remove unused elements from a collection while keeping the retained elements contiguous in memory}. The goal is to \textbf{improve performance by reducing memory fragmentation and increasing data locality}, which benefits cache efficiency.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How the Pack Algorithm works}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{Convert the input array into Boolean values}. Each element is mapped to \texttt{1} (\emph{keep}) or \texttt{0} (\emph{discard}).
+    \item \textbf{Perform an exclusive scan (prefix sum) on the Boolean array}. This step computes the new positions (offsets) of the retained elements.
+    \item \textbf{Use the computed offsets to move retained elements to their new locations}. The elements corresponding to \texttt{1}'s in the Boolean array are copied to their new positions.
+\end{enumerate}
+\begin{examplebox}[: Pack Pattern]
+    We have an input array and a mask that tells us which elements to keep (\texttt{1}) and which to remove (\texttt{0}):
+    \begin{equation*}
+        \begin{array}{rcl}
+            \texttt{Index}          & = & \texttt{[0, 1, 2, 3, 4, 5, 6, 7]} \\ [.5em]
+            \texttt{Input}          & = & \texttt{[A, B, C, D, E, F, G, H]} \\ [.5em]
+            \texttt{Keep (Mask)}    & = & \texttt{[0, 1, 1, 0, 0, 1, 1, 1]}
+        \end{array}
+    \end{equation*}
+    We want to create a new array with only the elements marked \texttt{1}, but we don't yet know \emph{where} to place them.
+
+    The exclusive scan (prefix sum) on the \texttt{Keep} array calculates the new indices for the elements we want to keep.
+
+    We compute the scan using addition (starting from \texttt{0}):
+    \begin{equation*}
+        \begin{array}{rcl}
+            \texttt{Index}                      & = & \texttt{[0, 1, 2, 3, 4, 5, 6, 7]} \\ [.5em]
+            \texttt{Keep (Mask)}                & = & \texttt{[0, 1, 1, 0, 0, 1, 1, 1]} \\ [.5em]
+            \texttt{Exclusive Scan (New Index)} & = & \texttt{[0, 0, 1, 2, 2, 2, 3, 4]}
+        \end{array}
+    \end{equation*}
+    The scan tells us:
+    \begin{itemize}
+        \item \texttt{B} goes to index 0
+        \item \texttt{C} goes to index 1
+        \item \texttt{F} goes to index 2
+        \item \texttt{G} goes to index 3
+        \item \texttt{H} goes to index 4
+    \end{itemize}
+    \begin{equation*}
+        \texttt{[B, C, F, G, H]}
+    \end{equation*}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is Packing Useful?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textcolor{Green3}{\textbf{Reduces memory waste}} by eliminating unnecessary elements.
+    \item \textcolor{Green3}{\textbf{Improves data locality}} (sequential memory access is faster than scattered access).
+    \item \textcolor{Green3}{\textbf{Boosts cache efficiency}}, reducing cache misses and improving parallel performance.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{book} \textcolor{Red2}{\textbf{What is the inverse of the Pack pattern?}}}
+\end{flushleft}
+The \definition{Unpack Pattern} is the inverse of packing. It \textbf{restores the packed elements to their original positions} in an expanded array, reintroducing gaps where necessary.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How Unpacking Works}}
+\end{flushleft}
+Given the same Boolean mask used in packing, unpacking spreads elements back to their original locations, \textbf{leaving empty slots where elements were previously removed}.
+\begin{enumerate}
+    \item Start with the packed array and the original mask.
+    \item Read the mask to decide where elements should go:
+    \begin{itemize}
+        \item If 1, we take the next packed element.
+        \item If 0, we insert a placeholder (empty slot).
+    \end{itemize}
+    \item Reconstruct the original array.
+\end{enumerate}
+
+\begin{examplebox}[: Unpack Pattern]
+    We have:
+    \begin{enumerate}
+        \item The packed array: \texttt{[B, C, F, G, H]}
+        \item The original mask: \texttt{[0, 1, 1, 0, 0, 1, 1, 1]}
+    \end{enumerate}
+    Now we will restore elements using the mask:
+    \begin{itemize}
+        \item If \texttt{Keep (Mask) = 1}, we copy the next element from the packed array into that position.
+        \item If \texttt{Keep (Mask) = 0}, we insert an empty slot (or default value).
+    \end{itemize}
+    Finally, we place elements back into their original positions using the mask:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \texttt{Index}          & = & \texttt{[0, 1, 2, 3, 4, 5, 6, 7]} \\ [.5em]
+            \texttt{Restored Value} & = & \texttt{[\_, B, C, \_, \_, F, G, H]}
+        \end{array}
+    \end{equation*}
+\end{examplebox}

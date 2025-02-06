@@ -36,6 +36,8 @@
       - add `Permutation Scatter`
       - add `Merge Scatter`
       - add `Priority Scatter`
+  - add `Pack Pattern`
+    - add `What is a Pack?`
 
 --------------------
 

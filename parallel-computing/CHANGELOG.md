@@ -35,6 +35,7 @@
       - add `Atomic Scatter`
       - add `Permutation Scatter`
       - add `Merge Scatter`
+      - add `Priority Scatter`
 
 --------------------
 

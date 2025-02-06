@@ -33,6 +33,7 @@
     - add `What is a Scatter?`
     - add `Avoid race conditions`
       - add `Atomic Scatter`
+      - add `Permutation Scatter`
 
 --------------------
 

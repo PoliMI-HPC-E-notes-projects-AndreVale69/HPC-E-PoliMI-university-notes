@@ -1,0 +1,75 @@
+\paragraph{Permutation Scatter}
+
+\definition{Permutation Scatter} is a special type of scatter pattern where \textbf{collisions are strictly prohibited}. This means that \textbf{every input element must be placed in a unique output position}, ensuring that the output is a permutation (reordering) of the input.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Key Features}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Collisions are illegal}. Unlike atomic scatter, where collisions are resolved non-deterministically, \textbf{permutation scatter ensures that \underline{no} two elements try to write to the same location}.
+    \item \important{Output is a permutation of the input}. The output array consists of the same elements as the input but in a different order, \textbf{without any duplicates or missing values}.
+    \item \important{Collision checking in advance}. To \hl{guarantee uniqueness}, a \textbf{pre-check must be done} to detect any duplicate indices \textbf{before executing the scatter operation}.
+    
+    \highspace
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{question-circle} \textbf{What if there is a collision during the pre-check?}}
+    \end{flushleft}
+    If collisions exist, scatter cannot proceed as-is and may \textbf{need to be transformed into a gather operation} instead.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why convert a scatter to a gather?}}
+    \end{flushleft}
+    Instead of letting multiple elements write to the same index in parallel (scatter), we can:
+    \begin{enumerate}
+        \item Detect collisions beforehand by checking for duplicate indices in the index array.
+        \item Reformulate the operation as a gather, where \textbf{each output index reads from a unique input location}, instead of multiple inputs writing to the same index.
+        \item Ensure correctness by enforcing a one-to-one mapping between input and output locations.
+    \end{enumerate}
+    So it is clear that the \textbf{gather ensures that each output location reads from only one input, eliminating write conflicts}.
+
+    \begin{examplebox}[: Convert Scatter to Gather]
+        Image we have an input array and an index array:
+        \begin{itemize}
+            \item Input: \texttt{A = [A, B, C, D]}
+            \item Index: \texttt{idx = [1, 3, 3, 2]}
+        \end{itemize}
+        Here we have a conflict at index 3 because both B and C want to write here. Therefore, the pre-check reports this conflict; the operation has been marked as undefined behavior; we convert the operation from a scatter to a gather.
+
+        \highspace
+        Now the approaches we can make are two: we \textbf{convert the whole operation} into a gather and we do that in parallel (to achieve high performance); or the \textbf{position where the permutation cannot guarantee the atomic write, are passed to a gather function to guarantee atomicity}.
+
+        \highspace
+        The implementation depends on the programmer and the behavior we want. What we need to know is that: \textbf{if a conflict is detected during permutation, the conversion to gather is the best choice that we can make}.
+    \end{examplebox}
+
+    Permutation scatter requires a one-to-one mapping between input and output indices. If collisions exist, scatter must be \textbf{turned into gather so that instead of multiple inputs writing to the same location, each output position retrieves its correct value without conflicts}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Permutation vs. Atomic Scatter}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Collision}
+    \begin{itemize}
+        \item \textbf{Atomic}: Allowed, resolved arbitrarily.
+        \item \textbf{Permutation}: Not allowed.
+    \end{itemize}
+    \item \important{Write conflicts}
+    \begin{itemize}
+        \item \textbf{Atomic}: Handled using atomic operations.
+        \item \textbf{Permutation}: Avoided by pre-checking
+    \end{itemize}
+    \item \important{Output structure}
+    \begin{itemize}
+        \item \textbf{Atomic}: Can overwrite values.
+        \item \textbf{Permutation}: Always a permutation of input.
+    \end{itemize}
+    \item \important{Use Cases}
+    \begin{itemize}
+        \item \textbf{Atomic}: Hash tables, parallel memory writes.
+        \item \textbf{Permutation}: Matrix transposition, FFT scrambling.
+    \end{itemize}
+\end{itemize}

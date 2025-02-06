@@ -41,6 +41,7 @@
     - add `Split`
     - add `Unsplit`
     - add `Bin`
+    - add `Expand`
 
 --------------------
 

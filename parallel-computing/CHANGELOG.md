@@ -34,6 +34,7 @@
     - add `Avoid race conditions`
       - add `Atomic Scatter`
       - add `Permutation Scatter`
+      - add `Merge Scatter`
 
 --------------------
 

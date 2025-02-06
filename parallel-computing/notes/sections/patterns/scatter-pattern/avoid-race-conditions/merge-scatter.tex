@@ -1,0 +1,83 @@
+\paragraph{Merge Scatter}
+
+The \definition{Merge Scatter} strategy is a way to resolve write conflicts in a scatter operation by \textbf{applying a merge operator that combines values instead of discarding or randomly selecting one}.  
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
+\end{flushleft}
+Instead of letting one thread overwrite another's data, Merge Scatter \textbf{applies a merge function to combine values when a conflict occurs}. The \hl{function must be}:
+\begin{itemize}
+    \item \important{Associative}, order of grouping doesn't change result:
+    \begin{equation*}
+        \left(a \oplus b\right) \oplus c = a \oplus \left(b \oplus c\right)
+    \end{equation*}
+    \item \important{Commutative}, order of values doesn't change result:
+    \begin{equation*}
+        a \oplus b = b \oplus a
+    \end{equation*}
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why these properties?}} Because parallel execution means that scatter operations happen in arbitrary order, so the \textbf{merge result must be independent of the order in which values arrive}. In other words, \hl{it guarantees deterministic behavior} (because we always know what the result will be).
+
+\highspace
+\begin{examplebox}[: Merge Scatter]
+    Suppose we have the following data:
+    \begin{center}
+        \begin{tabular}{@{} l | l @{}}
+            \toprule
+            Input   & \texttt{[2, 3, 1, 1, 5, 6]} \\
+            Indices & \texttt{[1, 5, 0, 2, 2, 4]} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    Positions \texttt{3} and \texttt{4} have multiple writes, causing collisions. Therefore, we use the merge scatter strategy and we define the merge function as: addition.
+
+    \highspace
+    So instead of overwriting, we sum the values in case of a conflict:
+    \begin{equation*}
+        \texttt{[1, 2, 6, \_, 6, 3]}
+    \end{equation*}
+    At the second position, the index where there was a collision, the merge function was applied between the value \texttt{1} and \texttt{5} (\texttt{1 + 5 = 6}).
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Preserves Data}}. Unlike atomic scatter (where some values are lost), merge scatter ensures \textbf{all data contributes to the final output}.
+    \item \textcolor{Green3}{\textbf{Parallel-Friendly}}. Works well in parallel settings since \textbf{order doesn't affect the result}.
+    \item \textcolor{Green3}{\textbf{Useful in some scenario}}: histogram computation, sparse matrix operations, parallel reductions.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Increased Computational Overhead}}. Instead of a simple write operation, we now have to \textbf{perform a merge operation} (e.g., addition, \texttt{max}, \texttt{min}). This \textbf{adds extra computational cost}, especially if the merge function is complex. Also, some architectures may require atomic operations or locks to ensure safe merging, which can slow down execution.
+
+    In summary, the \textbf{more conflicts there are, the more overhead is introduced by the merge function}.
+
+    \item \textcolor{Red2}{\textbf{Not Always Deterministic}}. If the merge \textbf{function is not associative and commutative}, the \textbf{result can depend on the order of execution}, which is unpredictable in parallel settings.
+    
+    Note that this is very common in real-world scenarios; for \example{example}, when using floating-point addition, different execution orders can result in small numerical inconsistencies due to floating-point precision issues.
+    
+    \item \textcolor{Red2}{\textbf{Possible Loss of Information}}. If the \textbf{merge function is not a lossless operation}, \textbf{some original data might be lost}.
+    
+    \begin{examplebox}[: Loss of Information]
+        For example, if the merge function is \texttt{max()}, only the largest value survives, and all others are discarded. This mean \textbf{we cannot reconstruct the original inputs from the output}.
+    \end{examplebox}
+    
+    \item \textcolor{Red2}{\textbf{Limited Applicability}}. Merge Scatter is \textbf{only applicable when a meaningful merge function exists}. Some applications require exact values, and merging (e.g., summing or taking max) may not be acceptable.
+    
+    \begin{examplebox}[: Limited Applicability]
+        For example, if each thread writes a different pixel color in an image processing task, merging colors with sum/max may produce unintended artifacts.
+    \end{examplebox}
+\end{itemize}
+So we can summarize \textbf{when we need to avoid merge scatter}:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item When we need \textcolor{Red2}{\textbf{exact values}} without modification.
+    \item When the merge function is \textcolor{Red2}{\textbf{not associative or commutative}}.
+    \item When merging \textcolor{Red2}{\textbf{significantly increases computational complexity}}.
+\end{itemize}

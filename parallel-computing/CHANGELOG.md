@@ -38,6 +38,9 @@
       - add `Priority Scatter`
   - add `Pack Pattern`
     - add `What is a Pack?`
+    - add `Split`
+    - add `Unsplit`
+    - add `Bin`
 
 --------------------
 

@@ -93,3 +93,38 @@ In the scatter pattern, we're performing random writes to different locations in
         \item If thread B (writing \texttt{E}) finishes last, position \texttt{2} will be equal to \texttt{E}.
     \end{itemize}
 \end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Optimizing Performance: Converting Scatter to Gather}}
+\end{flushleft}
+Scatter operations are generally more expensive than gather operations because of how data is written to memory:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Cache Line Issues}}. Writing data to memory can cause \textbf{cache conflicts}, making memory access slower.
+    \item \textcolor{Red2}{\textbf{False Sharing Problem}}. If \textbf{multiple CPU cores write to different parts of the same cache line}, they interfere with each other, slowing down performance.
+\end{itemize}
+So we can switch to gather pattern to improve performance. Unfortunately, this speedup can \textbf{only be achieved if we know the memory addresses in advance}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{So it is only a low-level knowledge?}} Let's get this straight.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{When we know the memory addresses in advance}}
+    \begin{itemize}
+        \item It is a scenario where the scatter operation follows a \hl{fixed, predictable pattern}; or the indices where data will be written are statically determined (at compile time) or precomputed before execution. Also, if the same scattering pattern is reused multiple times, precomputing the addresses is worthwhile.
+
+        \begin{examplebox}[: when we know the memory addresses in advance]
+            Suppose we're implementing matrix transposition, and each element moves to a fixed new location. The scatter indices can be precomputed once, and instead of writing directly, we gather the elements and write them sequentially.
+        \end{examplebox}
+    \end{itemize}
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{When we don't know the memory addresses in advance}}
+    \begin{itemize}
+        \item It is a scenario where the \hl{target indexes depend on runtime data} (e.g., calculation results or user input); or the distribution pattern is dynamic and unpredictable, changing with each execution. Also, when data distribution is affected by real-time conditions, such as load balancing in parallel computing.
+    
+        \begin{examplebox}[: when we don't know the memory addresses in advance]
+            Suppose we are sorting numbers in parallel using a scatter operation, but the final positions depend on comparisons performed at runtime. Since the scatter addresses are computed on the fly, we can't precompute an equivalent gather operation.
+        \end{examplebox}
+    \end{itemize}
+\end{itemize}
+So \hl{if the pattern is known in advance, we can convert scatter to gather to improve performance}. But if the \hl{pattern is dynamic}, we have to deal with unpredictable memory writes, leading to potential performance \hl{problems like cache contention and atomic conflicts}.

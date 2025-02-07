@@ -1,0 +1,87 @@
+\section{Parallel Patterns in OpenMP and CUDA}
+
+\subsection{OpenMP}
+
+OpenMP provides efficient implementations of many parallel programming patterns. Here are some of the key patterns that we have already discussed:
+\begin{enumerate}
+    \item \definition{Map Pattern on OpenMP}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{info-circle} \textbf{Characteristics}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{No dependencies} between operations.
+        \item Simple and \textbf{ideal for SIMD} (Single Instruction, Multiple Data) execution.
+        \item Executes independently on different data elements.
+    \end{itemize}
+    \begin{examplebox}[: Map Pattern on OpenMP]
+        \begin{lstlisting}[language=c++]
+#pragma omp parallel for
+for (int i = 0; i < N; i++) {
+    result[i] = operation(data[i]);
+}\end{lstlisting}
+    \end{examplebox}
+    
+    \item \definition{Reduction Pattern on OpenMP}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{info-circle} \textbf{Characteristics}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{Combines results from multiple threads into a single value} using a specified operation (e.g., sum, min, max).
+        \item \textbf{Supported natively} in OpenMP (see \ref{paragraph: Reduction}, page \pageref{paragraph: Reduction}). It is an easy integration for operations that aggregate data across threads.
+    \end{itemize}
+    \begin{examplebox}[: Reduction Pattern on OpenMP]
+        \begin{lstlisting}[language=c++]
+#pragma omp parallel for reduction(+:sum)
+for (int i = 0; i < N; i++) {
+    sum += array[i];
+}\end{lstlisting}
+    \end{examplebox}
+    
+    \item \definition{Workpile Pattern on OpenMP}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{info-circle} \textbf{Characteristics}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{Handles irregular work distribution that may change dynamically} at runtime.
+        \item Assumes \textbf{all tasks are independent}.
+        \item Commonly used in applications like \textbf{tree searches} or \textbf{recursive computations}.
+        \item Leverages OpenMP's tasking feature for dynamically generated workloads.
+    \end{itemize}
+    \begin{examplebox}[: Workpile Pattern on OpenMP]
+        \begin{lstlisting}[language=c++]
+#pragma omp task
+void process_task() {
+    // Perform a unit of work
+}\end{lstlisting}
+    \end{examplebox}
+
+    \item \definition{Scan Pattern on OpenMP}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{info-circle} \textbf{Characteristics}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{Efficiently performs prefix-sum} or similar operations over an array.
+        \item Widely \textbf{used for cumulative computations} and \textbf{inclusive/exclusive scans}.
+        \item OpenMP 5.0 introduced \textbf{dedicated support} for this pattern.
+        \item Three-Phase Approach:
+        \begin{enumerate}
+            \item \textbf{Build intermediate results} in parallel.
+            \item \textbf{Combine intermediate results} in pairs.
+            \item \textbf{Build final output} in parallel.
+        \end{enumerate}
+        \begin{figure}[!htp]
+            \centering
+            \includegraphics[width=.9\textwidth]{img/scan-pattern-2.pdf}
+        \end{figure}
+    \end{itemize}
+    \begin{examplebox}[: Scan Pattern on OpenMP]
+        Example with a SIMD reduction clause:
+        \begin{lstlisting}[language=c++]
+#pragma omp simd reduction(inscan, +:scan_a)
+for (int i = 0; i < N; i++) {
+    simd_scan[i] = scan_a; 
+    #pragma omp scan exclusive(scan_a)
+    scan_a += array[i];
+}\end{lstlisting}
+    \end{examplebox}
+\end{enumerate}

@@ -1,0 +1,49 @@
+\subsubsection{Cache optimizations}
+
+Cache optimizations in stencil computations focus on \textbf{reducing cache misses} and \textbf{maximizing data reuse} to improve performance. Since stencil operations involve accessing neighboring elements in a structured way, we can optimize memory access patterns to reduce unnecessary memory traffic.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need cache optimizations?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Cache Misses}. When accessing memory that is not in the cache, the processor must fetch data from main memory, which is slow. \hl{Stencil computations often involve non-contiguous memory accesses}, leading to many cache misses.
+    \item \textbf{False Sharing}. If \hl{multiple cores write to the same cache line}, it causes cache invalidations and slows down computation.
+    \item \textbf{Redundant Memory Accesses}. Without optimization, different \hl{cores may load the same data multiple times}, wasting bandwidth.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Key cache optimization techniques}}
+\end{flushleft}
+\begin{enumerate}
+    \item \definition{Data Layout Awareness}. If \textbf{rows are stored contiguously in memory, accessing horizontal neighbors is efficient}. Accessing vertical neighbors (different rows) can cause cache misses because they are stored in different memory locations.
+    
+    It is not a proper optimization technique but rather a recommendation. If we know the memory layout, such as row-major order, we can ensure better cache utilization and achieve higher cache hit rates.
+    
+    
+    \item \definition{Assigning Work to Cores Efficiently}. The core allocation strategies are mainly two:
+    \begin{enumerate}
+        \item \textcolor{Green3}{\textbf{Assigning \emph{Rows} to Cores}}. \textbf{Each core processes an entire row}.
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Maximizes horizontal data locality} because rows are stored consecutively in memory.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Minimizes cache misses} for horizontal accesses (e.g., left and right neighbors in a stencil).
+            \item[\textcolor{Red2}{\faIcon{times}}] Vertical offsets (e.g., top and bottom neighbors in a stencil) require cores to redundantly load adjacent rows, which can increase memory traffic.
+        \end{itemize}
+
+        \item \textcolor{Red2}{\textbf{Assigning \emph{Columns} to Cores}}. \textbf{Each core processes an entire column}.
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Columns are not stored contiguously in row-major memory layouts, so \textbf{every access incurs a cache miss}.
+            \item Creates \textbf{false sharing} when multiple cores write to the same cache line, causing cache invalidations and performance degradation.
+        \end{itemize}
+    \end{enumerate}
+    In other words, choosing to assign rows to cores is the better choice.
+    
+    
+    \item \definition{Strip-Mining}. It is a way of assigning work to cores. Instead of assigning full rows or columns, \textbf{divide the array into \emph{strips}}. Each \textbf{strip's width is chosen as a multiple of the cache line size}, \hl{ensuring that each core loads only what it needs}.
+    
+    It prevents redundant reads and \textbf{keeps frequently accessed data in cache}.
+    
+    
+    \item \definition{Loop Blocking (Tiling)}. Instead of processing the entire array at once, \textbf{process small \emph{tiles} that fit in cache}. This keeps active data in fast cache memory, minimizing slow memory accesses.
+\end{enumerate}

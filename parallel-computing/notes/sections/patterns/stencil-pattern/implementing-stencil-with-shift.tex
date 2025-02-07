@@ -1,0 +1,64 @@
+\subsubsection{Implementing stencil with shift}
+
+In the previous section we gave a brief description of what a stencil pattern is (page \pageref{subsection: Stencil Pattern}). Now in this chapter we want to show one of the most common patterns (variations) of the stencil pattern: Stencil with shift.
+
+\highspace
+\definition{Stencil with Shift} is a possible implementation of the Stencil pattern. The \textbf{main features} are:
+\begin{itemize}
+    \item Instead of iterating through neighbors explicitly using loops (which may be inefficient), we \textbf{shift the input data by different offsets}.
+    \item \textbf{Each shifted version of the array represents a different part of the stencil window}.
+    \item This method is \textbf{commonly used in SIMD} (Single Instruction Multiple Data) architectures \textbf{to enable vectorization}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why Apply Shift? Advantages}}
+\end{flushleft}
+It is an obvious question. Why should we add a shift to an operation that is already working? The answer is efficiency:
+\begin{enumerate}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Efficient Vectorization}}. Shifting allows all elements of a vector register to be loaded together. Instead of accessing neighbors one by one (which causes memory divergence), we perform multiple aligned loads.
+
+    Note: \textbf{does not directly reduce memory traffic}, but allows vectorization. Therefore, \hl{vectorization reduces the number of instructions, which improves performance}. So \textbf{it is a consequence and not a direct effect}.
+
+
+    \item \textcolor{Green3}{\textbf{Better Memory Access Pattern}}. Instead of scattered memory accesses (which are slow), \textbf{shifting ensures contiguous memory accesses}, improving cache performance.
+    
+    
+    \item \textcolor{Green3}{\textbf{Simplifies Computation}}. The stencil computation reduces to element-wise operations on shifted versions of the input array.
+\end{enumerate}
+Note that shifting \textbf{works well only when applied along the dimension where elements are stored consecutively in memory}. Otherwise, the computation becomes significantly slower due to inefficient memory access (for example, if we apply a shift to a column-major data structure).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{How does it work?}}
+\end{flushleft}
+\begin{enumerate}
+    \item Start with the Original Array.
+    \item Create Shifted Copies.
+    \item Apply a stencil formula (such as average).
+\end{enumerate}
+\begin{examplebox}[: Stencil with Shift]
+    \begin{enumerate}
+        \item Start with the original array:
+        \begin{equation*}
+            \texttt{[1, 2, 3, 4, 5, 6, 7]}
+        \end{equation*}
+
+        \item Create shifted copies:
+        \begin{itemize}
+            \item Left shift by 1:
+            \begin{equation*}
+                \texttt{[2, 3, 4, 5, 6, 7, 8]}
+            \end{equation*}
+            \item Right shift by 1:
+            \begin{equation*}
+                \texttt{[0, 1, 2, 3, 4, 5, 6]}
+            \end{equation*}
+        \end{itemize}
+
+        \item Apply the Stencil Formula. For example, compute 3-point average:
+        \begin{lstlisting}[language=c++]
+numerator = left_shift[i] + center[i] + right_shift[i];
+result[i] = numerator / 3;\end{lstlisting}
+    \end{enumerate}
+\end{examplebox}

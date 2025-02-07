@@ -1,0 +1,48 @@
+\subsubsection{Communication optimizations}
+
+In parallel computing, when a stencil computation is distributed across multiple processing elements (PEs), we \textbf{need} to make some special considerations \textbf{to handle communication and boundary dependencies}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Key techniques \& concepts}}
+\end{flushleft}
+The key techniques and concepts involved in optimizing stencil communication are as follows:
+\begin{enumerate}
+    \item \important{Distributed Data and Ghost Cells}. When data is distributed among processing elements, we also copy ghost cells. \definition{Ghost cells} are \textbf{additional copies of boundary data from neighboring processing elements}. These cells are essential to perform stencil computations involving shared boundaries without accessing the actual neighbor's data directly.
+
+    \hl{After each iteration}, a processing element must \textbf{exchange updated\break boundary data} (ghost cells) \textbf{with its neighbors} to prepare for the next iteration.
+
+
+    \item \important{Importance of Replicating Ghost Cells}. Instead of accessing shared memory for boundaries, we made a \textbf{replication of ghost cells in local memory for each processing element} because it is more efficient.
+
+    This minimizes fine-grained sharing, which often leads to high communication overhead. \hl{After each iteration}, \textbf{ghost cells are swapped and updated through communication}.
+    
+    
+    \item \important{Halo Regions}. A \definition{Halo} is the \textbf{set of all ghost cells required for stencil computation}. The halo ensures all necessary neighbor data is available for one iteration.
+
+    \definition{Deep Halo} is an \textbf{extending of the halo size} that allows \textbf{multiple stencil iterations} to be computed \textbf{\emph{without} inter-processing element communication}.
+    
+    This improves independence between processing elements, but it also \textbf{increases redundant computations and requires more memory}.
+    
+
+    \item \important{Latency Hiding}. To \hl{maximize computational efficiency}, we can try to hide latency overlapping communication with computation.
+    
+    \textbf{While waiting for ghost cell updates, processing elements can compute the interior of the stencil} (data independent of ghost cells). This ensures that communication delays do not completely block computation progress.
+    
+    
+    \newpage
+    \item \important{Key Trade-offs}. Stencil and communication optimizations \textbf{involve balancing the following}:
+    \begin{enumerate}
+        \item \textbf{Larger} Halos:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Fewer communication steps}} and \textcolor{Green3}{\textbf{more independence}}.
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Increased memory use}} and \textcolor{Red2}{\textbf{redundant computations}}.
+        \end{itemize}
+
+        \item \textbf{Smaller} Halos:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Reduced memory overhead.
+            \item[\textcolor{Red2}{\faIcon{times}}] More frequent communication required, potentially reducing efficiency.
+        \end{itemize}
+    \end{enumerate}
+\end{enumerate}

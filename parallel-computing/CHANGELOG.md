@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.18.0](#v0180)
 - [v0.17.0](#v0170)
 - [v0.16.0](#v0160)
 - [v0.15.0](#v0150)
@@ -19,6 +20,16 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.18.0
+- add `Patterns`
+  - add `Stencil Pattern`
+    - add `What is a Stencil?`
+    - add `Implementing stencil with shift`
+    - add `Cache optimizations`
+    - add `Communication optimizations`
 
 --------------------
 

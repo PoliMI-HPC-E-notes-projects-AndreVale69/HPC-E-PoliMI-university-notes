@@ -1,0 +1,210 @@
+\subsection{AoS vs. SoA}
+
+This section explain two major ways of organizing data in memory for parallel processing and optimization: AoS and SoA.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Array of Structures (AoS)}}
+\end{flushleft}
+\definition{Array of Structures (AoS)} is a data structure where \textbf{each element in the array is a structure (object) containing multiple fields}.
+
+\highspace
+\begin{examplebox}[: C/C++ AoS Representation]
+    \begin{lstlisting}[language=c++]
+struct Particle {
+    float x, y, z;      // Position
+    float vx, vy, vz;   // Velocity
+};
+
+Particle particles[N];  // Array of structures\end{lstlisting}
+\end{examplebox}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{16em} | p{16em} @{}}
+        \toprule
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} & \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}} \\
+        \midrule
+        \textcolor{Green3}{\faIcon{check} \textbf{Better cache utilization}} when data is accessed \textbf{randomly} (good for scattered reads). & \textcolor{Red2}{\faIcon{times} \textbf{Less efficient for vectorization}} (SIMD operations). \\
+        \textcolor{Green3}{\faIcon{check} \textbf{Easier to manage}} as a single object-oriented entity. & \textcolor{Red2}{\faIcon{times} \textbf{More cache misses}} if accessing only one field (e.g., reading all x-coordinates). \\
+        \bottomrule
+    \end{tabular}
+    \caption{Pros and cons of AoS.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Structure of Arrays (SoA)}}
+\end{flushleft}
+\definition{Structure of Arrays (SoA)} is a data structure where \textbf{each field of the structure is stored in separate arrays} instead of combined in a single structure.  
+
+\highspace
+\begin{examplebox}[: C/C++ SoA Representation]
+    \begin{lstlisting}[language=c++]
+struct Particles {
+    float x[N], y[N], z[N];     // Position arrays
+    float vx[N], vy[N], vz[N];  // Velocity arrays
+};
+
+Particles particles;  // Structure of arrays\end{lstlisting}
+\end{examplebox}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{16em} | p{16em} @{}}
+        \toprule
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} & \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}} \\
+        \midrule
+        \textcolor{Green3}{\faIcon{check} \textbf{Better for vectorization}} and SIMD operations (can process multiple x-coordinates at once). & \textcolor{Red2}{\faIcon{times} \textbf{Harder to manage}} if working with complex structures. \\
+        \textcolor{Green3}{\faIcon{check} \textbf{Avoids false sharing}}, when multiple threads modify different fields of the same structure. & \textcolor{Red2}{\faIcon{times} \textbf{Random access may be a bit slower}} due to separate memory locations. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Pros and cons of SoA.}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bookmark} \textbf{Layout Variations}}
+\end{flushleft}
+The following data layouts are \textbf{different memory representations of the same structure}, but they differ in how padding is handled in both AoS and SoA.  
+
+\highspace
+More specifically, \textbf{each variant represents a way of organizing and aligning data in memory} that can affect performance, vectorization, and cache efficiency.
+\begin{enumerate}
+    \item \important{Array of Structures (AoS) with Padding at the End}. All \textbf{structures are stored sequentially in memory}. \hl{Extra padding is added at the end} of the array to ensure proper memory alignment. Padding at the end helps to avoid cache conflicts when the array is processed.
+    \begin{examplebox}[: AoS with Padding at the End]
+        \begin{lstlisting}[language=c++]
+struct Particle {
+    float x, y, z, vx, vy, vz;  // 6 floats
+};
+Particle particles[N];          // AoS layout\end{lstlisting}
+
+        \emph{Where is the padding?} If \texttt{sizeof(Particle)} is \textbf{not a multiple of the memory alignment requirement} (e.g., 16 or 32 bytes for SIMD), then the \textbf{compiler may add extra padding at the end of the array} to ensure efficient access.
+
+        \begin{center}
+            \includegraphics[width=\textwidth]{img/aos-padding-end-1.pdf}
+        \end{center}
+    \end{examplebox}
+
+
+    \item \important{Array of Structures (AoS) with Padding After Each Structure}. \textbf{Padding is inserted inside each structure}, not just at the end. Helps align each structure according to CPU memory constraints. \textbf{Ensures that each structure is memory-aligned}, avoiding performance penalties in SIMD/vectorized processing.
+    \newpage
+    \begin{examplebox}[: AoS with Padding After Each Structure]
+        \begin{lstlisting}[language=c++]
+struct Particle {
+    float x, y, z;      // 3 floats
+    float vx, vy, vz;   // 3 floats
+    float padding[2];   // Ensuring proper memory alignment
+};
+Particle particles[N];  // AoS layout with padding\end{lstlisting}
+        \begin{center}
+            \includegraphics[width=\textwidth]{img/aos-padding-each-struct-1.pdf}
+        \end{center}
+    \end{examplebox}
+
+
+    \item \important{Structure of Arrays (SoA) with Padding at the End}. All \textbf{fields are stored in separate arrays}. Extra \textbf{padding is added at the end of each array}. Ensures memory alignment for vectorized processing, and padding prevents cache conflicts when working with large datasets.
+    \begin{examplebox}
+        \begin{lstlisting}[language=c++]
+struct Particles {
+    float x[N], y[N], z[N];     // Position arrays
+    float vx[N], vy[N], vz[N];  // Velocity arrays
+    float padding[N];           // Added padding for alignment
+};\end{lstlisting}
+        \begin{center}
+            \includegraphics[width=\textwidth]{img/soa-padding-end-1.pdf}
+        \end{center}
+    \end{examplebox}
+
+
+    \item \important{Structure of Arrays (SoA) with Padding After Each Component}. \textbf{Padding is added between each component}, not just at the end. Useful for architectures that require strict memory alignment per field. \textbf{Prevents memory access penalties} when CPU requires aligned data loads and can \textbf{improve performance in SIMD/vectorized operations}.
+    \begin{examplebox}
+        \begin{lstlisting}[language=c++]
+struct Particles {
+    float x[N];         // Position x
+    float padding_x[N]; // Padding
+    float y[N];         // Position y
+    float padding_y[N]; // Padding
+    float z[N];         // Position z
+    float padding_z[N]; // Padding
+};\end{lstlisting}
+        \begin{center}
+            \includegraphics[width=\textwidth]{img/soa-padding-each-struct-1.pdf}
+        \end{center}
+    \end{examplebox}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{When to use AoS or SoA?}}
+\end{flushleft}
+\begin{itemize}
+    \item Use \textbf{AoS} when working with \textbf{random access patterns} (or small objects).
+    \item Use \textbf{SoA} when performing \textbf{vectorized computations} or \textbf{parallel processing over large datasets}.
+\end{itemize}
+
+\begin{examplebox}[: AoS implementation]
+    Here is an example of an AoS implementation:
+    \begin{lstlisting}[language=c++]
+struct node {
+    float x, y, z;
+};
+
+struct node NODES[1024];
+
+float dist[1024];
+
+for(int i = 0; i < 1024; i += 16) {
+    float x[16], y[16], z[16], d[16];
+
+    x[:] = NODES[i:16].x;
+    y[:] = NODES[i:16].y;
+    z[:] = NODES[i:16].z;
+
+    d[:] = sqrtf(x[:] * x[:] + y[:] * y[:] + z[:] * z[:]);
+
+    dist[i:16] = d[:];
+}\end{lstlisting}
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Most logical representation}}. Data is stored as an array of structures, making it \textbf{intuitive to access entire objects at once}.
+        \item \textcolor{Red2}{\textbf{Bad for vectorization}}. Each structure contains multiple fields (\texttt{x}, \texttt{y}, \texttt{z}), so when processing multiple elements, the \textbf{data for different fields is scattered in memory}.
+        \item \textcolor{Red2}{\textbf{Poor cache efficiency}}. SIMD vector operations \textbf{prefer contiguous memory access}, but here, \texttt{x}, \texttt{y}, and \texttt{z} are interleaved across structures, requiring scatter/gather operations, which are expensive.
+        \item \textcolor{Red2}{\textbf{Vectorization}} engines (e.g., AVX) struggle because accessing x, y, and z together \textbf{does not align well with SIMD memory patterns}.
+    \end{itemize}
+\end{examplebox}
+
+\newpage
+
+\begin{examplebox}[: SoA implementation]
+    Here is an example of a SoA implementation:
+    \begin{lstlisting}[language=c++]
+struct node1 {
+    float x[1024], y[1024], z[1024];
+};
+
+struct node1 NODES1;
+
+float dist[1024];
+
+for(int i = 0; i < 1024; i += 16) {
+    float x[16], y[16], z[16], d[16];
+
+    x[:] = NODES1.x[i:16];
+    y[:] = NODES1.y[i:16];
+    z[:] = NODES1.z[i:16];
+
+    d[:] = sqrtf(x[:] * x[:] + y[:] * y[:] + z[:] * z[:]);
+
+    dist[i:16] = d[:];
+}\end{lstlisting}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Each field has its own contiguous array}}. Instead of structuring data as objects, we structure it as separate arrays for each attribute (\texttt{x[]}, \texttt{y[]}, \texttt{z[]}).
+        \item \textcolor{Green3}{\textbf{Much better for vectorization}}. When \textbf{applying SIMD operations}, the processor can efficiently load 16 (or more) values of \texttt{x[]}, \texttt{y[]}, and \texttt{z[]} in one go, \textbf{avoiding scatter/gather penalties}.
+        \item \textcolor{Green3}{\textbf{Cache-friendly}}. Since all x-values are contiguous, prefetching and memory locality are improved, \textbf{reducing cache misses}.
+        \item \textcolor{Green3}{\textbf{HPC}}. This layout is widely used in high-performance computing, graphics (e.g., GPUs), and physics simulations because it \textbf{maximizes vectorization efficiency}.
+    \end{itemize}
+\end{examplebox}
+
+\noindent
+In summary, \textbf{AoS is easier to understand}, but \textbf{SoA is better for perfor-\break mance-critical applications due to cache efficiency and vectorization}. 

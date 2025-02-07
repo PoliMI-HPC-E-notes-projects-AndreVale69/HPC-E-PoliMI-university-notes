@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.17.0-dev](#v0170-dev)
+- [v0.17.0](#v0170)
 - [v0.16.0](#v0160)
 - [v0.15.0](#v0150)
 - [v0.14.0](#v0140)
@@ -22,7 +22,7 @@
 
 --------------------
 
-### v0.17.0-dev
+### v0.17.0
 - add `Patterns`
   - add `Gather Pattern`
     - add `What is a Gather?`
@@ -43,6 +43,7 @@
     - add `Bin`
     - add `Expand`
   - add `Partitioning Data`
+  - add `AoS vs. SoA`
 
 --------------------
 

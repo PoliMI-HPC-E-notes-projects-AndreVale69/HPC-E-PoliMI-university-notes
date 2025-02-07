@@ -42,6 +42,7 @@
     - add `Unsplit`
     - add `Bin`
     - add `Expand`
+  - add `Partitioning Data`
 
 --------------------
 

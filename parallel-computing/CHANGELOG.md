@@ -28,6 +28,7 @@
 ### v1.0.0-dev
 - add `Heterogeneous Computing - DSLs and HLS`
   - add `Introduction to Heterogeneous Computing`
+  - add `Heterogeneous parallel programming`
 
 --------------------
 

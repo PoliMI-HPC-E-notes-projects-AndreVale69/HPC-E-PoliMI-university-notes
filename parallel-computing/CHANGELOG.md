@@ -27,6 +27,7 @@
 ### v0.19.0-dev
 - add `Parallel Patterns in OpenMP and CUDA`
   - add `OpenMP`
+  - add `Histogram Pattern`
 
 --------------------
 

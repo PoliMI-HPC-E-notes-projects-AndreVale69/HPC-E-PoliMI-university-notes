@@ -1,0 +1,349 @@
+\subsection{Histogram Pattern}
+
+The \definition{Histogram Pattern} is a fundamental and widely used computational method for \textbf{analyzing large datasets by aggregating values into predefined bins}. It is used in applications such as feature extraction, fraud detection, and speech recognition.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Characteristics}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Definition}}. \textbf{For each data element, a specific \emph{bin counter} is identified and incremented}.
+
+    \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Applications}}
+    \begin{itemize}
+        \item \textbf{Feature extraction}: Identifying key characteristics in images or data.
+        \item \textbf{Fraud detection}: Analyzing transactional data for anomalies.
+        \item \textbf{Speech recognition}: Identifying patterns in audio signals.
+    \end{itemize}
+
+    \item[\textcolor{Red2}{\faIcon{question-circle}}] \textcolor{Red2}{\textbf{Main Challenges}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{question}}] \textcolor{Red2}{\textbf{Output Interference}}: \textbf{Avoiding concurrent writes} to the same bin counter in a parallel implementation.
+        \item[\textcolor{Red2}{\faIcon{question}}] \textcolor{Red2}{\textbf{Memory Access Efficiency}}: \textbf{Ensuring memory coalescence} for better bandwidth utilization.
+    \end{itemize}
+\end{itemize}
+
+\begin{examplebox}[: Histogram for Letter Count in Strings]
+    Given an input string, the goal is to count the frequency of letters grouped into bins. For instance: the string ``\texttt{programming massively parallel processors}'' could be grouped into 4-letter bins like \texttt{\{a-d, e-h, i-l, ...\}}.
+
+    The output is:
+    \begin{lstlisting}
+a-d: 5
+e-h: 5
+i-l: 6
+m-p: 10
+q-t: 10
+u-x: 1
+y-z: 1\end{lstlisting}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Sequential Implementation in C}}
+\end{flushleft}
+\begin{lstlisting}[language=c++]
+#define ALPHABET_LENGTH 26
+
+sequential_Histogram(char *data, int length, int *histo) {
+    for (int i = 0; i < length; ++i) {
+        int alphabet_position = data[i] - 'a';
+        if (alphabet_position >= 0 &&
+            alphabet_position < ALPHABET_LENGTH) {
+            histo[alphabet_position / 4]++;
+        }
+    }
+}\end{lstlisting}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Parallel Implementation}}
+\end{flushleft}
+To parallelize, we must:
+\begin{enumerate}
+    \item \textbf{Partition Input}: Divide the input dataset into sections.
+    \item \textbf{Thread Processing}: Assign each thread a section to process independently.
+\end{enumerate}
+So we need to choose how to split the input and which thread to assign to each piece of data.
+\begin{itemize}
+    \item \important{Simplest parallel version}. The simplest parallel implementation divides the input into sections. The \textbf{number of sections created is equal to the number of threads available}. For example, if the input are 28 words long and we have 4 threads, each section length will be $28 \div 4 = 7$ words per thread. In parallel, \textbf{each thread iterates through a section}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/histogram-pattern-1.pdf}
+        \caption{The simplest parallel implementation of the histogram pattern.}
+    \end{figure}
+
+    \newpage
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{walking} \textbf{Simplest parallel version: Inefficient memory access}}
+    \end{flushleft}
+    Each thread works on its assigned contiguous section of the input. And this might be good, but we don't consider that \textbf{memory accesses across threads are not contiguous}! So at each iteration, each thread requests memory locations not contiguous on memory.
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item \textcolor{Red2}{\textbf{Memory Access Efficiency}}. \textbf{Adjacent threads work on non-adjacent memory sections}. While each thread accesses contiguous memory, the threads themselves are \textbf{not accessing contiguous memory as a group}.
+        \item \textcolor{Red2}{\textbf{DRAM Bandwidth}}. Accesses from different threads are not coalesced, meaning \textbf{memory requests are spread out across the memory space}, leading to inefficient use of bandwidth. If the memory addresses are in the same location, the memory requests are grouped together.
+    \end{itemize}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.6\textwidth]{img/histogram-pattern-2.pdf}
+        \caption{Memory allocation between threads on the simplest parallel version.}
+        \label{fig: Memory allocation between threads on the simplest parallel version}
+    \end{figure}
+
+    \item \important{Parallel version with interleaved partitioning}. The interleaved partitioning, \textbf{threads work on interleaved indices}, so their \textbf{access are distributed across contiguous memory locations}.
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{running} \textbf{Interleaved partitioning: the best memory option}}
+    \end{flushleft}
+    In this case, \textbf{memory accesses from different threads are closer together in memory}, which aligns better with how memory is organized in hardware (cache lines and DRAM bursts). As a result:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Memory Coalescing}}. \textbf{Threads access memory in a way that aligns with cache lines and DRAM bursts}.
+        \item \textcolor{Green3}{\textbf{Bandwidth Utilization}}. \textbf{Memory requests are grouped together}, maximizing the DRAM bandwidth and improving overall performance.
+    \end{itemize}
+    \newpage
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.6\textwidth]{img/histogram-pattern-3.pdf}
+        \caption{Memory allocation between threads on the interleaved partitioning version.}
+    \end{figure}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/histogram-pattern-4.pdf}
+        \caption{The parallel version with interleaved partitioning.}
+    \end{figure}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Why Interleaved Partitioning is Better}}
+\end{flushleft}
+In the simplest version, the threads work independently on large contiguous chunks. While this avoids conflicts between threads, it leads to \textbf{scattered memory access} patterns at a hardware level. \textbf{DRAM modules are optimized} for coalesced accesses, which occur \textbf{when requests are close together}.
+
+\highspace
+In interleaved partitioning, threads' accesses are distributed such that memory requests from different threads are \textbf{closer together in memory}. This aligns with how caches and DRAM are designed to handle access patterns efficiently, improving speed and reducing memory latency.
+
+\newpage
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Implementations suffer from race condition}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{question-circle}}] \textcolor{Red2}{\textbf{What happened?}} In this parallel implementation, \textbf{multiple threads update a shared histogram simultaneously}.
+    
+    For example, in the figure \ref{fig: Memory allocation between threads on the simplest parallel version} (page \pageref{fig: Memory allocation between threads on the simplest parallel version}), we can see that threads \#0, \#2, and \#3 are trying to increment the same bin at the same time. The correct result is 3, but this can \textbf{lead to data corruption because these operations are not atomic}. So we got lucky.
+
+
+    \item[\textcolor{Red2}{\faIcon{exclamation-circle}}] \textcolor{Red2}{\textbf{Why this happens}}. Incrementing a histogram bin is typically a three-step process:
+    \begin{enumerate}
+        \item Read the current value of the bin.
+        \item Increment the value.
+        \item Write the new value back to the bin.
+    \end{enumerate}
+    In parallel, \textbf{these steps can interleave among threads, causing incorrect results}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How to avoid race conditions}}
+\end{flushleft}
+Exists two technique to use to avoid race conditions on the histogram pattern:
+\begin{itemize}
+    \item \important{Atomic Operations}. We already discussed what atomic operations are and how they can solve (not the best way we can) the race conditions on page \pageref{subsubsection: Avoid race conditions}.
+
+    But here we are talking about implementation. In \important{CUDA}, \textbf{atomic operations are implemented as hardware-supported functions} that perform a \textbf{read-modify-write operation as a single instruction} on a memory address. For the histogram pattern, atomic operations help resolve race conditions by ensuring only one thread modifies a memory location at any given time.
+
+    Some of the most common APIs provided by CUDA include:
+    \begin{itemize}
+        \item \texttt{atomicAdd}: \textbf{Adds a value} to a memory address atomically.
+        \marginpar{
+        \href{https://docs.nvidia.com/cuda/cuda-c-programming-guide/\#atomicadd} {Doc. \faIcon{book}}
+        }
+        \item \texttt{atomicSub}: \textbf{Subtract} operation (atomically).
+        \marginpar{
+            \href{https://docs.nvidia.com/cuda/cuda-c-programming-guide/\#atomicsub} {Doc. \faIcon{book}}
+        }
+        \item \texttt{atomicMin}: \textbf{Find minimum} operation (atomically).
+        \marginpar{
+            \href{https://docs.nvidia.com/cuda/cuda-c-programming-guide/\#atomicmin} {Doc. \faIcon{book}}
+        }
+        \item \texttt{atomicMax}: \textbf{Find maximum} operation (atomically).
+        \marginpar{
+            \href{https://docs.nvidia.com/cuda/cuda-c-programming-guide/\#atomicmax} {Doc. \faIcon{book}}
+        }
+        \item \texttt{atomicCAS} (\textbf{Compare-And-Swap}): Compares a value at an address and swaps it conditionally.
+        \marginpar{
+            \href{https://docs.nvidia.com/cuda/cuda-c-programming-guide/\#atomiccas} {Doc. \faIcon{book}}
+        }
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{tools} \textbf{Implementation of Atomic Operations in CUDA}}
+    \end{flushleft}
+    In this implementation, atomic operations ensure that multiple threads updating the same histogram bin don't cause data corruption.
+    \begin{lstlisting}[language=c++]
+__global__
+void histo_kernel(
+    unsigned char *buffer,
+    long size,
+    unsigned int *histo
+) {
+    // Unique thread ID
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    // Stride for processing chunks
+    int stride = blockDim.x * gridDim.x;
+
+    for (unsigned int i = tid; i < size; i += stride) {
+        // Calculate bin index
+        int alphabet_position = buffer[i] - 'a';
+        if (alphabet_position >= 0 && alphabet_position < 26)
+        {
+            // Atomic update to avoid race conditions
+            atomicAdd(&(histo[alphabet_position / 4]), 1);
+        }
+    }
+}\end{lstlisting}
+    \begin{itemize}
+        \item \texttt{tid}: \hl{Thread's unique ID}, ensures threads process distinct elements (explained on page \hqpageref{definition: Global Thread ID}).
+        \item \texttt{stride}: \hl{Ensures each thread processes non-overlapping data chunks}.
+        \item \texttt{atomicAdd}: Performs the \hl{addition operation atomically}, preventing race conditions when multiple threads update the same histogram bin.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance Considerations \& Recommendations}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \important{Memory Type}:
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{walking}}] \textcolor{Red2}{\textbf{Global memory (DRAM)}}: High latency (over 1000 cycles per atomic operation).
+            \item[\textcolor{Green3}{\faIcon{running}}] \textcolor{Green3}{\textbf{L2 Cache}}: Approximately 1/10th the latency of DRAM.
+            \item[\textcolor{Green3}{\faIcon{\speedIcon}}] \textcolor{Green3}{\textbf{Shared Memory}}: Lowest latency and is private to each thread block.
+        \end{itemize}
+        \item \important{Throughput Impact}:
+        \begin{itemize}
+            \item \textbf{Atomic operations significantly reduce throughput} when multiple threads access the same location because threads are serialized.
+            \item Access patterns and contention have a major impact on overall performance.
+        \end{itemize}
+    \end{itemize}
+    The \textbf{recommendations} are:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Use Shared Memory}}: \textbf{Reduce global memory access latency} by leveraging shared memory for intermediate computation within thread blocks.
+        \item \textcolor{Green3}{\textbf{Reduce Contention}}:
+        \begin{itemize}
+            \item \textbf{Partition data} so threads update different bins.
+            \item \textbf{Minimize the number of atomic updates} to the same location (every atomic operation introduces potential overhead).
+        \end{itemize}
+    \end{itemize}
+
+    \newpage
+
+    \item \important{Privatization}. \definition{Privatization} is a technique used to avoid race conditions in parallel computing by \textbf{providing private copies of shared resources to threads or blocks}.
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What it does}}
+    \end{flushleft}
+    Privatization \textbf{creates private copies of shared resources} (e.g., histograms) \textbf{for each thread or block}. Instead of multiple threads contending to access and modify a shared resource, \hl{each thread or block updates its own private copy independently}. The \textbf{operation performed on the data must be associative and commutative} (e.g., addition for histograms).
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Reduces Contention}}. Threads do not compete to access shared memory resources during intermediate computations, significantly reducing contention.
+        \item \textcolor{Green3}{\textbf{Improves Throughput}}. Since atomic operations on shared memory are faster than on global memory, privatization improves performance, especially when using shared memory for private copies.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textcolor{Red2}{\textbf{Overhead}}. \hl{Allocating and initializing private copies adds computational overhead}. Combining or reducing private copies into a final shared copy at the end introduces additional steps.
+        \item \textcolor{Red2}{\textbf{Memory Fit}}. The private data must fit into shared memory, \hl{which limits the size of privatized resources}.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How it works in combination with a histogram pattern}}
+    \end{flushleft}
+    \begin{enumerate}
+        \item \textbf{Private Copies Initialization}. Each block of threads initializes a local histogram in shared memory (e.g., \texttt{histo\_s[]}).
+        \item \textbf{Local Updates}. \hl{Threads within a block update their private histogram} \textbf{using atomic operations} in shared memory. This step ensures no inter-block contention since the operations are confined to the shared memory of each block.
+        \item \textbf{Reduction Step}. At the end of processing, \hl{private histograms are merged into a final shared histogram in global memory} \textbf{using atomic operations}.
+    \end{enumerate}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Private Copies in Shared Memory?}}
+    \end{flushleft}
+    \begin{itemize}
+        \item Each block gets its own private copy of the histogram in \textbf{shared memory}, which is \textbf{fast and local to the block}.
+        \item \textbf{Threads} within the same block can \textbf{update their shared histogram without interfering with threads in other blocks} because each block \textbf{works on its own local copy}.
+        \item Key Benefit: \textbf{no contention between blocks}, as there is no shared resource across blocks.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why no inter-block contention?}}
+    \end{flushleft}
+    \begin{itemize}
+        \item Since blocks do not access the same global memory histogram during local computations, there is \textbf{no need for atomic operations between blocks during this stage}.
+        \item Threads within a block may still use \textbf{atomic operations}, but these are \textbf{limited to shared memory}, which is \textbf{much faster than global memory}.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{The reduction phase is not so slow?}}
+    \end{flushleft}
+    Only after all blocks have fini\textbf{}shed updating their private histograms do they write their results back to the global histogram. At this stage, atomic operations are required, but \textbf{the volume of these operations is much smaller}. In fact, instead of all threads updating the global histogram during each update, there is \textbf{only one write per bin per block}.
+
+    \begin{examplebox}[: Histogram Patterns Privatization Analogy]
+        Image we have 10 groups of workers (\emph{blocks}), each responsible for counting objects (\emph{bins}) in their own room (\emph{shared memory}).
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Without privatization}: All workers from all groups try to update a single global counter in a central office (\emph{global memory}). They must wait in line to update the counter.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{With privatization}: Each group has its own private counter in their room. They work independently without competing. At the end, a manager (\emph{reduction step}) collects and sums up the results from each room.
+        \end{itemize}
+    \end{examplebox}
+
+    \newpage
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{tools} \textbf{Implementation of Privatization in CUDA}}
+    \end{flushleft}
+        \begin{lstlisting}[language=c++]
+__global__
+void histogram_privatized_kernel(
+    unsigned char* input,
+    unsigned int* bins,
+    unsigned int num_elements,
+    unsigned int num_bins
+) {
+    // 1. Initialization
+    unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    extern __shared__ unsigned int histo_s[];
+
+    for(
+        unsigned int binIdx = threadIdx.x;
+        binIdx < num_bins;
+        binIdx += blockDim.x
+    ) {
+        // Initialize private histogram
+        histo_s[binIdx] = 0u;
+    }    
+    __syncthreads();
+
+
+    // 2. Local Histogram Updates
+    for (
+        unsigned int i = tid;
+        i < num_elements;
+        i += blockDim.x * gridDim.x
+    ) {
+        int alphabet_position = buffer[i] - 'a';
+        if (alphabet_position >= 0 && alphabet_position < 26) {
+            atomicAdd(&(histo_s[alphabet_position]), 1);
+        }
+    }
+    __syncthreads();
+    
+    
+    // 3. Reduction to Global Memory
+    for (
+        unsigned int binIdx = threadIdx.x;
+        bindIdx < num_bins;
+        binIdx += blockDim.x
+    ) {
+        atomicAdd(&(histo[binIdx]), histo_s[binIdx]);
+    }
+}\end{lstlisting}
+\end{itemize}

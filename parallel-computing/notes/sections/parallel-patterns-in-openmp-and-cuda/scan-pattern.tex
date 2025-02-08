@@ -1,0 +1,161 @@
+\subsection{Scan Pattern}
+
+The scan pattern, also known as prefix sum, is a computational pattern where \textbf{each element in an output array is the sum of all previous elements up to the current index in the input array}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{walking} \textbf{Sequential Implementation}}
+\end{flushleft}
+\begin{lstlisting}[language=c++]
+y[0] = x[0];
+for (int i = 1; i < Max_i; ++i)
+    y[i] = y[i-1] + x[i];\end{lstlisting}
+The complexity is $O(N)$ for $N$ elements. The \textcolor{Green3}{pros} are \hl{computationally efficient} and \hl{only one additional operation} compared to reduction. Unfortunately, the \textcolor{Red2}{limitation} is the \hl{sequential} execution; cannot fully utilize parallel resources.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Parallel Implementation with Interleaved Reduction Trees}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Input Reading}: Copy the input into shared memory.
+    \item \important{Iterative Computation}: In each iteration, thread \texttt{j} adds elements \texttt{j} and \texttt{j - stride}, storing the result back in \texttt{j}. Finally, double the stride and repeat until the entire array is processed.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{walking} \textbf{Work-inefficient CUDA implementation}}
+\end{flushleft}
+\begin{lstlisting}[language=c++]
+__shared__ float XY[SECTION_SIZE];
+int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+if (i < InputSize) {
+    XY[threadIdx.x] = X[i];
+}
+
+// perform iterative scan on XY
+for (
+    unsigned int stride = 1;
+    stride < blockDim.x;
+    stride *= 2
+) {
+    __syncthreads();
+    if (stride <= threadIdx.x) {
+        XY[threadIdx.x] += XY[threadIdx.x - stride];
+    }
+}
+\end{lstlisting}
+The previous CUDA implementation is inefficient due to several factors:
+\begin{enumerate}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Work Inefficiency}}
+    \begin{itemize}
+        \item The implementation requires $\log_{2}(N)$ iterations for a data size of $N$, where each iteration involves progressively fewer additions (e.g., $(N-1)$, $(N-2)$, etc.).
+        \item The total number of additions scales as $O(N \cdot \log_{2}(N))$, which is significantly higher than the sequential version's $O(N)$.
+    \end{itemize}
+    For example, with $N=1024$, this \hl{results in a 10x computational overhead} compared to the sequential version, as the hardware resources are not used optimally.
+
+    \item \textcolor{Red2}{\textbf{High Energy Consumption}}. Due to the inefficiency of the work distribution, \hl{many hardware resources remain inactive during computation}. This leads to energy wastage, as resources that could be utilized for other tasks are idling.
+
+    \item \textcolor{Red2}{\textbf{Shared Memory and Synchronization Overhead}}. The implementation relies on shared memory to store intermediate results for each block. \hl{Synchronization barriers} (\texttt{\_\_syncthreads()}) are \hl{required at each iteration} to ensure threads work correctly on shared data. This adds latency and further reduces efficiency.
+
+    \item \textcolor{Red2}{\textbf{Unbalanced Load Distribution}}. As the number of elements to process reduces with each iteration, \hl{some threads become idle earlier than others}. This \hl{unbalanced workload} distribution leads to under-utilization of the GPU's parallel processing capabilities.
+
+    \item \textcolor{Red2}{\textbf{Lack of Intermediate Result Reuse}}. \hl{Intermediate sums computed during the scan are not reused effectively in subsequent steps}. This leads to redundant computations, further increasing inefficiency.
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Efficient CUDA implementation}}
+\end{flushleft}
+The improved CUDA implementation of the scan pattern involves two phases: \textbf{Reduction} and \textbf{Distribution}, both of which are designed to ensure work efficiency and minimize execution time.
+\begin{itemize}
+    \item \important{Reduction Phase}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{book}}] \textcolor{Green3}{\textbf{Goal}}. \textbf{Build} a prefix sum (or partial reduction) \textbf{tree in shared memory}.
+
+        \item[\textcolor{Green3}{\faIcon{lightbulb}}] \textcolor{Green3}{\textbf{Key Idea}}. \textbf{Each thread works on shared memory}:
+        \begin{equation*}
+            \texttt{XY[2*BLOCK\_SIZE]}
+        \end{equation*}
+        And \textbf{accumulates results in a binary tree} fashion.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Process}}
+        \begin{enumerate}
+            \item The threads perform summation for strides increasing as powers of 2.
+            
+            For example, for \texttt{stride = 1}, thread at index \texttt{1} adds values from index \texttt{0}; for \texttt{stride = 2}, thread at index \texttt{3} adds values from index \texttt{1}, and so on.
+            \item This builds a binary tree structure in memory, with the final prefix sum stored at the highest index.
+        \end{enumerate}
+
+        \item[\textcolor{Green3}{\faIcon{clock}}] \textcolor{Green3}{\textbf{Synchronization}}. The \texttt{\_\_syncthreads()} call \textbf{ensures all threads finish their stride operation} before the next begins.
+
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Efficiency}}. It executes $\log_{2}\left(N\right)$ iterations (with $N$ being the input size). Total operations are $N - 1$.
+    \end{itemize}
+
+    \item \important{Distribution Phase}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{book}}] \textcolor{Green3}{\textbf{Goal}}. \textbf{Transform the prefix sum tree into the final scan result array}.
+
+        \item[\textcolor{Green3}{\faIcon{lightbulb}}] \textcolor{Green3}{\textbf{Key Idea}}. \textbf{Threads traverse the binary tree} in reverse (top-down) to \textbf{propagate results} downwards.
+
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Process}}
+        \begin{enumerate}
+            \item Strides start at half the block size (\texttt{BLOCK\_SIZE / 2}) and decrease by powers of 2.
+            \item Each thread adds values from higher indices to lower indices in the tree to compute the final scan result.
+            \item The results are written to the output array (\texttt{Y[i]}).
+        \end{enumerate}
+
+        \item[\textcolor{Green3}{\faIcon{clock}}] \textcolor{Green3}{\textbf{Synchronization}}. Threads use \texttt{\_\_syncthreads()} before and after each stride to ensure all updates are visible across threads.
+
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Efficiency}}. It executes $\log_{2}\left(N\right)$ iterations with a reduced number of operations. Total operations are no more than $\left(N-1\right)$ in each phase.
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\noindent
+The reason why it is improved are:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Work Efficiency}}. Both \textbf{phases together execute a maximum of $2(N-1)$ operations}. This is much better compared to the naïve implementation, which can perform up to $O(N \cdot \log(N))$ operations.
+
+    \item \textcolor{Green3}{\textbf{Parallelization}}. \textbf{Each thread handles fewer redundant operations}, and \textbf{shared memory minimizes memory latency}.
+
+    \item \textcolor{Green3}{\textbf{Hardware Utilization}}. With enough CUDA cores and shared memory, the \textbf{overhead of extra work is compensated by reduced execution time}.
+\end{itemize}
+\begin{lstlisting}[language=c++]
+/*******************
+ * Reduction Phase *
+ *******************/
+// XY[2 * BLOCK_SIZE] is in shared memory
+
+for (
+    unsigned int stride = 1;
+    stride <= BLOCK_SIZE;
+    stride *= 2
+) {
+    int index = (threadIdx.x + 1) * stride * 2 - 1;
+    if (index < 2 * BLOCK_SIZE) {
+        XY[index] += XY[index - stride];
+    }
+    __syncthreads();
+}
+
+/**********************
+ * Distribution Phase *
+ **********************/
+for (
+    unsigned int stride = BLOCK_SIZE / 2;
+    stride > 0;
+    stride /= 2
+) {
+    __syncthreads();
+    int index = (threadIdx.x + 1) * stride * 2 - 1;
+    if (index + stride < 2 * BLOCK_SIZE) {
+        XY[index + stride] += XY[index];
+    }
+}
+__syncthreads();
+if (i < InputSize) {
+    Y[i] = XY[threadIdx.x];
+}\end{lstlisting}

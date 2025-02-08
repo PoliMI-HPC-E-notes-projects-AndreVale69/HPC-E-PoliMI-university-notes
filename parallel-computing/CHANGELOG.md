@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v0.19.0-dev](#v0190-dev)
+- [v0.19.0](#v0190)
 - [v0.18.0](#v0180)
 - [v0.17.0](#v0170)
 - [v0.16.0](#v0160)
@@ -24,11 +24,12 @@
 
 --------------------
 
-### v0.19.0-dev
+### v0.19.0
 - add `Parallel Patterns in OpenMP and CUDA`
   - add `OpenMP`
   - add `Histogram Pattern`
   - add `Reduction Pattern`
+  - add `Scan Pattern`
 
 --------------------
 

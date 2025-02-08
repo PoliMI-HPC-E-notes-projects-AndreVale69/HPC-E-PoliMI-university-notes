@@ -1,0 +1,166 @@
+\subsection{Reduction Pattern}
+
+The \definition{Reduction Pattern} is designed to combine elements from a dataset to produce a single output (e.g., sum, max, min). This pattern was discussed on page \pageref{subsubsection: Reduce (or Reduction) Pattern}.
+
+\begin{remarkbox}[: Binary Tree]
+    A \definition{Binary Tree} is a \textbf{hierarchical data structure} in which \textbf{each node has at most two children}, referred to as the left child and the right child. Binary trees are widely used in computer science for various applications such as searching, sorting, and hierarchical organization of data.
+
+    Key features of a binary tree are:
+    \begin{itemize}
+        \item \textbf{Root Node}: The topmost node of the binary tree. It is the starting point of the tree structure.
+        \item \textbf{Children}: Each node can have up to two children: left child (left branch of the tree) and right child (right branch of the tree).
+        \item \textbf{Leaf Nodes}: Nodes that have no children. These are at the ``bottom'' of the tree.
+        \item \textbf{Parent Node}: A node that has at least one child.
+        \item \textbf{Depth or Level}: The number of edges from the root node to a specific node. The root node is at level 0.
+        \item \textbf{Height}: The maximum depth of any node in the tree.
+        \item \textbf{Subtrees}: A binary tree can be divided into two smaller binary trees called the left subtree and the right subtree.
+    \end{itemize}
+
+    The binary tree has some special conditions:
+    \begin{itemize}
+        \item Number of Children: a node can have at most two children (left and right).
+        \item Structure: it is a strictly hierarchical, with nodes divided into a left and a right child.
+        \item Special Constraints: it has specific rules for arranging nodes:
+        \begin{itemize}
+            \item \textbf{Full Binary Tree}: Every node has either 0 or 2 children.
+            
+            \item \textbf{Complete Binary Tree}: All levels are fully filled except possibly the last level, which is filled from left to right.
+            
+            \item \textbf{Perfect Binary Tree}: All internal nodes have two children, and all leaf nodes are at the same level.
+            
+            \item \textbf{Balanced Binary Tree}: The height difference between the left and right subtrees of any node is at most 1.
+            
+            \item \textbf{Degenerate (or Skewed) Binary Tree}: Each node has only one child (either left or right), forming a structure similar to a linked list.
+        \end{itemize}
+    \end{itemize}
+\end{remarkbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tree} \textbf{Parallel Reduction Tree}}
+\end{flushleft}
+The parallel reduction operates by \textbf{pairing elements in a binary tree structure}. In each step, pairs of \textbf{elements are combined using an associative} and optionally \textbf{commutative operation}. The complexity is:
+\begin{itemize}
+    \item Sequential reduction: $O\left(N\right)$.
+    \item Parallel reduction: $O\left(\log_{2}\left(N\right)\right)$.
+\end{itemize}
+This method is \textbf{work-efficient but not resource-efficient due to redundant operations across threads}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Simple Parallel Implementation}}
+\end{flushleft}
+This implementation uses $\frac{N}{2}$ threads initially and operates in $\log_{2}\left(N\right)$ steps. At each step:
+\begin{itemize}
+    \item Threads operate on pairs of elements.
+    \item The number of \textbf{active threads is reduced by half after each step}.
+\end{itemize}
+\textbf{Reduction is performed in-place using shared memory} to reduce global memory traffic. The efficient memory usage is critical, as $N$ must fit within the shared memory of a block.
+
+\highspace
+The \definition{Thread-to-Data Mapping} \textbf{defines how threads in CUDA are assigned to process the elements of the input array during the reduction process}.
+\begin{itemize}
+    \item Each thread maps to an even index in the partial sums array.
+    \item The first operand remains at the current thread's index.
+    \item The second operand comes from progressively farther away (e.g., offset $1, 2, 4, \ldots$).
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{walking} \textbf{Baseline CUDA implementation}}
+\end{flushleft}
+The baseline CUDA implementation for the parallel reduction algorithm demonstrates a simple, straightforward way to implement reduction using shared memory and thread synchronization.
+
+\begin{itemize}
+    \item \important{Shared Memory Allocation}
+    \begin{lstlisting}[language=c++]
+__shared__ float partialSum[SIZE];\end{lstlisting}
+    Shared memory (\texttt{partialSum}) is declared to \textbf{store partial results of the reduction within a block}. Each thread in the block writes its corresponding value into \texttt{partialSum}.
+
+    \item \important{Initialization}
+    \begin{lstlisting}[language=c++]
+partialSum[threadIdx.x] = X[
+    blockIdx.x * blockDim.x + threadIdx.x
+];\end{lstlisting}
+    Each thread calculates its \textbf{unique global memory position} based on the block and thread indices, and \textbf{loads data into the shared memory}.
+
+    \item \important{Reduction Loop}
+    \begin{lstlisting}[language=c++]
+for (unsigned int stride = 1; stride < blockDim.x; stride *= 2) {
+    __syncthreads();
+    if (t % (2 * stride) == 0) {
+        partialSum[t] += partialSum[t + stride];
+    }
+}\end{lstlisting}
+    The reduction process works by iteratively summing pairs of elements:
+    \begin{itemize}
+        \item \textbf{Stride}: Determines the ``step size'' for pairing elements in each iteration.
+        \item \textbf{Synchronization}: Ensures that all threads have completed their work before the next iteration starts.
+        \item \textbf{Thread Filtering}: Only threads whose index \texttt{t} satisfies the \texttt{if} condition participate in the addition. This creates two groups:
+        \begin{enumerate}
+            \item \textbf{Active threads}: Perform the summation.
+            \item \textbf{Inactive threads}: Sit idle but still consume resources.
+        \end{enumerate}
+    \end{itemize}
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Performance Issues}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{Warp Inefficiency}}: Many threads become idle after the first few iterations, wasting computational resources.
+    \item \textcolor{Red2}{\textbf{Control Divergence}}: Threads that meet the \texttt{if} condition execute different code paths compared to those that don't, causing \textbf{warp divergence} (note the theory explained on page \pageref{definition: Warp Divergence}).
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Improved CUDA implementation}}
+\end{flushleft}
+This improved CUDA implementation optimizes the reduction process by addressing issues like thread divergence and leveraging shared memory for efficient computation.
+\begin{enumerate}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Reduction of Divergence}}. In the baseline implementation, threads often face divergence due to conditional checks based on \texttt{stride}. This version \textbf{modifies the indexing to ensure threads perform similar operations}, reducing divergence.
+
+    The change in indexing is possible because \textbf{reduction operators} (e.g., addition) \textbf{are commutative and associative}. So the \textbf{order} of operation \textbf{does not affect the result}.
+
+    
+    \item \textcolor{Green3}{\textbf{Use of Shared Memory}}. Partial sums are stored in shared memory (\texttt{\_\_shared\_\_ float partialSum[SIZE];}), which is \textbf{much faster than accessing global memory}.
+    
+    Each thread writes its corresponding input value to shared memory, reducing the need for repeated global memory access during the reduction phase.
+\end{enumerate}
+
+\begin{lstlisting}[language=c++]
+__shared__ float partialSum[SIZE];
+
+// Each thread loads its input value into shared memory
+partialSum[threadIdx.x] = X[blockIdx.x * blockDim.x + threadIdx.x];
+
+// `t` is the thread index
+unsigned int t = threadIdx.x;
+
+/**
+ * Perform the reduction in shared memory.
+ *
+ * The `stride` starts at half the block size and
+ * reduces by half in each iteration (bitwise shift).
+ **/
+for (
+    unsigned int stride = blockDim.x / 2;
+    stride >= 1;
+    stride = stride >> 1
+) {
+    // Ensure all threads complete their current step
+    __syncthreads();
+
+    // Only threads with index t < stride participate in this step
+    if (t < stride) {
+        // Add the value from the neighboring thread
+        partialSum[t] += partialSum[t + stride];
+    }
+}
+
+// At the end of the loop,
+// partialSum[0] contains the total reduction result
+// for that block
+\end{lstlisting}

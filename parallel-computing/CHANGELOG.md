@@ -28,6 +28,7 @@
 - add `Parallel Patterns in OpenMP and CUDA`
   - add `OpenMP`
   - add `Histogram Pattern`
+  - add `Reduction Pattern`
 
 --------------------
 

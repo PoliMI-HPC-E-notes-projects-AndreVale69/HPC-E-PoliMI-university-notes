@@ -30,6 +30,7 @@
   - add `Introduction to Heterogeneous Computing`
   - add `Heterogeneous parallel programming`
   - add `DSLs and Halide`
+  - add `Scheduling & Performance Optimization in Halide`
 
 --------------------
 

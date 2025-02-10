@@ -1,0 +1,163 @@
+\subsection{Scheduling \& Performance Optimization in Halide}
+
+This section focuses on \textbf{how different scheduling strategies in Halide affect performance} and how to \textbf{choose the best schedule for different hardware architectures}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Scheduling Matters}}
+\end{flushleft}
+Scheduling is the \textbf{key to optimizing performance in Halide}.
+\begin{itemize}
+    \item A \textbf{poorly scheduled program can be $10\times$ slower than an optimized one}.
+    \item \textbf{Memory access, cache locality, parallelism, and vectorization} all \hl{depend on scheduling}.
+\end{itemize}
+As we have already seen, in traditional languages (C++, CUDA, OpenMP), scheduling decisions must be hard-coded into the algorithm. In Halide, the schedule is separate and can be changed without changing the algorithm.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How Scheduling Affects Performance}}
+\end{flushleft}
+Different \textbf{scheduling strategies} impact how the computation is executed on hardware:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{20em} @{}}
+        \toprule
+        \textbf{Scheduling Strategy} & \textbf{Impact} \\
+        \midrule
+        \textbf{Serial Execution} & Simple, but slow. No parallelism. \\ [.5em]
+        \textbf{Parallel Execution} & Uses multiple CPU cores. Good for multi-core CPUs. \\ [.5em]
+        \textbf{Vectorization (SIMD)} & Uses wide registers for efficiency (e.g., AVX). \\ [.5em]
+        \textbf{Tiling} & Improves cache locality by processing data in chunks. \\ [.5em]
+        \textbf{Compute-at} & Controls when intermediate results are com-\break puted. \\ [.5em]
+        \textbf{Store-at} & Controls where intermediate results are stored. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tasks} \textbf{Scheduling Strategies in Halide}}
+\end{flushleft}
+Let's take the Box Blur Algorithm as an example. The \definition{Box Blur} is a simple \textbf{image processing technique used for smoothing or blurring an image}. It performs two main steps:
+\begin{enumerate}
+    \item \textbf{Each pixel} in the output image is computed as the \textbf{average of its neighboring pixels}.
+    \item It applies a \textbf{moving average filter} over a \textbf{small window} (e.g., $3 \times 3$ or $5 \times 5$ pixels).
+\end{enumerate}
+It is used to reduce noise in images, to create a smooth, blurry effect and, above all, because it is fast and efficient, since it involves only two operations: adding and dividing.
+
+\highspace
+However, we will now analyze the algorithm implemented in Halide using different strategies:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{hourglass-half}}] \textcolor{Red2}{\textbf{Default Serial Execution (Slow)}}. Without scheduling, Halide will execute in \textbf{serial order} (one pixel at a time).
+    \begin{lstlisting}[language=c++]
+Var x, y;
+Func blurx, blury;
+
+blurx(x, y) = (in(x-1, y) + in(x, y) + in(x+1, y)) / 3;
+blury(x, y) = (blurx(x, y-1) + blurx(x, y) + blurx(x, y+1)) / 3;\end{lstlisting}
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{times-circle} \textbf{Problems}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item No parallelism or vectorization.
+        \item Poor memory access patterns.
+        \item Slow execution.
+    \end{itemize}
+
+
+    \item[\textcolor{Red2}{\faIcon{\speedIcon}}] \textcolor{Red2}{\textbf{Parallel Execution}}. We can \textbf{add parallelism} to use multiple CPU cores:
+    \begin{lstlisting}[language=c++]
+blury.parallel(y);\end{lstlisting}
+    
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \hl{Halide automatically splits the work across CPU cores}.
+        \item Useful for multi-threaded execution on CPUs.
+    \end{itemize}
+
+    
+    \item[\textcolor{Red2}{\faIcon{\speedIcon}}] \textcolor{Red2}{\textbf{Vectorization (SIMD)}}. Modern CPUs support \textbf{SIMD instructions} (e.g., AVX, NEON) to process multiple pixels at once:
+    \begin{lstlisting}[language=c++]
+blury.vectorize(x, 8);\end{lstlisting}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Uses \textbf{SIMD registers} for faster execution.
+        \item Works best for \textbf{data-parallel workloads} like image processing.
+    \end{itemize}
+
+
+    \item[\textcolor{Red2}{\faIcon{\speedIcon}}] \textcolor{Red2}{\textbf{Tiling for Better Cache Performance}}. Instead of processing the whole image at once, we \textbf{divide it into smaller tiles}:
+    \begin{lstlisting}[language=c++]
+blury.tile(x, y, xi, yi, 256, 32);\end{lstlisting}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textbf{Each tile fits better in cache}, \hl{reducing memory latency}.
+        \item \textbf{Improves locality of reference} (\hl{less cache thrashing}).
+    \end{itemize}
+
+
+    \item[\textcolor{Red2}{\faIcon{\speedIcon}}] \textcolor{Red2}{\textbf{Optimized Schedule: Combining Techniques}}. We can \textbf{combine multiple scheduling strategies} for maximum performance:
+    \begin{lstlisting}[language=c++]
+// Process in 256x32 tiles
+blury.tile(x, y, xi, yi, 256, 32)
+    // Vectorized execution
+    .vectorize(xi, 8)
+    // Parallel execution across CPU cores
+    .parallel(y);
+
+// Compute blurx only when needed
+blurx.compute_at(blury, x)
+    .vectorize(x, 8);\end{lstlisting}
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Breaks image into \hl{tiles for cache efficiency}.
+        \item Uses \hl{SIMD vectorization} for fast execution.
+        \item \hl{Runs in parallel} on multiple CPU cores.
+        \item Intermediate results (\texttt{blurx}) are \hl{computed only when needed}.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Trade-offs in Scheduling}}
+\end{flushleft}
+But \emph{how do we choose the right scheduling?} Well, we need to find a good trade-off.
+Different scheduling choices affect \textbf{performance trade-offs}:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{20em} @{}}
+        \toprule
+        \textbf{Scheduling Strategy} & \textbf{Performance Impact} \\
+        \midrule
+        \textbf{Parallel Execution} & Increases throughput, uses multiple cores. \\
+        \textbf{Vectorization (SIMD)} & Improves performance on CPUs/GPUs. \\
+        \textbf{Tiling} & Improves cache locality, reduces memory overhead. \\
+        \textbf{Compute-at} & Avoids redundant computations. \\
+        \textbf{Store-at} & Reduces memory footprint but increases recomputation. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Performance trade-offs in Scheduling.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Conclusion}}
+\end{flushleft}
+In conclusion, the key takeaways are:
+\begin{itemize}
+    \item \textbf{Scheduling} is the \textbf{key to performance} in Halide.
+    \item \textbf{Parallel execution}, \textbf{vectorization}, and \textbf{tiling} significantly \hl{improve performance}.
+    \item \textbf{Halide's flexibility} allows \textbf{quick} experimentation with \textbf{different} \textbf{schedules}.
+    \item The \textbf{right schedule depends on hardware constraints} (CPU, GPU, FPGA).
+\end{itemize}

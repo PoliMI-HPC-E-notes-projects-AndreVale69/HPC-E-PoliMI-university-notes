@@ -32,6 +32,7 @@
   - add `DSLs and Halide`
   - add `Scheduling & Performance Optimization in Halide`
   - add `Introduction to HLS`
+  - add `HLS Workflow`
 
 --------------------
 

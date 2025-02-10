@@ -1,0 +1,162 @@
+\subsection{DSLs and Halide}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What are Domain-Specific Languages (DSLs)?}}
+\end{flushleft}
+A \definition{Domain-Specific Language (DSL)} is a \textbf{specialized programming language} designed for a \textbf{specific application domain}. The main characteristics of DSLs are:
+\begin{itemize}
+    \item \important{Restricted expressiveness} (focused on a single domain)
+    \item \important{High-level, declarative syntax} (easier than general purpose languages)
+    \item \important{Optimized performance} for the target domain
+    \item \important{May be standalone or embedded} in another language
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l p{16em} @{}}
+        \toprule
+        \textbf{DSL Name} & \textbf{Target Domain} & \textbf{Key Benefits} \\
+        \midrule
+        \textbf{Halide}       & Image Processing   & Separates algorithm from scheduling for optimized execution. \\ [.5em]
+        \textbf{TensorFlow}   & Machine Learning   & Optimized computation graphs for AI workloads. \\ [.5em]
+        \textbf{SQL}          & Databases          & Declarative queries for efficient data retrieval. \\ [.5em]
+        \textbf{Verilog/VHDL} & Hardware Design    & Describes digital circuits for synthesis. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Examples of DSLs.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Embedded vs. External DSLs}}
+\end{flushleft}
+DSLs can be classified as:
+\begin{itemize}
+   \item \important{External} DSLs:
+   \begin{itemize}
+      \item[\textcolor{Red2}{\faIcon{book}}] Have \textbf{their own} \emph{syntax} and \emph{compiler}/\emph{interpreter}.
+      \item[\textcolor{Green3}{\faIcon{question-circle}}] \example{Example}: SQL, Halide, Verilog.
+      \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}: can be \textbf{more optimized} but require custom compilers.
+   \end{itemize}
+   \item \important{Embedded} DSLs:
+   \begin{itemize}
+      \item[\textcolor{Red2}{\faIcon{book}}] \textbf{Built inside another general-purpose language}.
+      \item[\textcolor{Green3}{\faIcon{question-circle}}] \example{Example}: TensorFlow (embedded in Python).
+      \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}: benefit from \textbf{integration} with the host language
+   \end{itemize}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+   \textcolor{Green3}{\faIcon{bolt} \textbf{DSL Use Case: Halide for Image Processing}}
+\end{flushleft}
+\definition{Halide} is a \textbf{Domain-Specific Language (DSL) for high-performance image processing}. 
+\begin{itemize}
+   \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why does image processing need DSLs?}}
+   \begin{itemize}
+      \item[\textcolor{Green3}{\faIcon{\speedIcon}}] Image processing is \textbf{data-intensive} and \hl{requires high performance}.
+      \item[\textcolor{Red2}{\faIcon{thumbs-down}}] \hl{Traditional solutions} (\texttt{C++}, \texttt{CUDA}, \texttt{OpenCV}) \hl{require manual optimizations}.
+      \item[\textcolor{Red2}{\faIcon{frown}}] Optimizing code for \textbf{parallelism and memory efficiency} is \textbf{difficult}.
+   \end{itemize}
+
+   \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why Halide?}}
+   \begin{itemize}
+      \item[\textcolor{Green3}{\faIcon{cut}}] \textbf{Separates ``\emph{what}'' is computed from ``\emph{how}'' it is executed}.
+      \item[\textcolor{Green3}{\faIcon{code}}] \textbf{Expresses computations at a high level}, leaving optimizations to the compiler.
+      \item[\textcolor{Green3}{\faIcon{globe}}] \textbf{Portable} across CPUs, GPUs, and FPGAs.
+   \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+   \textcolor{Green3}{\faIcon{tools} \textbf{How Halide Works: Separating Algorithm from Schedule}}
+\end{flushleft}
+In Halide, a \textbf{key feature is the separation} of \textbf{what} a program computes (\emph{computation}/\emph{algorithm}) from \textbf{how} it executes (\emph{schedule}). This means:
+\begin{itemize}
+   \item The \important{algorithm} specifies \textbf{what operations should be performed}. In other words, specifies \textbf{what to compute} (like a mathematical formula).
+   \item The \important{schedule} defines \textbf{how those operations should be executed efficiently} on the hardware. In other words, specifies \textbf{how to execute the computation} (parallelism, memory layout, vectorization).
+\end{itemize}
+Now we see the difference between the traditional approach we have always used and the halide approach:
+\begin{itemize}
+   \item \important{Traditional Approach (\texttt{C++}, \texttt{CUDA}, \texttt{OpenCV})}. In traditional programming languages (e.g., \texttt{C++}, \texttt{OpenCV}, \texttt{CUDA}), the \textbf{algorithm and execution strategy are mixed together}. This means that if we want to \textbf{change parallelization or memory access optimizations}, we must \textbf{rewrite parts of the algorithm itself}. This makes it \emph{hard to experiment} with different optimizations.
+
+   \begin{flushleft}
+      \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problems with the Traditional Approach}}
+   \end{flushleft}
+   \begin{enumerate}
+      \item \textbf{If we want to optimize} for vectorization, parallel execution, or memory layout, we \textbf{\hl{must modify the algorithm itself}}.
+      \item The \textbf{\hl{same code cannot easily be reused}} for different architectures (e.g., CPU, GPU, FPGA).
+   \end{enumerate}
+
+   \begin{examplebox}[: Problems with the Traditional Approach]
+      \begin{lstlisting}[language=c++]
+void box_blur(const Image &in, Image &out) {
+    for (int y = 1; y < in.height() - 1; y++) {
+        for (int x = 1; x < in.width() - 1; x++) {
+            out(x, y) = (
+                in(x-1, y) + in(x, y) + in(x+1, y)
+            ) / 3;
+        }
+    }
+}\end{lstlisting}
+      The problem here is that we need to specify the ``\emph{what}'', i.e. what operations should be performed, but also ``\emph{how}'' these operations should be performed.
+   \end{examplebox}
+
+
+   \item \important{Halide's Approach: Separate Algorithm from Execution}. Halide splits the computation into two parts:
+   \begin{enumerate}
+      \item \textbf{Computation} (Algorithm) - \emph{What to Compute}
+      \begin{itemize}
+         \item Defines the mathematical computation.
+         \item \hl{Remains unchanged across different hardware targets}.
+      \end{itemize}
+      \item \textbf{Schedule} - \emph{How to Execute Efficiently}
+      \begin{itemize}
+         \item Controls memory layout, parallelization, and optimization.
+         \item \hl{Can be changed without modifying the algorithm}.
+      \end{itemize}
+   \end{enumerate}
+
+   \begin{examplebox}[: Box Blur in Halide]
+      The computation part is separated from the scheduling!
+      So a change in the algorithm can be made without affecting the control of the execution.
+      Therefore, we define simply:
+      \begin{enumerate}
+         \item Computation (Algorithm), stays the same:
+         \begin{lstlisting}[language=c++]
+Var x, y;
+Func blurx, blury;
+
+// First pass: horizontal blur
+blurx(x, y) = (in(x-1, y) + in(x, y) + in(x+1, y)) / 3;
+
+// Second pass: vertical blur
+blury(x, y) = (blurx(x, y-1) + blurx(x, y) + blurx(x, y+1)) / 3;\end{lstlisting}
+         This part \textbf{only describes the math}, \textbf{\underline{not how}} it should run.
+      
+         \item Schedule, controls execution (can be changed easily):
+         \begin{lstlisting}[language=c++]
+blury.tile(x, y, xi, yi, 256, 32)
+    // Vectorized execution for SIMD
+    .vectorize(xi, 8)
+    // Parallel execution over y-dimension
+    .parallel(y);
+
+blurx.compute_at(blury, x)  // Compute blurx only when needed by blury
+    .vectorize(x, 8);\end{lstlisting}
+         This part \textbf{controls execution strategy} but does \textbf{\underline{not} \underline{modify} the algorithm}.
+         The \textbf{same algorithm} can now \textbf{run efficiently on different hardware architectures} just by changing the schedule.
+      \end{enumerate}
+   \end{examplebox}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+   \textcolor{Green3}{\faIcon{check-circle} \textbf{Why DSLs Matter for Performance and Productivity: Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+   \item \textcolor{Green3}{\textbf{Performance Optimization}}. A Halide program \textbf{can be better than hand-optimization \texttt{C++} code}. Scheduling decisions affect \textbf{parallel execution, memory locality, and vectorization}.
+   \item \textcolor{Green3}{\textbf{Productivity}}. Instead of manually optimizing, \textbf{Halide allows rapid exploration of different schedules}. Easier to \textbf{port to different architectures} (CPU, GPU, FPGA).
+\end{itemize}
+In conclusion, DSLs like Halide \textbf{automate low-level optimizations}, enabling \emph{faster} and \emph{more efficient} code for specialized domains.

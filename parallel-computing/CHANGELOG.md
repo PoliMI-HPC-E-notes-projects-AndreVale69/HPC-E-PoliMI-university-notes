@@ -33,6 +33,7 @@
   - add `Scheduling & Performance Optimization in Halide`
   - add `Introduction to HLS`
   - add `HLS Workflow`
+  - add `HLS Compilation & Optimization`
 
 --------------------
 

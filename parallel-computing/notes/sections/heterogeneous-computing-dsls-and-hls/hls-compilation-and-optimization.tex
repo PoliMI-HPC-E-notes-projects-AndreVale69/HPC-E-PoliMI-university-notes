@@ -1,0 +1,149 @@
+\subsection{HLS Compilation \& Optimization}
+
+This section explains \textbf{how High-Level Synthesis (HLS) transforms high-level code (\texttt{C}/\texttt{C++}/\texttt{Python}) into optimized hardware circuits} and the key \textbf{optimization techniques} used to improve performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{exchange-alt} \textbf{High-Level Code Transformation into Hardware}}
+\end{flushleft}
+In HLS, the \textbf{software-like code is translated into hardware logic}, consisting of:
+\begin{enumerate}
+    \item \important{Datapath} performs operations (e.g., arithmetic, logic).
+    \item \important{Controller (FSM - Finite State Machine)} directs execution flow.
+\end{enumerate}
+For example, the following code:
+\begin{lstlisting}[language=c++]
+int add(int a, int b) {
+    return a + b;
+}    
+\end{lstlisting}
+HLS \textbf{compiles this into a hardware circuit} that includes:  
+\begin{itemize}
+    \item Registers for inputs (\texttt{a}, \texttt{b}) and output (\texttt{sum}).
+    \item An ALU (\texttt{Adder}) for computation.
+    \item A Finite State Machine (FSM) to control execution.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Key Optimization Techniques in HLS}}
+\end{flushleft}
+HLS provides \textbf{various optimizations} to improve area, performance, and power consumption.
+\begin{enumerate}
+    \item \definition{Loop Unrolling}. \hl{Duplicates loop iterations} to \textbf{increase parallel execution}. Reduces loop control overhead.  
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}
+    \end{flushleft}
+    The following loop runs \textbf{one iteration at a time} (sequential):
+    \begin{lstlisting}[language=c++]
+for (int i = 0; i < 4; i++) {
+    sum += arr[i];
+}\end{lstlisting}
+    
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution}}
+    \end{flushleft}
+    The following iterations \textbf{execute in parallel}, making it $4\times$ faster:
+    \begin{lstlisting}[language=c++]
+#pragma HLS unroll
+for (int i = 0; i < 4; i++) {
+    sum += arr[i];
+}\end{lstlisting}
+
+
+    \item \definition{Loop Pipelining}. Allows \hl{overlapping loop iterations}, \textbf{improving}\break \textbf{throughput}. \textbf{Reduces idle time} between operations.
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}
+    \end{flushleft}
+    Each iteration waits for the previous one to finish (sequential):
+    \begin{lstlisting}[language=c++]
+for (int i = 0; i < 4; i++) {
+    arr[i] = arr[i] * 2;
+}\end{lstlisting}
+    
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution}}
+    \end{flushleft}
+    \textbf{Each iteration starts before the previous one finishes}, increasing speed:
+    \begin{lstlisting}[language=c++]
+#pragma HLS pipeline
+for (int i = 0; i < 4; i++) {
+    arr[i] = arr[i] * 2;
+}\end{lstlisting}
+
+
+    \item \definition{Resource Sharing}. \hl{Reuses hardware components} to \textbf{reduce circuit area}. \hl{Trades performance for lower hardware cost}.
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}
+    \end{flushleft}
+    Uses \textbf{two separate adders}, increasing area:
+    \begin{lstlisting}[language=c++]
+y1 = x1 + x2;
+y2 = x3 + x4;\end{lstlisting}
+    
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution}}
+    \end{flushleft}
+    \textbf{Both additions use the same adder}, reducing area:
+    \begin{lstlisting}[language=c++]
+#pragma HLS ALLOCATION instances=add limit=1
+y1 = x1 + x2;
+y2 = x3 + x4;\end{lstlisting}
+
+
+    \item \definition{Memory Optimization}. \textbf{Reduces memory bottlenecks} by \hl{using on-chip memory} (\texttt{BRAM}, \texttt{LUTRAM}). \hl{Uses burst memory access} to \textbf{reduce external memory latency}.
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}
+    \end{flushleft}
+    Each iteration \textbf{accesses memory separately}, slowing execution:
+    \begin{lstlisting}[language=c++]
+for (int i = 0; i < N; i++) {
+    arr[i] = read_from_memory(i);
+}\end{lstlisting}
+
+    \newpage
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution}}
+    \end{flushleft}
+    \textbf{Splits memory into smaller blocks}, allowing \textbf{parallel access}:
+    \begin{lstlisting}[language=c++]
+#pragma HLS array_partition variable=arr type=block factor=2
+for (int i = 0; i < N; i++) {
+    arr[i] = read_from_memory(i);
+}\end{lstlisting}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Challenges in Hardware Mapping}}
+\end{flushleft}
+Even with optimizations, \textbf{not all code translates efficiently into hardware}.
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Challenge} & \textbf{Solution} \\
+        \midrule
+        Too many loops (low parallelism)    & Apply loop unrolling/pipelining. \\
+        \cmidrule{1-2}
+        Excessive memory access             & Use on-chip memory and burst mode. \\
+        \cmidrule{1-2}
+        High area consumption               & Enable resource sharing. \\
+        \cmidrule{1-2}
+        Dependency issues in loops          & Apply loop transformations. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Conclusion}}
+\end{flushleft}
+In conclusion, the key takeaways are:
+\begin{itemize}
+    \item \textbf{HLS converts high-level code into hardware logic}, optimizing execution.
+    \item Loop \textbf{unrolling} and \textbf{pipelining improve parallelism}.
+    \item \textbf{Memory and resource optimizations reduce area and latency}.
+    \item \textbf{Careful scheduling is required} to balance speed and resource usage.
+\end{itemize}

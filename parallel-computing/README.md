@@ -31,7 +31,7 @@ For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-not
 
 ## Correlated Projects
 
-During the Parallel Computing for HPC course, I created two projects:
+During the Parallel Computing for HPC course, me and my other two colleagues [Abdullah Javed](https://it.linkedin.com/in/javedabdullah) and Alberto Ondei, we created two projects:
 
 1. **OpenMP Merge Sort Algorithm**
 2. **CUDA 2D convolution**

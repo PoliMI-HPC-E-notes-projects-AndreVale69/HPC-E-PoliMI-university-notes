@@ -1,0 +1,145 @@
+\subsection{Scheduling in HLS}
+
+This section explores how \textbf{scheduling} affects performance in HLS, including key \textbf{scheduling techniques} like \textbf{ASAP, ALAP, list-based scheduling, and constrained scheduling}.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is Scheduling in HLS?}}
+\end{flushleft}
+Scheduling in HLS determines \textbf{when each operation in the high-level code is executed} while considering \textbf{hardware resource constraints}.
+
+\highspace
+The \textbf{goal} is to \textbf{minimize execution time (\emph{latency}) while using minimal hardware resources (\emph{area})}. Scheduling \textbf{maps operations to clock cycles}, ensuring dependencies are met.  
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Scheduling Techniques}}
+\end{flushleft}
+Different \textbf{scheduling algorithms} can be used based on constraints (area, speed, power):
+\begin{itemize}
+    \item \definition{ASAP (As Soon As Possible) Scheduling}. Tries to execute operations \textbf{as early as possible}. \hl{Minimizes latency}, but may \hl{increase hardware resource usage}.
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Good for high-speed designs.
+    \end{itemize}
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item Can use too many resources if multiple operations execute simultaneously.
+    \end{itemize}
+    \begin{examplebox}[: ASAP Scheduling]
+        \begin{lstlisting}[language=c++]
+Cycle 1: x1 = a * b;  // Multiplication
+Cycle 2: x2 = c * d;
+Cycle 3: y = x1 + x2; // Addition\end{lstlisting}
+    \end{examplebox}
+
+
+    \item \definition{ALAP (As Late As Possible) Scheduling}. \textbf{Delays operations until the latest possible cycle}. \hl{Reduces resource usage}, but may \hl{increase latency}.
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Minimizes resource usage (fewer active units per cycle).
+    \end{itemize}
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item May introduce unnecessary delays.
+    \end{itemize}
+    \begin{examplebox}[: ALAP Scheduling]
+        \begin{lstlisting}[language=c++]
+Cycle 1: x1 = a * b;  // Multiplication
+Cycle 2: (idle)       // Delays execution
+Cycle 3: x2 = c * d;
+Cycle 4: y = x1 + x2; // Addition\end{lstlisting}
+    \end{examplebox}
+
+
+    \item \definition{List-Based Scheduling}. Uses \textbf{priority-based selection} of operations. \hl{Balances latency vs. resource constraints}.
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{tools} \textbf{Steps}}
+    \end{flushleft}
+    \begin{enumerate}
+        \item Construct a \textbf{priority list based on dependencies}.
+        \item \textbf{Schedule operations by selecting the highest-priority} task that fits \hl{resource constraints}.
+        \item \textbf{Continue until all operations are scheduled}.
+    \end{enumerate}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textbf{Efficient trade-off} between \textbf{area} and \textbf{speed}.
+        \item Used in most HLS tools (e.g., Vitis HLS, Bambu HLS).
+    \end{itemize}
+
+
+    \item \definition{Constrained Scheduling}. Used when \textbf{hardware resources} (adders, multipliers, memory) \textbf{are limited}. Tries to \hl{minimize execution time given a fixed number of resources}.
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Uses minimal hardware resources.
+    \end{itemize}
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+    \end{flushleft}
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item May increase total latency due to resource sharing.
+    \end{itemize}
+    \begin{examplebox}[: Constrained Scheduling]
+        \begin{center}
+            \begin{tabular}{@{} c c c @{}}
+                \toprule
+                \textbf{Clock Cycle} & \textbf{Adder (1 avail.)} & \textbf{Multiplier (1 avail.)} \\
+                \midrule
+                1 & \texttt{-} & \texttt{x1 = a * b} \\ [.5em]
+                2 & \texttt{-} & \texttt{x2 = c * d} \\ [.5em]
+                3 & \texttt{y = x1 + x2} & \texttt{-} \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+    \end{examplebox}
+\end{itemize}
+
+\newpage
+
+\begin{examplebox}[: Scheduling a Basic Block]
+    Consider the following code:
+    \begin{lstlisting}[language=c++]
+tmp1 = a * b;
+tmp2 = c * d;
+x1 = tmp1 * tmp2;
+x2 = a * d;
+x3 = x2 - x1;
+x4 = x2 + x3;\end{lstlisting}
+    Choosing the right schedule depends on whether the goal is to minimize execution time or minimize resource usage. However, here we have different scheduling results grouped by the method chosen.
+    \begin{center}
+        \begin{tabular}{@{} l l l @{}}
+            \toprule
+            \textbf{Scheduling} & \textbf{Total Clock Cycles} & \textbf{Hardware Used} \\
+            \midrule
+            \textbf{ASAP}           & \textcolor{Green3}{\faIcon{\speedIcon} \textbf{4 Cycles}}   & High resource usage \\ [.5em]
+            \textbf{ALAP}           & \textcolor{Green4}{\faIcon{bolt} \textbf{6 Cycles}}         & Low resource usage \\ [.5em]
+            \textbf{List-Based}     & \faIcon{balance-scale} \textbf{Balanced}                    & Medium resource usage \\ [.5em]
+            \textbf{Constrained}    & \textcolor{Red2}{\faIcon{hourglass-half} \textbf{Depends (constraints)}} & Minimum resources \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check} \textbf{Conclusion}}
+\end{flushleft}
+In conclusion, the key takeaways are:
+\begin{itemize}
+    \item Scheduling determines \textbf{when operations execute}, impacting performance.
+    \item \textbf{ASAP} scheduling \textbf{minimizes latency} but may use \textbf{more resources}.
+    \item \textbf{ALAP} scheduling \textbf{minimizes resource} usage but may \textbf{increase latency}.
+    \item \textbf{List-based} scheduling \textbf{balances speed and area} constraints.
+    \item \textbf{Constrained} scheduling \textbf{optimizes execution within hardware limits}.
+\end{itemize}

@@ -2,7 +2,7 @@
 
 <h2>Table of Contents</h2>
 
-- [v1.0.0-dev](#v100-dev)
+- [v1.0.0](#v100)
 - [v0.19.0](#v0190)
 - [v0.18.0](#v0180)
 - [v0.17.0](#v0170)
@@ -25,7 +25,7 @@
 
 --------------------
 
-### v1.0.0-dev
+### v1.0.0
 - add `Heterogeneous Computing - DSLs and HLS`
   - add `Introduction to Heterogeneous Computing`
   - add `Heterogeneous parallel programming`
@@ -34,6 +34,7 @@
   - add `Introduction to HLS`
   - add `HLS Workflow`
   - add `HLS Compilation & Optimization`
+  - add `Scheduling in HLS`
 
 --------------------
 

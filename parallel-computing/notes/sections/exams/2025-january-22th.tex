@@ -1,0 +1,262 @@
+\subsection{2025 January 22th}
+
+\subsubsection{Part 2}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 1}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Please describe the parallel gather pattern, including assumptions, complexity, and examples.
+    }}
+
+    \textbf{Answer}: The gather pattern is an operation that creates a new data collection (output) by reading elements from an existing data collection (input). The data read depends on the indices present in the index collection passed to the function.
+
+    Assumptions:
+    \begin{enumerate}
+        \item Each index in the index array is positive or zero;
+        \item The index collection has the same number of elements as the output collection;
+        \item Each index within the index collection is less than the number of elements in the input data collection;
+        \item The input and output collections have the same type of elements.
+    \end{enumerate}
+
+    Complexity: the serial and parallel implementations are $O\left(N\right)$. Obviously, the parallel implementation will be faster than the serial one for large input sizes.
+
+    Quick Example:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \texttt{Input}  &=& \texttt{[A, B, C, D]} \\
+            \texttt{Idx}    &=& \texttt{[3, 1, 0, 2]} \\
+            \texttt{Input}  &=& \texttt{[D, B, A, C]}
+        \end{array}
+    \end{equation*}
+
+    \item \textcolor{Green3}{\textbf{%
+        Please describe how the Split parallel pattern works. How is it implemented (pseudo code required)? 
+    }}
+
+    \textbf{Answer}: The split pattern is an extension of the pack pattern. It reorganizes the elements of the input into \textbf{EXACTLY} two groups while preserving all data.
+    \begin{enumerate}
+        \item Takes as input a collection of elements and a mask (binary array);
+        \item For each \emph{k}-th element of the input:
+        \begin{enumerate}
+            \item If the \emph{k}-th index of the element in the mask is 0, place on the first group;
+            \item Otherwise (is 1), place it in the second group.
+        \end{enumerate}
+        \item Returns two arrays: the first of the elements corresponding to 0, the second of the elements corresponding to 1.
+    \end{enumerate}
+
+    A naive pseudo-code can be:
+    \begin{lstlisting}
+array split(
+    array input,
+    array mask
+) {
+    array group_zero = [];
+    array group_one = [];
+    for (j = 0; j < input.length; ++j) {
+        if (mask[j] == 0)
+            group_zero.push_back(input[j]);
+        else if (mask[j] == 1)
+            group_one.push_back(input[j]);
+        else
+            throw runtime_error("Mask is not a binary array");
+    }
+    return [group_zero, group_one];
+}\end{lstlisting}
+
+    \item \textcolor{Green3}{\textbf{%
+        How and under what conditions can the following code be parallelized? Is there a way to write the code for better parallelization?
+    }}
+    \begin{lstlisting}[language=c++]
+for(j = 10; j < 100; j++)
+    for (i = 1; i < 100; i++)
+        a[0][j] += f(a[i][j-10]);\end{lstlisting}
+
+    \textbf{Answer}: The conditions to ensure that the code can be parallelized are:
+    \begin{enumerate}
+        \item The outer loop is independent. The \texttt{i} iteration has the same \texttt{j} value for \texttt{100} times. The inner loop can't change the \texttt{j} value.
+        \item Inner loop can be reduced because \texttt{a[0][j]} is always the same for \texttt{100} times. However, it must place a variable and not an array access.
+    \end{enumerate}
+    
+    The access \texttt{a[i][j-10]} means each iteration \texttt{i} fetches scattered memory, which reduces performance (not contiguous allocations). A possible optimization could be to use a shared memory on the GPU or a prefetch on the CPU.
+
+    However, without touching the code, we can apply a parallel for:
+    \begin{lstlisting}[language=c++]
+void parallel_gather(double a[100][100]) {
+    #pragma omp parallel for
+    for (int j = 10; j < 100; ++j) {
+        for (int i = 1; i < 100; ++i) {
+            a[0][j] += f(a[i][j-10]);
+        }
+    }
+}\end{lstlisting}
+    And to optimize we could use a \texttt{SIMD} reduction on the inner for cycle:
+    \begin{lstlisting}[language=c++]
+void parallel_gather(double a[100][100]) {
+    #pragma omp parallel for 
+    for (int j = 10; j < 100; ++j) {
+        double sum = 0;
+        #pragma omp simd reduction(+: sum)
+        for (int i = 1; i < 100; ++i) {
+            sum += f(a[i][j-10]);
+        }
+        // each thread modifies its j column
+        a[0][j] += sum;
+    }
+}\end{lstlisting}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 2}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Is DRAM burst affecting the corner-turning optimization?
+    }}
+
+    \textbf{Answer}: Because Corner Turning uses memory coalescing (combining multiple memory accesses by different threads into a single memory transaction) for the tiles loaded into shared memory, DRAM Burst can optimize this technique when these contiguous memory addresses are needed to load into shared memory. Of course, we assume row-major memory.
+
+    \item \textcolor{Green3}{\textbf{%
+        Please briefly describe what DRAM Banking is meant for. How can CUDA take advantage of DRAM banking?
+    }}
+
+    \textbf{Answer}: DRAM is a global memory that resides in the GPU and is the slower memory on the GPU. For this reason, the DRAM burst is widely used by developers to hide the latency of this memory. However, it can be used by any thread placed anywhere (no block matter), and is used for data that needs to be accessed by all. It is very large (on the order of GB) and has a very high latency.
+
+    \item \textcolor{Green3}{\textbf{%
+        Please describe the sequential consistency memory model.
+    }}
+
+    \textbf{Answer}: Sequential Consistency Memory Model is a memory consistency model that ensures that all operations in a multi-threaded system are executed in a certain sequential order.
+
+    This means that each thread's operations occur in program order, maintaining the illusion of a single, consistent timeline of memory operations.
+    
+    It is the strongest memory model because all operations must appear to be executed in a strict sequential order.
+    
+    Degree of reordering: almost zero.
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 3}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Consider the following CUDA code fragment:
+    }}
+    \begin{lstlisting}[language=c++]
+unsigned int t = threadIdx.x;
+unsigned int start = 2*blockIdx.x*blockDim.x;
+partialSum[t] = input[start + t];
+partialSum[blockDim.x+t] = input[start+ blockDim.x+t];
+
+for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2)
+{
+    __syncthreads();
+    if (t % stride == 0) {
+        partialSum[2*t]+= partialSum[2*t+stride];
+    }
+}\end{lstlisting}
+    \textcolor{Green3}{\textbf{If the block size is 1024 and the warp size is 32, how many warps in a block will have divergence during the iteration where the stride is equal to 64?}}
+
+    \textbf{Answer}: The CUDA code causes warp divergence because only threads with \texttt{t \% stride == 0} enter the \texttt{if} statement.
+
+    The summary parameters are:
+    \begin{itemize}
+        \item Block size: 1024
+        \item Warp size: 32
+        \item Number of warps per block:
+        \begin{equation*}
+            \texttt{blockDim.x} \div \texttt{warp size} = 1024 \div 32 = 32 \texttt{ warps/block}
+        \end{equation*}
+        \item Stride: 64
+    \end{itemize}
+    Since \texttt{t} is the index (\texttt{x}) of the thread, and only the threads that are multiples of stride (64) will execute the operation (so threads \texttt{\#0}, \texttt{\#64}, \texttt{\#128}, ...), one thread will execute this instruction every 2 warps.
+    
+    Proof:
+    \begin{itemize}
+        \item Each warp 32 threads.
+        \item Stride \texttt{=} 64, means one thread executes once every 64 (\texttt{if} condition).
+        \item The warp span indices are:
+        \begin{itemize}
+            \item Warp 0: \texttt{t = 0...31} (\texttt{thread \#0} is active)
+            \item Warp 1: \texttt{t = 32...63}
+            \item Warp 2: \texttt{t = 64...95} (\texttt{thread \#64} is active)
+            \item Warp 3: \texttt{t = 96...127}
+            \item Warp 4: \texttt{t = 128...159} (\texttt{thread \#128} is active)
+            \item Warp 5: \texttt{t = 160...191}
+            \item Warp 6: \texttt{t = 192...223} (\texttt{thread \#192} is active)
+            \item And so on...
+        \end{itemize}
+    \end{itemize}
+    Finally, how many warps are affected by the divergence? Since one warp is active every 2 warps, this means that only half of the total warps will have only one active thread. So 32 $\div$ 2 = 16 warps have divergence with stride = 64 (and 31 idle threads for each active warp).
+
+    \newpage
+
+    \item \textcolor{Green3}{\textbf{%
+        Assume that each CUDA atomic operation takes 4ns to complete in L2 cache and 100ns to complete in DRAM. If 90\% of atomic operations in a program hit in L2 cache, what is the approximate throughput for atomic operations on the same global memory variable?
+    }}
+
+    \textbf{Answer}: Since 90\% of atomic operations hit in L2 and 10\% go to DRAM, the weighted average latency is:
+    \begin{equation*}
+        \text{AVG Latency} = \left(90\% \times 4\right) + \left(10\% \times 100\right) = 3.6 + 10 = 13.6 \text{ ns}
+    \end{equation*}
+    Finally, since the throughput is:
+    \begin{equation*}
+        \text{Throughput} = \dfrac{1}{\text{Latency}} = \dfrac{1}{13.6 \text{ ns}}
+    \end{equation*}
+
+    \item \textcolor{Green3}{\textbf{
+        Is it possible to launch multiple different CUDA kernels in parallel? How?
+    }}
+
+    \textbf{Answer}:  Yes, CUDA supports concurrent kernel execution, allowing multiple kernels to run simultaneously on the same GPU. We can use CUDA streams:
+    \begin{lstlisting}[language=c++]
+cudaStream_t stream1, stream2;
+cudaStreamCreate(&stream1);
+cudaStreamCreate(&stream2);
+
+kernelA<<<grid, block, 0, stream1>>>();
+kernelB<<<grid, block, 0, stream2>>>();
+
+cudaStreamDestroy(stream1);
+cudaStreamDestroy(stream2);\end{lstlisting}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 3}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Describe the effect of the following OpenMP pragma:
+    }}
+    \begin{lstlisting}[language=c++]
+#pragma omp target map(a,b)\end{lstlisting}
+
+    \textbf{Answer}: The code within the regions runs on the accelerator device. If no accelerator device is available, the code continues to run on the host (CPU).
+
+    The host thread blocks (waits) until the device thread has completed execution (since the \texttt{nowait} clause is not present).
+
+    The \texttt{map} clause is used to specify how variables are mapped from the host to the target device and back.
+
+    Three map clauses are available: \texttt{to}, \texttt{from}, and \texttt{tofrom} (default). Since it is not specified, \texttt{tofrom} is used. Therefore, it copies variables from the host to the target device before the target region and back from the device to the host after execution (host $\leftrightarrow$ device).
+
+    \item \textcolor{Green3}{\textbf{%
+        A Domain-Specific Language provides productivity and performance at the expense of generality. Is this statement true or false? Explain.
+    }}
+
+    \textbf{Answer}: True. A Domain-Specific Language (DSL) provides productivity and performance by targeting a specific domain (e.g., image processing, machine learning, or parallel computing). However, this comes at the expense of generality, which means it is less flexible than a general-purpose language (GPL).
+
+    A good example is Halide for image processing, which allows expressing optimizations without worrying about low-level CUDA/OpenMP details. However, Halide is not suitable for general-purpose system programming (only for image processing).
+
+    \item \textcolor{Green3}{\textbf{%
+        Describe the ASAP scheduling algorithm.
+    }}
+
+    \textbf{Answer}: ASAP (As Soon As Possible) Scheduling attempts to execute operations as early as possible. It minimizes latency (so it is good for high-speed designs), but it can increase hardware resource usage (it can use too many resources if multiple operations are executed at the same time).
+\end{enumerate}

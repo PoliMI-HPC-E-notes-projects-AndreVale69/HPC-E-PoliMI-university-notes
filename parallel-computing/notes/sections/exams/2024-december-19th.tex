@@ -1,0 +1,190 @@
+\subsection{2024 December 19th}
+
+\subsubsection{Part 2}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 1}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Please describe the parallel scan pattern, including assumptions, complexity, and examples.
+    }}
+
+    \textbf{Answer}: The Scan Pattern is used to compute all partial results of an input sequence using a binary associative operation. It generates a new sequence where each element is the result of applying the operation to all previous elements in the input sequence.
+
+    There are two types of results:
+    \begin{itemize}
+        \item The result for each position is the combination of all elements \textbf{UP TO} and \textbf{INCLUDING} the current element.
+        \item The result for each position is the combination of all elements \textbf{BEFORE} the current element.
+    \end{itemize}
+    
+    Assumptions:
+    \begin{enumerate}
+        \item The binary associative operation must be associative (mainly for parallelism purposes), such as \texttt{min}, \texttt{max}, \texttt{sum}.
+    \end{enumerate}
+    The complexity of the sequential is $O(N)$, a naive implementation on CUDA requires $O\left(N \cdot \log_{2}(N)\right)$, and an efficient implementation using reduction and distribution phases is $O\left(2(N-1)\right)$.
+    
+    Example: Prefix Maximum Algorithm with Up/Down Sweep
+    \begin{equation*}
+        \begin{array}{rcl}
+            \texttt{Input} &=& \texttt{[1, 4, 0, 2, 3, 9, 6]} \\
+            \texttt{Output} &=& \texttt{[1, 4, 4, 4, 4, 9, 9]} \\
+        \end{array}
+    \end{equation*}
+
+    \item \textcolor{Green3}{\textbf{%
+        Please describe how the Pack parallel pattern works. How is it implemented (pseudo code required)?
+    }}
+
+    \textbf{Answer}: The Pack Pattern is used to remove unused elements from a collection while keeping the retained elements contiguous in memory. The goal is to improve performance by reducing memory fragmentation and increasing data locality (cache efficiency).
+
+    \begin{enumerate}
+        \item Get a collection on input and a mask of boolean values (\texttt{1}, keep and \texttt{0}, remove);
+        \item Perform an exclusive scan (prefix sum) on the boolean array;
+        \item Use the computed offsets to move the kept elements to their new locations.
+    \end{enumerate}
+    
+    \begin{lstlisting}
+array pack(
+    array input,
+    array mask
+) {
+    array output = [input[0]];
+    for (int i = 1; i < mask.length; ++i) {
+        // performs scan on input from 0 to i
+        double sum = scan_sum(mask, 0, i-1);
+        output[sum] = input[i] 
+    }
+    return output;
+}\end{lstlisting}
+
+    \item \textcolor{Green3}{\textbf{%
+        Under what conditions can the following code be parallelized? Is there a way to write the code for better parallelization if these conditions are met?
+    }}
+    \begin{lstlisting}[language=c++]
+for (j = 0; j < 50; j++)
+    for (i = 4; i < 99; i++)
+        a[i][j] = f(a[i-4][j]);
+for (j = 50; j < 99; j++)
+    for (i = 4; i < 99; i++)
+        a[i][j] = f(a[i-4][j]);\end{lstlisting}
+
+    \textbf{Answer}: The conditions are:
+    \begin{itemize}
+        \item The \texttt{i} loop has a loop-carried dependency. The code \texttt{a[i][j]} depends on \texttt{f(a[i-4][j])}. This creates a dependency across \texttt{i} iterations. This means \texttt{i} cannot be parallelized.
+        \item The \texttt{j} loop has no dependency, each \texttt{j} iteration operates on an independent column. This means the \texttt{j} loop can be parallelized.
+        \item The first and second loop are independent. Since the two loops operate on separate \texttt{j} ranges, they do not overlap and can be merged.
+    \end{itemize}
+    The parallel implementation is:
+    \begin{lstlisting}[language=c++]
+#pragma omp parallel for
+for (j = 0; j < 99; ++j) {
+    for (i = 4; i < 99; ++i) {
+        a[i][j] = f(a[i-4][j]);
+    }
+}\end{lstlisting}
+    Unfortunately, the \texttt{i}-loop cannot be parallelized because it has a loop dependency.
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 2}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Does the cache affect the corner-turning optimization?
+    }}
+
+    \textbf{Answer}: Yes, cache behavior has a significant impact on the performance of corner-turning optimizations. Proper use of the cache can improve data locality, reduce memory latency, and maximize performance. Because matrices are divided into tiles and loaded into shared memory, threads can access successive memory locations within a tile. This ensures that memory accesses are concatenated.
+
+    \item \textcolor{Green3}{\textbf{%
+        How could it be checked if a CUDA code is accessing the memory in a coalesced way? Are DRAM bursts related to memory coalescing?
+    }}
+
+    \textbf{Answer}: Using the Nsight tool provides an analysis of memory access patterns. If we see that a warp performs more than one memory transaction per access, this indicates non-coalesced memory. DRAM bursts are also related to memory coalescing because if memory access is coalesced, a single DRAM burst (efficiently) serves an entire warp. Otherwise, multiple bursts are required (high memory latency).
+
+    \item \textcolor{Green3}{\textbf{%
+        Concerning the memory consistency topic, what are the motivations for a relaxed consistency?
+    }}
+
+    \textbf{Answer}: A relaxed consistency model allows greater flexibility in reordering memory operations to improve performance. The key motivations for relaxed consistency are:
+    \begin{itemize}
+        \item \textbf{Performance Optimization}. Allows processors to reorder memory operations for better instruction scheduling and parallel execution.
+        
+        \item \textbf{Scalability}. Reduces synchronization overhead in multi-threaded programs, especially in distributed and NUMA architectures.
+        
+        \item \textbf{Memory Latency Hiding}. Enables out-of-order execution and prefetching to minimize stalls due to slow memory accesses.
+        
+        \item \textbf{Efficient Hardware Implementation}. Simplifies cache coherence protocols and reduces contention in shared-memory systems.
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 3}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{Consider the following CUDA code fragment:}}
+    \begin{lstlisting}[language=c++]
+unsigned int t = threadIdx.x;
+unsigned int start = 2*blockIdx.x*blockDim.x;
+partialSum[t] = input[start + t];
+partialSum[blockDim.x+t] = input[start + blockDim.x+t];
+
+for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2)
+{
+    __synchthreads();
+    if (t % stride == 0) {
+        partialSum[2*t] += partialSum[2*t+stride];
+    }
+}\end{lstlisting}
+    \textcolor{Green3}{\textbf{If the block size is 1024 and the warp size is 32, how many warps in a block will have divergence during the iteration where the stride is equal to 16?}}
+
+    \textbf{Answer}: We have 32 warps (1024 block divided by 32 the warp size). Since the stride is equal to 16, each warp has only two threads active:
+    \begin{itemize}
+        \item Warp 0: \texttt{t = 0...31}
+        \item Warp 1: \texttt{t = 32...63}
+        \item Warp 2: \texttt{t = 64...95}
+        \item And so on
+        \item \texttt{t = 0, 16, 32, 48, 64} and so on
+    \end{itemize}
+    Therefore, all 32 warps in the block divergence when \texttt{stride = 16} because only 2 out of 32 threads per warp execute the \texttt{if} block, while the remaining 30 threads are inactive.
+
+    \item \textcolor{Green3}{\textbf{%
+        Describe the three possible function qualifiers in CUDA
+    }}
+    
+    \textbf{Answer}: the three possible function qualifiers in CUDA are
+    \begin{itemize}
+        \item \texttt{\_\_global\_\_}: kernel function runs on GPU, called from CPU. It cannot return a value.
+        \item \texttt{\_\_device\_\_}: device function runs on GPU, called from GPU. It cannot be called from the CPU.
+        \item \texttt{\_\_host\_\_}: host function runs on CPU, called from CPU. It cannot be executed on the GPU.
+    \end{itemize}
+
+    \item \textcolor{Green3}{\textbf{%
+        Is the launch of a CUDA kernel synchronous or asynchronous? Explain.
+    }}
+
+    \textbf{Answer}. CUDA kernel launches are asynchronous, meaning that the CPU does not wait for the kernel to finish executing before continuing with the next instruction.
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Exercise 4}}
+\end{flushleft}
+\begin{enumerate}[label=\Alph*.]
+    \item \textcolor{Green3}{\textbf{%
+        Why does Halide separate the definition of the schedule from the definition of the algorithm?
+    }}
+
+    \textbf{Answer}: Image processing is data intensive and requires high performance. Traditional solutions require manual optimizations (e.g. CUDA). For this reason, Halide separates ``what'' is computed from ``how'' it is executed. So the computation (algorithm) remains unchanged across different hardware targets, and the schedule can be changed without modifying the algorithm. This makes it easier to port to different architectures and allows rapid exploration of different schedules. Finally, the compiler can do some optimization on different platforms.
+
+    \item \textcolor{Green3}{\textbf{%
+        The input to a High-Level Synthesis tool is a Register-Transfer Level description of an accelerator. Is this statement true or false? Explain.
+    }}
+
+    False. The input to an HLS tool is the high-level code developed in, for example, \texttt{Python} or \texttt{C++}. Also, the library of characterized modules, constraints, and optimization directives can help the compiler to generate better Verilog/VHDL code.
+\end{enumerate}

@@ -116,6 +116,16 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
     <tr>
         <td align="center">❌</td>
         <td>2024/2025</td>
+        <td>Quantum Computing</td>
+        <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=50107&__pj0=0&__pj1=17a2888e991ec95240e9455a5fe4df75" target="_blank">Cremonesi Paolo</a></td>
+        <td><ul>
+            <li><a href="quantum-computing">Course Details</a></li>
+            <li><a href="quantum-computing/notes/quantum-computing.pdf">PDF</a></li>
+        </ul></td>
+    </tr>
+    <tr>
+        <td align="center">❌</td>
+        <td>2024/2025</td>
         <td>Quantum Physics</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=67166" target="_blank">Finazzi Marco</a></td>
         <td><ul>

@@ -9,3 +9,6 @@
 ### v0.1.0
 
 - add `CHANGELOG.md` and `README.md`
+- add `Introduction`
+  - add `Complex Numbers recap`
+  - add `Dirac's Notation`

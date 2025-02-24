@@ -12,3 +12,4 @@
 - add `Introduction`
   - add `Complex Numbers recap`
   - add `Dirac's Notation`
+  - add `Single Qubits`

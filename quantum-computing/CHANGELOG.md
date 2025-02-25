@@ -2,7 +2,14 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.1.1](#v011)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.1.1
+
+- add constraints when a qubit is on a superposition, on page 12, subsection `Single Qubits`
 
 --------------------
 

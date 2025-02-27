@@ -86,6 +86,16 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
     <tr>
         <td align="center">✅</td>
         <td>2024/2025</td>
+        <td>Network Computing</td>
+        <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=867640&aa=2024&lang=IT&jaf_currentWFID=main" target="_blank">Antichi Gianni</a></td>
+        <td><ul>
+            <li><a href="network-computing">Course Details</a></li>
+            <li><a href="network-computing/notes/network-computing.pdf">PDF</a></li>
+        </ul></td>
+    </tr>
+    <tr>
+        <td align="center">✅</td>
+        <td>2024/2025</td>
         <td>Numerical Linear Algebra</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=300134&aa=2024&n_docente=Antonietti%20Paola%20Francesca&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Antonietti Paola Francesca</a></td>
         <td><ul>

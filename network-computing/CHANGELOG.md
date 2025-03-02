@@ -11,3 +11,4 @@
 - add `CHANGELOG.md` and `README.md`
 - add `Datacenters`
   - add `What is a Datacenter?`
+  - add `Datacenter Applications`

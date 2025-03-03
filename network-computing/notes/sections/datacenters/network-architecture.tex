@@ -1,0 +1,141 @@
+\subsection{Network Architecture}
+The \textbf{primary goal} of a datacenter network is to \textbf{interconnect thousands to millions of servers} efficiently. Unlike traditional networks, which focus on wide-area communication, datacenter networks emphasize:
+\begin{itemize}
+    \item \important{High throughput}: Supporting massive data transfers.
+    \item \important{Low latency}: Ensuring real-time performance for applications.
+    \item \important{Scalability}: Accommodating rapid growth without performance degradation.
+    \item \important{Fault tolerance}: Handling hardware failures with minimal disruption.
+\end{itemize}
+Datacenter \textbf{networks physically and logically connect servers through a multi-tiered architecture}. This hierarchical structure ensures that servers in different racks, pods, or clusters can communicate efficiently.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Traditional Three-Tier Datacenter Network}}
+\end{flushleft}
+Most datacenter networks follow a \definition{Three-Tier design}, which is optimized for scalability and efficiency. The three tiers are:
+\begin{itemize}
+    \item \definition{Edge Layer (Access Layer)}
+    \begin{itemize}
+        \item Located at the \textbf{bottom of the hierarchy}, closest to the servers.
+        \item Consists of \textbf{Top-of-Rack (ToR) switches} that connect servers within a rack.
+        \item \textcolor{Green3}{\textbf{Purpose}}: Aggregates traffic from multiple servers and forwards it to the higher layers.
+        \item Typically uses \textbf{high-speed links (10-100 Gbps per port)} to connect servers.
+    \end{itemize}
+
+
+    \item \definition{Aggregation Layer (Distribution Layer)}
+    \begin{itemize}
+        \item Intermediate layer \textbf{between the edge and core layers}.
+        \item \textbf{Connects multiple ToR switches} within a datacenter pod.
+        \item \textcolor{Green3}{\textbf{Purpose}}: Helps distribute traffic efficiently \textbf{without overwhelming core routers}.
+        \item Implements \textbf{load balancing, redundancy, and failover mechanisms}.
+    \end{itemize}
+
+
+    \item \definition{Core Layer (Backbone Layer)}
+    \begin{itemize}
+        \item The \textbf{top layer} of the hierarchy.
+        \item Composed of \textbf{high-capacity, high-speed switches and routers}.
+        \item \textcolor{Green3}{\textbf{Purpose}}: Responsible for:
+        \begin{itemize}
+            \item \textbf{Routing large volumes of traffic} between different aggregation switches.
+            \item \textbf{Connecting the datacenter to external networks} (e.g., the Internet or private backbones).
+        \end{itemize}
+        \item Core switches often run \textbf{at 100 Gbps or higher per port} to support high aggregate bandwidth.
+    \end{itemize}
+\end{itemize}
+Key \textbf{characteristics of the Three-Tier model}:
+\begin{itemize}
+    \item \important{Position}:
+    \begin{itemize}
+        \item \textbf{Edge Layer}: Closest to servers.
+        \item \textbf{Aggregation Layer}: Intermediate between edge and core.
+        \item \textbf{Core Layer}: Backbone layer.
+    \end{itemize}
+    \item \important{Primary Function}:
+    \begin{itemize}
+        \item \textbf{Edge Layer}: Connects servers within racks.
+        \item \textbf{Aggregation Layer}: Aggregates ToR traffic.
+        \item \textbf{Core Layer}: Routes traffic between datacenters or externally.
+    \end{itemize}
+    \item \important{Switch Type}:
+    \begin{itemize}
+        \item \textbf{Edge Layer}: Top-of-Rack (ToR).
+        \item \textbf{Aggregation Layer}: Aggregation switches.
+        \item \textbf{Core Layer}: Core routers.
+    \end{itemize}
+    \item \important{Speed (per port)}:
+    \begin{itemize}
+        \item \textbf{Edge Layer}: 10-100 Gbps.
+        \item \textbf{Aggregation Layer}: 40-100 Gbps.
+        \item \textbf{Core Layer}: 100 and more Gbps.
+    \end{itemize}
+    \item \important{Fault Tolerance}:
+    \begin{itemize}
+        \item \textbf{Edge Layer}: Redundant paths to aggregation layer.
+        \item \textbf{Aggregation Layer}: Load balancing across core switches.
+        \item \textbf{Core Layer}: High redundancy \& backup links.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations of the Traditional Tree-Based Model}}
+\end{flushleft}
+Although widely used, the traditional three-tier model faces \textbf{scalability and performance challenges} as datacenters grow.
+\begin{itemize}
+    \item \textcolor{Red2}{\textbf{Scalability Issues}}. \textbf{Traditional networks are hierarchical}, meaning most communication \textbf{must pass through the core layer}. As datacenters scale, \textbf{core switches become bottlenecks} due to increased traffic.
+
+    \item \textcolor{Red2}{\textbf{Bandwidth Bottlenecks}}. The model assumes that the \textbf{most traffic is North-South} (client to server). However, modern workloads involve \textbf{high East-West traffic} (server-to-server communication).
+    
+    \textbf{Over-subscription occurs} when the network cannot handle full-bisection bandwidth.
+
+    \item \textcolor{Red2}{\textbf{Over-Subscription Problem}}. \definition{Over-Subscription} refers to \textbf{the ratio of worst-case achievable bandwidth to total bisection bandwidth}. For example:
+    \begin{itemize}
+        \item If 40 servers per rack each have a 10 Gbps link, total demand is 400 Gbps.
+        \item If the uplink capacity to the aggregation layer is only 80 Gbps, we have a 5:1 over-subscription.
+        \item This means only 20\% of the potential bandwidth is available, causing congestion.
+    \end{itemize}
+    Over-subscription ratios in large-scale networks can reach 50:1 or even 500:1, \textbf{severely limiting performance}.
+
+    \item \textcolor{Red2}{\textbf{Performance Issues in High-Density Environments}}. High latency when traffic must \textbf{traverse multiple hops} to reach other racks. \textbf{Failures in core routers} can impact a large number of servers. \textbf{Inconsistent network performance} due to congestion in aggregation switches.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Modern Datacenter Network Designs}}
+\end{flushleft}
+To overcome the \textbf{scalability and congestion challenges} of traditional tree-based networks, modern datacenters use alternative architectures.
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Fat Tree (Clos Network)}}. Fat Tree is a \textbf{multi-stage switching architecture} designed to:
+    \begin{itemize}
+        \item \textbf{Ensure full-bisection bandwidth}: Every server can communicate at full capacity.
+        \item \textbf{Provide multiple paths} between any two servers (high redundancy).
+        \item \textbf{Balance traffic dynamically} to avoid congestion.
+    \end{itemize}
+    It uses K-ary fat tree topology where each pod consists of aggregation and edge switches, and core switches connect multiple pods. The advantages are:
+    \begin{itemize}
+        \item \textbf{Scalability}: Expands easily by adding more pods.
+        \item \textbf{Fault Tolerance}: Multiple paths prevent failures from disrupting traffic.
+        \item \textbf{Better Load Balancing}: Traffic is evenly distributed.
+    \end{itemize}
+
+    \item \textcolor{Green3}{\textbf{Jellyfish: Random Graph-Based Topology}}. Instead of a strict hierarchical structure, Jellyfish uses a \textbf{randomized topology}. The advantages are:
+    \begin{itemize}
+        \item \textbf{Higher network capacity} with \textbf{lower cost}.
+        \item \textbf{More flexible scaling} than Fat Tree.
+        \item \textbf{Better fault tolerance} since the network adapts dynamically.
+    \end{itemize}
+    
+    \item \textcolor{Green3}{\textbf{BCube: Datacenter Network for Cloud Computing}}. Designed for high-performance cloud computing environments. It is optimized for: multi-path communication, resilience against failures and lowe latency compared to hierarchical models.
+\end{itemize}
+
+\highspace
+\begin{takeawaysbox}[: Network Architecture]
+    \begin{itemize}
+        \item Traditional \textbf{three-tier datacenter networks} include \textbf{Edge, Aggregation, and Core layers}.
+        \item \textbf{Core switches bottlenecks} as datacenters scale.
+        \item \textbf{Over-subscription limits bandwidth}, causing congestion.
+        \item \textbf{Modern topologies like Fat Tree and Jellyfish improve scalability, fault tolerance, and load balancing}.
+    \end{itemize}
+\end{takeawaysbox}

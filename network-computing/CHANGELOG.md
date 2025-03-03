@@ -12,3 +12,4 @@
 - add `Datacenters`
   - add `What is a Datacenter?`
   - add `Datacenter Applications`
+  - add `Network Architecture`

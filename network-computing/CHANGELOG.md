@@ -14,3 +14,4 @@
   - add `Datacenter Applications`
   - add `Network Architecture`
   - add `High and Full-Bisection Bandwidth`
+  - add `Fat-Tree Network Architecture`

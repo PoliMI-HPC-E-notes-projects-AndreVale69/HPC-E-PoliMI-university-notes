@@ -1,0 +1,187 @@
+\subsection{Fat-Tree Network Architecture}
+
+A \definition{Fat-Tree} is a \textbf{multi-layer, hierarchical network topology} that provides \emph{high scalability}, \emph{full-bisection bandwidth}, and \emph{fault tolerance}. It is a \textbf{special type of Clos Network}\footnote{%
+    A \definition{Clos Network} is a type of multistage \textbf{switching topology that enables high-bandwidth and fault-tolerant communication by interconnecting multiple small switches instead of relying on a few large ones}. It is commonly used in datacenter networks (e.g., Google Jupiter Fabric) to maximize scalability and minimize congestion.
+}, designed to \textbf{overcome bandwidth bottlenecks} in traditional three-based networks.
+
+\highspace
+The key idea is: Instead of a traditional tree where higher levels become bottlenecks, Fat-Tree ensures equal bandwidth at every layer by \textbf{increasing the number of links as we move higher in the hierarchy}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Structure of a K-Ary Fat-Tree}}
+\end{flushleft}
+A \textbf{K-ary Fat-Tree} consists of \textbf{three layers}:
+\begin{enumerate}
+    \item \important{Edge Layer (Top-of-Rack, ToR switches)}:
+    \begin{itemize}
+        \item Connects directly to the servers.
+        \item Each edge switch connects $\frac{k}{2}$ servers and $\frac{k}{2}$ aggregation switches.
+    \end{itemize}
+
+    \item \important{Aggregation Layer}
+    \begin{itemize}
+        \item Connects multiple edge switches.
+        \item Ensures \textbf{local traffic routing} between racks before sending to the core.
+        \item Each aggregation switch connects $\frac{k}{2}$ edge switches and $\frac{k}{2}$ core\break switches.
+    \end{itemize}
+
+    \item \important{Core Layer}
+    \begin{itemize}
+        \item The backbone of the Fat-Tree, interconnecting multiple aggregation layers.
+        \item Consists of $\left(\frac{k}{2}\right)^{2}$ core switches, where each connects to $k$ pods.
+    \end{itemize}
+\end{enumerate}  
+
+\begin{examplebox}[: Fat-Tree with $k = 4$]
+    \begin{itemize}
+        \item Each pod contains:
+        \begin{itemize}
+            \item $\left(\frac{4}{2}\right)^{2} = 4$ servers.
+            \item 2 layers of 2 2-port switches (Edge and Aggregation).
+        \end{itemize}
+
+        \item Each Edge Switch connects 2 servers and 2 aggregation switches.
+        
+        \item Each Aggregation Switch connects 2 Edge switches and 2 Core switches.
+
+        \item The Core Layer consists of $\left(\frac{k}{2}\right)^{2} = 4$ core switches.
+    \end{itemize}
+    As a result, multiple paths between servers ensure no single point of failure and full-bisection bandwidth.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why Use Fat-Tree in Datacenters?}}
+\end{flushleft}
+\begin{enumerate}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Cost-Effective Scaling}}
+    \begin{itemize}
+        \item Can be built using \textbf{cheap, commodity switches} instead of expensive core routers.
+        \item All switches operate at \textbf{uniform capacity}, simplifying hardware requirements.
+    \end{itemize}
+    \item \textcolor{Green3}{\textbf{Full-Bisection Bandwidth}}
+    \begin{itemize}
+        \item Each switch and server has \textbf{equal access to bandwidth}, preventing bottlenecks.
+        \item Every packet has \textbf{multiple available paths}, ensuring \textbf{load balancing}.
+    \end{itemize}
+    \item \textcolor{Green3}{\textbf{High Fault Tolerance}}
+    \begin{itemize}
+        \item If one \textbf{switch or link fails}, traffic is rerouted through \textbf{alternative paths}.
+        \item \textbf{No single point of failure}, unlike traditional three-based architectures.
+    \end{itemize}
+    \item \textcolor{Green3}{\textbf{Efficient Load Balancing}}
+    \begin{itemize}
+        \item \textbf{Multipath Routing} ensures traffic is evenly distributed.
+        \item \textbf{No congestion at higher layers}, as each pod has equal bandwidth allocation.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Problems in Fat-Tree Networks}}
+\end{flushleft}
+Fat-Tree is a highly scalable and efficient network topology, but \textbf{practical challenges exist} when handling real-world workloads.
+\begin{itemize}
+    \item \textcolor{Red2}{\textbf{Many flows running simultaneously}}. In large datacenters, multiple applications generate concurrent flows. Some flows are \textbf{small but latency-sensitive} (mice flows), while others are \textbf{large data transfers} (elephant flows). The Fat-Tree must \textbf{efficiently balance all these flows} across available paths.
+
+    \item \textcolor{Red2}{\textbf{Traffic locality is unpredictable}}. Some services (e.g., Facebook/Meta workloads) have localized communication within a rack, while others require data exchange across the entire network. Fat-Tree must \textbf{dynamically adapt to different workload patterns}.
+
+    \item \textcolor{Red2}{\textbf{Traffic is bursty}}. Some applications \textbf{generate sudden traffic spikes}, leading to temporary congestion. This is problematic for routing since \textbf{congestion-aware path selection is difficult}.
+
+    \item \textcolor{Red2}{\textbf{Too Many Paths Between a Source and Destination}}. Unlike traditional network that have a single best route, Fat-Tree networks offer multiple equal-cost paths. \emph{Which path should be used?} Random selection might lead to congestion.
+
+    \item \textcolor{Red2}{\textbf{Random Path Selection Leads to Collisions}}. If routing randomly assigns traffic flows, two large elephant flows may end up on the same link. This creates a congestion hotspot, even though other links remain underutilized.
+    \begin{itemize}
+        \item \textcolor{Green3}{\textbf{Ideal case}}: Traffic should be spread evenly across all available links.
+        \item \textcolor{Red2}{\textbf{Reality}}: Without congestion awareness, routing \textbf{cannot react to traffic conditions dynamically}.
+    \end{itemize}
+
+    \item \textcolor{Red2}{\textbf{Short-Lived vs. Long-Lived Flows Create Conflicts}}. An \textbf{ideal routing scenario} would be to evenly distribute all flows. However, if a short, latency-sensitive flow suddenly appears on a congested link, its performance suffers. The key problem is that \textbf{Fat-Tree does not inherently prioritize latency-sensitive flows}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{TCP Incast: A Major Issue in Fat-Tree Datacenters}}
+\end{flushleft}
+Large-scale parallel requests cause network congestion. In fact, some workloads (e.g., distributed storage systems, AI training) involve a \textbf{single client requesting data from multiple servers simultaneously}. This means that all servers respond at once, \textbf{overwhelming the switch's buffer capacity}. This results in \textbf{packet loss and retransmissions}, significantly increasing latency.
+
+\begin{definitionbox}[: TCP Incast]
+    \definition{TCP Incast} is a \textbf{network congestion issue} that occurs in datacenters when multiple servers send data to a single receiver simultaneously, overwhelming the switch's buffer capacity and causing severe packet loss and performance degradation.
+
+    In other words, TCP Incast happens when many-to-one communication causes network congestion, leading to packet loss, TCP retransmissions, and increased latency.
+\end{definitionbox}
+
+\highspace
+But in this scenario, how does \definition{TCP Incast} happen?
+\begin{enumerate}
+    \item A client application requests data from multiple storage servers.
+    \item All storage servers respond \textbf{simultaneously}.
+    \item The switch \textbf{cannot handle all packets at once}, causing \textbf{buffer overflow}.
+    \item \textbf{Packet loss triggers TCP retransmissions}, further slowing down performance.
+\end{enumerate}
+This involves several issues:
+\begin{itemize}
+    \item Causes \textbf{severe latency spikes}, affecting (AI training and large-scale cloud) workloads.
+    \item Traditional TCP \textbf{was not designed for this kind of bursty traffic}.
+    \item \textbf{Fat-Tree cannot solve this issue alone}, it requires transport-layer optimizations.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Google's Approach to Solving Fat-Tree Challenges}}
+\end{flushleft}
+Google faced severe scalability, congestion, and failure recovery challenges in its datacenters. Instead of using a traditional Fat-Tree model, they \textbf{developed a Clos-based architecture} known as \definition{Google Jupiter Fabric}. The key challenges that Google is addressing are:
+\begin{itemize}
+    \item \textbf{Scalability}. Traditional networks could not handle Google's exponential growth. Needed a network that scales gracefully by adding more capacity in stages.
+    \item \textbf{Failure Tolerance}. A single failure should not impact traffic significantly. Needed path redundancy to ensure seamless operations.
+    \item \textbf{Performance and Cost}. High-performance custom-built switching to support full-bisection bandwidth. Used commodity merchant silicon (off-to-shelf networking chips) instead of proprietary network devices, reducing costs.
+\end{itemize}
+The solutions adopted by Google are:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Clos Topology for Scalability \& Fault Tolerance}}. Google moved from traditional Fat-Tree to Clos networks to improve scalability.
+    \begin{itemize}
+        \item \textbf{Multiple layers of switches}, with multiple paths between every two endpoints.
+        \item \textbf{Graceful fault recovery}: if one switch fails, traffic is rerouted dynamically.
+        \item \textbf{Incremental scalability}: new switching stages can be added without network downtime.
+    \end{itemize}
+    A Clos network was chosen because, unlike Fat-Tree, which suffers from static oversubscription, \textbf{Clos networks offer more flexible bandwidth allocation}.
+
+    Note that Fat-Tree inherits the scalability and fault tolerance of Clos, but its hierarchical and structured nature leads to congestion, routing complexity, and TCP Incast problems. Google recognized that Fat-Tree had structural limitations, so they modified Clos into the Jupiter Fabric.
+
+    \item \textcolor{Green3}{\textbf{Custom Hardware: Merchant Silicon Instead of Proprietary\break Switches}}. Google avoided vendor lock-in by using commodity hardware (merchant silicon). The reasons are:
+    \begin{itemize}
+        \item \textbf{Lower cost} than custom ASIC-based routers.
+        \item \textbf{Faster} hardware \textbf{upgrade cycles}.
+        \item \textbf{More control} over network design and software stack.
+    \end{itemize}
+
+
+    \item \textcolor{Green3}{\textbf{Centralized Control for Routing and Network Management}}. In traditional datacenters, routing is distributed, meaning each switch makes independent routing decisions. This approach does not scale well in Clos networks with thousands of switches.
+
+    The solution is \textbf{precomputed routing decisions}. Instead of switches making their own decisions, Google precomputes traffic flows centrally and pushes them to switches.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Improves traffic engineering}}: Load balancing decisions are optimized globally rather than per switch.
+        \item \textcolor{Green3}{\textbf{More predictable performance}}.
+        \item \textcolor{Green3}{\textbf{Less congestion}}: Can react dynamically to network failures.
+    \end{itemize}
+\end{itemize}
+
+\begin{takeawaysbox}[: Fat-Tree Network Architecture]
+    \begin{itemize}
+        \item \textbf{Fat-Tree is a special type of Clos Network} that overcomes bottlenecks in traditional tree networks.  
+        \item \textbf{K-ary} Fat-Tree has three layers (Edge, Aggregation, Core), \textbf{ensuring equal bandwidth for all nodes}.  
+        \item \textbf{Fat-Tree} provides multiple paths, but \textbf{routing is difficult due to unpredictable traffic patterns}.  
+        \item \textbf{Collisions between large flows create network hotspots}.  
+        \item \textbf{TCP Incast is a major issue}, where too many responses at once cause packet loss.
+        \item Google's Datacenter Network Strategy:
+        \begin{itemize}
+            \item \textbf{Moved from Fat-Tree to Clos topology} for better scalability and failure recovery.
+            \item \textbf{Used merchant silicon instead of proprietary hardware} to cut costs and improve flexibility.
+            \item \textbf{Implemented centralized control for routing} to optimize traffic flows.
+            \item \textbf{Designed the Jupiter Fabric} to handle \textbf{Google-scale workloads} with incremental scalability.
+        \end{itemize}
+    \end{itemize}
+\end{takeawaysbox}

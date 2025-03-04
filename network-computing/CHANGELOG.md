@@ -13,3 +13,4 @@
   - add `What is a Datacenter?`
   - add `Datacenter Applications`
   - add `Network Architecture`
+  - add `High and Full-Bisection Bandwidth`

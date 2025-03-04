@@ -1,0 +1,172 @@
+\section{Pipelining}
+
+\subsection{Basic Concepts}
+
+\definition{Pipelining} is a fundamental \textbf{technique} in computer architecture aimed at \textbf{improving instruction throughput by overlapping the execution of multiple instructions}. The main idea behind pipelining is to \hl{divide the execution of an instruction into distinct stages and process different instructions simultaneously in these stages}. This approach significantly increases the efficiency of instruction execution in modern processors.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Understanding the RISC-V instruction set}}
+\end{flushleft}
+Before delving into pipelining, it is essential to understand the \textbf{basic instruction set} of the RISC-V architecture. The instruction set consists of three major categories:
+\begin{itemize}
+    \item \important{ALU Instructions (Arithmetic and Logic Operations)}
+    \begin{itemize}
+        \item Performs \textbf{addition between registers}:
+        \begin{lstlisting}[language=riscv]
+add rd, rs1, rs2\end{lstlisting}
+        Performs the addition between the values in registers \texttt{rs1} and \texttt{rs2} and stores the result in register \texttt{rd}.
+        \begin{equation*}
+            \texttt{rd} \leftarrow \texttt{rs1} + \texttt{rs2}
+        \end{equation*}
+
+        \item Performs an \textbf{addition between a constant and a register}:
+        \begin{lstlisting}[language=riscv]
+addi rd, rs1, 4\end{lstlisting}
+        Performs the addition between the value in register \texttt{rs1} and the value \texttt{4} and stores the result in register \texttt{rd}.
+        \begin{equation*}
+            \texttt{rd} \leftarrow \texttt{rs1} + \texttt{4}
+        \end{equation*}
+    \end{itemize}
+
+    \item \important{Load/Store Instructions (Memory Operations)}
+    \begin{itemize}
+        \item \textbf{Loads} data from memory:
+        \begin{lstlisting}[language=riscv]
+ld rd, offset(rs1)\end{lstlisting}
+        Load data into register \texttt{rd} from an address formed by adding \texttt{rs1} to a signed \texttt{offset}.
+        \begin{equation*}
+            \texttt{rd} \leftarrow M\left[\texttt{rs1} + \texttt{offset}\right]
+        \end{equation*}
+
+        \item \textbf{Stores} data in memory:
+        \begin{lstlisting}[language=riscv]
+sd rs2, offset(rs1)\end{lstlisting}
+        Store data from register \texttt{rs2} to an address formed by adding \textsl{rs1} to a signed \textsl{offset}.
+        \begin{equation*}
+            M\left[\texttt{rs1} + \texttt{offset}\right] \leftarrow \texttt{rs2}
+        \end{equation*}
+    \end{itemize}
+
+    \newpage
+
+    \item \important{Branching Instructions (Control Flow Management)}
+    \begin{itemize}
+        \item \important{Conditional Branches}
+        \begin{itemize}
+            \item Branch on equal:
+            \begin{lstlisting}[language=riscv]
+beq rs1, rs2, L1\end{lstlisting}
+            Branch to the label \texttt{L1} if the value in register \texttt{rs1} is equal to the value in register \texttt{rs2}.
+            \begin{equation*}
+                \texttt{rs1} = \texttt{rs1} \xRightarrow{\text{go to}} \texttt{L1}
+            \end{equation*}
+            \item Branch on not equal:
+            \begin{lstlisting}[language=riscv]
+bne rs1, rs2, L1\end{lstlisting}
+            Branch to the label \texttt{L1} if the value in register \texttt{rs1} is not equal to the value in register \texttt{rs2}.
+            \begin{equation*}
+                \texttt{rs1} \ne \texttt{rs2} \xRightarrow{\text{go to}} \texttt{L1}
+            \end{equation*}
+        \end{itemize}
+        \item \important{Unconditional Jumps}
+        \begin{itemize}
+            \item Jump to the label (jump):
+            \begin{lstlisting}[language=riscv]
+j L1\end{lstlisting}
+            Jump directly to the \texttt{L1} label.
+            \item Jump to the address stored in a register (jump register):
+            \begin{lstlisting}[language=riscv]
+jr ra\end{lstlisting}
+            Take the value in register \texttt{ra} and use it as the address to jump to. So it is assumed that \texttt{ra} contains an address.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+These basic instructions will be used throughout the course.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Execution phases in RISC-V}}
+\end{flushleft}
+\begin{enumerate}
+    \item \definition{IF (Instruction Fetch)}: The instruction is \textbf{fetched} from memory.
+    \item \definition{ID (Instruction Decode)}: The instruction is \textbf{decoded}, and the \textbf{required registers are read}.
+    \item \definition{EX (Execution)}: The instruction is \textbf{executed}, typically involving ALU operations.
+    \item \definition{ME (Memory Access)}: For \emph{load}/\emph{store} instructions, this stage \textbf{reads from} or \textbf{writes to} memory.
+    \item \definition{WB (Write Back)}: The \textbf{result is written back} to the destination register.
+\end{enumerate}
+These five stages form the basis of the RISC-V pipeline.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Implementation of the RISC-V Data Path}}
+\end{flushleft}
+The \definition{RISC-V Data Path} is a fundamental component of the processor's architecture, responsible for \textbf{executing instructions efficiently by coordinating various hardware units}. It defines how instructions flow through different stages of execution, interacting with memory, registers, and the Arithmetic Logic Unit (ALU).
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/generic-risc-v-dp.pdf}
+    \caption{Generic implementation of the RISC-V Data Path.}
+\end{figure}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/detailed-risc-v-dp.pdf}
+    \caption{Specific implementation of the RISC-V Data Path.}
+\end{figure}
+
+\noindent
+Its fundamental components include:
+\begin{itemize}
+    \item \important{Instruction Memory and Data Memory Separation}. RISC-V\break adopts a Harvard Architecture style, where the \textbf{Instruction Memory (IM)} and \textbf{Data Memory (DM) are separate}. This \textbf{prevents structural hazards} where instruction fetch and memory access could conflict in a single-memory design (this topic will be addressed later).
+
+    \item \important{General-Purpose Register File (RF)}. It consists of \textbf{32 registers}, each \textbf{32-bit} wide. The register file has \textbf{two read ports} and \textbf{one write port} to \hl{support simultaneous read and write operations}. This setup allows faster register access, which is crucial for pipelined execution.
+
+    \item \important{Program Counter (PC)}. It \textbf{holds the address of the next instruction to be fetched}. Automatically increments during execution, typically by 4 bytes (for 32-bit instructions).
+    
+    \item \important{Arithmetic Logic Unit (ALU)}. \textbf{Performs arithmetic and logical operations} required by instructions. Inputs to the ALU come from registers or immediate values decoded from the instruction.
+\end{itemize}
+Other components that we can see in the general implementation of the RISC-V data path are:
+\begin{itemize}
+    \item \textbf{Register File}. \hl{Stores temporary values used by instructions}. Contains read ports (two registers can be read simultaneously for ALU operations) and write port (one register can be updated per clock cycle). The register file ensures high-speed execution of operations by reducing memory accesses.
+    \item \textbf{Instruction Fetch (IF)}. The PC (Program Counter) retrieves the next instruction from Instruction Memory. The PC is incremented using an adder (\texttt{PC + 4}), ensuring sequential instruction flow.
+    \item \textbf{Instruction Decode (ID)}. Extracts opcode (determines the instruction type), source and destination registers, immediate values (if present). It \hl{reads values from the Register File based on instruction requirements}.
+    \item \textbf{Execution (EX)}. The \hl{ALU performs arithmetic and logical operations}. A multiplexer (MUX) selects the second operand: a register value (for R-type instructions) or an immediate value (for I-type instructions like \texttt{addi}). The \hl{ALU result is forwarded} to the next stage.
+    \item \textbf{Memory Access (ME)}. Load (\texttt{ld}) and Store (\texttt{sd}) instructions interact with data memory. Data is either \textbf{loaded from memory into a register} or \textbf{stored from a register into memory}.
+    \item \textbf{Write Back (WB)}. The result from ALU or memory is \textbf{written back to the Register File}.
+\end{itemize}
+
+\newpage
+
+\begin{examplebox}[: Data Path Execution Example]
+    Let's consider a simple RISC-V \textbf{load instruction} (\texttt{ld x10, 40(x1)}) passing through the data path:
+    \begin{enumerate}
+        \item \textbf{IF Stage}: Instruction Fetch
+        \begin{itemize}
+            \item \texttt{PC} $\rightarrow$ Instruction Memory $\rightarrow$ \texttt{ld x10, 40(x1)} fetched
+            \item \texttt{PC} updated to \texttt{PC + 4}
+        \end{itemize}
+
+        \item \textbf{ID Stage}: Instruction Decode
+        \begin{itemize}
+            \item Registers read: \texttt{x1} (base register for memory access)
+            \item Immediate value extracted: \texttt{40}
+        \end{itemize}
+
+        \item \textbf{EX Stage}: Execution
+        \begin{itemize}
+            \item ALU calculates memory address: \texttt{x1 + 40}
+        \end{itemize}
+
+        \item \textbf{ME Stage}: Memory Access
+        \begin{itemize}
+            \item Data is loaded from \texttt{M[x1 + 40]}
+        \end{itemize}
+
+        \item \textbf{WB Stage}: Write Back
+        \begin{itemize}
+            \item Data stored in \texttt{x10}
+        \end{itemize}
+    \end{enumerate}
+\end{examplebox}

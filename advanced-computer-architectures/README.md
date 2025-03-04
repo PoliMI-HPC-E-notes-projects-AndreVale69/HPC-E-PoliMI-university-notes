@@ -1,4 +1,4 @@
-# (2023/2024) Advanced Computer Architectures
+# (2023/2024) and (2024/2025) Advanced Computer Architectures
 
 The notes are taken from the books required for the course: 
 

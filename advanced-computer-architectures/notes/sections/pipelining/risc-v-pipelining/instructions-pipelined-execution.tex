@@ -1,0 +1,99 @@
+\subsubsection{Pipelined execution of instructions}
+
+Each RISC-V instruction follows the five pipeline stages, but their interactions with the pipeline vary depending on the instruction type.
+\begin{itemize}
+   \item \textbf{ALU Instructions} (e.g., \texttt{op \$x, \$y, \$z})
+
+   These are register-based operations that do not require memory access. Since there is no memory operation, the instruction \textbf{bypasses the ME stage}.
+
+   \begin{table}[!htp]
+      \centering
+      \begin{tabular}{@{} l l @{}}
+         \toprule
+         \textbf{Stage} & \textbf{Description} \\
+         \midrule
+         \textbf{IF} & Fetch instruction from memory \\ [.3em]
+         \textbf{ID} & Decode instruction, read registers \texttt{\$y} and \texttt{\$z} \\ [.3em]
+         \textbf{EX} & Perform ALU operation (\texttt{\$x = \$y + \$z}) \\ [.3em]
+         \textbf{ME} & No memory access (skipped) \\ [.3em]
+         \textbf{WB} & Write the ALU result to \texttt{\$x} \\
+         \bottomrule
+      \end{tabular}
+   \end{table}
+
+
+   \item \textbf{Load Instructions} (e.g., \texttt{lw \$x, offset(\$y)})
+
+   These instructions retrieve data from memory and store it in a register. The \textbf{memory access stage} (ME) \textbf{is crucial} here since the instruction must fetch data from memory.
+
+   \begin{table}[!htp]
+      \centering
+      \begin{tabular}{@{} l l @{}}
+         \toprule
+         \textbf{Stage} & \textbf{Description} \\
+         \midrule
+         \textbf{IF} & Fetch instruction from memory \\ [.3em]
+         \textbf{ID} & Decode instruction, read base register \texttt{\$y} \\ [.3em]
+         \textbf{EX} & Compute memory address (\texttt{\$y + offset}) \\ [.3em]
+         \textbf{ME} & Read data from memory \\ [.3em]
+         \textbf{WB} & Write data into destination register \texttt{\$x} \\
+         \bottomrule
+      \end{tabular}
+   \end{table}
+
+
+   \item \textbf{Store Instructions} (e.g., \texttt{sw \$x, offset(\$y)})
+   
+   These instructions write data from a register into memory. Unlike \texttt{lw}, \textbf{store instructions do not require the WB stage}, as data is written directly into memory.
+
+   \begin{table}[!htp]
+      \centering
+      \begin{tabular}{@{} l l @{}}
+         \toprule
+         \textbf{Stage} & \textbf{Description} \\
+         \midrule
+         \textbf{IF} & Fetch instruction from memory \\ [.3em]
+         \textbf{ID} & Decode instruction, read base register \texttt{\$y} and source register \$x \\ [.3em]
+         \textbf{EX} & Compute memory address (\texttt{\$y + offset}) \\ [.3em]
+         \textbf{ME} & Write \texttt{\$x} into memory at the computed address \\ [.3em]
+         \textbf{WB} & No write-back stage (skipped) \\
+         \bottomrule
+      \end{tabular}
+   \end{table}
+
+
+   \newpage
+
+
+   \item \textbf{Conditional Branches} (e.g., \texttt{beq \$x, \$y, offset})
+   
+   Branching introduces control hazards, as the pipeline needs to determine whether the branch is taken or not. Branches can introduce \textbf{stalls} due to dependencies on comparison results. This issue is typically mitigated using branch prediction.
+
+   \begin{table}[!htp]
+      \centering
+      \begin{tabular}{@{} l l @{}}
+         \toprule
+         \textbf{Stage} & \textbf{Description} \\
+         \midrule
+         \textbf{IF} & Fetch instruction from memory \\ [.3em]
+         \textbf{ID} & Decode instruction, read registers \texttt{\$x} and \texttt{\$y} \\ [.3em]
+         \textbf{EX} & Compare \texttt{\$x} and \texttt{\$y}, compute target address \\ [.3em]
+         \textbf{ME} & No memory access (skipped) \\ [.3em]
+         \textbf{WB} & Update PC if branch is taken \\ [.3em]
+         \bottomrule
+      \end{tabular}
+   \end{table}
+\end{itemize}
+
+\highspace
+This section breaks down how \textbf{different types of instructions behave in the pipeline}:
+\begin{itemize}
+   \item ALU Instructions complete in the EX stage and do not use memory.
+   \item Load Instructions require a memory access in the ME stage.
+   \item Store Instructions write to memory instead of registers.
+   \item Branch Instructions introduce control hazards because they may change the PC.
+\end{itemize}
+This means that \textbf{not all instructions behave the same} in the pipeline. Some instructions \textbf{skip certain stages} (e.g., stores do not have WB, ALU instructions skip ME), and some instructions \textbf{introduce potential problems} (e.g., branches can cause delays).
+
+\highspace
+In conclusion, this section sets the stage for understanding pipeline stalls, forwarding, and hazard resolution techniques that are essential for designing high-performance processors.

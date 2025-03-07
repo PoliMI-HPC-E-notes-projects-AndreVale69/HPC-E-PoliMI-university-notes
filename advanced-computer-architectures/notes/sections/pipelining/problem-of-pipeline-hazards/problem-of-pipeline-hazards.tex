@@ -1,0 +1,84 @@
+\subsection{Problem of Pipeline Hazards}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Assumptions Made}}
+\end{flushleft}
+Until now, our discussion on the RISC-V pipeline implementation has relied on several key assumptions to simplify the analysis and focus on fundamental concepts. These \textbf{assumptions help in understanding the ideal case of pipelining} before introducing complexities like hazards and optimizations.
+\begin{enumerate}
+    \item All instructions are independent, so there are no dependencies between them.
+
+    \item No branches or jumps that change execution flow.
+\end{enumerate}
+This is a theoretical idealization, because in real-world scenarios, \textbf{hazards} (structural, data, and control) \textbf{interfere with smooth execution}. Also, our second assumption ignores \textbf{branch instructions} (\texttt{beq}, \texttt{bne}, \texttt{j}, \texttt{jr}), which \textbf{cause control hazards} that require branch prediction or pipeline flushing.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a Pipeline Hazard?}}
+\end{flushleft}
+Now that we have understood the ideal execution of a RISC-V pipeline, we must discuss pipeline hazards, which are obstacles that prevent the pipeline from operating at maximum efficiency.  
+
+\highspace
+A \definition{Hazard} (or conflict) is a phenomenon that occurs when the \textbf{overlapping execution of instructions in the pipeline changes the expected order of instruction execution}. This can lead to incorrect results or the \textbf{need to insert stalls} (\emph{pipeline bubbles}), reducing performance.  
+
+\highspace
+In other words, \hl{hazards cause the next instruction in the pipeline to be delayed, which reduces the ideal throughput of 1 instruction per cycle}. Thus, hazards disrupt the smooth flow of instructions and require techniques to resolve them.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Classes of Pipeline Hazards}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Structural Hazards}: Attempt to use the same resource from different instructions simultaneously.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Example}}: Single memory for both instruction and data access.
+
+
+    \item \definition{Data Hazards}: Attempt to use a result before it is ready.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Example}}: Instruction depending on a result of a previous instruction still in the pipeline.
+    
+    
+    \item \definition{Control Hazards}: Try to make a decision about the next statement to execute before the condition is evaluated.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Example}}: Conditional branch execution.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Structural Hazards}}
+\end{flushleft}
+A \definitionWithSpecificIndex{structural hazard}{Structural Hazards}{} occurs when \textbf{multiple pipeline stages need to use the same hardware resource at the same time}.
+
+\highspace
+\textcolor{Green3}{\faIcon{check} \textbf{Structural Hazard cannot be applied to RISC-V}}. This is a great thing, because thanks to the Harvard Architecture, \textbf{RISC-V uses separate instruction and data memory}, and this adoption avoids structural hazards.
+
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Control Hazards}}
+\end{flushleft}
+A \definitionWithSpecificIndex{control hazard}{Control Hazards}{} occurs when the \textbf{pipeline does not know which instruction to fetch next, usually due to a branch or jump instruction}. It is discussed in the following sections.
+
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Data Hazards}}
+\end{flushleft}
+A \definitionWithSpecificIndex{data hazard}{Data Hazards}{} occurs when an \textbf{instruction depends on the result of a previous instruction that is still in the pipeline}.
+
+\highspace
+There are several types of data hazards:
+\begin{itemize}
+    \item \definition{RAW (Read After Write)}. An instruction tries to read a register before a previous instruction writes to it.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Example}}:
+    \begin{lstlisting}[language=riscv]
+lw x2, 0(x1)
+add x3, x2, x4\end{lstlisting}
+    The \texttt{add} instruction needs \texttt{x2}, but \texttt{x2} is still being fetched from memory in the MEM stage. Without hazard resolution, the processor would get the wrong value for \texttt{x2}.
+
+    \item \definition{WAR (Write After Read)}. A later instruction writes to a register before an earlier instruction reads it (rare in RISC).
+
+    \item \definition{WAW (Write After Write)}. Two instructions try to write to the same register in the wrong order.
+\end{itemize}

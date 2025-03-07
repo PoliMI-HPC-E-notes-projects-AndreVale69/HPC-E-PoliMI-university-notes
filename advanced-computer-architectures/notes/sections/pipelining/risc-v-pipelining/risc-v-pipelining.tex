@@ -1,0 +1,85 @@
+\subsection{RISC-V Pipelining}
+
+Pipelining is analogous to an assembly line in a factory. Instead of waiting for one instruction to complete before starting the next, \textbf{different instructions are executed simultaneously in different stages}.
+
+\highspace
+If we consider a \textbf{non-pipelined execution}:
+\begin{itemize}
+    \item Each instruction completes all five stages sequentially before the next instruction starts.
+    \item If each instruction stage (IF stage, ID stage, etc.) takes, say, 2 nanoseconds, executing all stages of an instruction (IF, ID, EX, MEM, WB) takes 5 times 2 nanoseconds, then 10 nanoseconds. If we also want to execute 5 instructions, we need 10 nanoseconds times 5, then 50 nanoseconds!
+\end{itemize}
+Now, we consider a \textbf{pipelined execution}:
+\begin{itemize}
+    \item Once the first instruction moves to the second stage, the next instruction starts in the first stage.
+    \item The \textbf{pipeline becomes fully utilized} after the first few cycles, significantly \textbf{improving throughput}.
+\end{itemize}
+In an \textbf{ideal scenario}, a 5-stage pipeline should provide a speedup of $5\times$ reducing execution time to:
+\begin{equation*}
+    \left(5+4\right) \times 2 \text{ ns } = 18 \text{ ns}
+\end{equation*}
+Where $5$ are the steps of the first instruction, $5$ are the steps of the last instruction, minus $1$ because one step is already counted in the first instruction, so $4$. Therefore, $9$ is multiplied by $2$ nanoseconds, the time taken by each stage. The result, $18$ nanoseconds, is the time it takes the pipeline to execute 5 instructions in an ideal scenario.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/sequential-vs-pipelining-1.pdf}
+    \caption{Sequential vs. Pipelining execution.}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Pipeline Performance and Speedup}}
+\end{flushleft}
+The ideal performance improvement from pipelining is derived from the fact that \textbf{once the pipeline is filled}, \textbf{a new instruction completes every cycle}. The key performance metrics include:
+\begin{itemize}
+    \item \textbf{Latency (Execution Time)}: The total time to complete a single instruction does not change (sequential or pipeline).
+    \item \textbf{Throughput (Instructions per Unit Time)}: The number of completed instruction per unit time significantly increases.
+    \item \textbf{Speedup Calculation}
+    \begin{itemize}
+        \item A non-pipelined CPU with 5 execution cycles of 2 ns would take 10 ns per instruction.
+        \item A pipelined CPU with 5 stages of 2 ns results in 1 instruction completing every 2 ns.
+        \item This gives a theoretical speedup of $5\times$ (ideal case).
+    \end{itemize}
+\end{itemize}
+Unfortunately, real-world implementations are subject to \textbf{pipeline hazards} that reduce efficiency.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Understanding Pipelining Performance}}
+\end{flushleft}
+Pipelining \textbf{improves instruction throughput} by allowing multiple instructions to be processed simultaneously in different stages. The \textbf{execution of an instruction is divided into 5 pipeline stages}:
+\begin{enumerate}
+    \item IF (Instruction Fetch)
+    \item ID (Instruction Decode)
+    \item EX (Execution)
+    \item MEM (Memory Access)
+    \item WB (Write Back)
+\end{enumerate}
+\textbf{Each stage takes 2 ns} (a \emph{pipeline cycle}), meaning that an \textbf{instruction moves from one stage to the next every 2 ns}. Now, let's analyze the timeline of instruction execution:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | c | c | c | c @{}}
+        \toprule
+        \textbf{Clock Cycle} & \textbf{IF} & \textbf{ID} & \textbf{EX} & \textbf{MEM} & \textbf{WB} \\
+        \midrule
+        1st  (0-2 ns)   & \texttt{I1} &    &    &    &    \\ [.3em]
+        2nd  (2-4 ns)   & \texttt{I2} & \texttt{I1} &    &    &    \\ [.3em]
+        3rd  (4-6 ns)   & \texttt{I3} & \texttt{I2} & \texttt{I1} &    &    \\ [.3em]
+        4th  (6-8 ns)   & \texttt{I4} & \texttt{I3} & \texttt{I2} & \texttt{I1} &    \\ [.3em]
+        5th  (8-10 ns)  & \texttt{I5} & \texttt{I4} & \texttt{I3} & \texttt{I2} & \texttt{I1} \\ [.3em]
+        6th  (10-12 ns) & \texttt{I6} & \texttt{I5} & \texttt{I4} & \texttt{I3} & \texttt{I2} \\ [.3em]
+        7th  (12-14 ns) & \texttt{I7} & \texttt{I6} & \texttt{I5} & \texttt{I4} & \texttt{I3} \\ [.3em]
+        8th  (14-16 ns) & \texttt{I8} & \texttt{I7} & \texttt{I6} & \texttt{I5} & \texttt{I4} \\ [.3em]
+        9th  (16-18 ns) & \texttt{I9} & \texttt{I8} & \texttt{I7} & \texttt{I6} & \texttt{I5} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Pipelining timeline execution in an ideal case.}
+\end{table}
+\begin{itemize}
+    \item The first instruction \texttt{I1} takes 5 (clock) cycles to complete, i.e., 10 ns.
+    \item However, starting from cycle 5, a new instruction finishes every cycle (every 2 ns).
+    \item In a non-pipelined system, each instruction would take 10 ns (5 stages $\times$ 2 ns each).
+    \item In a pipelined system, once the pipeline is full, an instruction completes every cycle (every 2 ns), achieving a $5\times$ speedup compared to the non-pipelined execution.
+\end{itemize}
+Thus, after an initial ``fill'' time (1st, 2nd, 3rd, 4th), \textbf{a new instruction completes every 2 ns} (from 5th to 6th, \texttt{I1} is finished; from 6th to 7th, \texttt{I2} is finished; from 7th to 8th, \texttt{I3} is finished), which is the duration of a single pipeline stage.

@@ -11,6 +11,10 @@
 
 - remove old notes
 - add `Basic Concepts`
+- add `RISC-V Pipelining`
+  - add `Pipelined execution of instructions`
+  - add `Pipeline Implementation`
+- add `Problem of Pipeline Hazards`
 
 --------------------
 

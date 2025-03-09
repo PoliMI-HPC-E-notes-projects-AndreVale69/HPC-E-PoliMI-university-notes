@@ -15,6 +15,7 @@
   - add `Pipelined execution of instructions`
   - add `Pipeline Implementation`
 - add `Problem of Pipeline Hazards`
+  - add `RISC-V Optimized Pipeline`
 
 --------------------
 

@@ -1,0 +1,99 @@
+\subsubsection{RISC-V Optimized Pipeline}
+
+The \textbf{RISC-V optimized pipeline} introduces refinements that \hl{reduce stalls, improve data access, and enhance instruction throughput}. The key optimizations include:  
+\begin{enumerate}[label=\textcolor{Green3}{\faIcon{check}}]
+   \item \textcolor{Green3}{\textbf{Efficient Register File Access}}. In the standard RISC-V pipeline, register accesses \textbf{happen in two stages}:
+   \begin{itemize}
+      \item ID (Instruction Decode) $\rightarrow$ Reads register values.
+      \item WB (Write Back) $\rightarrow$ Writes computed values back to registers.
+   \end{itemize}
+
+   \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Optimization: Read and Write in the Same Cycle}}
+   \begin{itemize}
+      \item In the optimized pipeline:
+      \begin{itemize}
+         \item Register \textbf{writing} happens in the \hl{\emph{first half}} of the \textbf{clock cycle};
+         \item While register \textbf{reading} happens in the \hl{\emph{second half}} of the \textbf{clock cycle}.
+      \end{itemize}
+      \item This means an instruction can write its result to a register in WB, and the \textbf{next instruction can immediately read} that value in ID during the \textbf{same cycle}.
+   \end{itemize}
+   This optimization \hl{removes unnecessary stalls} when an instruction immediately depends on a result written in the previous cycle.
+
+   \begin{figure}[!htp]
+      \centering
+      \includegraphics[width=\textwidth]{img/risc-v-optimized-pipeline-1.pdf}
+      \caption{Visual \example{example} of an optimized pipeline; here the result (WB stage) of \texttt{I1} is written in the first half of the clock cycle and the read (ID stage) of \texttt{I4} is done in the second half of the clock cycle. So there is no hazards!}
+   \end{figure}
+
+
+   \item \textcolor{Green3}{\textbf{Forwarding (Bypassing) to Reduce Stalls}}. \definition{Forwarding} (also called \textbf{bypassing}) is a hardware technique that \textbf{eliminates stalls by providing ALU results directly to dependent instructions without waiting for the WB stage}. It is a possible solution for Data Hazards.
+
+   \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Forwarding Paths}}: To support forwarding, the \textbf{pipeline includes extra paths} that allow instructions to fetch values from intermediate pipeline registers instead of waiting for WB.
+   \begin{itemize}
+      \item \definition{EX/EX Path}. Allows ALU results to be forwarded from \textbf{EX stage output to the next EX stage input}. Used when an \textbf{instruction depends on an arithmetic result of the previous instruction}.
+      \begin{examplebox}[: EX/EX Forwarding]
+         \begin{lstlisting}
+sub x2, x1, x3   # Compute x2 = x1 - x3
+and x12, x2, x5  # Use x2 immediately\end{lstlisting}
+         \begin{center}
+            \begin{tabular}{@{} c | c | c @{}}
+               \toprule
+               \textbf{Cycle} & \texttt{sub x2, x1, x3} & \texttt{and x12, x2, x5} \\
+               \midrule
+               1 & IF  & \\
+               2 & ID  & IF      \\ [.3em]
+               3 & EX  & ID      \\ [.3em]
+               4 & MEM & \emph{Stall} \\ [.3em]
+               5 & WB  & \emph{Stall} \\ [.3em]
+               6 &     & EX      \\ [.3em]
+               7 &     & MEM     \\ [.3em]
+               8 &     & WB      \\
+               \bottomrule
+            \end{tabular}
+         \end{center}
+         The \texttt{and} instruction \textbf{must wait until WB writes \texttt{x2} to the register file}. Two stall cycles are introduced and this wastes execution time.
+
+         Instead of waiting for WB, we forward the ALU result from the EX stage of \texttt{sub} directly to the EX stage of \texttt{and}. 
+
+         \begin{center}
+            \begin{tabular}{@{} c | c | c @{}}
+               \toprule
+               \textbf{Cycle} & \texttt{sub x2, x1, x3} & \texttt{and x12, x2, x5} \\
+               \midrule
+               1 & IF  &                  \\ [.3em]
+               2 & ID  & IF               \\ [.3em]
+               3 & EX  & ID               \\ [.3em]
+               4 & MEM & EX (forwarded \texttt{x2} from EX) \\ [.3em]
+               5 & WB  & MEM              \\ [.3em]
+               6 &     & WB               \\
+               \bottomrule
+            \end{tabular}
+         \end{center}
+         In cycle 4, \texttt{and x12, x2, x5} gets the forwarded \texttt{x2} from the EX stage of \texttt{sub}, \textbf{removing stalls}.
+
+         This is EX/EX forwarding, taking ALU results from one EX stage directly into the next EX stage.
+      \end{examplebox}
+
+      \newpage
+      
+      \item \definition{MEM/EX Path}. Forwards the ALU result from \textbf{MEM stage to EX stage}. Used when an \textbf{instruction depends on an ALU operation two cycles before}.
+      \begin{figure}[!htp]
+         \centering
+         \includegraphics[width=\textwidth]{img/mem-ex-path-1.pdf}
+         \caption{Example of MEM/EX path.}
+      \end{figure}
+      
+      \item \definition{MEM/MEM Path}. Forwarding directly \textbf{between two memory operations in the MEM stage}. It \textbf{removes stalls in Load/Store dependencies}.
+      \begin{figure}[!htp]
+         \centering
+         \includegraphics[width=\textwidth]{img/mem-mem-path-1.pdf}
+         \caption{Example of MEM/MEM path.}
+      \end{figure}
+   \end{itemize}
+
+   \begin{figure}[!htp]
+      \centering
+      \includegraphics[width=\textwidth]{img/risc-v-forwarding-unit-1.pdf}
+      \caption{Implementation of RISC-V with Forwarding Unit.}
+   \end{figure}
+\end{enumerate}

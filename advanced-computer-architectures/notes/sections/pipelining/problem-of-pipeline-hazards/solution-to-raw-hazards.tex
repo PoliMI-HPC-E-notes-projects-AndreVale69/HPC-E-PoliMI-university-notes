@@ -1,0 +1,92 @@
+\subsubsection{Solutions to RAW Hazards}
+
+To handle RAW hazards, we can \textbf{use both} \hl{static (compile-time)} and \hl{dynamic (hardware-based)} \textbf{techniques}. These include:
+\begin{itemize}
+    \item \important{Static (compile-time)}:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{\texttt{nop} insertion}}: compiler adds empty instructions to delay execution.
+        \item \textcolor{Green3}{\textbf{Instruction Scheduling}}: compiler reorders instructions to avoid conflicts.
+    \end{itemize}
+    \item \important{Dynamic (hardware-based)}:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Pipeline Stalling (bubbles)}}: inserts delay cycles when necessary.
+        \item \textcolor{Green3}{\textbf{Forwarding (bypassing)}}: uses intermediate values from the pipeline instead of waiting.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{\emph{Static (compile-time) solution}: Inserting \texttt{nop}s (naïve)}}
+\end{flushleft}
+One simple way to handle RAW hazards is to \textbf{insert \texttt{nop} instructions manually between dependent instructions}. This gives the pipeline time to complete the write-back of the needed value.
+
+\highspace
+Key takeaway of inserting \texttt{nop}s:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textbf{Simple}, \hl{but inefficient because it wastes clock cycles}. It should be the very last solution considered.
+    
+    \item Instead of using useful instructions, the \textbf{processor waits}, reducing performance.
+\end{itemize}
+
+\begin{examplebox}[: \texttt{nop} insertion]
+    \begin{lstlisting}[language=riscv]
+sub x2, x1, x3
+nop              # Delay slot (bubble)
+and x12, x2, x5  # Now x2 is ready\end{lstlisting}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{\emph{Static (compile-time) solution}: Instruction Scheduling}}
+\end{flushleft}
+A more efficient technique is \textbf{instruction reordering}, also known as \definitionWithSpecificIndex{compiler scheduling}{Compiler Scheduling}{}. The \textbf{compiler reorders instructions to avoid data hazards} \hl{without inserting \texttt{nop}s}.
+
+\highspace
+Key takeaway of instruction scheduling:
+\begin{itemize}
+    \item Instruction reordering is a \textbf{compiler optimization}.
+    \item[\textcolor{Green3}{\faIcon{check}}] It works well \textbf{if independent instructions are available}.
+    \item[\textcolor{Red2}{\faIcon{times}}] In some cases, no independent instructions exist, so \textbf{stalling or forwarding is needed}.
+\end{itemize}
+
+\begin{examplebox}[: Instruction Scheduling]
+    \begin{lstlisting}[language=riscv]
+sub x2, x1, x3
+# Independent instruction
+# (can execute while sub is completing)
+add x4, x10, x11
+and x12, x2, x5   # Now x2 is ready\end{lstlisting}
+    Instead of a \texttt{nop}, we insert \texttt{add x4, x10, x11}, which does not depend on \texttt{x2}. This keeps the pipeline utilized while avoiding RAW hazards.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{\emph{Dynamic (hardware-based)}: Pipeline Stalling (Bubble Insertion)}}
+\end{flushleft}
+When no independent instructions can be scheduled, the \textbf{hardware must stall the pipeline} by inserting a \textbf{bubble (stall cycle)}.
+
+\highspace
+Key takeaway of pipeline stalling:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] Stalling is simple but \textbf{reduces performance} (pipeline sits idle).
+    \item[\textcolor{Green3}{\faIcon{check}}] We \textbf{prefer forwarding} (next solution) instead of stalling.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/insertion-of-stalls-1.pdf}
+    \caption{Example of inserting stalls.}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{\emph{Dynamic (hardware-based)}: Forwarding (Bypassing)}}
+\end{flushleft}
+Forwarding is an optimized hardware technique that avoids pipeline stalls by \textbf{directly passing results between pipeline registers}. The entire implementation has already been explained on page \hqpageref{def: forwarding to reduce stalls}.
+
+\highspace
+Key takeaway of forwarding:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Forwarding is the best solution}} because it eliminates stalls and maximizes performance.
+    \item It \textbf{requires extra hardware} (MUX and control logic), but it significantly improves throughput.
+\end{itemize}

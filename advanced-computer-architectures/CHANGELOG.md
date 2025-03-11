@@ -17,6 +17,7 @@
 - add `Problem of Pipeline Hazards`
   - add `RISC-V Optimized Pipeline`
   - add `Solutions to RAW Hazards`
+- add `Performance evaluation`
 
 --------------------
 

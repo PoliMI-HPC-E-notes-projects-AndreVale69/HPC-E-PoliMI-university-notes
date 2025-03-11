@@ -15,6 +15,8 @@ I also made a:
 
 Actually, I haven't got my Master's degree yet, so the notes are still incomplete. In the table below you can check the courses I've completed (✅) and the courses I'm still doing (❌).
 
+All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico) course, which I've followed in Italian.
+
 <table>
     <tr>
         <th>Status</th>
@@ -55,7 +57,7 @@ Actually, I haven't got my Master's degree yet, so the notes are still incomplet
     </tr>
     <tr>
         <td align="center">✅</td>
-        <td>2023/2024</td>
+        <td>2023/2024<br>2024/2025</td>
         <td>Calcolo Numerico</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=717400" target="_blank">Botti Michele</a></td>
         <td><ul>

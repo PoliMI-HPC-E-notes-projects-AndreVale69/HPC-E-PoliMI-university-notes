@@ -22,6 +22,8 @@ Each version follows the Conventional Commits structure. For more information on
 
 - change section 1 to `Data Center and Computing Infrastructure`
 - refactor `Overview of Computing Infrastructures`
+- refactor `The Datacenter as a Computer`
+- refactor `Warehouse-Scale Computers`
 
 --------------------
 

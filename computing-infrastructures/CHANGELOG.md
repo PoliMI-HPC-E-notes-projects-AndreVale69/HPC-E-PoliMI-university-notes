@@ -25,6 +25,7 @@ Each version follows the Conventional Commits structure. For more information on
 - refactor `The Datacenter as a Computer`
 - refactor `Warehouse-Scale Computers`
 - refactor `Multiple Data Centers`
+- refactor `Warehouse-Scale Computing / Data Centers Availability` to `Availability in WSCs and DCs`
 
 --------------------
 

@@ -442,34 +442,87 @@ Initially, WSCs were designed exclusively for handling large-scale, internet-fac
 
 \paragraph{Multiple Data Centers}
 
-\noindent
-Sometimes the data centers are \textbf{located far apart}. \textbf{Multiple data centers} are (often) \textbf{replicas of the same service}:
-\begin{itemize}
-    \item To \emph{reduce user latency}
-    \item To \emph{improve service throughput}
+The \textbf{architecture of modern computing infrastructure} is not limited to single data centers but rather \textbf{extends across multiple, geographically distributed facilities}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why use multiple datacenters?}}
+\end{flushleft}
+A single datacenter can host and process workloads, but distributing computing infrastructure across multiple facilities offers several \textbf{advantages}:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Lower Latency for Users}}. When \textbf{datacenters are closer to users}, request-response times are reduced. Services like Google Search, Netflix streaming, and cloud gaming benefit from regional datacenters.
+    \item \textcolor{Green3}{\textbf{Improved Throughput \& Load Balancing}}
+    \begin{itemize}
+        \item \textbf{Spreading requests across multiple locations} prevents bottlenecks.
+        \item \textbf{Global services handle millions of requests per second}, which would overload a single facility.
+    \end{itemize}
+    \item \textcolor{Green3}{\textbf{Disaster Recovery \& Fault Tolerance}}
+    \begin{itemize}
+        \item \textbf{If one datacenter fails} (due to power outages, natural disasters, or cyberattacks), \textbf{another can take over}.
+        \item \textbf{Redundancy ensures minimal downtime} for mission-critical applications.
+    \end{itemize}
 \end{itemize}
-Typically, a request is fully processed within one data center.
 
 \highspace
-The world is divided into \definition{Geographic Areas (GAs)}. Each Area is defined by Geo-political boundaries (or country borders). Also, there are at least two computing regions in each geographical Area.
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{sitemap} \textbf{The Hierarchical Organization of Multi-Datacenter Infrastructure}}
+\end{flushleft}
+To effectively distribute workloads and ensure resilience, cloud providers divide their infrastructure into a \textbf{structured hierarchy}.
+\begin{enumerate}
+    \item \definition{Geographic Areas (GAs)}. The \textbf{highest level of organization}, \hl{defined by geopolitical boundaries or country-specific regulations}. The primary factor is data residency laws, ensuring compliance with legal frameworks (e.g., GDPR in Europe).
+    \begin{examplebox}[: Geographic Area]
+        For example, a GA might represent North America, Europe, or Asia-Pacific. A user in France may have their data processed within Europe to comply with EU data protection regulations.
+    \end{examplebox}
 
-\highspace
-The \definition{Computing Regions (CRs)} are the smallest geographic unit of the infrastructure from the customer's perspective. Multiple Data centers within the same region are not exposed to customers.
+    \newpage
 
-However, they are defined by a latency-defined perimeter, typically less than 2ms for round-trip latency.
-Finally, they're located hundreds of miles apart, with considerations for different flood zones, etc. It is too far from synchronous replication but suitable for disaster recovery.
+    \item \definition{Computing Regions (CRs)}. A \textbf{finer granularity withing Geographic Areas}, representing \textbf{large-scale infrastructure within a geographic region}. \hl{Each GA contains at least two Computing Regions for redundancy}. Key characteristics:
+    \begin{itemize}
+        \item \textbf{Users see computing regions as isolated environments} where they can deploy workloads.
+        \item \textbf{Multiple DCs exist within a region but are not individually exposed to users}.
+        \item \textbf{Latency-defined perimeter}: Ensures that intra-region latency remains within 2ms for round-trip communication.
+        \item \textbf{Distance considerations}:
+        \begin{itemize}
+            \item Datacenters within a region are hundreds of miles apart.
+            \item This protects against localized failures (e.g., natural disasters, power grid failures).
+        \end{itemize}
+    \end{itemize}
 
-\highspace
-The \definition{Availability Zones (AZs)} are finer-grain \textbf{locations within a single computing region}. They allow customers to run mission-critical applications with high availability and fault tolerance to Data Center failures. Because there are fault-isolated locations with redundant power, cooling, and networking (they are different from the concept of the Availability Set).
+    \begin{examplebox}[: Computing Region]
+        AWS has ``US-East-1'' (Virginia) and ``US-West-1'' (California) as distinct computing regions.
+    \end{examplebox}
 
-\highspace
-This hierarchical structure ensures efficient data management and compliance with local data laws while optimizing network performance through strategically placing data centers.
 
-\begin{figure}[!htp]
-    \centering
-    \includegraphics[width=.8\textwidth]{img/availability-zones-region-geography.png}
-    \caption{Example of \href{https://learn.microsoft.com/en-us/azure/reliability/availability-zones-overview?tabs=azure-cli}{Azure Availability Zones}.}
-\end{figure}
+    \item \definition{Availability Zones (AZs)}. Within a Computing Region, \textbf{datacenters are} further \textbf{divided into Availability Zones (AZs)}.
+    \begin{itemize}
+        \item \emph{What are Availability Zones?}
+        \begin{itemize}
+            \item \textbf{Physically separate datacenters within a region}, each with redundant power, cooling, and networking.
+            \item \textbf{Fault isolation} ensures that failures in one AZ do not affect others.
+            \item \textbf{Designed for mission-critical applications} that require continuous availability.
+        \end{itemize}
+        \item \emph{How they work?}
+        \begin{itemize}
+            \item \textbf{Application-level synchronous replication} occurs across multiple AZs, \textbf{ensuring data consistency}.
+            \item A \textbf{minimum of three AZs} per region is recommended for quorum-based decision-making.
+        \end{itemize}
+        \item \emph{Example Scenarios}
+        \begin{itemize}
+            \item Customer 1 deploys services in a single AZ, risking downtime if the AZ fails.
+            \item Customer 2 uses multi-AZ deployment, ensuring failover in case of failure.
+            \item Customer 3 distributes workloads across multiple AZs, achieving full redundancy.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+With the rise of low-latency applications, modern cloud providers go beyond central data centers by deploying \definition{Edge Locations}. They are \textbf{smaller facilities located closer to the user}. They are \textbf{used to cache} frequently accessed data and accelerate content delivery. Commonly used in content delivery networks (CDNs) such as Cloudflare, AWS CloudFront, and Akamai.
+
+\begin{examplebox}[: Edge Locations]
+    \begin{itemize}
+        \item Streaming services (Netflix, YouTube): Caching popular videos at Edge Locations reduces buffering.
+        \item Cloud gaming (NVIDIA GeForce Now, Xbox Cloud Gaming): Minimizing latency for real-time responsiveness.
+        \item IoT applications: Autonomous cars and smart cities require ultra-fast data processing near the source.
+    \end{itemize}
+\end{examplebox}
 
 \newpage
 

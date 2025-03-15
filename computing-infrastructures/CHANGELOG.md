@@ -9,6 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v1.2.0](#v120)
 - [v1.1.0](#v110)
 - [v1.0.0](#v100)
 - [v0.4.0](#v040)
@@ -18,14 +19,20 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
-### v1.1.0
+### v1.2.0
 
-- change section 1 to `Data Center and Computing Infrastructure`
-- refactor `Overview of Computing Infrastructures`
 - refactor `The Datacenter as a Computer`
 - refactor `Warehouse-Scale Computers`
 - refactor `Multiple Data Centers`
 - refactor `Warehouse-Scale Computing / Data Centers Availability` to `Availability in WSCs and DCs`
+- refactor `Architectural overview of Warehouse-Scale Computing` to `Architectural Overview of WSCs`
+
+--------------------
+
+### v1.1.0
+
+- change section 1 to `Data Center and Computing Infrastructure`
+- refactor `Overview of Computing Infrastructures`
 
 --------------------
 

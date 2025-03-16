@@ -1,0 +1,143 @@
+\subsection{OpenFlow}
+
+\definition{OpenFlow} is the \textbf{first and most widely adopted protocol} used in Software-Defined Networking (SDN) to \textbf{enable communication} between the \textbf{SDN Controller} (control plane) and the \textbf{data plane devices} (e.g., switches, routers, they are the forwarding engine). It allows the controller to \textbf{program flow tables} in the switches and \textbf{control how packets are forwarded}, enabling centralized management of traffic.
+
+\highspace
+In other words, OpenFlow is the practical implementation of SDN, standardizing how controllers manage packet forwarding.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How OpenFlow works}}
+\end{flushleft}
+Each \textbf{OpenFlow switch} contains:
+\begin{enumerate}
+    \item \textbf{Flow Table}: Contains rules in the form of $Match \rightarrow Action$ pairs.
+    \item \textbf{Communication Interface}: Connects to the SDN controller via the OpenFlow protocol.
+    \item \textbf{Stats Module}: Collects statistics about packet flows.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: Flow Rules]
+    \begin{enumerate}
+        \item If $Header = p \Rightarrow$ send to port 5.
+        \item If $Header = q \Rightarrow$ modify header to $r$, then send to ports 6 and 7.
+        \item If $Header = p \Rightarrow$ send packet to the controller.
+    \end{enumerate}
+\end{examplebox}
+
+\highspace
+\textbf{Flow table operation}:
+\begin{enumerate}
+    \item Packet arrives at the switch.
+    \item Switch checks for a \textbf{matching rule} in its flow table.
+    \item If matched $\rightarrow$ \textbf{apply action} (e.g., forward, modify, drop).
+    \item If no match $\rightarrow$ \textbf{send packet header to controller} for instructions.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: OpenFlow]
+    \begin{enumerate}
+        \item New packet arrives at switch.
+        \item Match?
+        \begin{itemize}
+            \item Yes $\rightarrow$ forward according to rule.
+            \item No $\rightarrow$ forward header to controller.
+        \end{itemize}
+        \item Controller analyzes packet and installs a new rule in switch.
+        \item Next packets of same type $\rightarrow$ directly processed by switch using newly installed rule.
+    \end{enumerate}
+\end{examplebox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.6\textwidth]{img/openflow.pdf}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{list-ul} \textbf{Actions in OpenFlow}}
+\end{flushleft}
+OpenFlow supports many types of actions, such as:
+\begin{itemize}
+    \item \textbf{Forwarding} to one or multiple ports.
+    \item \textbf{Dropping packets}.
+    \item \textbf{Modifying headers} (e.g., VLAN tags, IP addresses).
+    \item \textbf{Sending packets to controller}.
+    \item \textbf{Statistics collection} for flow monitoring.
+\end{itemize}
+This \textbf{flexibility} allows SDN to implement advanced functions like load balancing, traffic shaping, and security filtering without specialized hardware.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Reactive vs. Proactive Flow Rules}}
+\end{flushleft}
+In OpenFlow, the \textbf{controller installs flow rules} into switches to determine how packets are processed. There are \textbf{two main modes} of operation for rule installation: Reactive and Proactive. These \textbf{modes define when and how flow entries are populated in the flow tables} of switches.
+\begin{itemize}
+    \item \definition{Reactive Mode}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{How it works?}}
+        \begin{enumerate}
+            \item When a \textbf{new flow} (a new type of packet) arrives at a switch, and \textbf{no rule matches} it, the \textbf{packet header is sent to the controller}.
+            \item The \textbf{controller analyzes the packet} and \textbf{decides what rule} should be installed in the switch to handle it.
+            \item After the controller sends back a rule, the switch installs it and \textbf{forwards the packet} accordingly.
+        \end{enumerate}
+        \item[\textcolor{Green3}{\faIcon{list-ul}}] \textcolor{Green3}{\textbf{Key Characteristics}}
+        \begin{itemize}
+            \item \textbf{Efficient use of flow tables} - Only rules for \hl{active flows} are installed.
+            \item \textbf{Every new flow} incurs \textbf{small setup time} (controller interaction delay).
+            \item \textbf{Switch depends on the controller} for flow rule installation.
+            \item If the \textbf{controller connection is lost}, the switch has \textbf{limited utility} for new flows.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item \textbf{Dynamic} and \textbf{adaptive} to real-time network traffic.
+            \item \textbf{Minimizes unused flow entries}.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Adds \textbf{latency} for the \textbf{first packet} of each flow.
+            \item \textbf{High control plane load} in environments with many short flows.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{Proactive Mode}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{How it works?}}
+        \begin{enumerate}
+            \item The \textbf{controller pre-installs flow rules} in the switches before any packet arrives.
+            \item The switch \textbf{immediately processes packets} using pre-defined rules without contacting the controller.
+        \end{enumerate}
+        \item[\textcolor{Green3}{\faIcon{list-ul}}] \textcolor{Green3}{\textbf{Key Characteristics}}
+        \begin{itemize}
+            \item \textbf{Zero setup delay} for packet processing - packets are forwarded \textbf{immediately}.
+            \item Requires \textbf{aggregated or wildcard rules} to efficiently use flow table space.
+            \item \textbf{Independent of controller connectivity} - continues to operate even if controller is unreachable.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item \textbf{Fast packet forwarding} with \textbf{no initial delay}.
+            \item \textbf{No dependency} on controller for flow rule installation during packet arrival.
+            \item Ideal for \textbf{predictable traffic patterns} or \textbf{mission-critical environments}.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Can \textbf{waste flow table space} if many pre-installed rules are unused.
+            \item Requires \textbf{good planning} of rules; less flexible to dynamic traffic changes.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+In summary, reactive mode is adaptive, but introduces latency and higher controller load; proactive mode is fast and resilient, but requires advance planning of rules.
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item \textbf{OpenFlow} enables the SDN controller to manage \textbf{flow tables} in switches.
+        \item \textbf{Flow rules} define how packets are handled, allowing \textbf{centralized, programmable networking}.
+        \item OpenFlow supports \textbf{fine-grained traffic control} via a wide range of \textbf{match/action rules}.
+        \item Two operation modes:
+        \begin{itemize}
+            \item Reactive (dynamic but with latency).
+            \item Proactive (fast but needs good planning).
+        \end{itemize}
+    \end{itemize}
+\end{takeawaysbox}

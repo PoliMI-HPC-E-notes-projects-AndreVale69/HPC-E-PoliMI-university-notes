@@ -2,8 +2,16 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.2.1](#v021)
 - [v0.1.1](#v011)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.2.1
+
+- add `Single Qubit Gates`
+  - add `Operations on Qubits`
 
 --------------------
 

@@ -15,6 +15,7 @@
   - add `Quantum Logic Gates Overview`
   - add `Main Single-Qubit Gates`
     - add `Identity Gate (I)`
+    - add `Pauli-X (NOT) Gate`
 
 --------------------
 

@@ -13,6 +13,8 @@
 - add `Single Qubit Gates`
   - add `Operations on Qubits`
   - add `Quantum Logic Gates Overview`
+  - add `Main Single-Qubit Gates`
+    - add `Identity Gate (I)`
 
 --------------------
 

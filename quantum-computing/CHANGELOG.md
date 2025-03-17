@@ -18,6 +18,7 @@
     - add `Pauli-X (NOT) Gate`
     - add `Pauli-Z (Phase Flip) Gate`
     - add `Pauli-Y Gate`
+    - add `Phase Gate (S)`
 
 --------------------
 

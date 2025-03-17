@@ -16,6 +16,8 @@
   - add `Main Single-Qubit Gates`
     - add `Identity Gate (I)`
     - add `Pauli-X (NOT) Gate`
+    - add `Pauli-Z (Phase Flip) Gate`
+    - add `Pauli-Y Gate`
 
 --------------------
 

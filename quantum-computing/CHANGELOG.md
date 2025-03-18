@@ -20,6 +20,7 @@
     - add `Pauli-Y Gate`
     - add `Phase Gate (S)`
     - add `Hadamard Gate (H)`
+  - add `Properties`
 
 --------------------
 

@@ -1,0 +1,81 @@
+\subsection{Naïve Solutions to Control Hazards}
+
+To manage control hazards in a simple and reliable way, one of the \textbf{earliest approaches} developed was the \textbf{conservative solution} of introducing \textbf{branch stalls}. The idea is straightforward: when a branch instruction enters the pipeline, the \textbf{processor stalls the pipeline until the branch decision is known and the correct next instruction can be safely fetched}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does the conservative solution work?}}
+\end{flushleft}
+In the typical 5-stage pipeline, the Branch Outcome (i.e., whether the branch is taken or not) and the Branch Target Address (BTA) are usually resolved \textbf{at the end of the EX stage}. However, the \textbf{Program Counter} (PC) is actually \textbf{updated at the end of the ME stage}. This introduces a \textbf{delay of multiple cycles} between the branch instruction entering the pipeline and the point when the next instruction can be fetched with certainty.
+
+\highspace
+To avoid fetching an incorrect instruction, the \textcolor{Red2}{\textbf{processor simply pauses instruction fetch}} for \textcolor{Red2}{\textbf{3 clock cycles}} after the branch instruction enters the pipeline. These are called \textbf{stalls}, essentially empty cycles where no new instructions enter the pipeline. Once the PC is correctly updated based on the branch outcome, instruction fetch resumes.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/conservative-solution-control-hazards.pdf}
+    \caption{Example of stalls inserted in the pipeline to read the correct value after a branch condition.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Performance Impact}}
+\end{flushleft}
+It's pretty obvious that if \textbf{each branch introduces a penalty of 3 cycles}, it will \textbf{significantly degrade performance}, especially in programs with frequent branching. Since pipelining aims to maximize instruction throughput, \textbf{this solution sacrifices speed for correctness}. In fact, it is \hl{called conservative because it does not attempt to guess or speculate about the branch outcome}. Instead, it \hl{waits for certainty, favoring reliability over efficiency}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Can optimized evaluation at the ID stage improve performance?}}
+\end{flushleft}
+Although the conservative solution degrades performance, it can be relatively optimized thanks to hardware optimization. Processor designers have introduced \textbf{hardware optimizations} that allow the \textbf{branch outcome (BO)} and the \textbf{branch target address (BTA)} to be \textbf{computed earlier} in the pipeline. Specifically, these computations can be \textbf{moved from the EX stage to the ID stage} (during the decoding phase). This optimization is often referred to as \definition{Early Branch Evaluation}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How Early Branch Evaluation Works}}
+\end{flushleft}
+To achieve this, the \textbf{Instruction Decode (ID)} stage must be \textbf{enhanced with additional hardware logic} that allows it to:
+\begin{enumerate}
+	\item \textbf{Compare register values} (\texttt{rx} and \texttt{ry}) to determine the branch condition.
+	\item \textbf{Compute the BTA} using the \textbf{sign-extended offset} from the instruction and the current PC value.
+	\item \textbf{Update the PC} as soon as BO and BTA are known.
+\end{enumerate}
+By doing this, \textbf{both BO and BTA are available at the end of the ID stage}, allowing the processor to update the PC immediately and fetch the correct instruction in the following cycle.
+
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=\textwidth]{img/early-branch-evaluation-hw.pdf}
+	\caption{Hardware features modifications to allow early branch evaluation.}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+	\textcolor{Red2}{\faIcon{times-circle} \textbf{Hardware Overhead: Complexity vs. Performance}}
+\end{flushleft}
+This optimization requires \textbf{more complex hardware}, as the ID stage now includes:
+\begin{itemize}
+	\item \textbf{ALU logic} for comparison and addition.
+	\item Additional \textbf{multiplexer and control signals} to direct the PC update.
+	\item Expanded \textbf{data paths} for handling the offset and register values.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+	\textcolor{Green3}{\faIcon{check-circle} \textbf{Effect on Pipeline Execution}}
+\end{flushleft}
+Let’s consider an example. In a pipeline using early evaluation:
+\begin{itemize}
+	\item The processor \textbf{only stalls for 1 cycle} after a branch instruction, as opposed to the 3 cycles required by the conservative approach.
+	\item This \textbf{one-cycle stall} allows the processor to fetch the correct instruction \textbf{immediately after the branch} is resolved.
+\end{itemize}
+The following diagram illustrates that the instruction fetch after the branch is delayed by only one stall cycle, resulting in a \textcolor{Green3}{\textbf{smaller performance hit}}.
+
+\begin{figure}[!htp]
+	\centering
+	\includegraphics[width=\textwidth]{img/early-branch-evaluation.pdf}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+	\textcolor{Green3}{\faIcon{history} \textbf{Conclusion}}
+\end{flushleft}
+In summary, by anticipating branch evaluation at the ID stage, the processor reduces the branch penalty to 1 cycle per branch. This is a significant improvement over the 3-cycle stall of conservative stalling. While it introduces \textbf{hardware overhead}, it offers a \textbf{better balance between performance and correctness} and serves as a stepping stone toward even more advanced techniques, such as branch prediction.

@@ -21,6 +21,7 @@
     - add `Phase Gate (S)`
     - add `Hadamard Gate (H)`
   - add `Properties`
+  - add `When Does a Gate Create Superposition?`
 
 --------------------
 

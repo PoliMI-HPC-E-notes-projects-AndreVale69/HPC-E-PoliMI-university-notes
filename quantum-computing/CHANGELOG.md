@@ -24,6 +24,7 @@
   - add `When Does a Gate Create Superposition?`
   - add `Single-Qubit Quantum Circuits`
   - add `Outer Product of Kets`
+  - add `Measurement`
 
 --------------------
 

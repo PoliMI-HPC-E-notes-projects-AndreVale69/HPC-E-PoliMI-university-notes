@@ -1,0 +1,51 @@
+\section{Control Hazards and Branch Prediction}
+
+\subsection{Conditional Branch Instructions}
+
+In pipelined processor architectures, control flow is not always linear, and \hl{decisions about the next instruction to execute are often dependent on certain conditions}. This introduces the necessity for \textbf{conditional branch instructions}, particularly relevant in RISC-V architectures, where typical instructions include:
+\begin{itemize}
+    \item \texttt{beq} (branch if equal): \texttt{beq rs1, rs2, L1}
+
+    Transfers execution to the label \texttt{L1} if the contents of registers \texttt{rs1} and \texttt{rs2} are equal.
+
+    \item \texttt{bne} (branch if not equal): \texttt{bne rs1, rs2, L1}
+    
+    Transfers control to \texttt{L1} if \texttt{rs1} and \texttt{rs2} hold different values.
+\end{itemize}
+These branch instructions are essential in implementing control structures such as loops, conditionals (\texttt{if}/\texttt{else}), and function returns.
+
+\highspace
+At the hardware level, the \definition{Branch Target Address (BTA)} plays a central role. This \textbf{address} represents \textbf{where the processor should continue execution if the branch is taken} (i.e., if the condition specified by the branch instruction evaluates as true). When the condition is satisfied, the processor \textbf{updates the Program Counter (PC)} with the BTA, thus redirecting the flow of instruction fetch.
+
+\highspace
+Conversely, if the \textbf{condition is not satisfied}, the \textbf{branch is not taken}, and the processor continues \textbf{sequential execution}. In RISC-V, since instructions are generally 32 bits (4 bytes) long, the next instruction is fetched from \texttt{PC + 4}.
+
+\highspace
+Understanding whether a branch is taken or not is crucial for instruction fetch in pipelined architectures. \textbf{Mispredicting} this can introduce \textbf{performance penalties}, which are addressed in detail through the study of control hazards and branch prediction techniques in later sections.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Execution of Branches in Pipelined Architectures}}
+\end{flushleft}
+When executing a \textbf{branch instruction}, such as \texttt{beq rx, ry, L1}, the processor must \textbf{compare two registers} (\texttt{rx}, \texttt{ry}) to determine whether the branch should be \textbf{taken} (i.e., jump to label \texttt{L1}) or \textbf{not taken} (continue sequentially). In \textbf{RISC-V}, the \definition{Branch Outcome} (Taken/Not Taken) and \textbf{Branch Target Address (BTA)} are \textbf{calculated during the EX stage} (when the ALU performs arithmetic and logical operations):
+\begin{itemize}
+    \item EX Stage:
+    \begin{itemize}
+        \item Compare \texttt{rx} and \texttt{ry} using the ALU.
+        \item Compute \texttt{PC + offset} to obtain the BTA.
+    \end{itemize}
+
+    \item ME Stage:
+    \begin{itemize}
+        \item Based on the comparison, update the PC to either \texttt{PC + 4} (if not taken) or \texttt{PC + offset} (if taken).
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\textbf{MIPS} follows a similar structure but emphasizes that \textbf{branch decisions are finalized at the end of the EX stage}, with the \textbf{PC update happening at the ME stage}. This introduces a \textbf{delay in resolving the branch}, which becomes critical for understanding control hazards.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Implication for IF}}
+\end{flushleft}
+Since new instructions are fetched every clock cycle, the \hl{processor needs to decide early which instruction to fetch next}. However, with branches, this decision is \textbf{not immediately clear because the branch condition hasn't yet been evaluated}. The Program Counter (PC) \textbf{cannot be updated correctly until the branch outcome is known}, leading to potential pipeline stalls or incorrect instruction fetches.

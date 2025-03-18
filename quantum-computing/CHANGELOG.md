@@ -22,6 +22,7 @@
     - add `Hadamard Gate (H)`
   - add `Properties`
   - add `When Does a Gate Create Superposition?`
+  - add `Single-Qubit Quantum Circuits`
 
 --------------------
 

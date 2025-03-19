@@ -17,6 +17,7 @@
   - add `Intro to Branch Prediction`
   - add `Static Branch Prediction`
     - add `Branch Always Not Taken`
+    - add `Branch Always Taken`
 
 --------------------
 

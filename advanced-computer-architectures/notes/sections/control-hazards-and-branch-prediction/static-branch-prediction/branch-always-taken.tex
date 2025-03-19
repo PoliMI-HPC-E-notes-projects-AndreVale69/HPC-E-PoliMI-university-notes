@@ -1,0 +1,90 @@
+\subsubsection{Branch Always Taken}
+
+This approach represents the dual case of the previous technique (page \pageref{subsubsection: Branch Always Not Taken}): it assumes that \textbf{every branch will be taken}, meaning the \textbf{control flow will jump to the branch target address} rather than continue sequentially. This method is especially \textbf{useful for backward branches}, which occur in \textbf{loops} such as \texttt{for}, \texttt{while}, and \texttt{do-while}, since these branches are typically \textbf{taken repeatedly during loop iterations}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Implementation Challenge}}
+\end{flushleft}
+Unlike the not-taken strategy, where the processor simply continues to \texttt{PC + 4}, the \textbf{taken strategy requires knowledge of the Branch Target Address (BTA)} at the Instruction Fetch (IF) stage. This is \hl{non-trivial} because:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{question-circle}}] The \textbf{BTA depends on the branch instruction's target}, which typically requires decoding.
+    \item[\textcolor{Green3}{\faIcon{check}}] To solve this, we introduce a \definition{Branch Target Buffer (BTB)}, a special hardware structure.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is BTB and why do we need it?}}
+\end{flushleft}
+The \definition{Branch Target Buffer (BTB)} is a \textbf{specialized cache} in the processor \textbf{designed to predict the target address} of a taken branch instruction \textbf{before the branch condition is actually resolved}. 
+
+\highspace
+In Branch Always Taken, we assume that the program will jump to a new address (the Branch Target Address, BTA). However, this \textbf{BTA is not immediately known during Instruction Fetch (IF)} because it typically requires decoding the branch instruction (Instruction Decode, ID). \hl{To avoid delays}, the \textbf{BTB remembers past branch target addresses}, allowing the processor to quickly predict where to jump when encountering a branch.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does BTB work? Quickest explanation}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{BTB Structure}, it is a kind of lookup table or cache where:
+    \begin{itemize}
+        \item \texttt{Key}: \textbf{address} of the \textbf{branch instruction} (the PC value where the branch resides)
+        \item \texttt{Value}: Predicted Target Address (PTA), i.e., where to jump if the branch is taken
+    \end{itemize}
+
+    \item \important{BTB Lookup}: when fetching a branch instruction, the processor simultaneously queries the BTB via the branch PC.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] If a \textcolor{Green3}{\textbf{match is found}} (\emph{cache hit}), the \textbf{BTB immediately provides the Predicted Target Address} (PTA), and the \textbf{processor starts fetching from that address}, before knowing if the branch is actually taken.
+        \item[\textcolor{Red2}{\faIcon{times}}] If a \textcolor{Red2}{\textbf{no match}} (\emph{cache miss}), the processor might \textbf{default to sequential execution} (\texttt{PC + 4}) or \textbf{wait for the BTA} to be calculated, which causes delay.
+    \end{itemize}
+\end{itemize}
+
+\begin{examplebox}[: BTB and Branch Always Taken technique]
+    Let's say:
+    \begin{itemize}
+        \item A loop branch at address \texttt{0x100} typically jumps to \texttt{0x80}.
+        \item The BTB stores: \texttt{0x100} $\rightarrow$ \texttt{0x80} (key $\rightarrow$ value).
+    \end{itemize}
+    When the branch at \texttt{0x100} is fetched again:
+    \begin{itemize}
+        \item The BTB predicts the next instruction will be at \texttt{0x80} (taken).
+        \item The processor \textbf{starts fetching from \texttt{0x80}}, \textbf{without waiting} to evaluate the branch condition.
+    \end{itemize}
+    If it turns out the \textbf{branch was not taken}, the processor \textbf{flushes the incorrect fetch} from \texttt{0x80} and resumes at \texttt{0x104}.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Correct Prediction Path}}
+\end{flushleft}
+If the \textbf{branch} is indeed \textbf{taken}, and the \textbf{BTB correctly supplies the BTA}, the processor proceeds \textbf{without penalty}. \textbf{Execution continues from the target address} just as expected.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Misprediction Case}}
+\end{flushleft}
+If the \textbf{actual outcome} is \textbf{not taken}, the \textbf{prediction is incorrect}:
+\begin{enumerate}
+    \item The Instruction Fetched (IF) from the \textbf{target address} is \textbf{flushed} (\texttt{NOP}).
+    \item The \textbf{processor must fetch the sequential instruction} at \texttt{PC + 4}.
+    \item \textcolor{Red2}{\textbf{One-cycle penalty}} incurred, similar to the not-taken misprediction case.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{When is this technique effective?}}
+\end{flushleft}
+This method is \textbf{well-suited for loop constructs}, where \textbf{branches typically go backward} and are \textbf{taken with high probability}. For example:
+\begin{itemize}
+    \item In a \texttt{do-while} loop, the branch is taken almost every time except the last iteration.
+    \item Conversely, in forward branches like \texttt{if-then-else}, the branch is less likely to be taken, making this technique less effective.
+\end{itemize}
+This underscores that \textbf{branch direction} (forward or backward) \textbf{can influence the effectiveness of prediction strategies}.
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/branch-always-taken.pdf}
+    \caption{Branch Always Taken techniques failed and the processor must flush instruction \texttt{i+1} and restart execution from the BTA.}
+\end{figure}

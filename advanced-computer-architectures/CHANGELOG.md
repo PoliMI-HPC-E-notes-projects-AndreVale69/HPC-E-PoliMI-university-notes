@@ -19,6 +19,7 @@
     - add `Branch Always Not Taken`
     - add `Branch Always Taken`
     - add `Backward Taken Forward Not Taken (BTFNT)`
+    - add `Profile-Driven Prediction`
 
 --------------------
 

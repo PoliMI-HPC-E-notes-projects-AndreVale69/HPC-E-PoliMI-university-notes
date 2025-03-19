@@ -22,6 +22,7 @@
     - add `Profile-Driven Prediction`
     - add `Delayed Branch`
       - add `From Before`
+      - add `From Target`
 
 --------------------
 

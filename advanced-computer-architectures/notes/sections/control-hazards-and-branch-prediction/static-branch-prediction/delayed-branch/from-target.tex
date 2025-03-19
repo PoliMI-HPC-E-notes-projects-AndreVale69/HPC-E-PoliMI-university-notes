@@ -1,0 +1,86 @@
+\paragraph{From Target}\label{paragraph: From Target}
+
+In the \definitionWithSpecificIndex{``From Target''}{Delayed Branch Scheduling: From Target}{} strategy, the \textbf{compiler schedules an instruction from the \emph{branch target} into the delay slot}. This technique is \textbf{useful when the branch is likely to be taken}, as the delay slot instruction corresponds to what would naturally execute next in that control path.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Key Characteristics}}
+\end{flushleft}
+\begin{itemize}
+    \item The \textbf{delay slot contains an instruction from the branch target path}.
+    \item This strategy is typically \textbf{used when the branch is taken with high probability}, such as in \hl{loops}.
+    \item \important{Challenge}: If the branch is \textbf{not taken}, this \textbf{instruction may be invalid} and might have \textbf{to be flushed} (if mispredicted), \textbf{or it must be safe to execute even if not needed}.
+\end{itemize}
+
+\begin{examplebox}[: From Target]
+    Original code:
+    \begin{lstlisting}[language=riscv]
+sub x4, x5, x6      # target instruction
+add x1, x2, x3      # branch instruction
+if x1 == 0 then     # branch condition
+[delay slot, stall]\end{lstlisting}
+    After scheduling:
+    \begin{lstlisting}[language=riscv]
+add x1, x2, x3      # if branch taken, go here!
+if x1 == 0 then     # branch condition
+sub x4, x5, x6      # delay slot filled\end{lstlisting}
+    Here, the \texttt{sub} instruction from the branch target is moved into the delay slot. If the branch is taken, execution proceeds smoothly. If not, we either flush \texttt{sub} or ensure it causes no side effects.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Pipeline Behavior}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Branch Taken}
+    \begin{itemize}
+        \item The \textbf{delay slot} instruction is \textbf{part of the intended control flow}.
+        \item Execution continues with the \textbf{next instruction in the target path}.
+    \end{itemize}
+    
+    \item \important{Branch Not Taken}
+    \begin{itemize}
+        \item Delay slot \textbf{may need to be flushed} (as it's not part of the sequential path), or must be \textbf{safe to execute anyway} (\hl{no side effects or wasted computation}).
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Instruction Duplication}}
+\end{flushleft}
+When we \textbf{move an instruction from the branch target into the delay slot}, we \textbf{still need to keep it at the target location} because \textbf{other parts of the code might also jump there}.
+
+\highspace
+Let's take an example to illustrate the problem. Let's say:
+\begin{itemize}
+    \item We have \textbf{two branches that can jump} to label \texttt{L1}.
+    \item \texttt{Instruction X} is the first instruction at \texttt{L1}.
+    \item We move \texttt{Instruction X} into the delay slot of one branch, \textbf{but the other branch still needs to find instruction} \texttt{X} \textbf{at} \texttt{L1}.
+\end{itemize}
+Here's what happens:
+\begin{lstlisting}[language=riscv, mathescape=true]
+Branch A $\rightarrow$ L1
+Branch B $\rightarrow$ L1
+
+L1:
+    Instruction X
+    Instruction Y
+\end{lstlisting}
+If \texttt{Branch A} decides to move \texttt{Instruction X} inside its delay slot, \texttt{Branch B} cannot see \texttt{Instruction X} anymore! Therefore, we have to keep \texttt{Instruction X} in two places:
+\begin{enumerate}
+    \item In \texttt{Branch A}'s delay slot
+    \item At \texttt{Label L1} for \texttt{Branch B}
+\end{enumerate}
+\textcolor{Red2}{\emph{\textbf{Okay, and that should be a problem?}}} For three reasons:
+\begin{itemize}
+    \item We've \textbf{duplicated} \texttt{Instruction X}.
+    \item \textbf{More code} $=$ \textbf{more memory} $=$ \textbf{larger executable}.
+    \item \textbf{Harder to maintain}: if we change \texttt{Instruction X} in one place, we might \textbf{forget to update the duplicate}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Best Use Case}}
+\end{flushleft}
+\textbf{Loops}, particularly \texttt{do-while} constructs, where \textbf{backward branches are taken most of the time}.

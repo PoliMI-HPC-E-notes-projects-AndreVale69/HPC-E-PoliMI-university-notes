@@ -1,0 +1,38 @@
+\paragraph{From After}\label{paragraph: From After}
+
+The ``From After'' scheduling technique is \textbf{rarely used because it is too complex to be practical}. However, in the \definitionWithSpecificIndex{``From After''}{Delayed Branch Scheduling: From After}{} strategy, the \textbf{instruction} scheduled in the \textbf{branch delay slot} is \textbf{taken} from a later point the the code, specifically, from \textbf{after the fall-through instruction}.
+
+\highspace
+Let's number the instructions to make it easy:
+\begin{lstlisting}[language=riscv, mathescape=true]
+Instr A     # Before branch
+Branch      # Branch condition
+Instr B     # PC + 4 (fall-through)
+Instr C     # After fall-through $\leftarrow \text{from after}$
+Instr D
+\end{lstlisting}
+In ``from after'', the compiler \textbf{moves \texttt{Instr C} into the delay slot}, even though \texttt{Instr B (PC + 4)} should come right after the branch in normal execution (if not taken).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is this hard?}}
+\end{flushleft}
+To safely move \texttt{Instr C} up into the delay slot, the \textbf{compiler must guarantee}:
+\begin{enumerate}
+    \item \important{No Data Dependency Conflicts}
+    \begin{itemize}
+        \item \texttt{Instr C} must not use or modify data that depends on \texttt{Instr A}, \texttt{B}, or the branch outcome. For example, if \texttt{Instr C} uses a value computed in \texttt{Instr B}, moving it before \texttt{Instr B} causes incorrect results.
+    \end{itemize}
+    
+    \item \important{Safe if Executed Early}
+    \begin{itemize}
+        \item Even if the branch is taken and \texttt{Instr C} should never execute, now it always executes in the delay slot.
+        \item So \texttt{Instr C} must be safe to execute even when it's not needed.
+        \item We call this a \emph{speculatively safe instruction}.
+    \end{itemize}
+    
+    \item \important{No Control Flow Violation}
+    \begin{itemize}
+        \item If \texttt{Instr C} should only run after a condition is met, moving it earlier might break program logic.
+    \end{itemize}
+\end{enumerate}

@@ -24,6 +24,7 @@
       - add `From Before`
       - add `From Target`
       - add `From Fall-Through`
+      - add `From After`
 
 --------------------
 

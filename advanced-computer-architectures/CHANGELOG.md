@@ -21,6 +21,7 @@
     - add `Backward Taken Forward Not Taken (BTFNT)`
     - add `Profile-Driven Prediction`
     - add `Delayed Branch`
+      - add `From Before`
 
 --------------------
 

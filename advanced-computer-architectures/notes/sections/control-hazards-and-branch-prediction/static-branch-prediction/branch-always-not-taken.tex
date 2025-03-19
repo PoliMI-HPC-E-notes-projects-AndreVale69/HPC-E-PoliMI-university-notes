@@ -1,0 +1,44 @@
+\subsubsection{Branch Always Not Taken}
+
+The \definition{Branch Always Not Taken} strategy is the simplest form of static branch prediction. It operates under the \textbf{assumption that the branch condition will never be satisfied}, i.e., the control \textbf{flow of the program will continue sequentially as if the branch is not taken}. As a result, instructions immediately following the branch in program order are fetched and executed \textbf{without any need to determine or access the Branch Target Address (BTA)}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{When is Branch Always Not Taken effective?}}
+\end{flushleft}
+This approach is especially effective for \textbf{certain control flow patterns}, such as \texttt{if-then-else} structures where the \texttt{then} clause is more likely to be executed than the \texttt{else} clause. For example:
+\begin{lstlisting}[language=c]
+z = x + y;
+if (z > 0)
+    w = x;
+else
+    w = y;\end{lstlisting}
+\textbf{Assuming \texttt{z} is typically positive}, the branch is not taken because execution proceeds sequentially to \texttt{w = x}. This makes predict-not-taken a suitable and effective default strategy for such cases.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Implementation Details}}
+\end{flushleft}
+The prediction is made \textbf{at the end of the Instruction Fetch (IF) stage, without calculating or knowing the BTA} (since the branch is always not taken and the next instruction to execute is the \texttt{PC + 4}, as always). This makes the approach \textcolor{Green3}{\textbf{lightweight and efficient}}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Misprediction Case}}
+\end{flushleft}
+If the actual \textbf{branch outcome} (BO) evaluated during the Instruction Decode (ID) stage is \textbf{not taken}, then the \textbf{prediction is correct}, and \textbf{no penalty cycles} are incurred. The pipeline proceeds as planned.
+
+\highspace
+Otherwise, if the actual \textbf{branch outcome} (BO) turns out to be \textbf{taken}, then the \textbf{prediction was incorrect}, leading to a \textbf{misprediction penalty}. The processor must:
+\begin{enumerate}
+    \item \textbf{Flush} the fetched instruction(s) after the branch (turned into \texttt{NOP}s).
+    \item \textbf{Fetch the instruction} at the Branch Target Address (\textbf{BTA}) and \textbf{restart execution from there}.
+\end{enumerate}
+This results in a \textcolor{Red2}{\textbf{one-cycle branch penalty}}, which is minimal but still affects performance.
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/branch-always-not-taken.pdf}
+    \caption{Branch Always Not Taken techniques failed and the processor must flush instruction \texttt{i+1} and restart execution from the BTA.}
+\end{figure}

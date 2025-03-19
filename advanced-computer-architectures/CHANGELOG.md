@@ -16,6 +16,7 @@
   - add `Naïve Solutions to Control Hazards`
   - add `Intro to Branch Prediction`
   - add `Static Branch Prediction`
+    - add `Branch Always Not Taken`
 
 --------------------
 

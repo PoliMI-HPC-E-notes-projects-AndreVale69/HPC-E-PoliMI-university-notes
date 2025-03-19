@@ -13,6 +13,8 @@
 - add `Control Hazards and Branch Prediction`
   - add `Conditional Branch Instructions`
   - add `Control Hazards`
+  - add `Naïve Solutions to Control Hazards`
+  - add `Intro to Branch Prediction`
 
 --------------------
 

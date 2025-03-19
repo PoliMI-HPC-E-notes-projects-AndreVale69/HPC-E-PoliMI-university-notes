@@ -1,0 +1,76 @@
+\paragraph{From Fall-Through}\label{paragraph: From Fall-Through}
+
+In the \definitionWithSpecificIndex{``From Fall-Through''}{Delayed Branch Scheduling: From Fall-Through}{} strategy, the \textbf{compiler selects an instruction that comes after the branch} in program order (i.e., from the fall-through path) and \textbf{moves it into the branch delay slot}. This method is \textbf{suitable when the branch is unlikely to be taken}, as execution will naturally continue sequentially.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Key Characteristics}}
+\end{flushleft}
+\begin{itemize}
+    \item The \textbf{fall-through path} is \textbf{taken when the \emph{branch is not taken}}.
+    \item The \textbf{delay slot instruction} comes from this path, meaning it is \textbf{executed anyway if the branch is not taken}.
+    \item If the \textbf{branch is taken}, the delay slot instruction is either:
+    \begin{itemize}
+        \item \textbf{Flushed} (discarded), or
+        \item Must be \textbf{safe to execute} (no side effects), even though it becomes useless work.
+    \end{itemize}
+\end{itemize}
+
+\begin{examplebox}[: From Fall-Through]
+    Original code:
+    \begin{lstlisting}[language=riscv]
+add x1, x2, x3
+if x1 == 0 then     # branch condition
+[delay slot, stall]
+or x7, x8, x9       # execute if branch is not taken
+sub x4, x5, x6      # execute if branch is taken\end{lstlisting}
+    After scheduling:
+    \begin{lstlisting}[language=riscv]
+add x1, x2, x3
+if x1 == 0 then     # branch condition
+or x7, x8, x9       # delay slot filled
+sub x4, x5, x6      # execute if branch is taken\end{lstlisting}
+    Here, \texttt{or x7, x8, x9} is \textbf{moved into the delay slot} from the instruction that would \textbf{normally execute next} if the branch is \textbf{not taken}.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Pipeline Behavior}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Branch Not Taken} (Mist Likely)
+    \begin{itemize}
+        \item \textbf{Delay slot instruction} is correctly \textbf{executed}.
+        \item Execution proceeds sequentially.
+    \end{itemize}
+    
+    \item \important{Branch Taken}
+    \begin{itemize}
+        \item \textbf{Delay slot instruction} is \textbf{not needed}.
+        \item It must be \textbf{flushed}, or \textbf{safe to execute} even though its result is discarded.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{When is this strategy used?}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item When the \textbf{branch is not likely to be taken}.
+    \item \textbf{Common in forward branches}, such as \texttt{if-then-else}, where \texttt{else} is rare.
+\end{itemize}
+
+\begin{table}[!htp]
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \centering
+        \begin{tabular}{@{} l l l @{}}
+            \toprule
+            Strategy & Delay Slot Instruction & Executed when branch \\
+            \midrule
+            From Fall-Through & Instruction at \texttt{PC + 4} (next in sequence)  & \textbf{Not Taken} (common case) \\
+            From Target       & Instruction at BTA (label target)                  & \textbf{Taken} (common case)     \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Comparison between ``From Target'' and ``From Fall-Through''.}
+\end{table}

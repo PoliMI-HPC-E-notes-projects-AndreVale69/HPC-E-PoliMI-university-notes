@@ -23,6 +23,7 @@
     - add `Delayed Branch`
       - add `From Before`
       - add `From Target`
+      - add `From Fall-Through`
 
 --------------------
 

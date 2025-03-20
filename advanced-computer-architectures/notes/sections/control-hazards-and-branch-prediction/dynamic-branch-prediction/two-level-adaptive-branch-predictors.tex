@@ -1,0 +1,90 @@
+\subsubsection{Two-Level Adaptive Branch Predictors}
+
+\definition{Two-Level Adaptive Branch Predictors} are advanced techniques that aim to provide highly accurate and adaptive predictions by \textbf{combining history tracking with pattern-based decision-making}. Unlike simpler predictors that use only the outcome of the last branch or last few outcomes of a single branch, these predictors \textbf{consider patterns over time} and \textbf{across different branches} to improve prediction accuracy.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Core Concept}}
+\end{flushleft}
+The two-level approach consists of:
+\begin{enumerate}
+    \item A \textbf{history-tracking component}: to record the outcomes of recent branches.
+    \item A \textbf{pattern-based prediction component}: to use that history to make accurate predictions.
+\end{enumerate}
+This \textbf{design allows the processor to learn and adapt to recurring patterns in branch behavior}, which is particularly useful for complex control flows and loops.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Structure}}
+\end{flushleft}
+\begin{enumerate}
+    \item \definition{Branch History Register (BHR)}
+    \begin{itemize}
+        \item A \textbf{$k$-bit shift register} that records the outcomes of the $k$ most recent branches (e.g., T, NT, NT, T).
+        \item The BHR can be either:
+        \begin{itemize}
+            \item \textbf{Global}: one register for all branches.
+            \item \textbf{Local}: separate register for each branch.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{Pattern History Table (PHT)}
+    \begin{itemize}
+        \item A table of \textbf{2-bit saturating counters} (like in 2-bit BHT).
+        \item \textbf{Indexed} using the \textbf{content of the BHR}.
+        \item Each \textbf{entry} provides a \textbf{prediction} (Taken/Not Taken) and adapts over time.
+    \end{itemize}
+
+    \item \textbf{Prediction Process}
+    \begin{enumerate}
+        \item Use the BHR value to index the PHT.
+        \item Read the 2-bit counter at that entry.
+        \item Predict Taken if in a Taken state, otherwise Not Taken.
+        \item After the actual branch outcome:
+        \begin{enumerate}
+            \item Update the 2-bit counter accordingly.
+            \item Shift the actual outcome into the BHR.
+        \end{enumerate}
+    \end{enumerate}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Global Adaptive Predictor (GA)}}
+\end{flushleft}
+The \definitionWithSpecificIndex{Global Adaptive Predictor (GA)}{Global Adaptive (GA)}{} is a \textbf{specific form} of the two-level predictor where \textbf{global history (BHR) is used to index the PHT}.
+\begin{itemize}
+    \item The \textbf{BHR is shared across all branches}, and thus captures the global correlation among different branches.
+    \item The \textbf{PHT is local} in the sense that it provides per-entry adaptation via 2-bit counters.
+\end{itemize}
+The main \textcolor{Green3}{\textbf{advantage}} is that by correlating the current branch with the behavior of previous branches (stored in the BHR), the \textbf{predictor can detect global patterns and make more informed predictions}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{GShare Predictor}}
+\end{flushleft}
+\definition{GShare} is a \textbf{variation of the Global Adaptive Predictor}, designed to \textbf{improve the indexing of the PHT and reduce aliasing} (i.e., different branches mapping to the same PHT entry).
+
+\highspace
+Instead of directly using BHR to index the PHT, \textbf{GShare performs an XOR} between:
+\begin{itemize}
+    \item The \textbf{BHR} (global history of recent outcomes).
+    \item The \textbf{low-order bits of the program counter (PC)} of the current branch.
+\end{itemize}
+The XOR operation \textbf{mixes the global history with branch-specific information}, making it more likely that \textbf{different branches will access different entries} in the PHT, thus \textbf{reducing prediction interference} (aliasing). This allows GShare to \textcolor{Green3}{\textbf{reduce aliasing and have a global and local view}}.
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l | l | p{12em} @{}}
+            \toprule
+            \textbf{Predictor} & \textbf{History used} & \textbf{Indexing to PHT} & \textbf{Benefit} \\
+            \midrule
+            Global Adaptive (GA) & Global BHR               & BHR value directly indexes PHT & Simple, effective for globally correlated branches \\ [.5em]
+            GShare               & Global BHR \texttt{+} PC & BHR XOR PC bits index PHT      & Reduces aliasing, captures global \texttt{+} local context \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Summary of Global Adaptive and GShare.}
+\end{table}

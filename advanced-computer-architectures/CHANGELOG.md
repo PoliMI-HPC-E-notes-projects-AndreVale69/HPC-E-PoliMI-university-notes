@@ -32,6 +32,7 @@
     - add `Correlating Branch Predictors`
       - add `(1,1) Correlating Predictors`
       - add `(2,2) Correlating Predictors`
+    - add `Two-Level Adaptive Branch Predictors`
 
 --------------------
 

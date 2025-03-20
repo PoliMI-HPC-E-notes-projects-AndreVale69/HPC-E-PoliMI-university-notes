@@ -47,9 +47,9 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2023/2024<br>2024/2025</td>
+        <td>2024/2025</td>
         <td>Applied Statistics</td>
-        <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=4620" target="_blank">Secchi Piercesare</a><br><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=395778&aa=2024&n_docente=Beraha%20Mario&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Beraha Mario</a></td>
+        <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=395778&aa=2024&n_docente=Beraha%20Mario&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Beraha Mario</a></td>
         <td><ul>
             <li><a href="applied-statistics">Course Details</a></li>
             <li><a href="applied-statistics/notes/applied-statistics.pdf">PDF</a></li>

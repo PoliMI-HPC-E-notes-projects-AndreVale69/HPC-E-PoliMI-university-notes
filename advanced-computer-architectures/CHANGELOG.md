@@ -28,6 +28,7 @@
   - add `Dynamic Branch Prediction`
     - add `1-bit Branch History Table`
     - add `2-bit Branch History Table`
+    - add `Branch Target Buffer`
 
 --------------------
 

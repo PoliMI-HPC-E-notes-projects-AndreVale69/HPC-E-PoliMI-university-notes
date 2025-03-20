@@ -1,0 +1,75 @@
+\subsubsection{Branch Target Buffer}
+
+The \definition{Branch Target Buffer (BTB)} is a \textbf{specialized cache used to store target address of taken branches}. The stored Predicted Target Address (PTA) allows the processor to fetch instructions from the target without delay when a branch is predicted taken. The PTA is typically stored in PC-relative format (offset from current PC).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Core Idea}}
+\end{flushleft}
+While the Branch History Table (BHT) predicts \emph{whether} a branch will be taken, the Branch Target Buffer (BTB) \textbf{predicts \emph{where} the program should go if the branch is taken}. The \textbf{BTB stores Predicted Target Addresses} (PTAs) for previously encountered branches and \textbf{enables fast redirection of control flow}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How Is the BTB Structured?}}
+\end{flushleft}
+\begin{itemize}
+    \item The BTB is designed as a \textbf{direct-mapped cache}:
+    \begin{itemize}
+        \item The \textbf{address of the branch instruction is used to index} the BTB.
+        \item \textbf{Tags} are \textbf{used} for associative lookup to \textbf{confirm correctness} (i.e., ensure the indexed entry really belongs to the current branch)
+    \end{itemize}
+    \item Components per \textbf{entry}:
+    \begin{itemize}
+        \item \important{Tags}: Identifies the branch instruction.
+        \item \important{PTA}: The Predicted Target Address.
+        \item Often combined with \textbf{T/NT bits} from a \textbf{Branch History Table} (1-bit or 2-bit) for branch outcome prediction.
+    \end{itemize}
+\end{itemize}
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/btb.pdf}
+    \caption{Branch Target Buffer without Branch Outcome Predictor.}
+\end{figure}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/btb-bht.pdf}
+    \caption{Branch Target Buffer with Branch Outcome Predictor.}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{microchip} \textbf{BTB in the Pipeline}}
+\end{flushleft}
+It is placed in the Instruction Fetch (IF) phase. During fetch:
+\begin{itemize}
+    \item The BTB is queried using the current PC (branch address).
+    \item If \textbf{hit and BHT predicts Taken}, \hl{fetch from PTA}.
+    \item If \textbf{miss or predict Not Taken}, \hl{continue} at \texttt{PC + 4}.
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l | l @{}}
+            \toprule
+            \textbf{Prediction} & \textbf{BTB use} & \textbf{Action} \\
+            \midrule
+            Predict Not Taken         & BTB \textbf{not used}  & Fetch from PC + 4                                       \\ [.5em]
+            Predict Taken (BTB hit)   & BTB \textbf{used}      & Fetch from PTA stored in BTB                            \\ [.5em]
+            Predict Taken (BTB miss)  & BTB \textbf{miss}      & Stall or default to \texttt{PC + 4}, then calculate BTA \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Summary of Behavior.}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textbf{Eliminates delay} from calculating the \textbf{branch target address} manually.
+    \item Enables speculative instruction fetch from correct target, \textbf{improving pipeline efficiency}.
+\end{itemize}

@@ -26,6 +26,7 @@
       - add `From Fall-Through`
       - add `From After`
   - add `Dynamic Branch Prediction`
+    - add `1-bit Branch History Table`
 
 --------------------
 

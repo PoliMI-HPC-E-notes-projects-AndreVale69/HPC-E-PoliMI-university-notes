@@ -1,0 +1,81 @@
+\subsubsection{1-bit Branch History Table}
+
+In general, the \definition{Branch History Table (BHT)}, or \definition{Branch Prediction Buffer}, is a \textbf{dynamic hardware structure} that \textbf{predicts branch outcomes based on recent behavior}. The \hl{simplest version uses 1 bit per branch} to remember whether the branch was \textbf{recently taken or not taken}. For this reason, it is called a \definition{1-bit Branch History Table (1-bit BHT)}. It operates at runtime and uses a \textbf{Final State Machine (FSM) with 1-bit history}:
+\begin{itemize}
+    \item If last outcome was Taken $\Rightarrow$ predict Taken.
+    \item If last outcome was Not Taken $\Rightarrow$ predict Not Taken.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.9\textwidth]{img/fsm-1-bit-bht.pdf}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Each branch} instruction's address (or part of it) \textbf{indexes a table entry}.
+    \item That \textbf{entry holds} a \textbf{single bit} (T/NT) representing the \textbf{last observed outcome}.
+    \item On next encounter:
+    \begin{itemize}
+        \item Use the \textbf{bit to predict the outcome}.
+        \item After actual branch resolution:
+        \begin{itemize}
+            \item \textcolor{Green3}{\textbf{Correct prediction}} $\Rightarrow$ keep bit unchanged
+            \item \textcolor{Red2}{\textbf{Incorrect prediction}} $\Rightarrow$ flip bit
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Indexing the Table}}
+\end{flushleft}
+\begin{itemize}
+    \item Use $k$ lower bits (right side) of the branch's address as the index.
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{No tags}}: \textbf{any branch with the same low-order bits shares the entry (can cause interference)}.
+    \item $2^{k}$ \textbf{entries} total.
+\end{itemize}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/1-bit-bht.pdf}
+    \caption{Visual representation of the 1-bit Branch History Table.}
+\end{figure}
+
+\begin{examplebox}[: Accuracy Issue]
+    Consider a loop that executes 10 iterations. The expected behavior of the branch is:
+    \begin{center}
+        \texttt{T T T T T T T T T NT}
+    \end{center}
+    Where the last is Not Taken because the code must exist from the loop and must continue (and not jump).
+    
+    There are \textbf{two mispredictions}:
+    \begin{itemize}
+        \item \textbf{At the end}: Since iteration 9 is marked as Taken, the 10th iteration is predicted to be Taken, since the BHT contains Taken. This throws a misprediction because the branch result is Not Taken.
+        \item \textbf{On the next time loop starts}: since the last iteration is stored in the BHT as Not Taken, the BHT has to flip the bit on the next time loop starts, and a misprediction occurs.
+    \end{itemize}
+    As a result, with 100\% of 10 iterations, the BHT only catches 8 out of 10 iterations, the accuracy is 80\%.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Shortcomings}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textbf{Flipping prediction after 1 misprediction causes instability}, especially in loops.
+    \item \textbf{Conflict problem}: two different branches with same index overwrite each other's bit.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Partial Solutions}}
+\end{flushleft}
+To \textbf{reduce interference}:
+\begin{itemize}
+    \item Increase table size (more $k$ bits).
+    \item Use hashing to mix address bits better.
+\end{itemize}

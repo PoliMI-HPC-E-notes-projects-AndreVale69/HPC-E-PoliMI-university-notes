@@ -1,0 +1,91 @@
+\paragraph{(2,2) Correlating Predictors}
+
+The correlating predictors with $m=2$ and $n=2$ have the following components:
+\begin{itemize}
+    \item \important{2-bit Global History}: Stores outcomes of the last 2 branches. Forms 4 patterns:
+    \begin{itemize}
+        \item \texttt{00}: both Not Taken.
+        \item \texttt{01}: last branch Taken, penultimate branch Not Taken.
+        \item \texttt{10}: last branch Not Taken, penultimate branch Taken.
+        \item \texttt{11}: both Taken.
+    \end{itemize}
+    \item \important{4 Prediction Tables}: One for each global history pattern ($2^{2} = 4$ BHTs).
+    \item \important{2-bit entries per BHT}: Each BHT uses 2-bit saturating counters for stable predictions.
+    \item \important{Indexing}: Use PC low bits + global history to access an entry in a BHT.
+\end{itemize}
+Consider a pseudo code:
+\begin{lstlisting}[language=c]
+if (A)         // Branch 1
+   ...
+if (B)         // Branch 2
+   ...
+if (C)         // Branch 3
+   ...
+\end{lstlisting}
+Let's simulate \texttt{Branch 3}'s prediction, influenced by Branches 1 \& 2.
+\begin{enumerate}
+    \setcounter{enumi}{-1}
+    \item \important{Initial State}
+    \begin{itemize}
+        \item Global History Register \texttt{(GHR) = 00} (no branches taken yet).
+        \item BHT for history 00 selected.
+        \item Predicts \texttt{Branch 3} using its 2-bit counter in \texttt{BHT[00]}.
+    \end{itemize}
+
+    \item \important{Cycle 1: \texttt{Branch 1} = Taken}
+    \begin{itemize}
+        \item GHR: \texttt{00} $\rightarrow$ \texttt{01} (shift in \texttt{T = 1}, Taken).
+        \item Update \texttt{BHT[00]} (for \texttt{Branch A}), since we used \texttt{GHR = 00} before \texttt{A}.
+    \end{itemize}
+
+    \item \important{Cycle 2: \texttt{Branch 2} = Not Taken}
+    \begin{itemize}
+        \item GHR: \texttt{01} $\rightarrow$ \texttt{10} (T, NT).
+        \item Update \texttt{BHT[01]} (for \texttt{Branch B}), since \texttt{GHR = 01} before \texttt{B}.
+    \end{itemize}
+
+    \item \important{Cycle 3: Predict \texttt{Branch 3}}
+    \begin{itemize}
+        \item \texttt{GHR = 10}, so select the BHT that contains \texttt{10} for prediction.
+        \item Use \texttt{Branch 3}'s PC low bits \texttt{+ GHR = 10} to index \texttt{BHT[10]}.
+        \item[\textcolor{Green3}{\faIcon{magic}}] Check the 2-bit FSM in this entry. Assume the FSM state is Weakly Taken, so the \textcolor{Green3}{\textbf{prediction is Taken}}.
+        \item[\textcolor{Green3}{\faIcon{\speedIcon}}] The outcome of \texttt{Branch 3} is Taken, so the \textcolor{Green3}{\textbf{prediction is correct}} and we update the FSM of entry \texttt{BHT[10]}.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+    \begin{tabular}{@{} c | c | c | c | c | c @{}}
+        \toprule
+        Cycle & Branch & Outcome & GHR Before & GHR After & BHT Used for Update \\
+        \midrule
+        1     & A      & T       & 00         & 01        & \texttt{BHT[00]}             \\ [.5em]
+        2     & B      & NT      & 01         & 10        & \texttt{BHT[01]}             \\ [.5em]
+        3     & C      & T       & 10         & 01        & \texttt{BHT[10]}             \\
+        \bottomrule
+    \end{tabular}
+\end{adjustbox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/2-2-correlating-predictors.pdf}
+    \caption{Visual representation of the (2,2) Correlating Predictor.}
+\end{figure}
+
+\begin{table}[!htp]
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \centering
+        \begin{tabular}{@{} l | l @{}}
+            \toprule
+            \textbf{Aspect} & \textbf{Description} \\
+            \midrule
+            $m = 2$                 & Track outcomes of last 2 branches (\texttt{GHR = 2} bits) \\ [.5em]
+            $n = 2$                 & 2-bit prediction entries per BHT \\ [.5em]
+            Tables                  & 4 BHTs (for \texttt{GHR = 00, 01, 10, 11}). \\ [.5em]
+            Indexing                & \texttt{4-bit PC + 2-bit GHR} $\rightarrow$ 6-bit index for accessing a table \\ [.5em]
+            Prediction Stability    & More robust due to 2-bit FSM per entry. \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{(2,2) Correlating Predictor.}
+\end{table}

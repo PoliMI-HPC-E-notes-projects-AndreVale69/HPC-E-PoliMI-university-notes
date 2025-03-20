@@ -1,0 +1,75 @@
+\paragraph{(1,1) Correlating Predictors}
+
+Use the \textbf{result of the last executed branch} (global history, $m = 1$ bit) to \textbf{choose between two prediction tables}, each of which has 1-bit entries.
+\begin{itemize}
+    \item \important{1-bit Global History}: Stores last branch outcome (Taken \texttt{=} 1, Not Taken \texttt{=} 0).
+    \item \important{2 BHTs (T1 \& T2)}: Each is a 1-bit predictor table, selected based on global history. We use a 1-bit Branch History Table technique.
+    \item \important{Indexing}: Use PC low-order bits to index into the selected table.
+\end{itemize}
+Consider a pseudo code:
+\begin{lstlisting}[language=c]
+if (x > 0)  // Branch A
+    ...
+if (x > 0)  // Branch B
+    ...
+\end{lstlisting}
+Let's say if \texttt{A} is true, \texttt{B} is usually true. The execution walkthrough:
+\begin{itemize}
+    \item Cycle 1: \important{First Execution of \texttt{Branch A}}
+    \begin{enumerate}
+        \item Global History: unknown or NT (0); because it doesn't track anything yet. We assume Not Taken (0).
+        \item Use Table T2 (since \texttt{GH = 0}).
+        \item Index into T2 with \texttt{Branch A}'s PC bits.
+        \item[\textcolor{Green3}{\faIcon{magic}}] Predict: Not Taken!
+        \item[\textcolor{Red2}{\faIcon{thumbs-down}}] Unfortunately, the Branch Outcome (BO) says Taken $\Rightarrow$ \textcolor{Red2}{\faIcon{times} \textbf{Mispredict}} $\Rightarrow$ update T2 entry to T.
+        \item Update Global History \texttt{=} 1 (Taken).
+    \end{enumerate}
+
+    \item Cycle 2: \important{Now Executing Branch \texttt{Branch B}}
+    \begin{enumerate}
+        \item Global History \texttt{=} 1 (Taken) from \texttt{Branch A}.
+        \item Use Table T1 (since \texttt{GH = 1}).
+        \item Index with \texttt{Branch B}'s PC bits.
+        \item[\textcolor{Green3}{\faIcon{magic}}] T1 says: ``Try to predict as Taken''.
+        \item[\textcolor{Green3}{\faIcon{\speedIcon}}] The Branch Outcome (BO) says Taken $\Rightarrow$ \textcolor{Green3}{\faIcon{check} \textbf{Correct prediction}}.
+        \item No update needed. The Global History doesn't need an update either, because it is already 1 (Taken).
+    \end{enumerate}
+\end{itemize}
+Since \texttt{Branch A} was Taken, \texttt{Branch B} is likely to be Taken. This is a smart technique because normal predictors treat \texttt{Branch B} alone. Instead, the Correlating Branch Predictor uses context, and the last branch helps predict this one.
+
+\highspace
+\begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+    \begin{tabular}{@{} l | c | c | c | c | c @{}}
+        \toprule
+        Branch   & Global History & Table Used & Prediction & Outcome & Update        \\
+        \midrule
+        Branch A & 0              & T2         & NT         & T       & T2 entry to T \\ [.5em]
+        Branch B & 1              & T1         & T          & T       & No change     \\
+        \bottomrule
+    \end{tabular}
+\end{adjustbox}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.9\textwidth]{img/1-1-correlating-predictors.pdf}
+    \caption{Visual representation of the (1,1) Correlating Predictor.}
+\end{figure}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l @{}}
+        \toprule
+        \textbf{Aspect} & \textbf{Description} \\
+        \midrule
+        $m = 1$         & Use 1-bit GHR (last branch result).                   \\ [.5em]
+        $n = 1$         & 1-bit prediction, (T or NT).                          \\ [.5em]
+        Tables          & 2 BHTs (for \texttt{GHR = 0} and \texttt{GHR = 1}).   \\ [.5em]
+        Selection Logic & If last branch T, use Table T1; else T2.              \\
+        \bottomrule
+    \end{tabular}
+    \caption{(1,1) Correlating Predictor.}
+\end{table}
+
+

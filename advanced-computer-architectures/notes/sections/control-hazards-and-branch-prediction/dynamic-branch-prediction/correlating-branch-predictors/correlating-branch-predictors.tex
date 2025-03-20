@@ -1,0 +1,62 @@
+\subsubsection{Correlating Branch Predictors}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the problem?}}
+\end{flushleft}
+With standard BHT, we \textbf{predict each branch individually}, based only on \textbf{its own past behavior}. But real programs often have \textbf{branches that influence each other}. For example, let's look at the following code:
+\begin{lstlisting}[language=c]
+if (x > 0)  // Branch A
+    ...
+if (x > 0)  // Branch B
+    ...
+\end{lstlisting}
+\begin{itemize}
+    \item \texttt{Branch B} often behaves like \texttt{Branch A}, because they depend on the same condition (\texttt{x > 0}).
+    \item A normal predictor doesn't know this. It treats \texttt{A} and \texttt{B} independently.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Key Idea}}
+\end{flushleft}
+Use \textbf{global branch history} (outcomes of previous branches) to \textbf{improve prediction} for the current branch. This approach exploits correlation between different branches. This technique is called \definition{Correlating Predictors} or \definition{2-level Predictors}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bookmark} \textbf{General Case: (m, n)}}
+\end{flushleft}
+In a \important{(m, n) correlating predictor}, the \textbf{past outcomes of the last $m$ branches} are used to \textbf{select among $2^{m}$ prediction tables}, \textbf{each of which uses $n$-bit prediction entries}.
+\begin{itemize}
+    \item $m$: The number of \textbf{global history bits}.
+    \item $n$: The number of \textbf{bits per prediction entry in the BHTs} (e.g., 1 or 2).
+\end{itemize}
+It works like this:
+\begin{enumerate}
+    \item \important{Track the Last $m$ Branches}: \textbf{Store the outcomes} (T/NT) of the last $m$ \textbf{branches} in a \definition{Global History Register (GHR)}. This forms an $m$-bit global history pattern.
+
+    \item \important{Use GHR to Select Table}: The $m$-bit GHR selects 1 out of $2^{m}$ Branch History Tables (BHTs). Each BHT contains $n$-bit entries.
+
+    \item \important{Index the Selected Table}: \textbf{Use low-order bits} of the branch instruction address (e.g., PC bits) \textbf{to index an entry in the selected table}.
+    
+    \item \important{Predict Using $n$-bit Entry}: Use the $n$-bit entry to predict:
+    \begin{itemize}
+        \item 1-bit BHT: predict Taken or Not Taken.
+        \item 2-bit BHT: use 4-state FSM (Strong and Weak Taken and Not Taken)
+    \end{itemize}
+\end{enumerate}
+So what we have in the \textbf{memory} is:
+\begin{itemize}
+    \item \important{Total tables}: $2^{m}$ BHTs.
+    \item \important{Each BHT has}: $2^{k}$ entries (k is the number of PC bits used).
+    \item \important{Total entries}: $2^{m} \times 2^{k}$.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Captures patterns across multiple branches}.
+    \item \textbf{Helps in complex control} flow where a branch's outcome depends on prior branches.
+    \item \textbf{More accurate} than per-branch-only prediction.
+\end{itemize}

@@ -29,6 +29,9 @@
     - add `1-bit Branch History Table`
     - add `2-bit Branch History Table`
     - add `Branch Target Buffer`
+    - add `Correlating Branch Predictors`
+      - add `(1,1) Correlating Predictors`
+      - add `(2,2) Correlating Predictors`
 
 --------------------
 

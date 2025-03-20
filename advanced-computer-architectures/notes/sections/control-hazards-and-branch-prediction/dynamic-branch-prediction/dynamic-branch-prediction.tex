@@ -1,0 +1,71 @@
+\subsection{Dynamic Branch Prediction}
+
+While static branch prediction relies on fixed rules or compile-time knowledge, \textbf{dynamic branch prediction} aims to \textbf{learn and adapt during program execution}. It \textbf{uses hardware mechanisms to observe past branch behavior} and \textbf{predict future outcomes at runtime}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{heartbeat} \textbf{Core Idea}}
+\end{flushleft}
+Dynamic prediction is \textbf{based on a key assumption}: \hl{if a branch behaved a certain way in the past, it's likely to behave the same way again}. Therefore, instead of guessing statically, the \textbf{processor monitors each branch at runtime} and \textbf{uses past outcomes to inform future predictions}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{microchip} \textbf{Hardware Components}}
+\end{flushleft}
+Dynamic prediction relies on \textbf{two tightly-coupled hardware blocks}, both \textbf{situated in the Instruction Fetch (IF)} stage:
+\begin{enumerate}
+    \item \definition{Branch Outcome Predictor (BOP)}:
+    \begin{itemize}
+        \item \textbf{Predicts branch direction}: Taken (T) or Not Taken (NT).
+        \item \textbf{Based on runtime history} (past outcomes of this or other branches).
+    \end{itemize}
+    \item \definition{Branch Target Buffer (BTB)}:
+    \begin{itemize}
+        \item \textbf{Predicts the target address} to jump to if the \textbf{branch is predicted taken}.
+        \item Returns the \definition{Predicted Target Address (PTA)}\footnote{%
+            \definition{Predicted Target Address (PTA)}: The memory address that the processor predicts as the destination for a taken branch. If the branch is predicted taken, the Branch Target Buffer (BTB) provides the PTA so that instruction fetch can continue from this address without waiting for the branch condition to be resolved.
+        }.
+        \item \textbf{Useful only when BOP predicts Taken}; irrelevant if Not Taken.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+\end{flushleft}
+During instruction fetch:
+\begin{enumerate}
+    \item BOP predicts T/NT.
+    \item If Taken (T), BTB provides the PTA.
+    \item The processor fetches the next instruction accordingly.
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Execution Scenarios}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Prediction: Not Taken (\texttt{PC + 4})}
+    \begin{itemize}
+        \item If Branch Outcome \texttt{=} Not Taken $\Rightarrow$ \textcolor{Green3}{\faIcon{check}} Correct prediction $\Rightarrow$ No penalty.
+        \item If Branch Outcome \texttt{=} Taken $\Rightarrow$ \textcolor{Red2}{\faIcon{times}} Misprediction:
+        \begin{enumerate}
+            \item Flush next instruction (\texttt{NOP})
+            \item Fetch from BTA (to understand where to jump)
+            \item One-cycle penalty
+        \end{enumerate}
+    \end{itemize}
+
+    \item \important{Prediction: Taken (BTB used)}
+    \begin{itemize}
+        \item If Branch Outcome \texttt{=} Taken $\Rightarrow$ \textcolor{Green3}{\faIcon{check}} Correct prediction $\Rightarrow$ No penalty.
+        \item If Branch Outcome \texttt{=} Not Taken $\Rightarrow$ \textcolor{Red2}{\faIcon{times}} Misprediction:
+        \begin{enumerate}
+            \item Flush fetched target instruction (\texttt{NOP}) provided by BTB
+            \item Fetch \texttt{PC + 4} (next instruction sequentially)
+            \item One-cycle penalty
+        \end{enumerate}
+    \end{itemize}
+\end{itemize}
+Unlike static prediction, \textbf{dynamic prediction is adaptive}. If a branch changes its behavior at runtime, future predictions adjust accordingly.

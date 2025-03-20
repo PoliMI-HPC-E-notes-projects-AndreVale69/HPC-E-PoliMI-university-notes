@@ -25,6 +25,7 @@
       - add `From Target`
       - add `From Fall-Through`
       - add `From After`
+  - add `Dynamic Branch Prediction`
 
 --------------------
 

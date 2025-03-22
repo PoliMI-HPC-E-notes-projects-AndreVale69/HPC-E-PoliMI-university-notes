@@ -11,3 +11,4 @@
 - add `CHANGELOG.md`
 - add `Business Data Analytics`
   - add `Multivariate Descriptive Statistics`
+  - add `Dimensionality Reduction`

@@ -12,3 +12,4 @@
 - add `Business Data Analytics`
   - add `Multivariate Descriptive Statistics`
   - add `Dimensionality Reduction`
+  - add `Principal Component Analysis`

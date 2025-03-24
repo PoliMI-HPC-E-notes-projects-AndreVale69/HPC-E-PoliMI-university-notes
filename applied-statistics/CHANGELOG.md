@@ -14,3 +14,4 @@
   - add `Dimensionality Reduction`
   - add `Principal Component Analysis`
   - add `PCA Reference System`
+  - add `PCA as Optimization Problem`

@@ -1,0 +1,161 @@
+\subsection{PCA as Optimization Problem}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{What Is PCA Trying to Achieve?}}
+\end{flushleft}
+PCA aims to find new variables (\textbf{principal components}) that are:
+\begin{itemize}
+    \item \textbf{Linear combinations} of the original variables.
+    \item Chosen so that the \textbf{first principal component} (PC1) captures the \textbf{maximum possible variance} in the data.
+    \item \textbf{Second and further PCs} capture the \textbf{remaining variance}, while being uncorrelated with all previous ones.
+\end{itemize}
+In other words, \hl{PCA tries to find a new axis (direction) along which the data varies the most}. This is the first principal component. Once this direction is found, each data point can be projected onto it to create a simplified representation of the data.
+
+\highspace
+\hl{To find this direction} (\textbf{PCA1}), \textbf{PCA solves a mathematical optimization problem}. This is because the \textbf{goal is to find the direction that maximizes the variance} of the data projected onto that direction (we want to maximize the variance because it captures the most variability, information, in the data).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How Is This Formulated as an Optimization Problem? (PC1)}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Define a New Variable $Z_{1}$}. Let's construct a new variable $Z_{1}$ which is a \textbf{linear combination} of the original variables:
+    \begin{equation*}
+        Z_{1} = \phi_{11} X_{1} + \phi_{21} X_{2} + \dots + \phi_{p1} X_{p}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $X_{j}$ is the $j$-th variable (all observations for that variable)
+        \item $\phi_{j1}$ is the $j$-th weight (loading) assigned to the variable $X_{j}$.
+    \end{itemize}
+    The subscript $1$ indicates that they belong to the first principal component.
+
+    \item \important{Objective - Maximize Variance of $Z_{1}$}. We want to maximize the variance to capture the most variability (information) in the data:
+    \begin{equation*}
+        \text{Maximize} \hspace{1em} \text{Var}\left(Z_{1}\right) = \text{Var}\left(\phi_{1}^{T} X\right)
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $X$ is the \textbf{data matrix} $n \times p$
+        \item $\phi_{1}$ is the vector $p \times 1$ of \textbf{weights} (\textbf{loadings}) used to build $Z_{1}$. It is transposed to allow multiplication with the data matrix $X$.
+    \end{itemize}
+    More specifically:
+    \begin{equation*}
+        \text{Var}\left(Z_{1}\right) = \dfrac{1}{n} \sum_{i=1}^{n} z_{i1}^2 = \dfrac{1}{n} \sum_{i=1}^{n} \left( \sum_{j=1}^{p} \phi_{j1} \cdot x_{ij} \right)^2
+    \end{equation*}
+    Where $z_{i1}$ is the \textbf{score} (see page \pageref{eq: scores}) of the $i$-th observation on the \textbf{first principal component} (e.g., $z_{i2}$ score of observation $i$ on PC2). In our case it is:
+    \begin{equation*}
+        z_{i1} = \displaystyle\sum_{j=1}^{p} \phi_{j1} \cdot x_{ij}
+    \end{equation*}
+
+    \item \important{Constraint - Normalize the Loadings}. We need a \textbf{constraint} because we could scale the weights (loadings) infinitely. Therefore, we need \textbf{to fix the length} (norm) \textbf{of the loadings vector}.
+    \begin{equation*}
+        \displaystyle\sum_{j=1}^{p} \phi_{j1}^{2} = 1
+    \end{equation*}
+    Or, in vector notation:
+    \begin{equation*}
+        \left|\left|\phi_{1}\right|\right|^{2} = 1
+    \end{equation*}
+    The constraint says that the total energy or length of the loadings vector is fixed to 1 and PCA can only choose the direction of $\phi_{1}$, not its size.
+\end{enumerate}
+Now we can write the \important{full optimization problem for PC1}:
+\begin{equation}
+    \text{Maximize} \hspace{1em} \text{Var}\left(Z_{1}\right) \hspace{1em} \text{subject to} \hspace{1em} \left|\left|\phi_{1}\right|\right|^{2} = 1
+\end{equation}
+Specifically, the extended form:
+\begin{equation}
+    \underset{\phi_{11}, \dots, \phi_{p1}}{\max} \hspace{.5em} \dfrac{1}{n}\displaystyle\sum_{i=1}^{n} \left(\displaystyle\sum_{j=1}^{p} \phi_{j1} \cdot x_{ij}\right)^{2} \hspace{1em} \text{subject to} \hspace{1em} \displaystyle\sum_{j=1}^{p} \phi_{j1}^{2} = 1
+\end{equation}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Okay, but how does PCA solve the optimization problem?}}
+\end{flushleft}
+In previous steps, we posed PCA as:
+\begin{itemize}
+    \item Maximize the variance of $Z_{1} = \phi_{1}^{T} X$
+    \item Subject to $\left|\left|\phi_{1}\right|\right|^{2} = 1$
+\end{itemize}
+The solution to this problem: the \textbf{optimal loadings vector} $\phi_{1}$ (for PC1) \textbf{is the first eigenvector of the sample covariance matrix} $\mathbf{S}$. Let's analyze this sentence to understand how and why.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why Eigenvectors Help Solve This?}} We need eigenvectors because PCA's optimization problem is mathematically equivalent to a linear algebra problem whose solution requires eigenvectors.
+    
+    The \textbf{mathematical problem can also be written in quadratic form}\footnote{%
+        A \definition{Quadratic Form} is any expression that involves a vector, a matrix, and the same vector transposed. The general structure is:
+        \begin{equation}
+            Q(\mathbf{x}) = \mathbf{x}^{T} \mathbf{A} \mathbf{x}
+        \end{equation}
+        Where $\mathbf{x}$ is a vector, $\mathbf{A}$ is a square matrix, and the result is a scalar.
+    }
+    \begin{equation*}
+        \text{Var}\left(Z_{1}\right) = \phi_{1}^{T} S \phi_{1}
+    \end{equation*}
+    Where $S$ is the covariance matrix (page \hqpageref{def: covariance matrix}). It follows the exact pattern of the quadratic form, because $\phi_{1}$ is a vector of loadings, $S$ is the covariance matrix (square), and the whole expression evaluates to a scalar: the variance of $Z_{1}$.
+
+    In linear algebra, the \textbf{quadratic form problem is solved by eigenvectors}. Using the \definition{Rayleigh Quotient Theorem}, we can obtain the goal of PCA. Given a symmetric matrix $S$ (like the covariance matrix in PCA), the \emph{maximum value} of the quadratic form:
+    \begin{equation*}
+        \phi_{1}^{T} S \phi_{1} \hspace{1em} \text{subject to} \hspace{1em} \left|\left|\phi_{1}\right|\right|^{2} = 1
+    \end{equation*}
+    Is achieved when $\phi_{1}$ is the eigenvector corresponding to the largest eigenvalue of $S$. Therefore, the \textbf{solution must be the first eigenvector} (by the Rayleigh Quotient Theorem).
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Optimization Problem for the Second Principal Component (PC2)}}
+\end{flushleft}
+The following steps allow to obtain the PC2. We avoid a long explanation here, because we made the same logical steps of the optimization problem for PC1.
+\begin{enumerate}
+    \item \important{Define a New Variable $Z_{2}$}. Just like with PC1, we define PC2 as a \textbf{linear combination} of the original variables:
+    \begin{equation*}
+        Z_{2} = \phi_{12} X_{1} + \phi_{22} X_{2} + \dots + \phi_{p2} X_{p}
+    \end{equation*}
+    For a specific observation $i$:
+    \begin{equation*}
+        z_{i2} = \displaystyle\sum_{j=1}^{p} \phi_{j2} \cdot x_{ij}
+    \end{equation*}
+    Where: $\phi_{2} = \left[\phi_{12}, \dots, \phi_{p2}\right]^{T}$ is loadings vector for PC2. Here the \textbf{goal is to find the best} $\phi_{2}$ \textbf{to create PC2}.
+
+    \item \important{Objective - Maximize Variance of $Z_{2}$}. Just like PC1, we want to \textbf{maximize variance}:
+    \begin{equation*}
+        \max_{\phi_{2}} \hspace{1em} \text{Var}\left(Z_{2}\right) = \dfrac{1}{n} \displaystyle\sum_{i=1}^{n} z_{i2}^{2}        
+    \end{equation*}
+
+    \item \important{Constraints (there are two now)}
+    \begin{enumerate}
+        \item \important{First Constraint: Normalize the Loadings}. We must prevent arbitrary scaling of the weights:
+        \begin{equation*}
+            \sum_{j=1}^{p} \phi_{j2}^2 = 1 \quad \text{or} \quad \|\boldsymbol{\phi}_2\|^2 = 1
+        \end{equation*}
+        \item \important{Second Constraint: Ensure PC2 is Uncorrelated with PC1}. This is new compared to PC1. Here we want the covariance between PC1 and PC2 to be zero; in other words, we're saying \textbf{\emph{we don't want these two results to be correlated}}.
+        \begin{equation*}
+            \text{Cov}(Z_{1}, Z_{2}) = 0
+        \end{equation*}
+        Mathematically, this is equivalent to saying:
+        \begin{equation*}
+            \phi_{1}^{T} \phi_{2} = 0 \hspace{2em} \text{(orthogonality)}
+        \end{equation*}
+        If \textbf{two directions are orthogonal}, their \textbf{projections} (scores) are \textbf{uncorrelated}.
+    \end{enumerate}
+\end{enumerate}
+Finally, we can write the \important{full optimization problem for PC2}:
+\begin{equation}
+    \max_{\phi_{12}, \dots, \phi_{p2}} \quad \frac{1}{n} \sum_{i=1}^{n} \left( \sum_{j=1}^{p} \phi_{j2} x_{ij} \right)^2
+\end{equation}
+\textbf{Subject to}:
+\begin{equation}
+    \sum_{j=1}^{p} \phi_{j2}^2 = 1 \quad \text{and} \quad \sum_{j=1}^{p} \phi_{j1} \cdot \phi_{j2} = 0
+\end{equation}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{And how to solve the PC2 optimization problem?}}
+The solution to this constrained optimization problem is similar to the PC1:
+\begin{equation}
+    \phi_{2} = \mathbf{e}_{2}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\mathbf{e}_{2}$ equal to the \textbf{second eigenvector} of the \textbf{covariance matrix} $S$.
+    \item This eigenvector corresponds to the \textbf{second largest eigenvalue} $\lambda_{2}$.
+\end{itemize}

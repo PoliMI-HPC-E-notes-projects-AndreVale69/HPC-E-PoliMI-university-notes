@@ -26,6 +26,7 @@ Each version follows the Conventional Commits structure. For more information on
 - refactor `Tower Servers`
 - refactor `Rack Servers`
 - refactor `Blade Servers`
+- refactor `Machine Learning`
 
 --------------------
 

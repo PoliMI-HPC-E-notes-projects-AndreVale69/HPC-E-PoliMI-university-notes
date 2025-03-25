@@ -23,7 +23,8 @@ Each version follows the Conventional Commits structure. For more information on
 ### v1.3.0
 
 - refactor `Server (computation, HW accelerators)`
-- refactor `Tower Server`
+- refactor `Tower Servers`
+- refactor `Rack Servers`
 
 --------------------
 

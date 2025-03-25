@@ -17,3 +17,4 @@
   - add `PCA as Optimization Problem`
   - add `Proportion of Variance Explained (PVE)`
   - add `Covariance vs. Correlation in PCA`
+  - add `PCA via SVD - Computational Aspects`

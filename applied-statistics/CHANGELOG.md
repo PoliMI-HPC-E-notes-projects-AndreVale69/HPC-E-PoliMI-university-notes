@@ -16,3 +16,4 @@
   - add `PCA Reference System`
   - add `PCA as Optimization Problem`
   - add `Proportion of Variance Explained (PVE)`
+  - add `Covariance vs. Correlation in PCA`

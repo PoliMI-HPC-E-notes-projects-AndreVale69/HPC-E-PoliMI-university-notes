@@ -25,6 +25,7 @@ Each version follows the Conventional Commits structure. For more information on
 - refactor `Server (computation, HW accelerators)`
 - refactor `Tower Servers`
 - refactor `Rack Servers`
+- refactor `Blade Servers`
 
 --------------------
 

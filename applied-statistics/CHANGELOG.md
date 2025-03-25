@@ -15,3 +15,4 @@
   - add `Principal Component Analysis`
   - add `PCA Reference System`
   - add `PCA as Optimization Problem`
+  - add `Proportion of Variance Explained (PVE)`

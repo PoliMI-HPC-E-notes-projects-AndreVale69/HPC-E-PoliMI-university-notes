@@ -1,4 +1,4 @@
-# (2023/2024) Computing Infrastructures
+# (2023/2024) and (2024/2025) Computing Infrastructures
 
 These notes are an unofficial resource and shouldn't replace the course material or any other book on _computing infrastructure_. It is not made for commercial purposes. I've made the following notes to help me improve my knowledge and maybe it can be helpful for everyone.
 

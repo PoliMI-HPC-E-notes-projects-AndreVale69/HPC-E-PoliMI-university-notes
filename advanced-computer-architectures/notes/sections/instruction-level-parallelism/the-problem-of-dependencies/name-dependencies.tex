@@ -1,0 +1,94 @@
+\subsubsection{Name Dependencies}
+
+Unlike true data dependencies, \definition{Name Dependencies} arise when \textbf{two instructions use the same register or memory location}, but \textbf{there is no actual flow of data between them}. These dependencies are called \definition{False Dependencies} or \definition{Pseudo-Dependencies} because they are \textbf{not required} for program correctness from a data perspective, \textbf{but still impose constraints} on instruction scheduling.
+
+\highspace
+These constraints are due to the reuse of names (i.e., identifiers like register names), not due to real dependencies in the data values. They may still cause hazards in a pipeline and need to be addressed, especially when trying to execute instructions in parallel or out of order.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Types of Name Dependencies}}
+\end{flushleft}
+There are two main types:
+\begin{itemize}
+    \item \definition{Anti-Dependence (Write After Read - WAR)}. An \textbf{anti-dependence} occurs when:
+    \begin{itemize}
+        \item A first instruction \textbf{reads} from a location (register/memory);
+        \item A second instruction \textbf{writes} to that same location, after it.
+    \end{itemize}
+    This introduces a WAR hazard: if the \textbf{second instruction is executed too early} (before the first instruction finishes reading), \textbf{it might overwrite the value before the first instruction uses it}.
+
+    \begin{examplebox}[: WAR Hazard]
+        \begin{lstlisting}[language=riscv, mathescape=true]
+I1:   r3 $\leftarrow$ r1 + r2   # reads r1 and r2
+I2:   r1 $\leftarrow$ r4 + r5   # writes to r1\end{lstlisting}
+        In this case:
+        \begin{itemize}
+            \item \texttt{I1} reads from \texttt{r1}
+            \item \texttt{I2} writes to \texttt{r1}
+        \end{itemize}
+        There is no data flow between the two (i.e., \texttt{I1} doesn't use the result of \texttt{I2}, and vice versa), but \hl{if \texttt{I2} executes before \texttt{I1} finishes}, the read in \textbf{I1} \hl{may get a corrupted value}.
+    \end{examplebox}
+
+
+    \item \definition{Output Dependence (Write After Write - WAW)}. An \textbf{output dependence} occurs when \textbf{two instructions write to the same location} (register or memory). This results in a WAW hazard: executing the \textbf{second instruction first may overwrite the location}, changing the final value from what the program originally intended.
+
+    \begin{examplebox}[: WAW Hazard]
+        \begin{lstlisting}[language=riscv, mathescape=true]
+I1:   r3 $\leftarrow$ r1 + r2   # writes to r3
+I2:   r3 $\leftarrow$ r4 + r5   # writes to r3\end{lstlisting}
+        There's no direct data flow between the two, but the \textbf{ordering matters}. If \texttt{I2} is supposed to overwrite \texttt{r3} after \texttt{I1}, reversing the order would result in \texttt{I1}'s result being incorrectly seen as the final value in \texttt{r3}.
+    \end{examplebox}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Resolving Name Dependencies: Register Renaming}}
+\end{flushleft}
+The key idea in dealing with name dependencies is to \textbf{recognize that they are not real} and can be \textbf{eliminated if we avoid the reuse of names}. The technique used to \hl{eliminate these artificial constraints} is called \definition{Register Renaming}. The idea is simple:
+\begin{itemize}
+    \item If two instructions refer to the same register but don't actually share data, assign them \textbf{different physical registers}.
+\end{itemize}
+This is only possible when the underlying hardware (or compiler) provides more physical registers than the number of logical registers visible in the ISA.
+
+\highspace
+\begin{examplebox}[: Resolving WAR and WAW]
+    Original code (WAR):
+    \begin{lstlisting}[language=riscv, mathescape=true]
+I1:   r3 $\leftarrow$ r1 + r2
+I2:   r1 $\leftarrow$ r4 + r5\end{lstlisting}
+    Renamed:
+    \begin{lstlisting}[language=riscv, mathescape=true]
+I1:   r3 $\leftarrow$ r1 + r2
+I2:   r9 $\leftarrow$ r4 + r5    # write to r9 instead of r1\end{lstlisting}
+    Now, there is no conflict, \texttt{I2} can proceed independently of \texttt{I1}.
+
+    Original code (WAW):
+    \begin{lstlisting}[language=riscv, mathescape=true]
+I1:   r3 $\leftarrow$ r1 + r2
+I2:   r3 $\leftarrow$ r4 + r5\end{lstlisting}
+    Renamed:
+    \begin{lstlisting}[language=riscv, mathescape=true]
+I1:   r3 $\leftarrow$ r1 + r2
+I2:   r9 $\leftarrow$ r4 + r5    # write to a new register\end{lstlisting}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Hardware vs. Software Register Renaming}}
+\end{flushleft}
+\begin{itemize}
+    \item \definitionWithSpecificIndex{Hardware (Dynamic Renaming)}{Dynamic Renaming - Hardware-side}{}. \textbf{Performed at runtime} by structures such as the Register Alias Table (RAT), typically in out-of-order superscalar processors.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Flexible
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] Adds hardware complexity
+    \end{itemize}
+    
+    
+    \item \definitionWithSpecificIndex{Software (Static Renaming)}{Static Renaming - Software-side}{}. \textbf{Performed at compile time} by the compiler, particularly for VLIW or statically scheduled processors.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Simpler in hardware
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] Puts more pressure on compiler technology
+    \end{itemize}
+\end{itemize}

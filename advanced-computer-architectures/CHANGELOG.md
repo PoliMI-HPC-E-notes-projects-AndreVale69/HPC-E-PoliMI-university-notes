@@ -19,6 +19,7 @@
   - add `Multi-Cycle Pipelining`
     - add `Multi-Cycle In-Order Pipeline`
     - add `Multi-Cycle Out-of-Order Pipeline`
+  - add `Dynamic Scheduling`
 
 --------------------
 

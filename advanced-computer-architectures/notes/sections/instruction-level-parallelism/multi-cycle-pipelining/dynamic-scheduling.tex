@@ -1,0 +1,75 @@
+\subsection{Dynamic Scheduling}
+
+As we've seen, static in-order pipelines are limited in their ability to exploit ILP because they stall the entire pipeline when a single instruction is blocked. \definition{Dynamic Scheduling} solves this by allowing \textbf{instructions to be issued, executed, and even completed out of order}, as long as doing so does not violate program correctness.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{The Need for Dynamic Scheduling}}
+\end{flushleft}
+Consider the following instruction sequence:
+\begin{lstlisting}[language=riscv, mathescape=true]
+I1:  F0  $\leftarrow$ F2 / F4   # long-latency divide
+I2:  F10 $\leftarrow$ F0 + F8   # depends on F0
+I3:  F12 $\leftarrow$ F8 - F14  # independent of I1 and I2
+\end{lstlisting}
+In a naive in-order pipeline:
+\begin{itemize}
+    \item \texttt{I2} stalls waiting for \texttt{F0}, and
+    \item \texttt{I3} stalls behind \texttt{I2}, even though it's independent.
+\end{itemize}
+This results in lost parallelism. In contrast, \textbf{dynamic scheduling} would:
+\begin{itemize}
+    \item Allow \texttt{I1} to begin and proceed through the divider.
+    \item Stall \texttt{I2} because it depends on \texttt{F0}.
+    \item Allow \texttt{I3} to \textbf{proceed and complete} immediately, despite the stall.
+\end{itemize}
+This is possible because the processor can \textbf{track operand availability} and issue instructions \textbf{as soon as dependencies are satisfied}, not based solely on their program order.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How Dynamic Scheduling Works}}
+\end{flushleft}
+\textbf{Instructions are issued in order} but may \textbf{execute and complete out of order}, depending on operand readiness and unit availability. The processor uses dedicated \textbf{hardware structures} to manage this:
+\begin{itemize}
+    \item Reservation Stations (or Issue Queues)
+    \item Reorder Buffer (ROB)
+    \item Register Renaming Tables
+    \item Common Data Bus (CDB) for broadcasting results
+\end{itemize}
+In a dynamically scheduled pipeline, stages are typically:
+\begin{itemize}
+    \item \textbf{Fetch (IF)}: Get instruction from memory.
+    \item \textbf{Decode (ID)}: Determine opcode, operands, destination.
+    \item \textbf{Issue}: Place instruction into reservation station if operands aren't ready.
+    \item \textbf{Execute (EX)}: Start when all operands are available.
+    \item \textbf{Write Result}: Write result to a temporary buffer or broadcast to waiting instructions.
+    \item \textbf{Commit}: Update architectural registers in order.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textbf{Higher ILP}: Instructions don't wait unnecessarily.
+    \item \textbf{Resource Utilization}: Keeps functional units busy.
+    \item \textbf{Latency Hiding}: Tolerates cache misses, long FP ops.
+    \item \textbf{Exploits Independence}: Independent ops no longer block one another.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges Introduced}}
+\end{flushleft}
+While powerful, dynamic scheduling is \textbf{complex}:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textbf{WAR and WAW Hazards}. With out-of-order execution, later instructions might write before earlier ones. Solution: use register renaming to remove name dependencies.
+    \item \textbf{Imprecise Exceptions}. If a later instruction causes an exception, but earlier ones have already modified state, it becomes hard to roll back. Solution: use a Reorder Buffer (ROB) that holds results temporarily and commits them in program order.
+    \item \textbf{Hardware Cost and Complexity}. Additional logic is needed for:
+    \begin{itemize}
+        \item Dependency tracking
+        \item Wakeup and select logic
+        \item Common data bus broadcasting
+        \item Instruction window buffering
+    \end{itemize}
+\end{itemize}

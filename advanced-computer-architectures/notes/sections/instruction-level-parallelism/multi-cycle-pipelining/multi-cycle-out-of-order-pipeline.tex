@@ -1,0 +1,90 @@
+\subsubsection{Multi-Cycle Out-of-Order Pipeline}
+
+To overcome the limitations of in-order execution, processors adopt \definition{Multi-Cycle Out-of-Order (OoO) Pipeline}s. It is a more sophisticated architecture that aims to maximize ILP by \textbf{executing independent instructions as early as possible}, regardless of program order, and \textbf{allowing instructions to complete out of order}.
+
+\highspace
+In this model:
+\begin{itemize}
+    \item \textbf{Instructions} are still fetched and decoded \textbf{in-order} (\important{in-order issue}).
+    \item After decoding, \textbf{instructions are placed into issue queues} or \textbf{reservation stations} (\important{out-of-order execution}).
+    \item As soon as operands are available and a suitable functional unit is free, instructions execute, regardless of original order.
+    \item \textbf{Write-back and commit may also occur out-of-order}, although the final architectural state is updated in program order to preserve correctness (\important{out-of-order commit}).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textbf{Maximizes ILP} by letting independent instructions execute as soon as possible.
+    \item \textbf{Improves throughput} by keeping all functional units busy.
+    \item \textbf{Hides long latencies}, like FP division or memory misses.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges}}
+\end{flushleft}
+Out-of-Order execution introduces serious architecture challenges:
+\begin{itemize}
+    \item \textcolor{Red2}{\textbf{WAR and WAW Hazards}}. If later instructions write back before earlier ones:
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] They might overwrite data that's still needed.
+        \item[\textcolor{Green3}{\faIcon{check}}] Hardware \textbf{must detect and prevent} these scenarios.
+    \end{itemize}
+    This is typically handled using: register renaming and scoreboarding / reservation stations.
+
+    
+    \item \textcolor{Red2}{\textbf{Imprecise Exceptions}}. If an exception occurs (e.g., divide-by-zero), but the processor has already executed and committed later instructions, the architectural state is \textbf{no longer consistent} with the point of the fault. To fix this, high-performance CPUs use:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textbf{Reorder Buffers (ROB)} to store results until it's safe to commit them in program order.
+        \item \textbf{Checkpointing and rollback mechanisms} to recover precise\break state.
+    \end{itemize}\index{Imprecise Exceptions}
+    Formally, an \textbf{exception is imprecise} occurs if the processor state when an exception is thrown does not look exactly as if the instructions were executed in order.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/multi-cycle-out-of-order-pipeline.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{High-Level Multi-Cycle Out-of-Order Pipeline architecture.
+    \begin{itemize}
+        \item IF (Instruction Fetch): fetches the next instruction in program order from instruction memory using the program counter (PC).
+        \item ID (Instruction Decode). This stage is now split into two sub-stages:
+        \begin{enumerate}
+            \item ID: decoding the instruction format and operation type.
+            \item Issue: reading registers and checking availability of operands.
+        \end{enumerate}
+        This split is key to \textbf{preparing instructions early}, even if they're not ready to execute immediately.
+        \item Functional Units. The processor has \textbf{multiple independent execution units}, each possibly multi-cycle and with different latencies:
+        \begin{itemize}
+            \item ALU: used for integer arithmetic, logic, and takes 1-2 cycles.
+            \item Mem: used for load/store, with cache hits/misses, and takes a variable number of cycles.
+            \item Fadd: used for floating-point addition, and takes $\approx 3$ cycles.
+            \item Fmul: used for floating-point multiplication, and takes $\approx 3$ cycles.
+            \item Fdiv: used for floating-point division, and takes multiple cycles and is not always pipelined.
+        \end{itemize}
+        Each unit operates independently, and several can be active at once.
+        \item GPRs and FPRs (General/Floating-Point Registers): architectural registers where results are ultimately written. But in this pipeline, results may first go to \textbf{temporary storage} until committed (through not shown here explicitly, concepts like \textbf{reorder buffer (ROB)} are implied).
+    \end{itemize}
+    Unlike the in-order pipeline, there is \textbf{no single commit point} shown. This means out-of-order commit, and introduces the risk of: WAR and WAW hazards, and imprecise exceptions.
+    }
+\end{figure}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | p{21em} @{}}
+        \toprule
+        \textbf{Feature} & \textbf{Description} \\
+        \midrule
+        Issue                       & In order                                                                                  \\ [.5em]
+        Execution                   & Out of order                                                                              \\ [.5em]
+        Completion (write-back)     & Out of order                                                                              \\ [.5em]
+        Architectural State Updates & May occur out of order (but real designs use reorder buffers to enforce in-order commit)  \\ [.5em]
+        ILP                         & High                                                                                      \\ [.5em]
+        Complexity                  & High - needs hazard detection, renaming, ROBs                                             \\ [.5em]
+        Exceptions                  & Risk of imprecision without commit logic                                                  \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of Multi-Cycle Out-of-Order Pipeline.}
+\end{table}

@@ -1,0 +1,73 @@
+\subsubsection{Multi-Cycle In-Order Pipeline}
+
+In a \definition{Multi-Cycle In-Order Pipeline}, instructions are:
+\begin{itemize}
+    \item \textbf{Issued in program order} (\important{in-order issue}). 
+    \item \textbf{Executed on dedicated functional units}, each potentially requiring multiple cycles.  
+    \item \textbf{Committed in order}, i.e., write-back to the architectural state occurs in the order instructions were issued (\important{in-order commit}).
+\end{itemize}
+This model retains a \hl{strict discipline}:
+\begin{itemize}
+    \item Even if a later instruction finishes earlier (because it uses a faster unit), it \textbf{cannot write back until its turn arrives}.
+    \item This \textbf{avoids WAR} (Write After Read) \textbf{and WAW} (Write After Write) hazards by ensuring in-order commit.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Simpler control logic.
+    \item Preserves the precise exception model.
+    \item \textbf{No need for register renaming or reorder buffers}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textbf{Poor ILP exploitation}: independent instructions may stall behind slow ones.
+    \item All instructions are serialized through the same issue logic, even if no true dependence exists.
+\end{itemize}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/multi-cycle-in-order-pipeline.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Multi-Cycle In-Order Pipeline architecture. This processor includes \textbf{different execution units}, each optimized for a specific operation type:
+    \begin{itemize}
+        \item \texttt{X1-X2}: 2-stage execution, used for basic integer ALU.
+        \item \texttt{Fadd}: 3-stage execution, used for floating-point addition.
+        \item \texttt{Fmul}: 3-stage execution, used for floating-point multiplication.
+        \item \texttt{FDiv}: \underline{not pipelined}, used for floating-point division (long)
+    \end{itemize}
+    So integer operations may take 2 cycles, add/mul take 3, and divide takes many cycles and cannot overlap because it's not pipelined. The instruction flow moves through:
+    \begin{itemize}
+        \item IF (Instruction Fetch): from PC and instruction memory.
+        \item D (Decode): identifies operand registers, selects execution unit.
+        \item X1, X2, ...: execution pipeline stages, depending on instruction type.
+        \item Data Mem: if needed (e.g., for load/store).
+        \item W (commit point) \texttt{+} GPRs/FPRs: Write-Back (WB) stage to either General-Purpose Registers or Floating-Point Registers.
+    \end{itemize}}
+\end{figure}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{21em} @{}}
+        \toprule
+        \textbf{Feature} & \textbf{Description} \\
+        \midrule
+        Issue                       & In order                                                                       \\ [.5em]
+        Execution                   & In order                                                                       \\ [.5em]
+        Completion (write-back)     & In order (even if execution latency differs)                                   \\ [.5em]
+        Architectural State Updates & In order; results are committed exactly in program order                       \\ [.5em]
+        ILP                         & Limited, stalls propagate even to independent instructions                     \\ [.5em]
+        Complexity                  & Moderate, simpler control logic, no renaming or reorder buffer needed          \\ [.5em]
+        Exceptions                  & Always precise, easy to track and recover since instructions complete in order \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of Multi-Cycle In-Order Pipeline.}
+\end{table}

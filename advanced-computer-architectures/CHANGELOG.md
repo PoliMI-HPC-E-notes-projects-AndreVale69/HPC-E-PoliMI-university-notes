@@ -16,6 +16,9 @@
     - add `Data Dependencies`
     - add `Name Dependencies`
     - add `Control Dependencies`
+  - add `Multi-Cycle Pipelining`
+    - add `Multi-Cycle In-Order Pipeline`
+    - add `Multi-Cycle Out-of-Order Pipeline`
 
 --------------------
 

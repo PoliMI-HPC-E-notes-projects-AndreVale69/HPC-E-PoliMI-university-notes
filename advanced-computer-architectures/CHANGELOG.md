@@ -23,6 +23,7 @@
   - add `Multiple-Issue Processors`
     - add `Introduction to Multiple-Issue Pipelines`
     - add `Evolution Towards Superscalar Execution`
+    - add `Superscalar Processors`
 
 --------------------
 

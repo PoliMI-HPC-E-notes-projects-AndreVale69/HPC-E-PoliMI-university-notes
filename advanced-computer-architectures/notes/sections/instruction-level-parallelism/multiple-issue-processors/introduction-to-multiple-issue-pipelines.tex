@@ -1,0 +1,94 @@
+\subsection{Multiple-Issue Processors}
+
+\subsubsection{Introduction to Multiple-Issue Pipelines}
+
+In previous sections, we explored how pipelining (section \ref{subsection: Multi-Cycle Pipelining}) and dynamic scheduling (section \ref{subsection: Dynamic Scheduling}) help improve instruction throughput by exploiting\break instruction-level parallelism (ILP). However, traditional scalar \textbf{pipelines are fundamentally limited}: they can \hl{issue only one instruction per clock cycle}. To overcome this limitation and achieve even higher performance, computer architects developed Multiple-Issue Processors.
+
+\highspace
+\begin{definitionbox}[: Multiple-Issue Processors]
+    \definition{Multiple-Issue Processors} are processors designed to fetch, decode, issue, and execute \textbf{more than one instruction per clock cycle}, with the goal of increasing instruction throughput and exploiting instruction-level parallelism (ILP).
+\end{definitionbox}
+
+\noindent
+They achieve higher performance than scalar processors by issuing multiple independent instructions in parallel, using either hardware-based dynamic scheduling (as in superscalar architectures) or compiler-driven static scheduling (as in VLIW architectures).
+
+\highspace
+This section introduces the key principles of multiple-issue pipelines and lays the foundation for understanding both superscalar and VLIW architectures.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Limits of Scalar Pipelines}}
+\end{flushleft}
+In a \textbf{scalar pipeline}, \textbf{only one instruction is issued and completed per clock cycle}, even if other instructions are independent and could be executed in parallel.
+
+\highspace
+Let's consider a classic 5-stage pipeline:
+\begin{center}
+    \texttt{IF} $\rightarrow$ \texttt{ID} $\rightarrow$ \texttt{EX} $\rightarrow$ \texttt{MEM} $\rightarrow$ \texttt{WB}
+\end{center}
+
+\noindent
+In an ideal case, the pipeline achieves an IPC (Instructions Per Cycle) of 1. That is:
+\begin{itemize}
+    \item 1 instruction finishes per cycle.
+    \item Corresponding CPI (Cycles Per Instruction) is also 1:
+    \begin{equation*}
+        \text{CPI}_{\text{ideal}} = 1,\quad \text{IPC}_{\text{ideal}} = 1
+    \end{equation*}
+\end{itemize}
+But in reality, hazards (data, control, structural) can cause stalls and the IPC can fall below 1. As we have already discussed in the previous sections.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Key Limitation}}: Even if the program contains many \textbf{independent instructions}, the scalar \textbf{pipeline processes them sequentially}, one at a time.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Raising Performance: Introducing Multiple Issue}}
+\end{flushleft}
+To extract more parallelism and achieve better throughput, multiple-issue processors aim to:
+\begin{itemize}
+    \item \hl{Fetch} \textbf{multiple instructions} per cycle.
+    \item \hl{Issue and execute} \textbf{multiple instructions} in parallel.
+    \item Increase \textbf{IPC above 1} $\uparrow$ and reduce \textbf{CPI below 1} $\downarrow$
+\end{itemize}
+This means:
+\begin{itemize}
+    \item The processor is no longer limited by the sequential issue constraint.
+    \item ILP is exploited across multiple instructions simultaneously.
+\end{itemize}
+A simple example is the \textbf{dual-issue pipeline}, where up to two instructions can be issued and completed per clock cycle. It allows two independent instructions to proceed through the pipeline in parallel, potentially doubling the instruction throughput compared to a scalar pipeline:
+\begin{equation*}
+    \text{IPC}_{\text{ideal}} = 2 \hspace{3em} \text{CPI}_{\text{ideal}} = \dfrac{1}{\text{IPC}_{\text{ideal}}} = \dfrac{1}{2} = 0.5
+\end{equation*}
+
+\begin{definitionbox}[: Dual-Issue Pipeline]
+    A \definition{Dual-Issue Pipeline} is a \textbf{type} of multiple-issue processor pipeline that can fetch, decode, and issue \textbf{up to two instructions per clock cycle}.
+\end{definitionbox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/dual-issue-pipeline.pdf}
+    \caption{Dual-Issue Pipeline timeline.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{microchip} \textbf{Architectural Requirements}}
+\end{flushleft}
+It's pretty obvious that multi-issues processors require more hardware resources to support parallelism:
+\begin{itemize}
+    \item \textbf{Wider Instruction Fetch (IF) units}: able to fetch 2 instructions per cycle from instruction memory.
+    \item \textbf{Parallel Instruction Decoders (IDs)}: \hl{2 independent decode units} to process both instructions in parallel.
+    \item \textbf{Multi-Ported Register File (RF)}:
+    \begin{itemize}
+        \item \hl{4 Read Ports}: to read up 2 source operands per instruction.
+        \item \hl{2 Write Ports}: to write results from both instructions simultaneously.
+    \end{itemize}
+    \item \textbf{Duplicated Functional Units}: at least \hl{2 independent units} (e.g., 1 ALU or branch, 1 load/store) to allow parallel execution.
+\end{itemize}
+These \textbf{additions increase complexity}, \textbf{area}, and \textbf{power consumption}, but allow significant performance gains.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/dual-issue-architecture.pdf}
+    \caption{Dual-Issue Pipeline architecture.}
+\end{figure}

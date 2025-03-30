@@ -20,6 +20,8 @@
     - add `Multi-Cycle In-Order Pipeline`
     - add `Multi-Cycle Out-of-Order Pipeline`
   - add `Dynamic Scheduling`
+  - add `Multiple-Issue Processors`
+    - add `Introduction to Multiple-Issue Pipelines`
 
 --------------------
 

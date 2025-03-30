@@ -24,6 +24,7 @@
     - add `Introduction to Multiple-Issue Pipelines`
     - add `Evolution Towards Superscalar Execution`
     - add `Superscalar Processors`
+    - add `Static vs Dynamic Scheduling`
 
 --------------------
 

@@ -1,0 +1,75 @@
+\subsection{ILP Limitations \& Alternatives}
+
+Instruction-Level Parallelism (ILP) has been the cornerstone of high performance processor design for decades. Techniques such as pipelining, multiple-issue architectures, dynamic scheduling, and register renaming have pushed ILP to impressive levels. However, \textbf{ILP alone has fundamental limits}, both theoretical and practical, which restrict its scalability and efficiency in modern workloads. This section explores \textbf{why ILP hits a wall}, and how architects are moving toward \textbf{complementary and alternative forms of parallelism}, including multithreading, SIMD, and heterogeneous computing, to sustain performance growth.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations of ILP}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textcolor{Red2}{\textbf{Limited Parallelism in Programs}}
+    \begin{itemize}
+        \item Many \textbf{programs are inherently sequential in logic} (e.g., control-intensive code, algorithms with tight dependencies).
+       
+       
+        \item Available \textbf{ILP is often limited to short instruction windows}. An \definition{instruction window} is the \hl{set of instructions that the processor can see and analyze at a give time to find parallelism}. Due to hardware constraints (area, power, timing), the instruction window usually holds a few dozen to a few hundred instructions.
+
+        It means that even if the entire program contains parallelism, the processor can only exploit what it sees in its current instruction window. This is a practical limit.
+        
+        
+        \item \textbf{Amdahl's Law bounds the speedup achievable by parallel execution of a sequential program}.\footnote{%
+            \definition{Amdahl's Law} states that the \textbf{maximum theoretical speedup} of a program is \textbf{limited by the fraction of the program that must be executed sequentially}, even if the rest can be infinitely accelerated or parallelized. Let:
+            \begin{itemize}
+                \item $S$: speedup
+                \item $f$: fraction of the program that is serial (cannot be parallelized)
+                \item $\left(1-f\right)$: fraction that is parallelizable
+                \item $p$: speedup of the parallel portion (e.g., number of processors)
+            \end{itemize}
+            Then:
+            \begin{equation*}
+                \text{Speedup}\left(p\right) = \dfrac{1}{f + \frac{\left(1-p\right)}{p}}
+            \end{equation*}
+            And the maximum speed (when $p \rightarrow \infty$) is:
+            \begin{equation*}
+                \text{Speedup}_{\max} = \dfrac{1}{f}
+            \end{equation*}
+            Even with infinite hardware resource, the speedup is limited by the serial part of the code.
+        } Even if we have unlimited issue width, perfect branch prediction, and ideal memory, this law says that we can't speed up the parts of the program that are inherently sequential (e.g., control logic, data dependencies). For example, if 10\% of our program is serial ($f = 0.1$), then the best speedup we can ever get is: $\frac{1}{0.1} = 10$.
+    \end{itemize}
+
+    \newpage
+
+    \item \textcolor{Red2}{\textbf{Dependency Constraints}}
+    \begin{itemize}
+        \item \textbf{True data dependences (RAW) cannot be bypassed or parallelized} because the value doesn't exist yet. No matter how many cores,execution units, or parallel tricks we have, if one instruction computes a value that another must use, the second must wait for the first to finish.
+        \item Some instructions must wait for preceding results, creating \textbf{bubbles} in the issue pipeline.
+    \end{itemize}
+
+    \item \textcolor{Red2}{\textbf{Control Dependencies and Branches}}
+    \begin{itemize}
+        \item Branches disrupt instruction flow.
+        \item Even with speculative execution and prediction, \textbf{mispeculation\break causes flushes and wasted cycles}.
+    \end{itemize}
+
+    \item \textcolor{Red2}{\textbf{Memory Latency and Aliasing}}
+    \begin{itemize}
+        \item Cache misses introduce long, unpredictable delays.
+        \item \textbf{Memory dependencies} (e.g., between loads and stores) are difficult to resolve safely at runtime, limiting aggressive scheduling.
+    \end{itemize}
+
+    \item \textcolor{Red2}{\textbf{Hardware Complexity and Power}}
+    \begin{itemize}
+        \item The \textbf{logic} needed for dependency checking, wakeup-select, register renaming, and instruction window scaling \textbf{grows rapidly}.
+        \item Superscalar processors beyond 4-6 issue width become infeasible to scale due to \textbf{power, area, and control path complexity}.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Alternative Forms of Parallelism}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Thread-Level Parallelism (TLP) - Multithreading}. Execute \textbf{multiple threads} in parallel on the same core or across multiple cores. TLP hides long-latency events (e.g., cache misses) by switching to ready threads.
+    \item \important{Data-Level Parallelism (DLP) - SIMD and Vectorization}. Exploits uniform operations over data arrays (e.g., matrix ops, DSP, graphics). Single Instruction, Multiple Data (SIMD), one instruction operates on multiple data elements.
+    \item \important{Heterogeneous Computing - Specialized Accelerators}. Use of\break domain-specific architectures (DSAs) optimized for specific tasks: GPU, TPUs, NPUs, FPGAs. Offload compute-intensive or parallel workloads from the CPU to accelerators.
+\end{enumerate}

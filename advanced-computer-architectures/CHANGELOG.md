@@ -25,6 +25,7 @@
     - add `Evolution Towards Superscalar Execution`
     - add `Superscalar Processors`
     - add `Static vs Dynamic Scheduling`
+  - add `ILP Limitations & Alternatives`
 
 --------------------
 

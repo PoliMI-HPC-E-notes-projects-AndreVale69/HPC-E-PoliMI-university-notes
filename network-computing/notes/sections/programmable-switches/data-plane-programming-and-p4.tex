@@ -1,0 +1,106 @@
+\subsection{Data Plane Programming and P4}
+
+\textbf{Traditionally}, configuring a switch meant \textbf{writing static forwarding rules}, usually via vendor-specific commands or protocols like OpenFlow. But this was \textbf{not true programmability}. We could \textbf{configure behavior}, but we \textbf{couldn't change how the switch processes packets internally}. With P4 (Programming Protocol-independent Packet Processors), that changes.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{What is P4?}}
+\end{flushleft}
+\definition{P4 (Programming Protocol-independent Packet Processors)} is a \textbf{high-level}, \textbf{domain-specific programming language} designed to \hl{describe how packets should be processed by the data plane of a network device}.
+
+\highspace
+Unlike general-purpose languages like C or Python, P4 is not Turing-complete. Instead, it is built to:
+\begin{itemize}
+    \item Define \textbf{how to parse packet headers}
+    \item Specify \textbf{how to match on those headers}
+    \item Decide \textbf{what actions to take}
+\end{itemize}
+The \textbf{goal of P4 is to describe the behavior of the switch pipeline}, not to implement general algorithms. Specifically, P4 was designed with four main goals in mind:
+\begin{enumerate}
+    \item \important{Reconfigurability}: We should be able to \hl{change switch behavior \emph{after} deployment}.
+    \item \important{Protocol Independence}: The switch should not be tied to Ethernet/IP/TCP. \hl{We define the packet format}.
+    \item \important{Target Independence}: The same \hl{P4 program should run on different hardware} (ASICs, FPGAs, software switches).
+    \item \important{Flexibility} and \important{Abstraction}: Developers write in P4, and the \hl{compiler maps it to the switch's low-level pipeline architecture}.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{P4 is so cool, but OpenFlow is not the same?}}
+\end{flushleft}
+We already discussed what OpenFlow is in Section \ref{subsection: OpenFlow}, page \pageref{subsection: OpenFlow}. The short answer is no, P4 is different.
+\begin{itemize}
+    \item \textbf{OpenFlow} is a \textbf{control protocol} for \hl{configuring predefined forwarding behavior}.
+    \item \textbf{P4} is a \textbf{programming language} for \hl{defining the forwarding behavior} itself.
+\end{itemize}
+
+\highspace
+Let's make an analogy to understand the difference.
+\begin{itemize}
+    \item \textbf{OpenFlow is like the driver of a regular car}. The driver can:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Steer left or right
+        \item Press the gas or brake
+        \item Use turn signals, radio, windshield wipers
+    \end{itemize}
+    But the driver can't:
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item Change how the engine works
+        \item Reprogram how turning the wheel affects the tires
+        \item Add a new driving mode (e.g., ``turbo boost'')
+    \end{itemize}
+    That's OpenFlow. We're in control of what happens (where to drive, how fast), but how the car works internally is fixed. We're controlling pre-built behavior, we're not changing the system.
+
+    \item \textbf{P4 is like the car engineer or mechanic}. The car engineer can:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Redefine how the steering works (e.g., make left turn rotate only one wheel)
+        \item Change how the engine responds to the pedal
+        \item Add entirely new modules (e.g., self-driving mode, rocket engine, etc.)
+    \end{itemize}
+    That's P4. We're not just driving the car, we're deciding what the car is capable of doing in the first place. We write the ``rules'' for how the system should behave.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Workflow}}
+\end{flushleft}
+\begin{enumerate}
+    \item Before starting to write a P4 program, is \textbf{necessary to know the P4 Architecture Model}. The \definition{P4 Architecture Model} is a \textbf{logical interface} between:
+    \begin{itemize}
+        \item The \textbf{P4 program} written by the developer.
+        \item The underlying \textbf{hardware target} (e.g., ASIC, FPGA, software switch)
+    \end{itemize}
+    This model tells the compiler: ``here's what the hardware looks like, these are the building blocks our P4 program can use.''. This abstracts away hardware details and makes P4 programs portable across multiple targets.
+
+    It's pretty obvious that the P4 architecture model is defined by the hardware switch we have. Because if our switch doesn't support some feature (e.g. packet cloning, a second pipeline), we can't use it.
+
+
+    \item \important{Write the P4 Program}. The network operator or developer writes a P4 program to describe:
+    \begin{itemize}
+        \item Which \textbf{packet headers} to parse (e.g., Ethernet, IP, or custom)
+        \item What \textbf{tables} to build (match fields, actions)
+        \item How the \textbf{control flow} works (pipeline logic)
+        \item What actions to perform (forward, drop, modify, etc.)
+    \end{itemize}
+    This is written in a \texttt{.p4} file.
+
+    
+    \item \important{Compile the P4 Program}. The P4 program is passed to a \definition{P4 Compiler}, which does two main things:
+    \begin{enumerate}
+        \item \textbf{Generates a device-specific binary}. This is tailored to the target hardware (e.g., Tofino, FPGA, software switch like MBv2).
+        \item \textbf{Produces a runtime API}. This allows a controller (or CLI) to: install rules (e.g., match on \texttt{dstIP=10.0.0.1} forward to port 3), modify tables dynamically.
+    \end{enumerate}
+    The result is something the switch can understand and execute.
+
+
+    \item \important{Deploy to the Switch (Target)}. The compiled \textbf{output is loaded onto a P4-capable target}, such as: an ASIC (e.g., Barefoot Tofino), an FPGA-based switch, a software simulator (e.g., BMv2). At this point, the switch now knows how to: parse packets, match them in tables, take programmed actions.
+    
+
+    \item \important{Runtime Table Configuration}. Once the program is installed, we still need to:
+    \begin{itemize}
+        \item \textbf{Populate the tables} with actual forwarding rules.
+        \item This is usually done via a \textbf{controller}, using a runtime API (e.g., gRPC, Thrift, P4Runtime)
+    \end{itemize}
+    It's like programming the switch with policy, after the logic has been defined.
+\end{enumerate}
+Finally, the user is only concerned with the P4 program and the controller (to populate the tables). Instead, the P4 compiler, the P4 architecture model, and the switch (e.g., ASIC) are provided by the vendor.
+

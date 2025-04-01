@@ -1,0 +1,92 @@
+\subsection{Deterministic Lookup with Probabilistic Performance}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Problem Setup}}
+\end{flushleft}
+We want to store a collection of elements (a set) in memory, and be able to:
+\begin{itemize}
+    \item \textbf{Insert} new elements.
+    \item \textbf{Check} if an element exists.
+    \item \textbf{Do it fast}, ideally in \underline{constant time}.
+\end{itemize}
+There are two broad strategies:
+\begin{itemize}
+    \item \important{Deterministic}:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Always}} gives the \textcolor{Green3}{\textbf{correct answer}}.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Slower}} or \textcolor{Red2}{\textbf{require more memory}}.
+    \end{itemize}
+    \item \important{Probabilistic}:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Uses less memory}} or \textcolor{Green3}{\textbf{is faster}}.
+        \item[\textcolor{Red2}{\faIcon{times}}] Might give \textcolor{Red2}{\textbf{false positives/negatives}}.
+    \end{itemize}
+\end{itemize}
+In this section we analyze the deterministic approach, so an output that we know what is, but the number of operations required is unknown (probabilistic). This is not suitable for network computing because it is detached from the PISA idea, but we present it for academic purposes.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Hash Table}}
+\end{flushleft}
+A \definition{Hash Function} \textbf{maps data} of arbitrary size (e.g., strings like ``hello'') \textbf{into a fixed-size integer space}. This \textbf{integer} is then \textbf{used as an index in an array} called a \definition{Hash Table}.
+
+\highspace
+Pseudo-code:
+\begin{lstlisting}[language=python]
+index = hash("hello")
+hash_table[index] = "hello"
+\end{lstlisting}
+But \textbf{collisions can occur}, multiple inputs may hash to the same index. To handle this, we \textbf{use separate chaining}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Separate Chaining: The Basic Idea}}
+\end{flushleft}
+The basic idea of \definition{Separate Chaining} is as follows. If two values hash to the same index, we \textbf{chain} them \textbf{together in a list}:
+\begin{equation*}
+    \texttt{Index }10 \rightarrow \texttt{ ``hello'' } \rightarrow \texttt{ ``port'' } \rightarrow \texttt{ ``fire''}
+\end{equation*}
+So instead of storing just one value per index, we allow \textbf{each index to store a linked list} (or vector, or queue).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance Analysis}}
+\end{flushleft}
+Let's say we're inserting $N$ elements into a table with $M$ buckets.
+\begin{itemize}
+    \item \textbf{Average list size}: $\dfrac{N}{M}$
+    \item \textcolor{Green3}{\textbf{Best case}} (uniform distribution): All chains are of similar length $\rightarrow$ fast lookups.
+    \item \textcolor{Red2}{\textbf{Worst case}}: All $N$ elements hash to the same bucket $\rightarrow$ one long chain $\rightarrow$ $O\left(N\right)$ lookup time.
+\end{itemize}
+So the \textbf{load factor} $\dfrac{N}{M}$ is key to understanding performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Collision Probability}}
+\end{flushleft}
+How likely is it to avoid collisions at all?
+\begin{itemize}
+    \item 1st insertion: no collision.
+    \item 2nd: no collision with probability $1 - \dfrac{1}{M}$
+    \item 3rd: no collision with probability $1 - \dfrac{2}{M}$
+    \item ...
+    \item $N$-th: no collision with probability $1 - \dfrac{N-1}{M}$
+\end{itemize}
+Multiply all together to get the probability of \textbf{zero collisions}:
+\begin{equation}
+    P\left(N, M\right) = \displaystyle\prod_{i=0}^{N-1} \left(1 - \dfrac{i}{M}\right)
+\end{equation}
+This means that even if $M = 10000$ and $N = 100$, the chance of having at least one collision is about 40\%! In other words, \textbf{collisions are almost inevitable unless} $M \gg N$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} and \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}} of Separate Chaining
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Output deterministic and accurate}, no false positives/negatives.
+    \item[\textcolor{Green3}{\faIcon{check}}] Simple and well-understood.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Performs well if load factor is low}.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Memory usage can grow} if many chains form.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Slower when many elements are inserted and collisions increase}.
+    \item[\textcolor{Red2}{\faIcon{times}}] Not ideal for extremely large-scale or memory-constrained environments.
+\end{itemize}

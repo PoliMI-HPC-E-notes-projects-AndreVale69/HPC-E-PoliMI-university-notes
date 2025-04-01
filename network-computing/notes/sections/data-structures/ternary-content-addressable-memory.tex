@@ -1,0 +1,99 @@
+\subsection{Ternary Content Addressable Memory (TCAM)}
+
+\definition{Ternary Content Addressable Memory (TCAM)} is a specialized kind of (hardware) memory that works differently from standard RAM. Instead of accessing data by address, TCAM lets we input data and instantly tells we \textbf{if and where it's stored}. This is called \textbf{associative memory} or \textbf{content-based lookup}. It is \hl{built specifically for fast parallel search}.
+
+\highspace
+Unlike binary memories (which store 0s and 1s), \textbf{TCAMs can store 0, 1, or a third state} (ternary) called ``\emph{don't care}''. This third value allows flexible and partial matching, making TCAMs very effective for operations like Longest Prefix Match (LPM) in IP routing.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{RAM vs TCAM}}
+\end{flushleft}
+\begin{itemize}
+    \item RAM (Random Access Memory):
+    \begin{itemize}
+        \item Ask: ``\textbf{What} is stored at address \texttt{X}?''.
+        \item Classic address-value access.
+    \end{itemize}
+
+    \item TCAM:
+    \begin{itemize}
+        \item Ask: ``\textbf{Where} is the value \texttt{X} stored?''.
+        \item The memory searches all entries in parallel and returns the matching address in constant time. In other words, it \textbf{returns the address where the value is stored}.
+    \end{itemize}
+\end{itemize}
+This associative search is \textbf{very fast}, which is why TCAM is often used in \textbf{packet classification} and \textbf{routing tables} in high-speed switches. Usually these two hardware are \textbf{put together} because the TCAM gives the index, we use it to index the RAM, and we get the information.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Speed}}: Lookup happens in constant time, regardless of the number of entries.
+    \item \textcolor{Green3}{\textbf{Wildcard Matching}}: TCAMs handle ``don't care'' bits, allowing prefix and pattern-based lookups.
+    \item \textcolor{Green3}{\textbf{Ideal for Match-Action Pipelines}}: TCAM is a good fit for hardware pipelines like those found in P4-programmable switches.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textcolor{Red2}{\textbf{High power consumption}}: Every lookup checks all entries in parallel.
+    \item \textcolor{Red2}{\textbf{Expensive}}: Due to the hardware complexity and power demands.
+\end{itemize}
+
+\begin{examplebox}[: TCAM in packet routing]
+    Imagine a TCAM storing IP prefixes:
+    \begin{itemize}
+        \item \texttt{0: 192.168.3.0/24}
+        \item \texttt{1: 192.168.1.0/24}
+        \item \texttt{2: 192.168.2.0/24}
+    \end{itemize}
+    If an incoming packet has destination IP \texttt{192.168.2.1}, the TCAM instantly finds that it matches entry 2.
+
+    However, this match index alone isn't enough to decide what to do. So, we usually pair TCAM with a RAM block that stores the actual action:
+    \begin{enumerate}
+        \item TCAM gives the index
+        \item Use it to index RAM
+        \item Get forwarding info, output port, etc.
+    \end{enumerate}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Dealing with Multiple Matches}}
+\end{flushleft}
+Sometimes a destination IP can match multiple entries. For example:
+\begin{itemize}
+    \item \texttt{Entry 2: 192.168.2.0/24}
+    \item \texttt{Entry 3: 192.168.2.0/28}
+\end{itemize}
+Both may match the same address, but \textbf{only one result is returned}. Depending on the hardware, this could be:
+\begin{itemize}
+    \item The \textbf{lowest matching index} (first match)
+    \item The \textbf{highest matching index} (last match)
+\end{itemize}
+To ensure correct behavior (e.g., always choosing the most specific prefix), \textbf{entries need to be} carefully \textbf{ordered}. This introduces \underline{extra logic} during configuration or compile time.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{microchip} \textbf{Extra Hardware: SRAM}}
+\end{flushleft}
+Alongside TCAM, \textbf{each pipeline stage} may also have \textbf{SRAM}. It's used for:
+\begin{itemize}
+    \item Storing values linked to TCAM matches.
+    \item Keeping state (e.g., counters, flags).
+    \item Performing fast value retrieval during match-action processing.
+\end{itemize}
+SRAM is faster and cheaper than TCAM, but does not supper associative lookup, so it \textbf{complements TCAM} rather than replacing it.
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item TCAM is \textbf{fast}, parallel, and supports wildcards, great for networking.
+        \item It's \textbf{costly and power-hungry}, so it's used sparingly and carefully.
+        \item Works in tandem with \textbf{SRAM} for decision and action pipelines.
+        \item Entry \textbf{ordering matters} to get correct behavior (e.g., longest prefix match).
+    \end{itemize}
+\end{takeawaysbox}

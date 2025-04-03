@@ -1,0 +1,205 @@
+\subsubsection{Invertible Bloom Lookup Tables (IBLTs)}
+
+With Count Bloom Filters, we can:
+\begin{itemize}
+    \item Insert elements
+    \item Delete them
+    \item But we \textbf{can't list what's inside}, or \textbf{retrieve keys/values}, the information is ``smeared'' across the structure.
+\end{itemize}
+Now we want something more powerful that can also list all entries or recover a specific key-value pair.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{What is an IBLT?}}
+\end{flushleft}
+An \definition{Invertible Bloom Lookup Table} is a data structure that:
+\begin{itemize}
+    \item Stores \textbf{key-value pairs}
+    \item Supports \textbf{deletion} and \textbf{enumeration (listing)}
+    \item Is inspired by Bloom Filters, but has a richer cell structure.
+\end{itemize}
+Each cell contains three values:
+\begin{enumerate}
+    \item \important{Count}: how many key-value pairs map to this cell.
+    \item \important{KeySum}: XOR (or sum) of all keys that mapped here.
+    \item \important{ValueSum}: XOR (or sum) of all values that mapped here.
+\end{enumerate}
+We hash the key using multiple hash functions, just like a Bloom filter, and update each corresponding cell.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{plus} \textbf{Insertion}}
+\end{flushleft}
+To \textbf{insert a key-value} pair:
+\begin{enumerate}
+    \item Use $K$ hash functions to map the key to $K$ cells.
+    \item For each cell:
+    \begin{enumerate}
+        \item Increment the \textbf{count}
+        \item Add the key to \textbf{KeySum}
+        \item Add the value to \textbf{ValueSum}
+    \end{enumerate}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{minus} \textbf{Deletion}}
+\end{flushleft}
+To \textbf{delete a key-value} pair:
+\begin{enumerate}
+    \item Use the same $K$ hash functions.
+    \item For each cell:
+    \begin{itemize}
+        \item \textbf{Decrement} the \textbf{count}
+        \item \textbf{Subtract} the key from \textbf{KeySum}
+        \item \textbf{Subtract} the value from \textbf{ValueSum}
+    \end{itemize}
+\end{enumerate}
+If the key was inserted, this will perfectly remove it.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{search} \textbf{Lookup and Recovery}}
+\end{flushleft}
+To \textbf{find a value for a key}:
+\begin{enumerate}
+    \item Try to find a cell where \texttt{count == 1} and the \texttt{KeySum == input key}
+    \item If found, then \texttt{ValueSum} gives the value associated with that key
+\end{enumerate}
+But:
+\begin{itemize}
+    \item If the key is mixed with other keys in all $K$ cells, recovery is hard.
+    \item That's why \textbf{some keys may not be recoverable immediately}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Enumerate everything stored in it}}
+\end{flushleft}
+Once the structure is filled with multiple key-value pairs, we may want to enumerate everything stored in it, not just individual lookups. This process is known as \textbf{decoding} or \textbf{peeling} the IBLT. This restore operation is often used in real-world scenarios, for example, when we want to compare two sets of two different devices.
+
+\highspace
+The \textbf{decoding algorithm} is:
+\begin{enumerate}
+    \item Scan the table for a cell where:
+    \begin{itemize}
+        \item \texttt{count == 1}
+        \item \texttt{KeySum} and \texttt{ValueSum} correspond to an actual key-value pair
+    \end{itemize}
+    \item When found:
+    \begin{itemize}
+        \item Add the pair to output
+        \item Simulate deletion: subtract this key and value from all corresponding cells
+        \item Update the IBLT
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\noindent
+For example:
+\begin{enumerate}
+    \item Initial IBLT contains:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            Count   & KeySum    & ValueSum  \\
+            \midrule
+            1       & 7         & 98        \\
+            2       & 202       & 48        \\
+            3       & 209       & 146       \\
+            2       & 159       & 101       \\
+            1       & 50        & 45        \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \item First, a cell with \texttt{count = 1} reveals:
+    \begin{itemize}
+        \item \texttt{(7, 98)} $\Rightarrow$ added to output
+        \item Remove it from the IBLT (as if deleting it)
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            Count   & KeySum    & ValueSum  \\
+            \midrule
+            \textbf{0}       & \textbf{0}         & \textbf{0}         \\
+            2       & 202       & 48        \\
+            \textbf{2}       & \textbf{202}       & \textbf{48}        \\
+            \textbf{1}       & \textbf{152}       & \textbf{3}         \\
+            1       & 50        & 45        \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \item After update:
+    \begin{enumerate}
+        \item Next, find \texttt{(152, 3)} $\Rightarrow$ decode and remove
+        \begin{table}[!htp]
+            \centering
+            \begin{tabular}{@{} c c c @{}}
+                \toprule
+                Count   & KeySum    & ValueSum  \\
+                \midrule
+                0       & 0         & 0         \\
+                \textbf{1}       & \textbf{50}        & \textbf{45}        \\
+                \textbf{1}       & \textbf{50}        & \textbf{45}        \\
+                \textbf{0}       & \textbf{0}         & \textbf{0}         \\
+                1       & 50        & 45        \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        \item Finally, we can easily retrieve the last one which is \texttt{50, 45}.
+    \end{enumerate}
+
+    \item The final result is:
+    \begin{equation*}
+        \left\{
+            \left(\texttt{7, 98}\right), \: \left(\texttt{152, 3}\right), \: \left(\texttt{50, 45}\right)
+        \right\}
+    \end{equation*}
+\end{enumerate}
+This process works \textbf{only if at least one of the key-value pairs is initially recoverable}, and then the remaining pairs become recoverable as the IBLT gets simplified.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Decoding problems}}
+\end{flushleft}
+Sometimes, the decoding process \textbf{gets stuck}:
+\begin{itemize}
+    \item All cells have \texttt{count > 1}, or are tangled with other keys
+    \item We cannot isolate any key-value pair
+\end{itemize}
+When this happens:
+\begin{itemize}
+    \item Listing \textbf{fails}
+    \item The \textbf{IBLT} is said to be in a \textbf{non-decodable state}
+    \item This usually happens when the \textbf{load factor is too high} (i.e., too many elements for the number of cells)
+\end{itemize}
+So IBLTs are powerful because allowing insertion, deletion, lookup and enumeration; but we need to allocate enough space, because if we overloaded, we risk failure to decode.
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | c | c | c @{}}
+            \toprule
+            \textbf{Feature} & \textbf{Standard Bloom} & \textbf{Counting Bloom} & \textbf{IBLT} \\
+            \midrule
+            Insert               & \textcolor{Green3}{\faIcon{check}}               & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}} (key-value)            \\
+            Delete               & \textcolor{Red2}{\faIcon{times}}                 & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}}                        \\
+            Membership Test      & \textcolor{Green3}{\faIcon{check}} (yes/no)      & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}} (via decoding)         \\
+            False Negatives      & \textcolor{Red2}{\faIcon{times}}                 & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Red2}{\faIcon{times}} (unless corrupted)       \\
+            False Positives      & \textcolor{Green3}{\faIcon{check}}               & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}} (when decoding works)    \\
+            Listing Elements     & \textcolor{Red2}{\faIcon{times}}                 & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Green3}{\faIcon{check}} (if decodable)         \\
+            Memory Efficiency    & Very high                                        & Moderate                              & Lower (more fields)                                       \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{IBLT vs Bloom Filters.}
+\end{table}

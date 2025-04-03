@@ -20,6 +20,7 @@
     - add `Bloom Filters`
     - add `Dimensioning a Bloom Filter`
     - add `Counting Bloom Filters`
+    - add `Invertible Bloom Lookup Tables (IBLTs)`
 
 --------------------
 

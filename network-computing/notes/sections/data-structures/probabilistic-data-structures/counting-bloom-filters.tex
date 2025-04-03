@@ -1,0 +1,40 @@
+\subsubsection{Counting Bloom Filters}
+
+In the standard Bloom Filter:
+\begin{itemize}
+    \item Inserting an element means setting multiple bits to \texttt{1}.
+    \item But we \textbf{never know which element caused a bit to be \texttt{1}}, because multiple elements may share the same hash outputs.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What happens if we try to delete?}}
+\end{flushleft}
+Let's say we inserted: ``\texttt{Rust}'' and ``\texttt{Hello}''. And now we want to delete ``\texttt{Rust}''. If ``\texttt{Rust}'' and ``\texttt{Hello}'' both caused a bit (say, index 9) to be set to \texttt{1}, and we reset it to \texttt{0} to delete ``\texttt{Rust}'', now:
+\begin{itemize}
+    \item When we query ``\texttt{Hello}'', it might show a \texttt{0} in one of its position.
+    \item This creates a \textbf{false negative}, which violates one of the core guarantees of Bloom filters!
+\end{itemize}
+So, \textbf{manually unsetting bits can remove evidence of other elements}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Counting Bloom Filters}}
+\end{flushleft}
+To enable deletion, we \textbf{upgrade each bit into a counter}, this structure is called a \definition{Counting Bloom Filter}. It works like this:
+\begin{itemize}
+    \item Instead of a bit array, we use an \textbf{array of small integers}.
+    \item When \textbf{inserting}, for each hash $h_{i}\left(x\right)$, increment \texttt{counter[$h_{i}\left(x\right)$]}.
+    \item When \textbf{deleting}, for each hash $h_{i}\left(x\right)$, decrement \texttt{counter[$h_{i}\left(x\right)$]}.
+\end{itemize}
+We can safely decrement counters, knowing that \textbf{only when the last element that hashed to that index is deleted will the counter reach zero}. All previous analyses about false positives, FPR formula and $K$ optimal are still valid, but now we \textbf{use more memory} and \textbf{add increment/decrement logic}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Risk: Counter Overflow}}
+\end{flushleft}
+Counters must be large enough:
+\begin{itemize}
+    \item If they \textbf{overflow} (e.g., go above 255 for 8-bit counters), the \textbf{filter can become corrupted}.
+    \item Worse, if a counter \textbf{underflows} (e.g., we delete too many times), we might \textbf{accidentally remove bits} for elements still in the set $\Rightarrow$ \textbf{false negatives}.
+\end{itemize}

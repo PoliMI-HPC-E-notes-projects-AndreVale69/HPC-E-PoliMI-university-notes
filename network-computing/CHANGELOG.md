@@ -21,6 +21,7 @@
     - add `Dimensioning a Bloom Filter`
     - add `Counting Bloom Filters`
     - add `Invertible Bloom Lookup Tables (IBLTs)`
+    - add `Count-Min Sketch`
 
 --------------------
 

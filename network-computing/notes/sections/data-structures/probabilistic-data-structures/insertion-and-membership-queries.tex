@@ -1,0 +1,96 @@
+\subsection{Probabilistic Data Structures}\label{subsection: Probabilistic Data Structures}
+
+\subsubsection{Insertions and Membership Queries (single-hash Bloom Filter)}
+
+We've just seen \textbf{Separate Chaining}, which gives \textbf{accurate answers} but has \textbf{unpredictable performance}, not ideal for hardware pipelines. Now we flip the perspective.
+
+\highspace
+This section introduces \textbf{probabilistic data structures}, where:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] Insertions and lookup have a fixed, \textcolor{Green3}{\textbf{deterministic number of operations}}, typically 1.
+    \item[\textcolor{Red2}{\faIcon{times}}] However, the \textcolor{Red2}{\textbf{lookup result is probabilistic}}, so it can produce false positives with a small probability.
+\end{itemize}
+Why this trade-off? Because in networking hardware (e.g., PISA architecture), we care more about \textbf{fixed latency} tan occasional inaccuracies.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{A simple bit-based Data Structure}}
+\end{flushleft}
+Let a set implemented as a simple bit array:
+\begin{itemize}
+    \item An array of $M$ 1-bit cells, all initially set to $0$.
+    \item To insert an element:
+    \begin{enumerate}
+        \item Compute a hash function \texttt{hash(x)}
+        \item Set the bit of the result of the hash function to 1: \texttt{bit[hash(x)] = 1}
+    \end{enumerate}
+    \item To check if \texttt{x} is in the set, we simply: \texttt{bit[hash(x)] == 1}
+\end{itemize}
+This data structure is often called a \definition{1-hash Bloom Filter} because it has only \textbf{one hash function} and only \textbf{one bit per element}.
+
+\begin{examplebox}[: Single-Hash Bloom Filter]
+    Let an array of $M$ 1-bit cells, all initially set to $0$, we insert:
+    \begin{enumerate}
+        \item ``\texttt{Rust}'' $\rightarrow$ sets 1 bit of the array to 1
+        \item ``\texttt{Hello}'' $\rightarrow$ sets another bit to 1
+        \item ``\texttt{Fine}'' $\rightarrow$ sets another bit to 1. Now 3 bits are set
+    \end{enumerate}
+    Now we will try some lookups.
+    \begin{itemize}
+        \item ``\texttt{Hello}'' $\rightarrow$ \texttt{bit[hash(Hello)] == 1}? $\xrightarrow{\text{YES}}$ \faIcon{check} return \texttt{true}
+        \item ``\texttt{Bye}'' $\rightarrow$ \texttt{bit[hash(Bye)] == 1}? $\xrightarrow{\text{NO}}$ \faIcon{times} return \texttt{false}
+        \item ``\texttt{P4}'' $\rightarrow$ \texttt{bit[hash(P4)] == 1}? $\xrightarrow{\text{YES}}$ \faIcon{check} return \texttt{true}, but we never inserted it. It is a \textbf{false positive}
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{percent} \textbf{Probabilistic Analysis}}
+\end{flushleft}
+Let:
+\begin{itemize}
+    \item $N$: number of \textbf{inserted elements}
+    \item $M$: number of \textbf{bit cells}
+\end{itemize}
+\textbf{Probability} that an \textbf{element maps to a} particular \textbf{bit} is:
+\begin{equation*}
+    \dfrac{1}{M}
+\end{equation*}
+So:
+\begin{itemize}
+    \item \textbf{Probability} that an \textbf{element doesn't map to a bit}:
+    \begin{equation}
+        1 - \dfrac{1}{M}
+    \end{equation}
+    
+    \item \textbf{Probability} that a \textbf{bit stays \underline{0} after $N$ insertions}:
+    \begin{equation}
+        \left(1 - \dfrac{1}{M}\right)^{N}
+    \end{equation}
+    
+    \item \textbf{Probability} that a \textbf{bit becomes \underline{1}}, called \definition{False Positive Rate (FPR)}:
+    \begin{equation}
+        \text{FPR } = 1 - \left(1 - \dfrac{1}{M}\right)^{N}
+    \end{equation}
+    
+    \item Finally, the \definition{False Negative Rate} is 0. Bloom filters (1-hash or multiple hashes) \textbf{guarantee that they cannot return a false negative}. Suppose our hash function returns a value of 3 when we put in the string ``\texttt{Rust}'' (\texttt{hash(Rust) = 3}); if we put the word ``\texttt{Rust}'' into the bit array, we have \texttt{bit[hash(Rust)] = 1} $\Rightarrow$ \texttt{bit[3] = 1}. Later, when we query ``\texttt{Rust}'', the data structure will always return \texttt{true}, because \texttt{bit[hash(Rust)] = bit[3] == 1 ? true}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Simple
+    \item \textbf{Fast}, constant-time insertion and query
+    \item \textbf{Deterministic performance}, perfect for hardware pipelines
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item \textbf{Not always accurate}, there can be false positives.
+    \item To keep FPR low (e.g. 1\%), \textbf{we need} $100\times$ \textbf{more memory than elements}.
+\end{itemize}

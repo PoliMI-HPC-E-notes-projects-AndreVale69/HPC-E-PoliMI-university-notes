@@ -15,6 +15,8 @@
   - add `Introduction`
   - add `Ternary Content Addressable Memory (TCAM)`
   - add `Deterministic Lookup with Probabilistic Performance`
+  - add `Probabilistic Data Structures`
+    - add `Insertions and Membership Queries (single-hash Bloom Filter)`
 
 --------------------
 

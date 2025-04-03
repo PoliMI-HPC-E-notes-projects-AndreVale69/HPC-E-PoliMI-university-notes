@@ -17,6 +17,7 @@
   - add `Deterministic Lookup with Probabilistic Performance`
   - add `Probabilistic Data Structures`
     - add `Insertions and Membership Queries (single-hash Bloom Filter)`
+    - add `Bloom Filters`
 
 --------------------
 

@@ -1,0 +1,99 @@
+\subsubsection{Bloom Filters}
+
+A \definition{Bloom Filter} is a space-efficient probabilistic data structure used for \textbf{membership queries}:
+\begin{itemize}
+    \item \textbf{Fast} insertions lookups.
+    \item \textbf{No false negatives}, but may return \textbf{false positives}.
+    \item This trade-off is ideal for \textbf{fixed-latency, high-speed systems} (like programmable switches).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Generalization of the 1-hash Bloom filter to $k$-hash}}
+\end{flushleft}
+To \textcolor{Green3}{\textbf{reduce false positives}}, we \textbf{extend the 1-hash Bloom Filter}:
+\begin{itemize}
+    \item Instead of just 1 hash function, we use $K$ different hash functions.
+    \item Each function maps the input element to a different positions in the bit array.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How Insertion Works}}
+\end{flushleft}
+Let's say we want to insert ``\texttt{Rust}'':
+\begin{enumerate}
+    \item Compute $K$ hash functions in parallel:
+    \begin{equation*}
+        h_{1}\left(x\right) \hspace{2em} h_{2}\left(x\right) \hspace{2em} \dots \hspace{2em} h_{K}\left(x\right)
+    \end{equation*}
+
+    \item For each $h_{i}\left(x\right)$, set the bit at position $h_{1}\left(x\right)$ to \texttt{1}.
+    \begin{itemize}
+        \item $h_{1}\left(x\right) = 1$
+        \item $h_{2}\left(x\right) = 1$
+        \item $\dots$
+        \item $h_{K}\left(x\right) = 1$
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{search} \textbf{How Lookup Works}}
+\end{flushleft}
+To check whether an element is in the set:
+\begin{itemize}
+    \item Compute all $K$ hashes
+    \item If \textbf{all corresponding bits are set to 1}, we return \texttt{true} (element may be present)
+    \item If \textbf{at least one bit is 0}, we return \texttt{false} (element is definitely not present)
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{False Positives}}
+\end{flushleft}
+Let's say ``\texttt{Fire}'' is not inserted but happens to have all its hash bits already set by ``\texttt{Rust}'', ``\texttt{Hello}'', or ``\texttt{Fine}''. The filter will wrongly return \texttt{true}, a false positive. Still, \textbf{no false negatives} can occur: if an element was inserted, all bits are set, and it will always return \texttt{true}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{percent} \textbf{Probability Analysis}}
+\end{flushleft}
+Let:
+\begin{itemize}
+    \item $N$: number of \textbf{inserted elements}
+    \item $M$: number of \textbf{bits in the filter}
+    \item $K$: number of \textbf{hash functions}
+\end{itemize}
+Then:
+\begin{itemize}
+    \item \textbf{Probability} a particular \textbf{cell is still 0 after inserting $N$ elements}:
+    \begin{equation}
+        \left(1 - \dfrac{1}{M}\right)^{\left(K \cdot N\right)}
+    \end{equation}
+
+    \item \textbf{Probability} of a false positive (all $K$ bits set for a non-inserted element), the \definition{False Positive Rate (FPR)}:
+    \begin{equation}
+        \text{FPR } = \left(1 - \left(1 - \dfrac{1}{M}\right)^{\left(K \cdot N\right)}\right)^{K}
+    \end{equation}
+\end{itemize}
+Just as an idea, with $1'000$ elements inserted, $10'000$ bits in the filter (cells), and 7 hash computations, we get a probability of FPR of only 0.82\%. And if we increase the bits in the filter ($M$) to $100'000$, the FPR is about 0\%! So, with a \textbf{moderate increase in memory and hash computations}, we can get extremely low FPRs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Very \textbf{memory-efficient}, uses up to $10\times$ less memory \textbf{than separate chaining}.
+    \item Lookup and insertions are \textbf{predictable and fast}, constant time with $K$ steps.
+    \item Still \textbf{no false negatives}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item Requires \textbf{more computation} than the single-hash version (e.g., 7 hash functions).
+    \item Slightly \textbf{more complex to implement in hardware}.
+\end{itemize}

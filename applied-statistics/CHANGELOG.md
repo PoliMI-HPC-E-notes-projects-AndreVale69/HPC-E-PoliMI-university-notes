@@ -12,6 +12,7 @@
 - add `Clustering Methods`
   - add `Introduction`
   - add `Defining Similarity in Clustering`
+  - add `Clustering Validity`
 
 --------------------
 

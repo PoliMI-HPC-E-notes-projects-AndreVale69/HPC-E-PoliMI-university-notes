@@ -12,7 +12,8 @@
 ### v0.3.1
 
 - add `Multiple Qubit Gates`
-  - add `Introduction`
+  - add `Multiple Qubit States`
+  - add `Introduction to Multiple Qubit Gates`
   - add `Controlled NOT (CNOT) Gate`
 
 --------------------

@@ -13,6 +13,7 @@
   - add `Introduction`
   - add `Defining Similarity in Clustering`
   - add `Clustering Validity`
+  - add `Hierarchical Clustering`
 
 --------------------
 

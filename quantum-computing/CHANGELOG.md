@@ -14,6 +14,7 @@
 - add `Multiple Qubit Gates`
   - add `Multiple Qubit States`
   - add `Introduction to Multiple Qubit Gates`
+  - add `Tensor Product of Quantum Gates`
   - add `Controlled NOT (CNOT) Gate`
 
 --------------------

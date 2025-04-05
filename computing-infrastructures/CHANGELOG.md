@@ -24,6 +24,7 @@ Each version follows the Conventional Commits structure. For more information on
 ### v1.4.0
 
 - refactor `Storage (type, technology)`
+- refactor `Files`
 
 --------------------
 

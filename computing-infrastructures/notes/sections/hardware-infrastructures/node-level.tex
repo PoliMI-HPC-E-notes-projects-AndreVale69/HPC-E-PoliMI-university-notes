@@ -545,15 +545,61 @@ The \textbf{driver motor spins the platters at a constant rate}, measured in \de
     \centering
     \includegraphics[width=.8\textwidth]{img/files-7.pdf}
     \caption{Example of HDD geometry.}
+    \label{fig: example of hdd geometry}
 \end{figure}
 
-Given the architecture of the HDD, there are \textbf{four types of delay}:
-\begin{itemize}\label{four types of hdd delay}
-    \item \definition{Rotational Delay} is the \textbf{time to rotate the desired sector to the read head}, and it's related to RPM.
-    \item \definition{Seek Delay} is the \textbf{time to move the read head to a different track}.
-    \item \definition{Transfer time} is the \textbf{time to read or write bytes}.
-    \item \definition{Controller Overhead} is the \textbf{overhead for the request management}.
+\noindent
+The geometry of an HDD refers to the \textbf{physical layout} of data on the surface of a spinning disk. Figure \ref{fig: example of hdd geometry} shows this:
+\begin{itemize}
+    \item \textbf{One Platter}. The circular surface shown is a platter, which is a rigid, magnetic-coated disk where data is stored. Most HDDs have multiple platters stacked vertically, but here we focus on one for simplicity.
+    \item \textbf{Tracks}. The platter is divided into concentric circles called tracks. Each track is a circular path that the read/write head can follow. In the figure \ref{fig: example of hdd geometry}, we see three tracks, each larger than the last, moving outward from the center.
+    \item \textbf{Sectors}. Each track is divided into pie-like slices called sectors. A sector is the smallest physical unit that can be read or written on a disk (typically 512 bytes or 4 KB). The numbers (0 to 35) represent sector identifiers along the circular tracks. Note how the outer tracks contain more sectors because they have a larger circumference, so they can physically hold more data; this is known as Zone Bit Recording (ZBR), not mentioned in the course.
+    \item \textbf{Read/Write head}. The read head is shown floating above the platter. It moves radially across the surface to switch from one track to another (this is called seek). Once on the correct track, the head waits for the desired sector to rotate beneath it (rotational latency), and then it reads/writes data.
+    \item \textbf{Rotation and seek behavior}. The platter spins at high speed (e.g., 7200 RPM). As it rotates, the sectors pass under the stationary head. Data is accessed when the correct sector aligns with the head.
 \end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Types of Delay in disk Access}}
+\end{flushleft}
+When a file is read from or written to a disk, especially an HDD, the total time taken is influenced by several delays. These are due to the mechanical and electronic processes involved in locating and transferring the data. Exists \textbf{four types of delay}:
+\begin{itemize}\label{four types of hdd delay}
+    \item \definition{Rotational Delay} (a.k.a. \definition{Rotational Latency}) is the \textbf{time needed for the disk to rotate so that the desired sector aligns with the read/write head}. It depends on the RPM (Revolutions Per Minute) of the disk.
+
+
+    \item \definition{Seek Delay} is the \textbf{delay caused by the mechanical movement of the read/write head as it travels from one track to another} on a spinning disk. It is the dominant mechanical delay in many HDD operations, especially for random access patterns.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How it works}}. Moving the head involves a sequence of physical phases:
+    \begin{enumerate}
+        \item \textbf{Acceleration}: the actuator moves the head out of its resting position.
+        \item \textbf{Coasting}: the head glides at a constant speed (if the distance is large).
+        \item \textbf{Deceleration}: the actuator slows down to avoid overshooting.
+        \item \textbf{Settling}: a short pause to stabilize the head at the desired track.
+    \end{enumerate}
+
+   
+    \item \definition{Transfer time} is the \textbf{time required to actually move the data}, once the head is correctly positioned over the desired sector. It's the final step in the I/O pipeline, where data is \textbf{read from or written to} the magnetic surface.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What affects transfer time?}}
+    \begin{enumerate}
+        \item \textbf{Rotational Speed (RPM)}, determines how quickly sectors pass under the head.
+        \item \textbf{Data density}, more tightly packed data, more data per second read.
+        \item \textbf{Size of the request}, reading more data takes more time.
+    \end{enumerate}
+    Even though it's much shorter than seek or rotation delays, \textbf{transfer time scales with data size}. For large sequential reads, transfer time becomes more relevant, especially when seek and rotation delays are minimized.
+
+
+    \item \definition{Controller Overhead} is the \textbf{non-mechanical delay introduced by the disk controller}, which is the hardware interface between the OS and the physical disk. It involves:
+    \begin{itemize}
+        \item \textbf{Buffer management}: transferring data between disk and system memory (often using DMA).
+        \item \textbf{Interrupt processing}: informing the OS when the I/O operation is complete.
+        \item \textbf{Command translation}: converting OS-level I/O requests into device specific actions (e.g., SATA/NVMe commands).
+        \item \textbf{Scheduling and queueing}: organize I/O operations for efficiency.
+    \end{itemize}
+\end{itemize}
+\hl{To see how these delays are calculated}, we suggest you refer to the performance section \ref{subsection: Disk performance}, about HDD \ref{subsubsection: HDD performance}, page \pageref{subsubsection: HDD performance}.
+
+\highspace
 In order to reduce the delay in the HDD, the companies use a high-speed and tiny memory (8, 16 or 32 MB) called \definition{cache} (also called \definition{track buffer}). The cache is used when there is a:
 \begin{itemize}
     \item \definition{Read caching}. It reduces read delays due to seeking and rotation.
@@ -567,9 +613,7 @@ In order to reduce the delay in the HDD, the companies use a high-speed and tiny
 \end{itemize}
 So, the \textbf{caching helps improve disk performance}. The critical idea under caching is that if there is a \textbf{queue of requests to the disk, they can be reordered to improve performance}. The estimation of the request length is feasible, knowing the position of the data on the disk.
 
-\newpage
-
-\noindent
+\highspace
 There are several \textbf{scheduling algorithms}:
 \begin{itemize}
     \item \definition{First Come, First Serve (FCFC)}. It is the most basic scheduler, serving requests in order. The \emph{\textbf{disadvantage}} is that there is much time spent seeking.

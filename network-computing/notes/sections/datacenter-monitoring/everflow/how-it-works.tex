@@ -1,0 +1,98 @@
+\subsubsection{How it works}
+
+Everflow isn't just a single-purpose tool, it's an extensible framework that supports different debugging applications, all coordinated through a central controller.
+\begin{enumerate}
+    \item \important{Everflow is Application-Driven}. Operators use Everflow to \textbf{run specific troubleshooting tasks}, such as:
+    \begin{itemize}
+        \item Latency profiling
+        \item Packet drop debugging
+        \item Loop detection
+    \end{itemize}
+    Each task is handled by an Everflow application tailored to that goal.
+
+    \item \important{The Controller as the Central Brain}. The \textbf{controller} coordinates the full debugging process:
+    \begin{itemize}
+        \item It receives:
+        \begin{enumerate}
+            \item The operator's request (e.g., trace all flows to a web server).
+            \item The expected network routing.
+        \end{enumerate}
+
+        \item It then:
+        \begin{enumerate}
+            \item \texttt{[init]} \textbf{Installs match-and-mirror rules} in selected switches.
+            \item \texttt{[config]} \textbf{Configures the analyzers} to process mirrored traffic.
+            \item \texttt{[debug]} \textbf{Sets the debug bits} (e.g., using DSCP or IPID) in custom probes if needed.
+        \end{enumerate}
+        This modular design allows Everflow to adapt to the operator's intent dynamically.
+    \end{itemize}
+
+
+    \item \important{Data Collection via Reshuffler and Analyzers}. Once rules are deployed:
+    \begin{itemize}
+        \item \textbf{Mirrored packets} from the switches \textbf{go to a Reshuffler}.
+        \item The \textbf{Reshuffler distributes the traffic to} multiple \textbf{analyzers} (to balance the load).
+        \item The \textbf{analyzers inspect} the packet streams for signs of abnormal behavior.
+    \end{itemize}
+
+
+    \item \important{Smart Storage: Only Save What's Important}. Even with match-and-mirror, the system can generate \textbf{a massive amount of trace data}. For optimization, the \textbf{analyzers write to memory only packets with the debug bit set}, or \textbf{packets that show anomalies} (e.g., unusual delays, missing responses).  This filtering prevents overload and ensures only useful diagnostic data is saved.
+\end{enumerate}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.5\textwidth]{img/everflow-1.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Summary of Everflow's End-to-End operation:
+        \begin{itemize}
+            \item \textbf{Operator Request}. Chooses a debugging goal (e.g., latency analysis).
+            \item \textbf{Controller}. Interprets request, maps it to rules and config.
+            \item \textbf{Switch Configuration}. Match and mirror rules installed.
+            \item \textbf{Probing (Optional)}. Probes injected with debug bits.
+            \item \textbf{Data Reshuffling}. Mirrored packets routed to analyzers.
+            \item \textbf{Analysis}. Analyzers check for problems.
+            \item \textbf{Selective Storage}. Only suspicious packets are saved.
+        \end{itemize}
+    }
+\end{figure}
+
+\begin{examplebox}[: Real episode]
+    Internal users reported that \textbf{some connections to a web service were timed out}. This violated the service level agreement (SLA). The root cause was suspicious: packet drops were occurring, but \emph{where exactly}?
+
+    \highspace
+    The service architecture involved multiple components: clients, load balancers, web servers, databases. All interconnected over the datacenter network. But the \textbf{datacenter is huge}, with many possible failure points.
+
+    \highspace
+    The investigation begins.
+    \begin{enumerate}
+        \item Load Balancers showed no errors in their counters.
+        \item Some switches were checked manually, no issue found.
+        \item But the problem persisted, random connection timeouts were still happening.
+    \end{enumerate}
+
+    \highspace
+    This is where Everflow comes in.
+    \begin{enumerate}
+        \item Everflow was used to \textbf{mirror TCP SYN packets} (which initiate connections) across the network.
+        \item Through its \textbf{trace analysis}, it was observed that:
+        \begin{itemize}
+            \item Many SYN packets \textbf{never reached} the destination web server.
+            \item This only happened for \textbf{one specific web server}.
+        \end{itemize}
+        \item Further analysis reveled:
+        \begin{itemize}
+            \item All SYN packets to that web server were \textbf{dropped at one switch}.
+            \item The switch showed \textbf{no error counters}, \underline{completely silent}.
+        \end{itemize}
+    \end{enumerate}
+
+    \highspace
+    The root cause has been identified. The TCAM (Ternary Content Addressable Memory) on that switch was corrupted (TCAM stores forwarding table entries, used to decide where packets go). Because the corruption was silent:
+    \begin{enumerate}
+        \item The \textbf{switch dropped packets silently}.
+        \item \textbf{No logs}, \textbf{no alarms}, \textbf{no metrics}, traditional monitoring failed.
+    \end{enumerate}
+    After a reboot of the switch, the issue disappeared.
+\end{examplebox}

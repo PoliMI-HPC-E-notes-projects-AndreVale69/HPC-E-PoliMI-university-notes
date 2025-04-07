@@ -1,0 +1,47 @@
+\subsection{Everflow}\label{subsection: Everflow}
+
+\subsubsection{What is Everflow?}
+
+\definition{Everflow}\cite{greenberg2015packet-level} is Microsoft's system for \textbf{packet-level telemetry in production datacenters}, and it is built around three key concepts:
+\begin{enumerate}
+    \item \important{Match and Mirror on the Switch}. Everflow leverages the match-action capability of commodity switches. It \textbf{defines rules to match specific packets and then mirror (copy) them to a monitoring collector}. Three matching rules:
+    \begin{itemize}
+        \item \texttt{TCP SYN / FIN / RST}: to trace connection setup/teardown.
+        \item \textbf{Special debug bit}: used to flag packets for tracing.
+        \item \textbf{Protocol traffic}: such as BGP or other control plane packets.
+    \end{itemize}
+    This allows the system to \textbf{monitor important or suspicious traffic patterns without touching every packet}.
+    
+    
+    \item \important{Switch-Based Reshuffler}. Mirroring packets from all switches generates huge data volumes. A single analysis server can't handle this load. The solution is to \textbf{use one or more intermediate switches} (reshuffler) that:
+    \begin{enumerate}
+        \item Receive mirrored packets.
+        \item Distribute them intelligently across multiple collectors.
+    \end{enumerate}
+    This \textbf{balances load and scales the telemetry infrastructure}.
+    
+
+    \item \important{Guided Probing}. The system can \textbf{inject specific test packets into the network}. These packets are crafted to \textbf{explore or verify behaviors} (e.g., path correctness, loss, latency). They are useful because:
+    \begin{itemize}
+        \item Helps when match and mirror alone misses packets (e.g., for complete TCP flow analysis).
+        \item Can reproduce or test suspected failures.
+        \item Distinguishes between persistent and transient issues.
+    \end{itemize}
+    Uses DSCP bits (in IP headers) and parts of the IPID field to mark and sample packets.
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l | p{15em} @{}}
+            \toprule
+            Idea & Purpose & Key Technique \\
+            \midrule
+            \textbf{Match and Mirror}   & Capture relevant packets          & Matching on SYN / FIN / debug bits; mirroring to collectors. \\ [.5em]
+            \textbf{Reshuffler}         & Scale analysis                    & Distribute mirrored packets across servers. \\ [.5em]
+            \textbf{Guided Probing}     & Actively test network behavior    & Inject custom packets using special bit fields. \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Summary of Everflow concepts.}
+\end{table}

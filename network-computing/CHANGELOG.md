@@ -14,6 +14,7 @@
 
 - add `Datacenter Monitoring`
   - add `Why Datacenter Monitoring Matters`
+  - add `Network Monitoring`
 
 --------------------
 

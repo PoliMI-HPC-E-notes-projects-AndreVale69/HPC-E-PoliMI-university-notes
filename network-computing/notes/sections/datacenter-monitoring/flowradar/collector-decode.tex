@@ -1,0 +1,163 @@
+\subsubsection{Collector Decode}
+
+Once the switch sends its tables (FlowXOR, FlowCount, PacketCount) to the collector, there are \textbf{two stages of decoding}:
+\begin{enumerate}
+    \item \textbf{Single Decode} (local), performed at the collector level, recovers flows where the data structure is clean enough.
+    \item \textbf{Network-Wide Decode} (distributed), performed across multiple collectors/switches, combines views from many switches to fully decode the remaining flows.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Step 1 - Single Decode}}
+\end{flushleft}
+\definition{Single Decode} is the \textbf{local decoding stage}, it happens at one switch (or collector handling one switch's data). The goal is to \textbf{recover as many flows as possible} using \textbf{only the local FlowXOR, FlowCount, and PacketCount tables} collected from that switch. The key idea is to find ``pure'' cells (cells containing information from only one stream) and start the decoding process:
+\begin{enumerate}
+    \item \important{Find a Pure Cell}. A cell is \textbf{pure} if \texttt{FlowCount = 1}. It means only one flow was hashed to that cell. For example, let the following FlowRadar table, this step identifies the first row:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c @{}}
+            \toprule
+            \texttt{FlowXOR} & \texttt{FlowCount} & \texttt{PacketCount} \\
+            \midrule
+            $a$ & 1 & 5 \\
+            $a \otimes b$ & 2 & 12 \\
+            $b \otimes c \otimes d$ & 3 & 13 \\
+            0 & 0 & 0 \\
+            0 & 0 & 0 \\
+            $b \otimes c \otimes d$ & 3 & 13 \\
+            0 & 0 & 0 \\
+            $a$ & 1 & 5 \\
+            0 & 0 & 0 \\
+            $c \otimes d$ & 2 & 6 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    
+    \newpage
+
+
+    \item \important{Remove the Flow's Contribution from Other Cells}. Flow $a$ was hashed to multiple cells. So now we remove $a$'s effect from all its associated cells:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c @{}}
+            \toprule
+            \texttt{FlowXOR} & \texttt{FlowCount} & \texttt{PacketCount} \\
+            \midrule
+            0 & 0 & 0 \\
+            $b$ & 1 & 7 \\
+            $b \otimes c \otimes d$ & 3 & 13 \\
+            0 & 0 & 0 \\
+            0 & 0 & 0 \\
+            $b \otimes c \otimes d$ & 3 & 13 \\
+            0 & 0 & 0 \\
+            0 & 0 & 0 \\
+            0 & 0 & 0 \\
+            $c \otimes d$ & 2 & 6 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    
+    \item \important{Removal may produce purer cells}. By removing flow $a$, other cells might now have \texttt{FlowCount = 1} (pure cell). Repeat the previous steps until everything is decoded.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Possible Stall}}. Some flows are mixed together in such a way that no cell has \texttt{FlowCount = 1}. The solution here is to \textbf{apply} the second decoding stage, called \textbf{network-wide decode}.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Step 2 - Network-Wide Decode}}
+\end{flushleft}
+In the previous stage, each switch tries to decode as many flows as it can \textbf{locally}, by identifying \emph{pure} cells. But sometimes decoding gets stuck because:
+\begin{itemize}
+    \item Flow cells contain multiple flow mixed.
+    \item No pure cells remain.
+\end{itemize}
+To solve this, we use \textbf{network-wide redundancy}: packets of the \textbf{same flow traverse multiple switches}, and those switches may store \textbf{different parts} of the encoded data. By combining these views, we can \textbf{solve flows that are undecodable at any single switch}.
+
+\highspace
+For example, image the following situation:
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+            \toprule
+            \multicolumn{3}{c|}{Switch 1} & & \multicolumn{3}{c}{Switch 2} \\
+            \midrule
+            \texttt{FlowXOR} & \texttt{FlowCount} & \texttt{PacketCount} & & \texttt{FlowXOR} & \texttt{FlowCount} & \texttt{PacketCount} \\
+            \midrule
+            $a$ & 1 & $-$ & & $a \otimes d$ & 2 & $-$ \\
+            $a \otimes c \otimes d$ & 3 & $-$ & & $a \otimes c$ & 2 & $-$ \\
+            $b \otimes c \otimes d$ & 3 & $-$ & & $b \otimes c \otimes d$ & 3 & $-$ \\
+            $a \otimes b \otimes c$ & 3 & $-$ & & $a \otimes b \otimes c$ & 3 & $-$ \\
+            $b \otimes d$ & 2 & $-$ & & $b \otimes d$ & 2 & $-$ \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
+
+\noindent
+In both switches, single decode fails. But when \textbf{merged}, we have enough constraints to decode all flows. This is similar to solving a system of equations with more equations that unknowns. In other words, we don't need massive memory in each switch, we can use \textbf{small, compressed flow encodings per switch} and decode everything later by \textbf{combining views across the network}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{But how do we know which switch saw which flow?}}
+\end{flushleft}
+To decode accurately, we must know which switch processed which flow, because otherwise we might combine FlowXORs from switches that didn't see a particular flow (wrong result). The \textbf{solution is the Flow Filter}. Each switch has a Flow Filter, so we can:
+\begin{enumerate}
+    \item Query the flow filter: ``Did you see the flow $a$?''
+    \item If yes, we use that switch's data for decoding flow $a$.
+\end{enumerate}
+This \textbf{guarantees correctness in multi-switch decoding}.
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l @{}}
+            \toprule
+            \textbf{Step} & \textbf{Description} \\
+            \midrule
+            1. & Each switch reports its compressed counters (FlowXOR, FlowCount, PacketCount) \\ [.3em]
+            2. & Some flows decoded via Single Decode \\ [.3em]
+            3. & Remaining flows are solved by combining equations from multiple switches \\ [.3em]
+            4. & Use Flow Filters to determine which switch saw which flows \\ [.3em]
+            5. & Network-wide correlation fully decodes the remaining flows \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Network-Wide Decode summary.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What if Switches Disagree Due to Packet Loss?}}
+\end{flushleft}
+Image that:
+\begin{itemize}
+    \item A packet of flow $f$ passes through Switch A and Switch B.
+    \item Due to \textbf{transient issue}, one of the switches \textbf{misses that packet} (e.g., due to mirroring loss or memory overwrite).
+\end{itemize}
+Now, when both switches report their Flow Radar data structure:
+\begin{itemize}
+    \item The values for flow $f$ might not match across switches.
+    \item This creates \textbf{inconsistencies} when trying to decode.
+\end{itemize}
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Redundancy}}. Even if packet counts differ, the set of flows seen by each switch can still be decoded. And more importantly, once we know which flows each switch saw, we can treat each switch's data as a system of linear equations and solve for the actual packet counts.
+\begin{enumerate}
+    \item We \textbf{use the Flow Filter} to determine which flows each switch saw.
+    \item We \textbf{decode flow IDs} using the FlowXOR and FlowCount tables.
+    \item We set up a \textbf{linear system of equations} per switch:
+    \begin{itemize}
+        \item Each \textbf{cell} gives us an equation:
+        \begin{equation*}
+            \texttt{XOR}\left(f_{1}, f_{2}, \dots\right) \Rightarrow \text{total packet count} = P
+        \end{equation*}
+        \item We solve for the \textbf{unknown packet counts} of individual flows.
+    \end{itemize}
+    \item If the same flow has \textbf{different counts} across switches:
+    \begin{itemize}
+        \item It signals a possible \textbf{packet loss};
+        \item Or a measurement \textbf{inconsistency}
+    \end{itemize}
+\end{enumerate}

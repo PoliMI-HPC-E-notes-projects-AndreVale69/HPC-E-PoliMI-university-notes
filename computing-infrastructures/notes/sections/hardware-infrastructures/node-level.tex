@@ -360,16 +360,10 @@ Data has significantly grown in the last few years due to sensors, industry 4.0,
 \end{itemize}
 
 \highspace
-The \emph{storage technologies} are many. One of the oldest but still used is the \definition{Hard Disk Drive (HDD)}, a magnetic disk with mechanical interactions. Due to its mechanical movement, the \definition{solid-state drive (SSD)} is the best solution (quality-price) because there are no mechanical or moving parts, and they are built out of transistors (NADN flash-based devices). The \definition{non-volatile memory express (NVMe)} also exists, which is the \textbf{latest industry standard} for running PCIe\footnote{\definition{PCIe (peripheral component interconnect express)}. is an interface standard for connecting high-speed components} SSDs.
+The \emph{storage technologies} are many. One of the oldest but still used is the \definition{Hard Disk Drive (HDD)}, a magnetic disk with mechanical interactions. However, the mechanical nature of HDDs imposes physical limits on access speed and reliability. In contrast, \definition{Solid-State Drive (SSD)}, which lack moving parts and are built using NAND flash memory, offer significantly faster access times and better durability. The \definition{Non-Volatile Memory express (NVMe)} also exists, which is the \textbf{latest industry standard} for running PCIe\footnote{\definition{PCIe (peripheral component interconnect express)}. is an interface standard for connecting high-speed components} SSDs.
 
 \highspace
-As for price classification, we can see that the NVMe is the most expensive solution:
-\begin{enumerate}
-    \item NVMe (between 100€ and 200€ for 1TB)
-    \item SSD (between 70€ and 100€ for 1TB)
-    \item HDD (between 40€ and 60€ for 1TB)
-\end{enumerate}
-For these reasons, it is reasonable to use a \textbf{hybrid solution} (HDD + SSD):
+In terms of cost per terabyte, NVMe drives are currently the most expensive (typically €100-200 for 1 TB), followed by SSDs (€70-100), while HDDs remain the most economical option (€40-60). This price-performance hierarchy makes hybrid storage architectures (HDD + SSD) increasingly appealing:
 \begin{itemize}
     \item A speed storage technology (\textbf{SSD or NVMe}) as \textbf{cache} and \textbf{several HDDs for storage}. It is a combination used by some servers: a small SSD with a large HDD to have a faster disk.
     
@@ -380,33 +374,33 @@ For these reasons, it is reasonable to use a \textbf{hybrid solution} (HDD + SSD
 
 \paragraph{Files}
 
-An \textbf{OS can see the disks as a collection of} \definition{data blocks} that can be read or written independently. To allow the ordering/management among them, \textbf{each block is characterized by a unique numerical address} called \definition{LBA (Logical Block Address)}\label{LBA (Logical Block Address)}. Typically, the \textbf{OS groups blocks into clusters}\footnote{\definition{Clusters} are the minimal units an OS can read from or write to a disk.} \textbf{to simplify the access to the disk}. Typical cluster sizes range from 1 disk sector (512 B, or 4 KB) to 128 sectors (64 KB).
+The operating system views the disk as a \textbf{flat collection of independently addressable data blocks}. Each \textbf{block is assigned a unique} \definition{LBA (Logical Block Address)}\label{LBA (Logical Block Address)}, enabling efficient data referencing and organization. To streamline access and reduce management overhead, the \textbf{OS typically groups these blocks into clusters}, larger units that serve as the minimum granularity for disk I/O operations.
 
 \highspace
-Each \emph{cluster} contains:
+Clusters typically range in size from a single disk sector (512 bytes or 4 KB) up to 128 sectors (64 KB), depending on the file system configuration. Each cluster may store either:
 \begin{itemize}
-    \item \textbf{File data}. The actual content of the files.
+    \item \textbf{File data}. The actual contents of user files.
     
-    \item \textbf{Metadata}. The information required to support the file system:
+    \item \textbf{Metadata}. System-level information necessary to support the file system,:
     \begin{itemize}
-        \item File names
-        \item Directory structures and symbolic links
-        \item Creation, modification, and last access dates
-        \item Security information (owners, access list, encryption)
+        \item File and directory names
+        \item Folder hierarchies and symbolic links
+        \item Timestamps (creation, modification, access)
+        \item Ownership and access control data
         \item \textbf{Links to the LBA where the file content can be located on the disk}
     \end{itemize}
 \end{itemize}
-The disk can thus contain \textbf{several types of clusters}:
+Consequently, the \textbf{disk space is divided into different cluster types} based on their purpose:
 \begin{itemize}
     \item Metadata:
     \begin{itemize}
-        \item Fixed position (to bootstrap the entire file system)
-        \item Variable position (to hold the folder structure)
+        \item \hl{Fixed-position metadata clusters}, used to initialize and mount the file system
+        \item \hl{Variable-position metadata clusters}, which manage directories and symbolic links
     \end{itemize}
     
-    \item File data (the actual content of the files)
+    \item \hl{File data clusters}, containing the actual contents of files
     
-    \item Unused space (available to contain new files and folders)
+    \item \hl{Unused clusters}, which are free and available for future allocations
 \end{itemize}
 
 \begin{figure}[!htp]
@@ -420,24 +414,33 @@ The disk can thus contain \textbf{several types of clusters}:
 \noindent
 The following explanation introduces some basic operations on the files to see what happens inside the disks.
 \begin{itemize}
-    \item \underline{\textbf{Reading}}. To read a file:
+    \item \textcolor{Red2}{\underline{\textbf{File Reading}}}
     \begin{enumerate}
-        \item Access the metadata, variable position (because it contains the folder structure), to locate its block;
-        \item Access the blocks to read the contents of the file.
+        \item \important{Access the Metadata}. Before the system knows \textbf{where} the file is stored on disk, it must find information about the file, called metadata. This metadata is stored in \textbf{variable-position metadata clusters}. These clusters are not always in the same place on disk, they move and grow as the system evolves.
+        \item \important{Locate the File's Data Blocks (clusters)} and \important{Read the Actual Content}. Once the OS has the metadata, it now knows:
+        \begin{itemize}
+            \item Which \textbf{Logical Block Addresses (LBAs)} contain the data.
+            \item \textbf{How many clusters need to be read} to get the full content.
+        \end{itemize}
+        It uses this information to issue \textbf{read commands} to the disk controller. Finally, the \textbf{disk accesses the physical sectors or clusters} indicated by the LBAs and transfers that data into main memory (RAM).
     \end{enumerate}
     \begin{figure}[!htp]
         \centering
-        \includegraphics[width=\textwidth]{img/files-2.pdf}
+        \includegraphics[width=.8\textwidth]{img/files-2.pdf}
     \end{figure}
 
-    \item \underline{\textbf{Writing}}. To write a file:
+    \item \textcolor{Red2}{\underline{\textbf{File Writing}}}
     \begin{enumerate}
-        \item Access the metadata, variable position (because it contains the folder structure), to find free space.
-        \item Write the data in the allocated blocks (cluster type: unused space).        
+        \item \important{Access Metadata to Find Free Space}. The operating system \textbf{first checks the file system's metadata} to \textbf{find a free area of disk space} where it can store our new data.
+        \item Once free space is identified, the OS:
+        \begin{itemize}
+            \item \textbf{Allocates} one or more clusters, depending on the file size
+            \item \textbf{Writes our data} into these clusters on the physical disk
+        \end{itemize}
     \end{enumerate}
     \begin{figure}[!htp]
         \centering
-        \includegraphics[width=\textwidth]{img/files-3.pdf}
+        \includegraphics[width=.8\textwidth]{img/files-3.pdf}
     \end{figure}
 
     Since the \emph{file system can only access clusters}, the \textbf{actual space taken up by a file on a disk is always a multiple of the cluster size}. Given:
@@ -447,14 +450,13 @@ The following explanation introduces some basic operations on the files to see w
     \end{itemize}
     Then the \definition{actual size on the disk $a$} can be calculated as:
     \begin{equation}
-        a = \mathrm{ceil}\left(\dfrac{s}{c}\right) \times c
+        a = \left\lceil \dfrac{s}{c} \right\rceil \times c
     \end{equation}
     Where $\mathrm{ceil}$ rounds a number \underline{up} to the nearest integer. It's also possible to calculate the \textbf{amount of disk space wasted by organising the file into clusters} (\definition{wasted disk space $w$}):
     \begin{equation}
         w = a - s
     \end{equation}
     A formal way to refer to wasted disk space is \definition{internal fragmentation} of files.
-    \newpage
     \begin{examplebox}[: internal fragmentation]
         \begin{itemize}
             \item File size: 27 byte
@@ -462,7 +464,7 @@ The following explanation introduces some basic operations on the files to see w
         \end{itemize}
         The \emph{actual size} on the disk is:
         \begin{equation*}
-            a = \mathrm{ceil}\left(\dfrac{27}{8}\right) \cdot 8 = \mathrm{ceil}\left(3.375\right) \cdot 8 = 4 \cdot 8 = 32 \text{ byte}
+            a = \left\lceil \dfrac{27}{8} \right\rceil \cdot 8 = \left\lceil 3.375 \right\rceil \cdot 8 = 4 \cdot 8 = 32 \text{ byte}
         \end{equation*}
         And the internal fragmentation $w$ is:
         \begin{equation*}
@@ -470,24 +472,36 @@ The following explanation introduces some basic operations on the files to see w
         \end{equation*}
     \end{examplebox}
 
-    \item \underline{\textbf{Deleting}}. To delete a file:
+    \item \important{\underline{\textbf{Deleting}}}
     \begin{enumerate}
-        \item Just update the metadata, variable position (because it contains the folder structure), to say that the blocks where the file was stored are no longer used by the OS.
+        \item The file system updates its metadata structures to:
+        \begin{itemize}
+            \item \textbf{Remove the file name} from the directory
+            \item \textbf{Mark the clusters} where the file was stored as \textbf{free or available}
+            \item Optionally, update timestamps or record deletion events
+        \end{itemize}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Importantly}}: \textbf{The data itself is not erased at this stage}. The actual bytes remain on disk until they are overwritten by another file.
     \end{enumerate}
-    \textbf{Deleting a file never actually deletes the data on the disk}: if a new file is written to the same clusters, the old data is replaced by the new.
     \begin{figure}[!htp]
         \centering
         \includegraphics[width=\textwidth]{img/files-4.pdf}
     \end{figure}
     
-    \item \underline{\textbf{External fragmentation}}. As the disk's life evolves, there might \textbf{not be enough space to store a file contiguously}.
+    \item \important{\underline{\textbf{External fragmentation}}}. It happens when there are \textbf{enough free clusters on the disk} to store a file, but \textbf{not all together (not contiguous)}. So, when the system tries to write a large file, it must \textbf{split it} into smaller parts and place them in \textbf{different, scattered locations} on the disk.
     
-    In this case, the file is split into smaller chunks and inserted into the free clusters spread over the disk.
-    
-    The effect of \textbf{splitting a file into non-contiguous clusters} is called \definition{external fragmentation}.
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does this happen?}} Over time, as files are created, deleted, resized, or moved, the disk becomes \textbf{less organized}. Clusters are freed in different spots, and the available space is no longer one big continuous area. So:
+    \begin{itemize}
+        \item A new file cannot fit in one continuous chunk.
+        \item The OS stores it in \textbf{multiple non-adjacent clusters}.
+    \end{itemize}
+    This is called \definition{external fragmentation} because: the \textbf{fragmentation is not inside the file itself, but in the way its data is laid out externally across the disk}.
+
+    \newpage
+
     \begin{figure}[!htp]
         \centering
         \includegraphics[width=\textwidth]{img/files-5.pdf}
+        \caption{Each number (1, 2, 3) corresponds to a portion (chunk) of a file. A file that was meant to be stored as \texttt{[1][2][3]} (contiguously) has instead been broken into parts and stored in a scattered layout across different disk clusters. This situation represents \textbf{external fragmentation}, where the file system could not find a large enough continuous block of free space to store the file all together.}
     \end{figure}
 \end{itemize}
 
@@ -531,43 +545,200 @@ The \textbf{driver motor spins the platters at a constant rate}, measured in \de
     \centering
     \includegraphics[width=.8\textwidth]{img/files-7.pdf}
     \caption{Example of HDD geometry.}
+    \label{fig: example of hdd geometry}
 \end{figure}
 
-Given the architecture of the HDD, there are \textbf{four types of delay}:
-\begin{itemize}\label{four types of hdd delay}
-    \item \definition{Rotational Delay} is the \textbf{time to rotate the desired sector to the read head}, and it's related to RPM.
-    \item \definition{Seek Delay} is the \textbf{time to move the read head to a different track}.
-    \item \definition{Transfer time} is the \textbf{time to read or write bytes}.
-    \item \definition{Controller Overhead} is the \textbf{overhead for the request management}.
-\end{itemize}
-In order to reduce the delay in the HDD, the companies use a high-speed and tiny memory (8, 16 or 32 MB) called \definition{cache} (also called \definition{track buffer}). The cache is used when there is a:
+\noindent
+The geometry of an HDD refers to the \textbf{physical layout} of data on the surface of a spinning disk. Figure \ref{fig: example of hdd geometry} shows this:
 \begin{itemize}
-    \item \definition{Read caching}. It reduces read delays due to seeking and rotation.
+    \item \textbf{One Platter}. The circular surface shown is a platter, which is a rigid, magnetic-coated disk where data is stored. Most HDDs have multiple platters stacked vertically, but here we focus on one for simplicity.
+    \item \textbf{Tracks}. The platter is divided into concentric circles called tracks. Each track is a circular path that the read/write head can follow. In the figure \ref{fig: example of hdd geometry}, we see three tracks, each larger than the last, moving outward from the center.
+    \item \textbf{Sectors}. Each track is divided into pie-like slices called sectors. A sector is the smallest physical unit that can be read or written on a disk (typically 512 bytes or 4 KB). The numbers (0 to 35) represent sector identifiers along the circular tracks. Note how the outer tracks contain more sectors because they have a larger circumference, so they can physically hold more data; this is known as Zone Bit Recording (ZBR), not mentioned in the course.
+    \item \textbf{Read/Write head}. The read head is shown floating above the platter. It moves radially across the surface to switch from one track to another (this is called seek). Once on the correct track, the head waits for the desired sector to rotate beneath it (rotational latency), and then it reads/writes data.
+    \item \textbf{Rotation and seek behavior}. The platter spins at high speed (e.g., 7200 RPM). As it rotates, the sectors pass under the stationary head. Data is accessed when the correct sector aligns with the head.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Types of Delay in disk Access}}
+\end{flushleft}
+When a file is read from or written to a disk, especially an HDD, the total time taken is influenced by several delays. These are due to the mechanical and electronic processes involved in locating and transferring the data. Exists \textbf{four types of delay}:
+\begin{itemize}\label{four types of hdd delay}
+    \item \definition{Rotational Delay} (a.k.a. \definition{Rotational Latency}) is the \textbf{time needed for the disk to rotate so that the desired sector aligns with the read/write head}. It depends on the RPM (Revolutions Per Minute) of the disk.
+
+
+    \item \definition{Seek Delay} is the \textbf{delay caused by the mechanical movement of the read/write head as it travels from one track to another} on a spinning disk. It is the dominant mechanical delay in many HDD operations, especially for random access patterns.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How it works}}. Moving the head involves a sequence of physical phases:
+    \begin{enumerate}
+        \item \textbf{Acceleration}: the actuator moves the head out of its resting position.
+        \item \textbf{Coasting}: the head glides at a constant speed (if the distance is large).
+        \item \textbf{Deceleration}: the actuator slows down to avoid overshooting.
+        \item \textbf{Settling}: a short pause to stabilize the head at the desired track.
+    \end{enumerate}
+
+   
+    \item \definition{Transfer time} is the \textbf{time required to actually move the data}, once the head is correctly positioned over the desired sector. It's the final step in the I/O pipeline, where data is \textbf{read from or written to} the magnetic surface.
     
-    \item \definition{Write caching}. It is divided into two different implementations:
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What affects transfer time?}}
+    \begin{enumerate}
+        \item \textbf{Rotational Speed (RPM)}, determines how quickly sectors pass under the head.
+        \item \textbf{Data density}, more tightly packed data, more data per second read.
+        \item \textbf{Size of the request}, reading more data takes more time.
+    \end{enumerate}
+    Even though it's much shorter than seek or rotation delays, \textbf{transfer time scales with data size}. For large sequential reads, transfer time becomes more relevant, especially when seek and rotation delays are minimized.
+
+
+    \item \definition{Controller Overhead} is the \textbf{non-mechanical delay introduced by the disk controller}, which is the hardware interface between the OS and the physical disk. It involves:
     \begin{itemize}
-        \item \definition{Write Back cache}: the drive reports that writes are complete after they have been cached. The disadvantage is that it has an inconsistent state if the power goes off before the write-back event.
-        
-        \item \definition{Write Through cache}: the drive reports that writes are complete after they have been written to disk.
+        \item \textbf{Buffer management}: transferring data between disk and system memory (often using DMA).
+        \item \textbf{Interrupt processing}: informing the OS when the I/O operation is complete.
+        \item \textbf{Command translation}: converting OS-level I/O requests into device specific actions (e.g., SATA/NVMe commands).
+        \item \textbf{Scheduling and queueing}: organize I/O operations for efficiency.
     \end{itemize}
 \end{itemize}
-So, the \textbf{caching helps improve disk performance}. The critical idea under caching is that if there is a \textbf{queue of requests to the disk, they can be reordered to improve performance}. The estimation of the request length is feasible, knowing the position of the data on the disk.
+\hl{To see how these delays are calculated}, we suggest you refer to the performance section \ref{subsection: Disk performance}, about HDD \ref{subsubsection: HDD performance}, page \pageref{subsubsection: HDD performance}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Cache}}
+\end{flushleft}
+Hard Disk Drives (HDDs) are mechanical devices, and their performance is often limited by seek times and rotational latency. To partially overcome these limits, \textbf{many HDDs integrate a small} (8, 16, 32 MB) \textbf{amount of fast memory} (RAM) on the controller board, this is the \definition{cache} or \definition{track buffer}. The key functions of HDD cache are:
+\begin{enumerate}
+    \item \definition{Read Caching}. When the disk reads a block from the platter, it may also load \textbf{adjacent blocks} into the cache, expecting that they might be requested next (a technique known as \textbf{read-ahead}).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item If the next read request is for cached data, the disk can respond \textbf{instantly} from fast RAM.
+            \item This avoids mechanical movement and \textbf{cuts seek and rotational delays}.
+            \item Very effective for \textbf{sequential reads}.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \definition{Write Caching}. There are two strategies here:
+    \begin{enumerate}
+        \item \definition{Write-Back Cache} (Faster, Riskier). The HDD \textbf{reports the completion of the write} operation as soon as the data is in the cache, \textbf{before it is actually written to the platter}. Actual writing to disk happens later, in the background.
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+                \item Faster perceived performance
+                \item Useful in workloads with many small writes
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+                \item If power is lost before the data is flushed to disk, the \textbf{data is lost}. It is a \textbf{file system corruption risk}!
+                \item This is why it's considered \textbf{dangerous in critical systems} without battery backup or UPS.
+            \end{itemize}
+        \end{itemize}
+        
+        \item \definition{Write-Through Cache} (Safer, Slower). The HDD only reports the completion of the write operation \textbf{after the data has been fully written to disk}. Safer, but \textbf{slower}, since the OS must wait for the mechanical operation to finish.
+    \end{enumerate}
+
+    
+    \item Hybrid Cache: \definition{Flash-Based Caching}. Some modern HDDs integrate \textbf{small flash memory} used for \textbf{persistent caching}:
+    \begin{itemize}
+        \item Data stays even if the power goes out.
+        \item Combines the speed of SSD with the capacity of HDD.
+        \item Great for frequently accessed blocks (e.g., boot files, apps).
+    \end{itemize}
+\end{enumerate}
 
 \newpage
 
-\noindent
-There are several \textbf{scheduling algorithms}:
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Disk Scheduling}}
+\end{flushleft}
+While \textbf{caching} helps improve disk performance, it \textbf{doesn't eliminate the delays caused by seek and rotational latency}, especially during random access patterns. In systems with many I/O requests (like in a database or OS kernel), it's crucial to \textbf{choose the right order} to process requests to \textbf{minimize head movement}. This is where disk scheduling algorithms come in.
+
+\highspace
+Instead of serving I/O requests in the order they arrive, the \textbf{disk controller (or OS)} can render them to improve efficiency. It is possible:
 \begin{itemize}
-    \item \definition{First Come, First Serve (FCFC)}. It is the most basic scheduler, serving requests in order. The \emph{\textbf{disadvantage}} is that there is much time spent seeking.
-
-    \item \definition{Shortest Seek Time First (SSTF)}. It is primary purpose is to minimize seek time by always selecting the block with the shortest seek time. The \textbf{\emph{advantage}} is that it is optimal and can be easily implemented. The main \emph{\textbf{disadvantage}} is that it is prone to starvation.
-
-    \item \definition{SCAN}, otherwise known as the Elevator Algorithm. The head sweeps across the disk, servicing requests in order. The \textbf{\emph{advantage}} is that it performs reasonably well and does not suffer starvation. The \emph{\textbf{disadvantage}} is that the average access times are higher for requests at high and low addresses.
-
-    \item \definition{C-SCAN (Circular SCAN)}. It is like the SCAN algorithm, but only service requests in one direction. The \textbf{\emph{advantage}} is fairer than SCAN. However, the \emph{\textbf{disadvantage}} is that it has worse performance than SCAN.
-
-    \item \definition{C-LOOK}. It is a C-SCAN variant that peeks at the upcoming addresses in the queue. The head only goes as far as the last request.
+    \item Because every \textbf{disk request} includes the \textbf{target position} (i.e., the cylinder/track).
+    \item So we can \textbf{estimate the cost (seek time)} of each request and choose the most efficient order.
 \end{itemize}
+Common disk scheduling algorithms are:
+\begin{enumerate}
+    \item \definition{First Come, First Serve (FCFC)} (the worst)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Requests are handled in the \textbf{order they arrive}. No optimization, simple queue processing.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item (Naive) Easy to implement
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Can lead to \textbf{long seek distances} (i.e., inefficient head movement)
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{Shortest Seek Time First (SSTF)} (great performance, but watch out for starvation)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Always serve the request \textbf{closest to the current head position}.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item Minimizes \textbf{total head movement}.
+            \item Efficient in practice.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Can lead to \textbf{starvation}: distant requests may never be served if new close requests keep arriving.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{SCAN (Elevator Algorithm)} (good performance as SSTF, but fairer)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} The head \textbf{moves in one direction} (like an elevator), serving all requests in that direction. When it reaches the end, it \textbf{reverses direction}.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item Good worst-case behavior.
+            \item \textbf{No starvation}, every request will eventually be served.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Requests at \textbf{edges} of the disk may have \textbf{longer wait times}.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{Circular SCAN (C-SCAN)} (fair, but less efficient than SCAN in some cases)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Like SCAN, but head \textbf{only moves in one direction}. When it reaches the end, it \textbf{jumps back} to the beginning (like a circular elevator).
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item More \textbf{uniform wait time} for all requests.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Longer total movement (because of the jump).
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{C-LOOK} (smart compromise between performance and fairness)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Like C-SCAN, but instead of going to the physical end of the disk, th \textbf{head only goes as far as the last request in that direction}, then \textbf{jumps back to the smallest request}.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item \textbf{Saves movement} compared to full C-SCAN.
+            \item Still \textbf{avoids starvation}.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | l | l @{}}
+        \toprule
+        Algorithm & Fairness & Risk of Starvation & Strategy \\
+        \midrule
+        FCFS        & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & Serve in arrival order            \\ [.3em]
+        SSTF        & \textcolor{Red2}{\faIcon{times}} No      & \textcolor{Red2}{\faIcon{exclamation-triangle}} Possible & Serve closest request             \\ [.3em]
+        SCAN        & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & Elevator (back \& forth)          \\ [.3em]
+        C-SCAN      & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & One-direction sweep (circular)    \\ [.3em]
+        C-LOOK      & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & One-direction sweep (limited)     \\
+        \bottomrule
+    \end{tabular}
+    \caption{Scheduling Algorithms.}
+\end{table}
 
 \newpage
 

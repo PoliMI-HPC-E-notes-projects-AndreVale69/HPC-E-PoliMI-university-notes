@@ -1,0 +1,81 @@
+\subsubsection{Data Structure used in FlowRadar}
+
+\textbf{Switches have very limited memory}, but we want to count \textbf{how many packets are part of each individual flow}. Instead of using a separate counter per flow, which would consume too much space, FlowRadar stores \textbf{compressed aggregate information} in a fixed-size structure.
+
+\highspace
+Each switch maintains three tables of $m$ cells:
+\begin{itemize}
+    \item \definition{FlowXOR}. XOR\footnote{%
+        XOR (Exclusive OR) is a binary operation denoted by $\otimes$, where the result is 1 if the two input bits are different, and 0 if they are the same.
+    } of all flow IDs hashed into each cell.
+    \item \definition{FlowCount}. Number of flows that map to each cell.
+    \item \definition{PacketCount}. Total number of packets from those flows.
+\end{itemize}
+For example, assume flows A, B, and C are all seen by the switch. Each flow is hashed into multiple cells. The tables get updated like this:
+\begin{itemize}
+    \item FlowXOR: $a \otimes b$, $b \otimes c$, etc.
+    \item FlowCount: how many flows are hashed into each cell (1, 2, etc.)
+    \item PacketCount: total packets seen in each cell (e.g., $S(a) + S(b)$)
+\end{itemize}
+So each cell contains a \textbf{mix of data from different flows}.
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/flowradar-1.pdf}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why use XOR?}}
+\end{flushleft}
+Because the XOR operation is \textbf{reversible}. If we know the XOR of two values and one of them, we can recover the other. This \textbf{allows the collector to decode the original flows} by:
+\begin{enumerate}
+    \item Getting reports from multiple switches.
+    \item Iteratively solving the system of XOR equations.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What is Flow Filter and why do we need it?}}
+\end{flushleft}
+The \definition{Flow Filter} is a small data structure (like a Bloom Filter) used inside the switch to \textbf{remember which flows the switch has already seen}.
+
+\highspace
+Let's say flow $a$ sends 10 packets. All those packets will pass through the switch. But we don't want to treat each packet like a new flow, \textbf{we only want to register flow $a$ once in the compressed counters}. If we update the XOR and FlowCount on every packet:
+\begin{itemize}
+    \item The \textbf{FlowXOR} would get corrupted.
+    \item The \textbf{FlowCount} would become too high.
+    \item We'd \textbf{lose the ability to decode} the flows correctly later.
+\end{itemize}
+So the \textbf{Flow Filter helps us avoid this}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does Flow Filter actually do?}}
+\end{flushleft}
+For each packet:
+\begin{enumerate}
+    \item The switch looks at the Flow ID (e.g., \texttt{source IP + dest IP + ports}).
+    \item It checks the Flow Filter:
+    \begin{itemize}
+        \item If the flow is \textbf{new} (not in the filter yet):
+        \begin{enumerate}
+            \item It updates:
+            \begin{itemize}
+                \item FlowXOR: add this flow's ID via XOR.
+                \item FlowCount: increment the count.
+                \item PacketCount: add 1.
+            \end{itemize}
+            \item It marks this flow as \emph{seen} in the filter.
+        \end{enumerate}
+        \item If the flow is \textbf{already known}:
+        \begin{enumerate}
+            \item It updates \textbf{only PacketCount}.
+        \end{enumerate}
+    \end{itemize}
+\end{enumerate}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/flowradar-2.pdf}
+    \caption{Correct representation of the data structure used in FlowRadar.}
+\end{figure}

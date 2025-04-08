@@ -1,0 +1,211 @@
+\subsection{Clustering Validity}
+
+Clustering can produce a result, a partition of our data, but \textbf{how do we know if it's good}? Unlike supervised learning, clustering lacks ground truth, so evaluating the quality of clustering is challenging. There are three main families of evaluation metrics, each answering a different kind of question: External Metrics, Internal Metrics, Relative Metrics.
+
+\longline
+
+\subsubsection{External Metrics}
+
+\definition{External metrics} assess the quality of a clustering by \textbf{comparing it to known class labels}. They answer the question: ``how similar is the clustering result to the actual classification?''. This is \textbf{possible only when ground truth labels}\footnote{%
+    \definition{Ground Truth Labels} are the true, correct categories or values assigned to data points. They represent the known answer. In clustering, ground truth refers to the real classification or grouping of our data, which is often manually annotated, observed from reality, or known from the context.
+} \textbf{are available}, which is often the case in benchmarking or simulated data. However, these metrics are \textbf{not available in real-world applications where true labels are unknown}.
+
+\highspace
+We usually \textbf{compare clusters} to classes using a \textbf{contingency table}:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | c | c | c @{}}
+        \toprule
+        & Class 1 & Class 2 & Class 3 & Total \\
+        \midrule
+        Cluster 1 & $m_{11}$ & $m_{12}$ & $m_{13}$ & $m_{1}$    \\
+        Cluster 2 & $m_{21}$ & $m_{22}$ & $m_{23}$ & $m_{2}$    \\
+        Cluster 3 & $m_{31}$ & $m_{32}$ & $m_{33}$ & $m_{3}$    \\
+        Total     & $c_{1}$  & $c_{2}$  & $c_{3}$  & $n$        \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\begin{itemize}
+    \item $m_{ij}$ number of points from class $j$ assigned to cluster $i$
+    \item $m_{i}$ total points in cluster $i$
+    \item $c_{j}$ total points in class $j$
+    \item $n$ total number of points
+\end{itemize}
+From this, we compute \textbf{frequencies}:
+\begin{equation}
+    p_{ij} = \dfrac{m_{ij}}{m_{i}}
+\end{equation}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Main External Metrics}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Entropy Metrics}. Measures \textbf{class diversity within each cluster}.
+    \begin{itemize}
+        \item A \textbf{pure cluster} (all elements from the same class) has entropy 0.
+        \item A \textbf{mixed cluster} hsa higher entropy (maximum when classes are equally mixed).
+    \end{itemize}
+    The formula for \textbf{cluster} $i$:
+    \begin{equation}
+        e_{i} = -\displaystyle\sum_{j=1}^{L} p_{ij} \log\left(p_{ij}\right)
+    \end{equation}
+    \textbf{Overall clustering entropy}:
+    \begin{equation}
+        e = \displaystyle\sum_{i=1}^{K} \dfrac{m_{i}}{n} e_{i}
+    \end{equation}
+    Entropy decreases with better alignment. The \textbf{ideal value is zero}.
+
+
+    \item \definition{Purity Metrics}. Measures the \textbf{proportion of the dominant class in each cluster}. Like a ``best guess'' correctness. The formula for \textbf{cluster} $i$:
+    \begin{equation}
+        p_{i} = \max_{j} \left(p_{ij}\right)
+    \end{equation}
+    \textbf{Overall clustering purity}:
+    \begin{equation}
+        \text{purity} = \displaystyle\sum_{i=1}^{K} \dfrac{m_{i}}{n} p_{i}
+    \end{equation}
+    Purity increases with better alignment. The \textbf{ideal value is one}.
+
+    
+    \item \definition{Precision Metrics} and \definition{Recall Metrics}. These are adapted from classification metrics:
+    \begin{itemize}
+        \item Precision (for cluster $i$, class $j$):
+        \begin{equation}
+            \text{Prec}\left(i,j\right) = \dfrac{m_{ij}}{m_{i}}
+        \end{equation}
+        Among the points in cluster $i$, \textbf{how many truly belong to class} $j$?
+
+        \item Recall (for cluster $i$, class $j$):
+        \begin{equation}
+            \text{Rec}\left(i,j\right) = \dfrac{m_{ij}}{c_{j}}
+        \end{equation}
+        Among all points from class $j$, \textbf{how many are captured by cluster} $i$?
+    \end{itemize}
+
+
+    \item \definition{F-Measure Metrics}. Combines precision and recall into a \textbf{single score} using the harmonic mean.
+    \begin{equation}
+        F\left(i,j\right) = \dfrac{2 \cdot \text{Prec}\left(i,j\right) \cdot \text{Rec}\left(i,j\right)}{\text{Prec}\left(i,j\right) + \text{Rec}\left(i,j\right)}
+    \end{equation}
+    We can aggregate these across all clusters to get a \textbf{global F-score} for the clustering.
+\end{itemize}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | l @{}}
+        \toprule
+        Metric & Ideal & Interprets as... \\
+        \midrule
+        Entropy     & 0     & Purity of cluster (lower is better)       \\ [.3em]
+        Purity      & 1     & Dominance of single class (higher \texttt{=} better) \\ [.3em]
+        Precision   & 1     & Cluster doesn't mix in wrong classes      \\ [.3em]
+        Recall      & 1     & Class is fully captured by a cluster      \\ [.3em]
+        F-measure   & 1     & Balanced precision and recall             \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary External Metrics.}
+\end{table}
+
+\longline
+
+\subsubsection{Internal Metrics}
+
+When class labels (ground truth) are not available, which is the most common case in unsupervised learning, we need \definition{Internal Metrics} to assess:
+\begin{itemize}
+    \item How \textbf{cohesive} each cluster is (tightness of points within clusters).
+    \item How \textbf{well-separated the clusters are from each other}.
+\end{itemize}
+These metrics measure \textbf{structural quality} based on distances between two points.
+
+\begin{itemize}
+    \item \definition{Sum of Squared Errors (SSE)}. Also called \definition{Within-Cluster Sum of Squares (WCSS)}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What is measures}}
+        \begin{itemize}
+            \item \textbf{How far} the \textbf{points} in each cluster are from their \textbf{cluster center} (or medoid)
+            \item \textbf{Lower SSE means tighter clusters}\footnote{%
+                A tight cluster means that the data points inside the cluster are close to each other. They are packed together, not scattered. 
+            }
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Formula}}
+        \begin{equation}
+            SSE = \displaystyle\sum_{i=1}^{K} \sum_{x \in C_{i}} \left|\left|x - c_{i}\right|\right|^{2}
+        \end{equation}
+        Where:
+        \begin{itemize}
+            \item $C_{i}$ is cluster $i$
+            \item $c_{i}$ is the center of cluster $i$
+        \end{itemize}
+        \textbf{Used to evaluate compactness}: a good clustering should have a small SSE.
+    \end{itemize}
+
+    
+    \newpage
+
+
+    \item \definition{Elbow Method}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What is measures}}
+        \begin{itemize}
+            \item Used with SSE to find the \textbf{optimal number of clusters} $K$.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Procedure}}
+        \begin{itemize}
+            \item Run clustering for various values of $K$ (e.g., 1 to 30)
+            \item Plot $SSE\left(K\right)$ vs $K$.
+            \item Find the ``elbow'' point: the value of $K$ where the SSE stops decreasing sharply.
+        \end{itemize}
+        In other words, adding more clusters beyond the elbow gives \textbf{diminishing returns}.
+    \end{itemize}
+
+
+    \item \definition{Silhouette Coefficient}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What is measures}}
+        \begin{itemize}
+            \item \textbf{Combines cohesion and separation} into a single score for each point.
+            \item For each data point:
+            \begin{itemize}
+                \item $a$: average distance to points in \textbf{same cluster}
+                \item $b$: average distance to points in \textbf{nearest other cluster}
+            \end{itemize}
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{book}}] \textcolor{Red2}{\textbf{Formula}}
+        \begin{equation}
+            s = \dfrac{b - a}{\max\left(a,b\right)} \hspace{2em} s \in \left[-1, 1\right]
+        \end{equation}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] $+1$ well clustered
+            \item $0$ on the border
+            \item[\textcolor{Red2}{\faIcon{times}}] $-1$ misclassified
+        \end{itemize}
+        The \textbf{average silhouette score} across all points is \textbf{used to evaluate the whole clustering}.
+    \end{itemize}
+
+
+    \item \definition{Between-cluster Sum of Squares (BSS)}. Measures \textbf{cluster separation}:
+    \begin{equation}
+        BSS = \displaystyle\sum_{i} m_{i} \left|\left|c_{i} - \bar{c}\right|\right|^{2}
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $m_{i}$: size of cluster $i$
+        \item $c_{i}$: center of cluster $i$
+        \item $\bar{c}$: global centroid
+    \end{itemize}
+    A \textbf{good clustering} has \textbf{low WCSS} (or SSE) and \textbf{high BSS}.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitation of Internal Metrics}}
+\end{flushleft}
+Most clustering algorithms \textbf{don't explicitly optimize internal metrics}. As a result, the \textbf{best-looking clustering under one metric may not be optimal in another}. For example, K-Means minimizes WCSS but may produce poor separation between clusters.
+
+\highspace
+We can \textbf{design custom clustering algorithms that directly optimize an internal metric}, but this is \hl{not always practical or generalizable}. A famous quote from Jain and Dubes (1988): ``The validation of clustering structures is the most difficult and frustrating part of cluster analysis. Without a strong effort in this direction, clustering remains a black art accessible only to those true believers who have experience and great courage.''. This reflects \textbf{how tricky and interpretation-heavy clustering evaluation can be}.

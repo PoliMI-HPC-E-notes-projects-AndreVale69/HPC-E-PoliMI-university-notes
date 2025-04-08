@@ -1,0 +1,88 @@
+\subsubsection{Modes}
+
+Telemetry \textbf{data can be collected and exported in different ways}, depending on:
+\begin{itemize}
+    \item Whether packets are modified or untouched
+    \item Whether data is inserted in packets or sent to collectors separately
+    \item How much pressure is put on switches vs collectors.
+\end{itemize}
+Each mode offers \hl{trade-offs} between \textbf{performance}, \textbf{visibility}, and \textbf{system overhead}. There are three different modes:
+\begin{enumerate}
+    \item \definition{INT-XD (eXport Data)}. Switches do \textbf{not modify the packet}. Instead, they \textbf{send telemetry} data \textbf{directly to the collector} based on local configuration.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item \textbf{No changes} to the packet $\Rightarrow$ avoids MTU issues.
+            \item Easier for legacy packet flows.
+        \end{itemize}
+
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Heavy \textbf{pressure on collectors} (they must gather data from all switches).
+            \item Telemetry query is based on \textbf{switch config}, not what the packet asks.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{INT-MX (eMbed instruct(X)ions)}. The \textbf{packet is marked} to indicate it wants telemetry. Switches \textbf{send telemetry data out-of-band} (to a collector), but \textbf{based on the packet's mark}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item Telemetry is \textbf{packet-driven}, more dynamic than INT-XD.
+        \end{itemize}
+
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Still puts \textbf{pressure on collectors}.
+            \item Requires \textbf{modifying packets}, could affect headers, MTU.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{INT-MD (eMbed Data)}. The \textbf{packet itself is modified} to carry Telemetry metadata in-band. \textbf{Each switch inserts data into the packet} as it passes through.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item \textbf{No extra pressure} on collectors.
+            \item Telemetry query is \textbf{packet-dependent}, enabling full visibility along the path.
+        \end{itemize}
+
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item \textbf{Packets are modified}, which may:
+            \begin{enumerate}
+                \item Break some applications;
+                \item Exceed MTU (Maximum Transmission Unit);
+                \item Require special handling at end hosts.
+            \end{enumerate}
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{itemize}
+    \item Use \texttt{INT-XD} if we want no packet modifications and can tolerate heavy collector load.
+    \item Use \texttt{INT-MK} for moderate flexibility but still out-of-band.
+    \item Use \texttt{INT-MD} if we want \textbf{maximum in-path visibility} and can handle packet growth.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/int-1.pdf}
+    \caption{INT modes.}
+\end{figure}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}=
+        \begin{tabular}{@{} l | c | c | c | c | l @{}}
+            \toprule
+            Mode & Packet Modified & Collector Load & Query Driven By & Pros & Cons \\
+            \midrule
+            \texttt{INT-XD} & \textcolor{Red2}{\faIcon{times}} No    & \textcolor{Red2}{\faIcon{times}} High  & Switch Config   & MTU-safe              & Inflexible, collector-heavy \\ [.3em]
+            \texttt{INT-MK} & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} High  & Packet Mark     & Flexible              & MTU risk, collector-heavy \\ [.3em]
+            \texttt{INT-MD} & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Low & Packet          & No collector pressure & MTU impact, complex parsing \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Summary of INT modes.}
+\end{table}

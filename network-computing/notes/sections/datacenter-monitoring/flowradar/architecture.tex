@@ -1,0 +1,41 @@
+\subsection{FlowRadar}
+
+\subsubsection{Architecture}
+
+\definition{FlowRadar}\cite{10.5555/2930611.2930632} is a scalable, low-overhead solution for \textbf{per-flow monitoring} in datacenter networks. Its goal is to track \textbf{how much traffic each flow generates}, using \textbf{programmable switches} with fixed, minimal resources.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why FlowRadar?}}
+\end{flushleft}
+Monitoring networks at flow-level granularity is \textbf{valuable but expensive}:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Packet mirroring}}. Every interesting packet is copied and sent to an external analyzer.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}: way \textbf{too much traffic}. In datacenters with 100 terabit per seconds, this would flood our monitoring system.
+
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Per-flow counters at switches}}. Maintain one counter per flow inside the switch.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}: switches have \textbf{very limited memory}. With millions of flows, we run our of space fast.
+\end{itemize}
+So FlowRadar sits in the sweet spot:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item It avoids mirroring massive amounts of data.
+    \item It doesn't require full flow counters in the switches.
+    \item It \textbf{works with fixed, limited operations per packet}, suitable for programmable hardware.
+\end{itemize}
+The main idea is to encode information compactly in the switch, then \textbf{decode it later at the collector}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+\end{flushleft}
+The FlowRadar works in three different ways:
+\begin{enumerate}
+    \item \important{In the Switch}. Each switch maintains a \textbf{compressed data structure} to track flows and their counters. The \textbf{structure is similar to an Invertible Bloom Lookup Table} (IBLT, page \pageref{subsubsection: Invertible Bloom Lookup Tables}), it records \textbf{flow IDs and counters} in a space-efficient way. Operations per packet are fixed and fast (ideal for hardware).
+    
+    \item \important{Periodic Reports}. Switches \textbf{periodically export} their \textbf{encoded flow data to} central \textbf{collectors}.
+
+    \item \important{At the Collector}. Collectors receive the compressed data. Using multiple switch reports, they \textbf{correlate and decode} per-flow information. This allows the network operator to recover flow ID, and packet or byte count per flow.
+\end{enumerate}

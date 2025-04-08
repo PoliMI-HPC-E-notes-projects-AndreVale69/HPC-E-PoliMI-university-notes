@@ -22,6 +22,9 @@
     - add `Architecture`
     - add `Data Structure used in FlowRadar`
     - add `Collector Decode`
+  - add `In-Band Network Telemetry (INT)`
+    - add `What is INT?`
+    - add `Modes`
 
 --------------------
 

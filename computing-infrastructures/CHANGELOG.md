@@ -9,6 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v1.5.0](#v150)
 - [v1.4.0](#v140)
 - [v1.3.0](#v130)
 - [v1.2.0](#v120)
@@ -18,6 +19,13 @@ Each version follows the Conventional Commits structure. For more information on
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.5.0
+
+- refactor `2.2.2.2 HDD`
+- refactor `4.2.1 HDD`
 
 --------------------
 

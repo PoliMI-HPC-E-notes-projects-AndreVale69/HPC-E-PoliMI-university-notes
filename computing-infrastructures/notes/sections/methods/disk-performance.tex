@@ -29,7 +29,7 @@ We can calculate some performance metrics related to the types of delay of HDD (
         T_{\text{transfer}} = \dfrac{\text{R/W of a sector}}{\text{Data transfer rate}}
     \end{equation}
     The \textbf{total time to complete a disk I/O operation} is called the $T_{\text{I/O}}$ \definition{Service Time}:
-    \begin{equation}
+    \begin{equation}\label{eq: Service Time}
         T_{\text{I/O}} = T_{\text{seek}} + T_{\text{rotation}} + T_{\text{transfer}} + T_{\text{overhead}}
     \end{equation}
     If the disk is shared among processes, we must also consider \textbf{queueing time}. And the \definition{Response Time} is:
@@ -45,7 +45,7 @@ We can calculate some performance metrics related to the types of delay of HDD (
     \end{figure}
 \end{itemize}
 
-\begin{exercisebox}[: mean service time of an I/O operation]\label{exercise: mean service time of an I/O operation}
+\begin{exercisebox}[: Mean Service Time of an I/O operation]\label{exercise: mean service time of an I/O operation}
     The data of the exercise are:
     \begin{itemize}
         \item Read/Write of a sector of $512$ bytes ($0.5$ KB)
@@ -54,12 +54,12 @@ We can calculate some performance metrics related to the types of delay of HDD (
         \item Mean \underline{seek} time: $6$ ms
         \item Overhead \underline{Controller}: $0.2$ ms
     \end{itemize}
-    To calculate the \emph{service time} $T_{\text{I/O}}$, we need the following information:
+    The goal is to calculate the average I/O service time. To calculate the \emph{service time} $T_{\text{I/O}}$, we need the following information:
     \begin{itemize}
-        \item $T_{\text{seek}}$, which we already have, and it is $6$ ms.
-        \item $T_{\text{rotation}}$
-        \item $T_{\text{transfer}}$
-        \item $T_{\text{overhead}}$, which we already have, and it is $0.2$ ms.
+        \item[\textcolor{Green3}{\faIcon{check}}] $T_{\text{seek}}$, which we already have, and it is $6$ ms.
+        \item[\textcolor{Red2}{\faIcon{times}}] $T_{\text{rotation}}$
+        \item[\textcolor{Red2}{\faIcon{times}}] $T_{\text{transfer}}$
+        \item[\textcolor{Green3}{\faIcon{check}}] $T_{\text{overhead}}$, which we already have, and it is $0.2$ ms.
     \end{itemize}
     We also know the rotation and transfer information, but we want to know the \emph{mean} service time. Then we calculate the total rotation average $T_{\text{rotation AVG}}$:
     \begin{equation*}
@@ -90,23 +90,29 @@ We can calculate some performance metrics related to the types of delay of HDD (
 \end{exercisebox}
 
 \noindent
-The previous service time is supposed to be only for very \textbf{pessimistic cases} where \textbf{sectors are fragmented on the disk in the worst possible way}. This can happen because the files are tiny (each file is contained in one block) or the disk is externally fragmented.
+The I/O service time computed in the previous exercise (9.21 ms) assumes a \textbf{worst-case scenario}. This is very useful for understanding disk behavior, but it \textbf{doesn't always reflect what happens in real workloads}. It assumes:
+\begin{enumerate}
+    \item \textbf{Every time} we read a small file or sector,
+    \item The \textbf{read must seek} to a new track,
+    \item And then \textbf{wait for rotation} to bring the right sector under the head
+\end{enumerate}
+This is worst-case behavior, and happens when \textbf{files are very small}, so each one is just one block (e.g., 512 bytes); or disk is \textbf{heavily externally fragmented}, so even larger files are broken into scattered blocks. In such cases, \textbf{every access pays both seek and rotational delay}, making the access time slow and constant.
 
 \highspace
-Thus, each access to a sector requires to pay rotational latency and seek time.
-This is not the case in many circumstances because the files are larger than one block and stored contiguously.
+We can introduce a new metric that comes from the idea of measuring locality: \textbf{how often we can avoid seek and rotation delays}. We define \definition{Data Locality $DL$} as:
+\begin{equation}
+    DL = \% \text{ of blocks that can be accessed without new seek or rotation}
+\end{equation}
+If \textbf{locality is high}, then most of our \textbf{data} is laid out in a nice, \textbf{sequential way}, therefore performance improves significantly. So, \textbf{locality determines whether our performance is close to best-case or worst-case}.
 
 \highspace
-We can measure the \definition{Data Locality $DL$} of a disk as the \textbf{percentage of blocks that do not need seek or rotational latency to be found}.
-
-\highspace
-Thanks to the Data Locality, it is possible to calculate the \definition{Average Service Time}:
+Thanks to the Data Locality, it is possible to calculate the \definition{Average Service Time} by modifying the terms of \emph{seek} and \emph{rotation} of the Service Time equation (page \pageref{eq: Service Time}):
 \begin{equation}
     T_{\text{I/O AVG}} = \left(1 - DL\right) \cdot \left(T_{\text{seek}} + T_{\text{rotation}}\right) + T_{\text{transfer}} + T_{\text{controller}}
 \end{equation}
 
 
-\begin{exercisebox}[: data locality]
+\begin{exercisebox}[: Data Locality]
     The data of the exercise are:
     \begin{itemize}
         \item Read/Write of a sector of $512$ bytes ($0.5$ KB)
@@ -137,7 +143,9 @@ Thanks to the Data Locality, it is possible to calculate the \definition{Average
     \end{equation*}
 \end{exercisebox}
 
-\begin{exercisebox}[: influence of \dquotes{not optimal} data allocation]
+\newpage
+
+\begin{exercisebox}[: Influence of \dquotes{Not Optimal} Data Allocation]
     The data of the exercise are:
     \begin{itemize}
         \item $10$ blocks of $1/10$ MB for each block ($10$ blocks of $1/10$ MB \dquotes{not well} distributed on disk)

@@ -600,32 +600,145 @@ When a file is read from or written to a disk, especially an HDD, the total time
 \hl{To see how these delays are calculated}, we suggest you refer to the performance section \ref{subsection: Disk performance}, about HDD \ref{subsubsection: HDD performance}, page \pageref{subsubsection: HDD performance}.
 
 \highspace
-In order to reduce the delay in the HDD, the companies use a high-speed and tiny memory (8, 16 or 32 MB) called \definition{cache} (also called \definition{track buffer}). The cache is used when there is a:
-\begin{itemize}
-    \item \definition{Read caching}. It reduces read delays due to seeking and rotation.
-    
-    \item \definition{Write caching}. It is divided into two different implementations:
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Cache}}
+\end{flushleft}
+Hard Disk Drives (HDDs) are mechanical devices, and their performance is often limited by seek times and rotational latency. To partially overcome these limits, \textbf{many HDDs integrate a small} (8, 16, 32 MB) \textbf{amount of fast memory} (RAM) on the controller board, this is the \definition{cache} or \definition{track buffer}. The key functions of HDD cache are:
+\begin{enumerate}
+    \item \definition{Read Caching}. When the disk reads a block from the platter, it may also load \textbf{adjacent blocks} into the cache, expecting that they might be requested next (a technique known as \textbf{read-ahead}).
     \begin{itemize}
-        \item \definition{Write Back cache}: the drive reports that writes are complete after they have been cached. The disadvantage is that it has an inconsistent state if the power goes off before the write-back event.
-        
-        \item \definition{Write Through cache}: the drive reports that writes are complete after they have been written to disk.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item If the next read request is for cached data, the disk can respond \textbf{instantly} from fast RAM.
+            \item This avoids mechanical movement and \textbf{cuts seek and rotational delays}.
+            \item Very effective for \textbf{sequential reads}.
+        \end{itemize}
     \end{itemize}
-\end{itemize}
-So, the \textbf{caching helps improve disk performance}. The critical idea under caching is that if there is a \textbf{queue of requests to the disk, they can be reordered to improve performance}. The estimation of the request length is feasible, knowing the position of the data on the disk.
+
+
+    \item \definition{Write Caching}. There are two strategies here:
+    \begin{enumerate}
+        \item \definition{Write-Back Cache} (Faster, Riskier). The HDD \textbf{reports the completion of the write} operation as soon as the data is in the cache, \textbf{before it is actually written to the platter}. Actual writing to disk happens later, in the background.
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+                \item Faster perceived performance
+                \item Useful in workloads with many small writes
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+                \item If power is lost before the data is flushed to disk, the \textbf{data is lost}. It is a \textbf{file system corruption risk}!
+                \item This is why it's considered \textbf{dangerous in critical systems} without battery backup or UPS.
+            \end{itemize}
+        \end{itemize}
+        
+        \item \definition{Write-Through Cache} (Safer, Slower). The HDD only reports the completion of the write operation \textbf{after the data has been fully written to disk}. Safer, but \textbf{slower}, since the OS must wait for the mechanical operation to finish.
+    \end{enumerate}
+
+    
+    \item Hybrid Cache: \definition{Flash-Based Caching}. Some modern HDDs integrate \textbf{small flash memory} used for \textbf{persistent caching}:
+    \begin{itemize}
+        \item Data stays even if the power goes out.
+        \item Combines the speed of SSD with the capacity of HDD.
+        \item Great for frequently accessed blocks (e.g., boot files, apps).
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Disk Scheduling}}
+\end{flushleft}
+While \textbf{caching} helps improve disk performance, it \textbf{doesn't eliminate the delays caused by seek and rotational latency}, especially during random access patterns. In systems with many I/O requests (like in a database or OS kernel), it's crucial to \textbf{choose the right order} to process requests to \textbf{minimize head movement}. This is where disk scheduling algorithms come in.
 
 \highspace
-There are several \textbf{scheduling algorithms}:
+Instead of serving I/O requests in the order they arrive, the \textbf{disk controller (or OS)} can render them to improve efficiency. It is possible:
 \begin{itemize}
-    \item \definition{First Come, First Serve (FCFC)}. It is the most basic scheduler, serving requests in order. The \emph{\textbf{disadvantage}} is that there is much time spent seeking.
-
-    \item \definition{Shortest Seek Time First (SSTF)}. It is primary purpose is to minimize seek time by always selecting the block with the shortest seek time. The \textbf{\emph{advantage}} is that it is optimal and can be easily implemented. The main \emph{\textbf{disadvantage}} is that it is prone to starvation.
-
-    \item \definition{SCAN}, otherwise known as the Elevator Algorithm. The head sweeps across the disk, servicing requests in order. The \textbf{\emph{advantage}} is that it performs reasonably well and does not suffer starvation. The \emph{\textbf{disadvantage}} is that the average access times are higher for requests at high and low addresses.
-
-    \item \definition{C-SCAN (Circular SCAN)}. It is like the SCAN algorithm, but only service requests in one direction. The \textbf{\emph{advantage}} is fairer than SCAN. However, the \emph{\textbf{disadvantage}} is that it has worse performance than SCAN.
-
-    \item \definition{C-LOOK}. It is a C-SCAN variant that peeks at the upcoming addresses in the queue. The head only goes as far as the last request.
+    \item Because every \textbf{disk request} includes the \textbf{target position} (i.e., the cylinder/track).
+    \item So we can \textbf{estimate the cost (seek time)} of each request and choose the most efficient order.
 \end{itemize}
+Common disk scheduling algorithms are:
+\begin{enumerate}
+    \item \definition{First Come, First Serve (FCFC)} (the worst)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Requests are handled in the \textbf{order they arrive}. No optimization, simple queue processing.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item (Naive) Easy to implement
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Can lead to \textbf{long seek distances} (i.e., inefficient head movement)
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{Shortest Seek Time First (SSTF)} (great performance, but watch out for starvation)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Always serve the request \textbf{closest to the current head position}.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item Minimizes \textbf{total head movement}.
+            \item Efficient in practice.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Can lead to \textbf{starvation}: distant requests may never be served if new close requests keep arriving.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{SCAN (Elevator Algorithm)} (good performance as SSTF, but fairer)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} The head \textbf{moves in one direction} (like an elevator), serving all requests in that direction. When it reaches the end, it \textbf{reverses direction}.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item Good worst-case behavior.
+            \item \textbf{No starvation}, every request will eventually be served.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Requests at \textbf{edges} of the disk may have \textbf{longer wait times}.
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{Circular SCAN (C-SCAN)} (fair, but less efficient than SCAN in some cases)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Like SCAN, but head \textbf{only moves in one direction}. When it reaches the end, it \textbf{jumps back} to the beginning (like a circular elevator).
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item More \textbf{uniform wait time} for all requests.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Longer total movement (because of the jump).
+        \end{itemize}
+    \end{itemize}
+
+    \item \definition{C-LOOK} (smart compromise between performance and fairness)
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Like C-SCAN, but instead of going to the physical end of the disk, th \textbf{head only goes as far as the last request in that direction}, then \textbf{jumps back to the smallest request}.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item \textbf{Saves movement} compared to full C-SCAN.
+            \item Still \textbf{avoids starvation}.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | l | l @{}}
+        \toprule
+        Algorithm & Fairness & Risk of Starvation & Strategy \\
+        \midrule
+        FCFS        & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & Serve in arrival order            \\ [.3em]
+        SSTF        & \textcolor{Red2}{\faIcon{times}} No      & \textcolor{Red2}{\faIcon{exclamation-triangle}} Possible & Serve closest request             \\ [.3em]
+        SCAN        & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & Elevator (back \& forth)          \\ [.3em]
+        C-SCAN      & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & One-direction sweep (circular)    \\ [.3em]
+        C-LOOK      & \textcolor{Green3}{\faIcon{check}} Yes   & \textcolor{Red2}{\faIcon{times}} None     & One-direction sweep (limited)     \\
+        \bottomrule
+    \end{tabular}
+    \caption{Scheduling Algorithms.}
+\end{table}
 
 \newpage
 

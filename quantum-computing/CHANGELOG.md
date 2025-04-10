@@ -19,6 +19,7 @@
   - add `Generic Controlled Gate`
   - add `SWAP Gate`
   - add `Toffoli Gate (CCNOT)`
+  - add `Foundations of Universal Quantum Circuits`
 
 --------------------
 

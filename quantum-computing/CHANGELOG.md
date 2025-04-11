@@ -20,6 +20,7 @@
   - add `SWAP Gate`
   - add `Toffoli Gate (CCNOT)`
   - add `Foundations of Universal Quantum Circuits`
+  - add `Entanglement`
 
 --------------------
 

@@ -21,6 +21,7 @@
   - add `Toffoli Gate (CCNOT)`
   - add `Foundations of Universal Quantum Circuits`
   - add `Entanglement`
+  - add `Measurement in Multi-Qubit Systems`
 
 --------------------
 

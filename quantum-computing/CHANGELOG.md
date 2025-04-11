@@ -22,6 +22,10 @@
   - add `Foundations of Universal Quantum Circuits`
   - add `Entanglement`
   - add `Measurement in Multi-Qubit Systems`
+  - add `Limits of Quantum Information`
+    - add `No-Cloning Principle`
+    - add `No-Deleting Principle`
+    - add `No-Signaling Principle`
 
 --------------------
 

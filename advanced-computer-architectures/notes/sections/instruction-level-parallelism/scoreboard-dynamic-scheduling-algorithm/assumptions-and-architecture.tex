@@ -1,0 +1,55 @@
+\subsection{Scoreboard: Dynamic Scheduling Algorithm}
+
+\subsubsection{Assumptions and Architecture}
+
+The \definition{Scoreboard} is a \textbf{dynamic scheduling} mechanism introduced in the \href{https://en.wikipedia.org/wiki/CDC_6600}{CDC 6600} that enables \textbf{out-of-order execution} while maintaining program correctness. It coordinates the flow of instructions in a way that allows independent instructions to execute in parallel, despite pipeline stalls caused by data or structural hazards. This approach was fundamental to enhancing instruction-level parallelism (ILP) without relying on complex compiler-level optimizations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Assumptions of the Scoreboard Model}}
+\end{flushleft}
+To analyze the behavior of the scoreboard, it's crucial to understand the initial architectural assumptions:
+\begin{itemize}
+    \item \important{Single-Issue Processor}: only one instruction can be fetched and issued per cycle, enforcing a serialized dispatching model despite the internal parallelism.
+    \item \important{In-Order Issue}: instructions are issued in the program order (page \pageref{def: in-order issue}). However, once issued, they are allowed to execute and complete out-of-order depending on operand availability.
+    \item \important{No Forwarding Mechanism}: unlike Tomasulo's algorithm, which allows results to be forwarded from functional units directly to waiting instructions, the Scoreboard lacks this feature. Operands are only considered available once written back to the Register File (RF).
+    \item \important{Multiple Pipelined Functional Units (FUs)}: the architecture assumes the presence of multiple pipelined FUs, e.g. floating-point add, multiply, divide, and integer units; each with potentially variable latency.
+    \item \important{Latency-Aware Execution}: both the \textbf{Execution Stage (EX)} and \textbf{Memory Access Stage (ME)} are allowed to span multiple cycles depending on the operation type and cache behavior.
+    \item \important{Out-of-Order Execution and Commit}: execution and result write-back (or commit) can happen out-of-order, introducing hazards such as:
+    \begin{itemize}
+        \item Write After Write (WAW)
+        \item Write After Read (WAR)
+    \end{itemize}
+    These are especially critical since there's no register renaming mechanism (page \pageref{def: Register Renaming}) to avoid false dependencies.
+\end{itemize}
+This configuration \textbf{allows} the scoreboard to \textbf{bypass pipeline stalls} by executing independent instructions out-of-order, while relying on a \textbf{centralized control logic to track hazards and resource usage}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{microchip} \textbf{Architectural Scheme}}
+\end{flushleft}
+The Scoreboard orchestrates \textbf{execution by separating three phases}:
+\begin{enumerate}
+    \item \important{Instruction Issue (in-order)}
+    \item \important{Instruction Execution (out-of-order)}
+    \item \important{Instruction Completion (out-of-order)}
+\end{enumerate}
+This setup breaks the rigid in-order pipeline flow and increases functional unit utilization. Furthermore:
+\begin{itemize}
+    \item Multiple instructions can be in execution simultaneously.
+    \item Precise exceptions are \textbf{not} guaranteed due to the possibility of earlier instructions committing after later ones, a model referred to as \textbf{imprecise interrupts}.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.7\textwidth]{img/scoreboard-1.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{The basic structure of a RISC V processor with a scoreboard.\cite{hennessy2017computer}
+    \begin{itemize}
+        \item A shared Register File feeds data into multiple data buses.
+        \item Each Functional Unit (FU) is independently pipelined and connected to the scoreboard. Units include two FP multipliers, FP adder, FP divider, and integer unit.
+        \item A centralized Scoreboard logic block maintains: Control/Status signals, Dependency tracking, Issue constraints.
+        \item There's a separate Memory Unit, handled similarly to functional units, responsible for data memory operations.
+    \end{itemize}}
+\end{figure}

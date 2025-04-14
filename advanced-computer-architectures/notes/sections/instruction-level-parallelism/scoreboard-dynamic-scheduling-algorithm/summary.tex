@@ -1,0 +1,72 @@
+\subsubsection{Summary}
+
+In this section, we present a summary of the Scoreboard's dynamic scheduling algorithm.
+
+\highspace
+The Scoreboard implements a \textbf{classic dynamic scheduling mechanism} where instruction progress through the pipeline is dictated not just by structural availability, but also by \textbf{true data readiness}.
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l | l | l @{}}
+            \toprule
+            Pipeline Stage & Order & Hazard Checked & Notes \\
+            \midrule
+            \textbf{Issue}         & \textbf{In-order}     & Structural, WAW              & Instruction decoded, FU reserved    \\ [.5em]
+            \textbf{Read Operands} & \textbf{Out-of-order} & RAW, structural (RF ports)   & Wait for all inputs to be ready     \\ [.5em]
+            \textbf{Execution}     & \textbf{Out-of-order} & -                            & Variable latency depending on FU    \\ [.5em]
+            \textbf{Write Result}  & \textbf{Out-of-order} & WAR, structural (write port) & Write to reg file if safe           \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
+
+\noindent
+The scoreboard enforces \textbf{precise tracking} at each stage to dynamically resolve hazards without register renaming or forwarding.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Execution Properties}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{In-Order Issue}
+    \begin{itemize}
+        \item Simplifies the hardware: instructions are always issued in program order.
+        \item Helps \textbf{detect WAW hazards} early.
+    \end{itemize}
+
+    \item \important{Out-of-Order Read Operands}
+    \begin{itemize}
+        \item Once issued, instructions \textbf{wait until all operands are available}, then read them from the Register File (RF).
+        \item No data forwarding! \textbf{Operands are read only from the Register File} (RF).
+        \item Allows \textbf{independent instructions} to leapfrog stalled ones.
+    \end{itemize}
+
+    \item \important{Out-of-Order Execution}
+    \begin{itemize}
+        \item Instructions execute as soon as their operands are ready and the FU is free.
+        \item Multiple instructions can execute \textbf{simultaneously} in parallel FUs or pipelined units.
+        \item Leads to \textbf{higher FU utilization and throughput}.
+    \end{itemize}
+
+    \item \important{Out-of-Order Completion}
+    \begin{itemize}
+        \item Results are written back when ready, \textbf{unless a WAR hazard} is detected.
+        \item This breaks precise exception semantics, i.e., exceptions can be \textbf{imprecise}.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{hourglass-half} \textbf{No Forwarding, No Renaming}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{No data forwarding}: causes \textbf{extra stalls} at operand read stage.
+    \item \textbf{No register renaming}: makes the scoreboard \hl{vulnerable to WAR and WAW hazards}, which it \textbf{handles by stalls and centralized checks}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Control Logic Centralization}}
+\end{flushleft}
+All control decisions (hazard detection, operand availability, resource usage) are made by a \textbf{central scoreboard table}. This avoids complex distributed hardware (as in Tomasulo), but limits the potential for speculation or aggressive scheduling.

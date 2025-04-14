@@ -1,0 +1,63 @@
+\subsubsection{Scoreboard Data Structures}
+
+At the heart of the scoreboard's centralized control logic are \textbf{three hardware data structures} that track the status of instructions, functional units, and register dependencies. These structures allow the scoreboard to make safe, real-time decisions about instruction scheduling, execution, and result writing, all while avoiding hazards.
+\begin{enumerate}
+    \item \definition{Instruction Status Table}. Tracks the \textbf{lifecycle of each instruction} through the pipeline. For each instruction, the scoreboard record whether it has:
+    \begin{itemize}
+        \item Been \textbf{issued}
+        \item \textbf{Read operands}
+        \item \textbf{Completed execution}
+        \item \textbf{Written back} the result
+    \end{itemize}
+    We can think of this as a per-instruction timeline: it tracks which stage the instruction is currently in.
+
+    \item \definition{Functional Unit Status Table}. Tracks the \textbf{current state} of each \textbf{Functional Unit} (FU). Each FU entry includes:
+    \begin{itemize}
+        \item \texttt{Busy}: whether the FU is currently in use.
+        \item \texttt{Op}: operation being performed (e.g., ADD, MULT).
+        \item \texttt{Fi}: destination register of the operation.
+        \item \texttt{Fj}, \texttt{Fk}: source register operands.
+        \item \texttt{Qj}, \texttt{Qk}: functional units producing \texttt{Fj} and \texttt{Fk}.
+        \item \texttt{Rj}, \texttt{Rk}: boolean flags indicating if \texttt{Fj}, \texttt{Fk} are ready.
+    \end{itemize}
+    These fields help the scoreboard:
+    \begin{enumerate}
+        \item Decide when operands are ready (for RAW)
+        \item Prevent WAW and WAR
+        \item Handle operand read scheduling
+    \end{enumerate}
+
+    \item \definition{Register Result Status Table}. Tracks \textbf{which FU will produce each register value}. For each register (e.g., \texttt{F0}, \texttt{F2}, $\dots$, \texttt{F30}), it stores:
+    \begin{itemize}
+        \item The \textbf{name of the FU} that will write to it.
+        \item Or blank ($-$, don't care) if no instruction is scheduled to write it.
+    \end{itemize}
+    This structure is essential to:
+    \begin{itemize}
+        \item Detect WAW hazards at \textbf{issue} stage.
+        \item Detect WAR hazards at \textbf{write-back} stage.
+        \item Ensure only the latest producing instruction claims the register.
+    \end{itemize}
+\end{enumerate}
+
+\begin{examplebox}
+    Let's say \texttt{MULT f0, f2, f4} is issued to \texttt{Mult1} (functional unit). The scoreboard will:
+    \begin{enumerate}
+        \item Mark \texttt{Mult1} as \texttt{Busy}
+        \item Set
+        \begin{itemize}
+            \item \texttt{Op = MULT}
+            \item \texttt{Fi = F0}
+            \item \texttt{Fj = F2}
+            \item \texttt{Fk = F4}
+        \end{itemize}
+        \item Fill \texttt{Qj} and \texttt{Qk} if other FUs are writing \texttt{F2} or \texttt{F4}
+        \item In the \textbf{Register Result Status}, assign \texttt{F0 = Mult1}
+    \end{enumerate}
+    This coordination ensures:
+    \begin{itemize}
+        \item Other instructions know \texttt{F0} will be produced by \texttt{Mult1}
+        \item \texttt{F2} and \texttt{F4} are only read when available
+        \item Subsequent instructions that depend on \texttt{F0} will wait
+    \end{itemize}
+\end{examplebox}

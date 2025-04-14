@@ -18,6 +18,8 @@
     - add `Pipeline Stage Refinement`
     - add `Hazard Management (RAW, WAR, WAW)`
     - add `Control Logic and Stages`
+    - add `Summary`
+    - add `Scoreboard Data Structures`
 
 --------------------
 

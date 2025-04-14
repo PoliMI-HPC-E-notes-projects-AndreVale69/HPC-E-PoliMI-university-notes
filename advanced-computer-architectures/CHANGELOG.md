@@ -15,6 +15,7 @@
 - add `Instruction Level Parallelism`
   - add `Scoreboard: Dynamic Scheduling Algorithm`
     - add `Assumptions and Architecture`
+    - add `Pipeline Stage Refinement`
 
 --------------------
 

@@ -1,0 +1,87 @@
+\subsubsection{Pipeline Stage Refinement}
+
+In a \textbf{traditional pipeline}:
+\begin{itemize}
+    \item The \hl{Instruction Decode} (ID) stage \hl{performs} both \hl{decoding} and operand \hl{reading} at \hl{once}.
+    \item But this \textbf{assumes operands are always ready}, which is \textbf{not true} in a dynamically scheduled out-of-order pipeline.
+\end{itemize}
+So the \textbf{scoreboard splits Instruction Decode (ID) stage into}:
+\begin{enumerate}
+    \item \definition{Issue Stage}
+    \begin{itemize}
+        \item Responsible for \textbf{decoding the instruction}.
+        \item Checks for \textbf{structural hazards} (page \pageref{def: structural hazards}), particularly whether the appropriate functional unit (FU) is available and whether the scoreboard's bookkeeping allows the instruction to proceed (this will become clearer later).
+        \item Enforces \textbf{in-order issue}, instructions are considered strictly in the sequence fetched from memory.
+    \end{itemize}
+    \item \definition{Read Operands Stage (RR)}
+    \begin{itemize}
+        \item Waits until \textbf{operands are available and not blocked} by earlier instructions.
+        \item Specifically, \textbf{avoids RAW} (Read After Write) hazards (page \pageref{def: Read After Write - RAW}) by deferring operand reads until the register is no longer ``reserved'' by an active instruction writing to it. In other words, delays reading operands \textbf{until they're truly ready}, that is, the producer instruction has completed writing them.
+        \item \textbf{Operands} are then \textbf{read from the register file} (since forwarding is not available).
+    \end{itemize}
+\end{enumerate}
+This separation increases the scoreboard's ability to exploit Instruction-Level Parallelism (ILP) while maintaining control over dependency tracking and avoiding illegal hazards.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Flexible Execution Behavior}}
+\end{flushleft}
+After the two front-end stages:
+\begin{itemize}
+    \item \important{Out-of-Order Execution}: Once operands are read, instructions may \textbf{enter the execution stage as soon as the corresponding FU is available}, regardless of program order.
+    
+    \item \important{Variable Latency Handling}: Functional units (FUs) may have different latencies (e.g., FP divide vs. add), so instructions finish execution at different times and \textbf{write back their results out-of-order}.
+    
+    \item \important{Out-of-Order Commit}: Because instructions complete independently and there is \textbf{no reorder buffer}, the commit (or write-back) stage is also \textbf{out-of-order}, unlike more modern precise pipelines.
+\end{itemize}
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | l @{}}
+        \toprule
+        Stage & Behavior & Order Enforcement \\
+        \midrule
+        \textbf{Issue}          & Decode, FU check      & \textbf{In-Order}     \\ [.3em]
+        \textbf{Read Operands}  & Wait for availability & \textbf{Out-of-Order} \\ [.3em]
+        \textbf{Execute}        & Run in FU             & \textbf{Out-of-Order} \\ [.3em]
+        \textbf{Write Result}   & Commit to Reg. File   & \textbf{Out-of-Order} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Key features of the scoreboard.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the scoreboard constantly tracking?}}
+\end{flushleft}
+We can think of the scoreboard as a ``Control Office'' inside the processor. The main job of the scoreboard is to \textbf{keep tack of every instruction} that's in the pipeline at the same time, and \textbf{make sure they don't mess each other up}.
+
+\highspace
+To do this, it monitors four key things:
+\begin{enumerate}
+    \item \important{Availability of Source Operands}. Every instruction needs to read its inputs (like F2, F4, etc.). The scoreboard checks: \textbf{are those registers ready, or is another instruction still going write them (busy)?} If they're \textbf{not ready} yet, the \textbf{instruction waits} in the Read Operands (RR) stage.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} To \textbf{avoid RAW} (Read After Write) hazards, reading too early before the data is correct.
+
+    
+    \item \important{Status of each Functional Unit (FU)}. It knows which \textbf{units} (like the adder, multiplier) are \textbf{busy} or \textbf{free}. It won't assign two instructions to the same FU at the same time, that would \textbf{cause structural hazards}.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} So it knows \textbf{which instruction can be issued} and which needs to \textbf{wait for hardware}.
+    
+    
+    \item \important{Pending writes and register conflicts}. If two instructions plan to write to the same register, it keeps track of this. This \textbf{helps prevent}:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textbf{WAW} (Write After Write): two instructions writing to the same register in the wrong order.
+        \item \textbf{WAR} (Write After Read): an instruction overwriting a value that another one still needs to read.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} This avoids \textbf{wrong results}, even if instructions execute out-of-order.
+    
+    
+    \item \important{Which instructions have completed}. It \textbf{tracks} when each instruction \textbf{finishes execution} and when it's \textbf{allowed to write back} its result.
+
+    Remember: there's \textbf{no reorder buffer}, so the scoreboard must \textbf{carefully manage write-backs to prevent conflicts}.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} So it knows when to \textbf{release resources} and \textbf{update registers safely}.
+\end{enumerate}

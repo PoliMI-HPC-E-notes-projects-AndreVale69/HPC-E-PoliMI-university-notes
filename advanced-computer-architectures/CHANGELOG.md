@@ -16,6 +16,7 @@
   - add `Scoreboard: Dynamic Scheduling Algorithm`
     - add `Assumptions and Architecture`
     - add `Pipeline Stage Refinement`
+    - add `Hazard Management (RAW, WAR, WAW)`
 
 --------------------
 

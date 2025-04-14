@@ -1,0 +1,68 @@
+\subsubsection{Hazard Management (RAW, WAR, WAW)}
+
+A hazard occurs when the pipeline execution of instructions might lead to incorrect results. Hazards arise from:
+\begin{itemize}
+    \item Resource conflicts
+    \item Data dependencies
+    \item Instruction ordering mismatches
+\end{itemize}
+The \textbf{scoreboard handles \underline{three types} of data hazards \underline{dynamically}}:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check-circle}}]
+    \item \important{RAW (Read After Write) - True Dependency}
+    
+    Occurs when:
+    \begin{itemize}
+        \item Instruction \texttt{B} tries to \textbf{read} a register before instruction \texttt{A} has \textbf{written} its result.
+    \end{itemize}
+    \textbf{Scoreboard handling}:
+    \begin{itemize}
+        \item The scoreboard stalls \texttt{Instruction B} in the Read Operands (RR)\footnote{%
+            Note that the Read Operands (RR) stage is the second stage in the Instruction Decode stage. Its purpose is to wait until all source operands are available and not blocked by an active instruction. Only then can the instruction safely read its operands from the register file.
+        } stage until \texttt{Instruction A} completes its write.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check} \textbf{Handled in the RR (Read Operands) stage}}
+
+
+    \item \important{WAR (Write After Read) - Anti-Dependency}
+
+    Occurs when:
+    \begin{itemize}
+        \item \textsl{Instruction A} needs to \textbf{read} a register before \texttt{Instruction B} \textbf{overwrites} it.
+    \end{itemize}
+    \textbf{Scoreboard handling}:
+    \begin{itemize}
+        \item The scoreboard \textbf{stalls \texttt{Instruction B}} in the \textbf{Write Result} stage until \texttt{Instruction A} has read the register.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check} \textbf{Handled in the WR (Write Result) stage}}
+
+
+    \item \important{WAW (Write After Write) - Output Dependency}
+    
+    Occurs when:
+    \begin{itemize}
+        \item Two instructions write to the same register in the wrong order.
+    \end{itemize}
+    \textbf{Scoreboard handling}:
+    \begin{itemize}
+        \item The scoreboard \textbf{stalls the second instruction} in the \textbf{Issue} stage until the first instruction has written its result.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check} \textbf{Handled in the Issue stage (or sometimes delayed to Write stage)}}
+\end{itemize}
+So Scoreboard solves WAR/WAW \textbf{explicitly via stalls}, instead of using \emph{register renaming}. This makes scoreboard simpler, but \textbf{limits how much parallelism it can safely exploit} compared to more modern approaches.
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c | l | l | l @{}}
+            \toprule
+            Hazard & Cause & Scoreboard Action & Handled In \\
+            \midrule
+            \textbf{RAW}    & Read before prior write       & Stall reader until value ready    & \textbf{Read Operands} \\ [.3em]
+            \textbf{WAR}    & Write before earlier read     & Stall writer until read completes & \textbf{Write Result} \\ [.3em]
+            \textbf{WAW}    & Write before earlier write    & Stall issuer                      & \textbf{Issue} \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Hazards managed by the scoreboard.}
+\end{table}

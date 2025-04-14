@@ -17,6 +17,7 @@
     - add `Assumptions and Architecture`
     - add `Pipeline Stage Refinement`
     - add `Hazard Management (RAW, WAR, WAW)`
+    - add `Control Logic and Stages`
 
 --------------------
 

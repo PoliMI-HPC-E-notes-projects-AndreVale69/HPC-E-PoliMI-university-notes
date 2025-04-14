@@ -1,0 +1,70 @@
+\subsubsection{Control Logic and Stages}
+
+The Scoreboard architecture divides instruction \textbf{execution into four dynamic control stages}, each governed by centralized logic. These stages (\textbf{Issue}, \textbf{Read Operands}, \textbf{Execution}, and \textbf{Write Result}), replace the traditional ID, EX, and WB stages of a standard RISC pipeline.
+
+\highspace
+The key idea is that the scoreboard \textbf{monitors dependencies and structural hazards in hardware} and makes real-time decisions on when each instruction can safely advance to the next stage.
+
+\begin{enumerate}
+    \item \definition{Issue Stage (In-Order)}. This is the first stage after Instruction Fetch (IF).
+    \begin{enumerate}
+        \item The instruction is \textbf{decoded}.
+        \item The scoreboard \textbf{checks}:
+        \begin{enumerate}
+            \item \textbf{Structural Hazards}: \emph{is the required Function Unit (FU) available?}
+            \item \textbf{WAW (Write After Write) Hazards}: \emph{is another instruction already writing to the destination register?}
+        \end{enumerate}
+    \end{enumerate}
+    If \textbf{neither hazard exists}, the \textbf{instruction is issued} and marked in the scoreboard's internal tables. \textbf{Otherwise}, the \textbf{instruction stalls}.
+
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance Optimizations}}: \textbf{WAW hazards} are typically \textbf{detected} here, but optimizations may postpone this to the \textbf{write-back stage}.
+
+
+    \item \definition{Read Operands Stage (Out-of-Order)}. The scoreboard waits for both source operands to become available.
+    \begin{enumerate}
+        \item \textbf{RAW} (Read After Write) hazards are \textbf{checked dynamically}.
+        \item If any \textbf{operand} is still \textbf{pending} (i.e. will be written by another instruction), the \textbf{scoreboard stalls this stage}.
+        \item Once \textbf{ready}, operands are \textbf{read from the Register File} (RF) (no forwarding!).
+        \item The instruction is then sent to the Functional Unit (FU) to begin execution.
+    \end{enumerate}
+    This is the \textbf{stage that enables out-of-order execution}, as independent instructions may pass each other based on operand readiness.
+
+
+    \item \definition{Execution Stage}
+    \begin{enumerate}
+        \item The instruction \textbf{executes} in the assigned Functional Unit.
+        \item Functional Units (FUs) may have \textbf{variable latency}, depending on the operation (e.g., divides vs. add).
+        \item Upon completion, the \textbf{unit signals the scoreboard}.
+    \end{enumerate}
+    This phase also includes \textbf{additional memory access latency for load/store instructions} affected by cache hit/miss.
+
+
+    \item \definition{Write Result Stage (Out-of-Order)}
+    \begin{enumerate}
+        \item Before writing the result to the destination register, the \textbf{scoreboard checks} for:
+        \begin{itemize}
+            \item \textbf{WAR} (Write After Read) hazards: \emph{is any previous instruction still waiting to read this register?}
+            \item \textbf{Structural hazards}: \emph{are the Register File (RF) write ports available?}
+        \end{itemize}
+    \end{enumerate}
+    If \textbf{clear}, the \textbf{instruction writes back} the result. If a \textbf{WAR hazard exists}, the \textbf{scoreboard stalls this instruction} until the reading instruction completes.
+\end{enumerate}
+
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l | l | l @{}}
+            \toprule
+            \textbf{Stage} & \textbf{Hazard Checked} & \textbf{Order} & \textbf{Description} \\
+            \midrule
+            Issue           & Structural, WAW       & In-Order      & FU availability + dest reg conflict \\ [.5em]
+            Read Operands   & RAW                   & Out-of-Order  & Waits for source operands \\ [.5em]
+            Execute         & -                     & Out-of-Order  & Runs in FU (latency varies) \\ [.5em]
+            Write Result    & WAR, Structural (RF)  & Out-of-Order  & Writes result if safe \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Hazards managed by the scoreboard.}
+\end{table}

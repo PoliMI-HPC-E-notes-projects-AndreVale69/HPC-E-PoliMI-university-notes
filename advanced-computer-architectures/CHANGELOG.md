@@ -20,6 +20,7 @@
     - add `Control Logic and Stages`
     - add `Summary`
     - add `Scoreboard Data Structures`
+    - add `In-Depth Execution Example`
 
 --------------------
 

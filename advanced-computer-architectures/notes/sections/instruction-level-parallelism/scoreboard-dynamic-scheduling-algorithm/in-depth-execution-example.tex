@@ -1,0 +1,1555 @@
+\subsubsection{In-Depth Execution Example}
+
+The goal of this section is to observe how the scoreboard manages dependencies, tracks resource usage, and handles all threats over time using an example.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Initial Setup: Instruction List and Dependencies}}
+\end{flushleft}
+The instructions are:
+\begin{lstlisting}[language=riscv]
+LD    F6, 34(R2)
+LD    F2, 45(R3)
+MULTD F0, F2, F4      # RAW on F2
+SUBD  F8, F6, F2      # RAW on F6, F2
+DIVD  F10, F0, F6     # RAW on F0, F6
+ADDD  F6, F8, F2      # WAW & WAR on F6, RAW on F8 & F2
+\end{lstlisting}
+We have a mix of:
+\begin{itemize}
+    \item RAW hazards: \texttt{F2}, \texttt{F6}, \texttt{F0}, \texttt{F8}
+    \item WAW/WAR: around register \texttt{F6}
+\end{itemize}
+During the example, we will show the status of three main hardware data structures introduced in the section \ref{subsubsection: Scoreboard Data Structures}, page \pageref{subsubsection: Scoreboard Data Structures}:
+\begin{itemize}
+    \item \textbf{Instruction Status Table}: tracks the lifecycle state of each instruction in the pipeline.
+    \item \textbf{Functional Unit Status Table}: tracks the usage and readiness of each functional unit (FU), and the dependency state of the operands.
+    \item \textbf{Register Result Status Table}: tracks which FU is \textbf{scheduled to write} to each floating-point register.
+\end{itemize}
+
+
+\newpage
+
+\begin{enumerate}
+    %
+    % Cycle 1
+    %
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F6, 34(R2)} is issued and begins execution.
+        \item Integer unit is now \textbf{busy}.
+        \item All other instructions wait.
+    \end{itemize}
+    \textbf{No hazard} yet. This sets up the first data dependency (\texttt{F6} will be written soon)
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     &           &           &           \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   &       &           &           &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}   & \texttt{Qk}   & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & Yes           & \texttt{Load} & \texttt{F6}   &               & \texttt{R2}   &               &               &               & Yes           \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &               &               &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &               &               & \texttt{Integer}  &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 2
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] Cannot issue \texttt{LD F2, 45(R3)} yet, due to \textbf{structural hazard} on the \texttt{Integer unit}.
+        \item Execution of first \texttt{LD} continues.
+    \end{itemize}
+    \textbf{Stall due to structural hazard}, despite in-order issue.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & \hl{2}    &           &           \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   &       &           &           &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}   & \texttt{Qk}   & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & Yes           & \texttt{Load} & \texttt{F6}   &               & \texttt{R2}   &               &               &               & Yes           \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &               &               &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &               &               & \texttt{Integer}  &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 3
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item First load finishes execution.
+        \item Still can't issue second load.
+    \end{itemize}
+    Memory latency is ideal (1 cycle), but scoreboard doesn't allow overcommit of the integer unit.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & \hl{3}    &           \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   &       &           &           &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}   & \texttt{Qk}   & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & Yes           & \texttt{Load} & \texttt{F6}   &               & \texttt{R2}   &               &               &               & Yes           \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &               &               &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &               &               & \texttt{Integer}  &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 4
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{F6} is written to the register file (RF)
+        \item \texttt{Integer} unit is now \textbf{free}.
+    \end{itemize}
+    Register \texttt{F6} becomes available, other instructions depending on it can now move (when their turn comes).
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & \hl{4}    \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   &       &           &           &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}   & \texttt{Qk}   & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & \hl{No}       &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &               &               &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &               &               & \texttt{Integer}  &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 5
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F2, 45(R3)} is issued and starts execution.
+        \item \texttt{Instruction 2} enters pipeline, finally.
+    \end{itemize}
+    No data hazards here, but we're about to enter the \textbf{RAW jungle} starting next cycle.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & \hl{5}&           &           &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}   & \texttt{Qk}   & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & \hl{Yes}      & \texttt{Load} & \texttt{F2}   &               & \texttt{F3}   &               &               &               & Yes           \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &               &               &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &               &               &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}           & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               & \texttt{\hl{Integer}} &               &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 6
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{MULTD F0, F2, F4} is issued to \texttt{Mult1}.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{RAW hazard} on \texttt{F2}: operand not yet available (second load not completed).
+        \item \texttt{MULTD} \textbf{waits} in the Read Operands stage.
+        \item \texttt{LD F2} is executing (started in Cycle 5).
+    \end{itemize}
+    Highlights:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{MULTD} \textbf{is issued} because: the \texttt{Mult1} functional unit is free (no structural hazard), and no other instruction is writing to \texttt{F0} (no WAW hazard).
+        \item[\textcolor{Red2}{\faIcon{times}}] But execution (of \texttt{MULTD}) is blocked because:
+        \begin{itemize}
+            \item \texttt{F2} (a source operand) is still being loaded by \texttt{LD F2}, and this is a RAW (Read After Write) hazard.
+            \item \texttt{MULTD} must \textbf{wait until} \texttt{LD F2} \textbf{writes its result into register} \texttt{F2}.
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & \hl{6}    &           &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & \hl{6}&           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}   & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & Yes           & \texttt{Load} & \texttt{F2}   &               & \texttt{F3}   &                   &               &               & Yes           \\ [.3em]
+                    & \texttt{Mult1}    & \hl{Yes}      & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{Integer}  &               & No            & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &               &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &                   &               &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &                   &               &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}       & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{\hl{Mult}}& \texttt{Integer}  &               &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 7
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{LD F2} completes (data cache hit), result will be written to \texttt{F2} next cycle.
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{SUBD F8, F6, F2} is \textbf{issued} to \texttt{Add} unit (free).
+        \item[\textcolor{Red2}{\faIcon{times}}] But \texttt{SUBD} cannot start execution yet:
+        \begin{itemize}
+            \item It needs \texttt{F6} and \texttt{F2} as operands.
+            \item \texttt{F2} just finished loading and is \textbf{not yet written back}, so still blocked (\textbf{RAW hazard}).
+            \item \texttt{F6} was written earlier by \texttt{LD F6} and is now available.
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & 6         & \hl{7}    &           \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6     &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & \hl{7}&           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & Yes           & \texttt{Load} & \texttt{F2}   &               & \texttt{F3}   &                   &                   &               & Yes           \\ [.3em]
+                    & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{Integer}  &                   & No            & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & \hl{Yes}      & \texttt{Sub}  & \texttt{F8}   & \texttt{F6}   & \texttt{F2}   &                   & \texttt{Integer}  & Yes           & No            \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &                   &                   &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} & \texttt{Integer}  &               &                   & \texttt{\hl{Add}} &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 8
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{DIVD F10, F0, F62} is \textbf{issued} to \texttt{Divide} unit (free).
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{LD F2} \textbf{writes back to} \texttt{F2}, now \texttt{MULTD} and \texttt{SUBD} can read \texttt{F2} (cycle 9).
+        \item[\textcolor{Red2}{\faIcon{times}}] But execution is blocked because:
+        \begin{itemize}
+            \item It needs \texttt{F0} (being written by \texttt{MULTD}), so \textbf{RAW hazard} on \texttt{F0}.
+            \item It also uses \texttt{F6}, which is already ready.
+            \item \texttt{F2} just finished loading and is \textbf{not yet written back} (this cycle), so still blocked (\textbf{RAW hazard}).
+        \end{itemize}
+    \end{itemize}
+    This stage shows \textbf{cascading dependency chains} forming: \texttt{DIVD} waits for \texttt{MULTD}, which waits for \texttt{LD F2}.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & 6         & 7         & \hl{8}    \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6     &           &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7     &           &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & \hl{8}&           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & \hl{Yes}      & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & Yes           & \texttt{Sub}  & \texttt{F8}   & \texttt{F6}   & \texttt{F2}   &                   & \texttt{Integer}  & Yes           & \hl{Yes}      \\ [.3em]
+                    & \texttt{Divide}   & \hl{Yes}      & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               &                   & \texttt{Add}      & \texttt{\hl{Divide}}  &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 9
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{MULTD} and \texttt{SUBD} \textbf{read operands} (in parallel): scoreboard uses a \textbf{multi-port register file} (e.g., 4 read ports) to allow simultaneous operand reads.
+        \item \texttt{MULTD} begins execution on \texttt{Mult} unit (10-cycle latency, table ``Functional unit status'').
+        \item \texttt{SUBD} begins execution on \texttt{Add} unit (2-cycle latency).
+        \item[\textcolor{Red2}{\faIcon{times}}] \texttt{ADDD} cannot be issued because the \texttt{Add} unit is \textbf{already in use by} \texttt{SUBD} (structural hazard).
+    \end{itemize}
+    Scoreboard enables \textbf{parallel out-of-order read} and execution.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6     & \hl{9}    &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7     & \hl{9}    &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8     &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{10} & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{2}  & \texttt{Add}      & Yes           & \texttt{Sub}  & \texttt{F8}   & \texttt{F6}   & \texttt{F2}   &                   & \texttt{Integer}  & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               &                   & \texttt{Add}      & \texttt{\hl{Divide}}  &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 10
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD} and \texttt{SUBD} are executing.
+        \item \texttt{DIVD} is still waiting for \texttt{F0} (from \texttt{MULTD}).
+        \item \texttt{ADDD} remains stalled.
+    \end{itemize}
+    This block shows classic \textbf{out-of-order read and execution} behavior.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6     & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7     & 9         &           &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8     &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{9}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{1}  & \texttt{Add}      & Yes           & \texttt{Sub}  & \texttt{F8}   & \texttt{F6}   & \texttt{F2}   &                   & \texttt{Integer}  & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               &                   & \texttt{Add}      & \texttt{\hl{Divide}}  &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 11
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{SUBD} finishes execution (2-cycle latency complete).
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{SUBD} is now ready to write back to \texttt{F8}.
+        \item[\textcolor{Red2}{\faIcon{times}}] But \texttt{SUBD} \textbf{cannot write yet}, it will occur in the next cycle.
+        \item \texttt{MULTD} is still executing (10-cycle latency).
+        \item \texttt{DIVD} continues to \textbf{wait for} \texttt{F0}, which is still in production by \texttt{MULTD}.
+        \item \texttt{ADDD} remains \textbf{stalled}, since the \texttt{Add} unit is busy with \texttt{SUBD}.
+    \end{itemize}
+    The key idea here is that the scoreboard \textbf{only allows one instruction to be written per cycle}; even completed executions must wait their turn.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6     & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7     & 9         & \hl{11}   &           \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8     &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{8}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{0}  & \texttt{Add}      & Yes           & \texttt{Sub}  & \texttt{F8}   & \texttt{F6}   & \texttt{F2}   &                   & \texttt{Integer}  & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               &                   & \texttt{Add}      & \texttt{\hl{Divide}}  &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 12
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{SUBD} writes result to \texttt{F8}
+        \item[\textcolor{Green3}{\faIcon{check}}] The \texttt{Add} \textbf{unit becomes available} again.
+        \item \texttt{MULTD} is still executing.
+        \item \texttt{DIVD} still waiting for \texttt{F0}.
+        \item \texttt{ADDD} can now potentially be issued, since the \texttt{Add} \textbf{unit is no longer busy}.
+    \end{itemize}
+    \textbf{Hazard check}: the \textbf{WAW hazard on} \texttt{F6} (from \texttt{ADDD}) is now \textbf{clear} because no one is writing to \texttt{F6} at this moment.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5     & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6     & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7     & 9         & 11        & \hl{12}   \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8     &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{7}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               &                   &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 13
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{ADDD} is \textbf{issued} to the \texttt{Add} unit: no structural hazard and WAW on \texttt{F6} is clear.
+        \item[\textcolor{Green3}{\faIcon{check}}] It \textbf{waits} in the Read Operands (RR) stage.
+        \item[\textcolor{Red2}{\faIcon{times}}] Still blocked by a \textbf{WAR hazard on} \texttt{F6}:
+        \begin{itemize}
+            \item \texttt{DIVD} is supposed to read \texttt{F6}, but \texttt{ADDD} wants to write it.
+            \item \texttt{ADDD} must wait until \texttt{DIVD} reads \texttt{F6} to avoid overwriting it too early.
+        \end{itemize}
+        \item \texttt{MULTD} still executing.
+    \end{itemize}
+    \textbf{Classic WAR hazard}: writer (\texttt{ADDD}) must not overwrite a register untile readers (\texttt{DIVD}) finish reading it.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & \hl{13}   &           &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{6}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & \hl{Yes}      & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{\hl{Add}} &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 14
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{ADDD} reads its operands \texttt{F8} and \texttt{F2}:
+        \begin{itemize}
+            \item \texttt{F8} just written by \texttt{SUBD} (cycle 12).
+            \item \texttt{F2} is available since cycle 8.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \texttt{DIVD} is \textbf{still waiting} on \texttt{F0} (from \texttt{MULTD}), so hasn't read \texttt{F6} yet.
+        \item[\textcolor{Green3}{\faIcon{\speedIcon}}] Event though \texttt{DIVD} was issued before \texttt{ADDD}, here \texttt{ADDD} \textbf{performs operand read first}. This is \textbf{out-of-order read}!
+    \end{itemize}
+    Scoreboard allows \textbf{out-of-order read operands} when no hazards exist.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & \hl{14}   &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{5}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{2}  & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 15
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{ADDD} \textbf{starts execution} on \texttt{Add} unit.
+        \item \texttt{MULTD} and \texttt{DIVD} still wait:
+        \begin{itemize}
+            \item \texttt{MULTD} still processing.
+            \item \texttt{DIVD} still cannot read \texttt{F0}, so it also hasn't read \texttt{F6}; keeping the \textbf{WAR hazard active} on \texttt{F6}.
+        \end{itemize}
+    \end{itemize}
+    \textbf{Execution parallelism}: \texttt{ADDD} and \texttt{MULTD} are both executing, in separate units.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{4}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{1}  & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 16
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{ADDD} \textbf{finishes execution}.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Cannot write back yet} due to \textbf{WAR hazard}:
+        \begin{itemize}
+            \item \texttt{ADDD} wants to write to \texttt{F6}, but \texttt{DIVD} hasn't yet read it.
+        \end{itemize}
+        \item \texttt{DIVD} is \textbf{still stalled}, waiting for \texttt{F0} (result of \texttt{MULTD}).
+        \item \texttt{MULTD} continues execution (almost done!).
+    \end{itemize}
+    \textbf{Scoreboard protection}: even though \texttt{ADDD} finished early, it must \textbf{wait} to avoid corrupting data \texttt{DIVD} still needs.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & \hl{16}   &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{3}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{0}  & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 17
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Same situation:
+        \begin{itemize}
+            \item \texttt{ADDD} is waiting to write to \texttt{F6}.
+            \item \texttt{DIVD} is waiting to read both \texttt{F0} and \texttt{F6}.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textbf{WAR hazard} on \texttt{F6} \textbf{still active}.
+        \item \texttt{MULTD} is \textbf{almost done} (last cycle of execution).
+    \end{itemize}
+    \textbf{Note}: WAR hazards delay write-back, not execution.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{2}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 18
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Again, same situation:
+        \begin{itemize}
+            \item \texttt{ADDD} is \textbf{still waiting} to write \texttt{F6} (WAR hazard).
+            \item \texttt{DIVD} is still blocked from reading \texttt{F0} (pending from \texttt{MULTD}).
+        \end{itemize}
+        \item \texttt{MULTD} completes execution (latency ends here)
+    \end{itemize}
+    Now the scoreboard is ready for \texttt{MULTD} to write its result.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         &           &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{1}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 19
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{MULTD} \textbf{writes} to \texttt{F0}.
+        \item[\textcolor{Green3}{\faIcon{check}}] This finally allows \texttt{DIVD} to read operands in the \textbf{next cycle} (20).
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \texttt{ADDD} still waits on WAR hazard, \texttt{DIVD} still hasn't read \texttt{F6}.
+    \end{itemize}
+    This is a key cycle: \textbf{RAW} on \texttt{F0} is \textbf{resolved}, allowing \texttt{DIVD} to make progress at last.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         & \hl{19}   &           \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{0}  & \texttt{Mult1}    & Yes           & \texttt{Mult} & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   & \texttt{Mult}     &                   & No            & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \texttt{Mult} &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 20
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{DIVD} reads both \texttt{F0} and \texttt{F6}:
+        \begin{itemize}
+            \item \texttt{F0} from \texttt{MULTD}, now available
+            \item \texttt{F6} from earlier \texttt{LD}.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] With both operands read, \textbf{WAR hazard on} \texttt{F6} \textbf{is gone}.
+        \item[\textcolor{Green3}{\faIcon{check}}] This \textbf{unlocks} \texttt{ADDD}, which can now write \texttt{F6}.
+    \end{itemize}
+    \textbf{Scoreboard logic synchronizes dependent events}: \texttt{DIVD} completes operand read, then \texttt{ADDD} can write, then hazard avoided.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         & 19        & \hl{20}   \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         &           &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+                    & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   &                   &                   & \hl{Yes}      & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 21
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{DIVD} finally \textbf{reads its operands}:
+        \begin{itemize}
+            \item \texttt{F0} written by \texttt{MULTD} in cycle 19.
+            \item \texttt{F6} read now, which \textbf{clears the WAR hazard} blocking \texttt{ADDD}.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{ADDD} can now \textbf{safely write back to} \texttt{F6} in the \textbf{next cycle}.
+    \end{itemize}
+    Key transitions: \texttt{DIVD} finishes operand read (last one of the program); \texttt{ADDD} gets the green ligth to write since no instructions are waiting to read \texttt{F6}.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         & 19        & 20        \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         & \hl{21}   &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & Yes           & \texttt{Add}  & \texttt{F6}   & \texttt{F8}   & \texttt{F2}   &                   &                   & Yes           & Yes           \\ [.3em]
+            \hl{40} & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   &                   &                   & Yes           & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &                   &               & \texttt{Add}      &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 22
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{ADDD} \textbf{writes result to} \texttt{F6}: this completes the final \textbf{WAW dependency} involving \texttt{F6}.
+        \item \texttt{DIVD} is now \textbf{executing} (started after operand read).
+        \item No structural or data hazards remain, all previous dependencies are solved.
+    \end{itemize}
+    \textbf{Everything is now in-flight or completed}:
+    \begin{itemize}
+        \item All operands have been read.
+        \item All issued instructions are either executing or have completed.
+        \item The scoreboard is now \textbf{idling} except for the ongoing \texttt{DIVD}.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         & 19        & 20        \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         & 21        &           &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        & \hl{22}   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{39} & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   &                   &                   & Yes           & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &                   &               &                   &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+    \setcounter{enumi}{60}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 61
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{DIVD} \textbf{completes its execution}.
+        \begin{itemize}
+            \item Recall: \texttt{DIVD} was issued in cycle 8, and with a long latency (40 cycles), it finally ends execution here.
+        \end{itemize}
+        \item The scoreboard marks the \texttt{Divide} functional unit as \textbf{ready to write}.
+    \end{itemize}
+    This shows how the scoreboard tracks long-latency FUs \textbf{without blocking the pipeline}. Other instructions have long since finished.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         & 19        & 20        \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         & 21        & \hl{61}   &           \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        & 22        \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \hl{0}  & \texttt{Divide}   & Yes           & \texttt{Div}  & \texttt{F10}  & \texttt{F0}   & \texttt{F6}   &                   &                   & Yes           & Yes           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &                   &               &                   &                   & \texttt{Divide}       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 62
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \texttt{DIVD} \textbf{writes result to} \texttt{F10}.
+        \item All instructions have now:
+        \begin{itemize}
+            \item Been \textbf{issued}
+            \item \textbf{Executed}
+            \item \textbf{Written back}
+        \end{itemize}
+    \end{itemize}
+    \textbf{All functional units are idle}, the pipeline is now \textbf{completely drained}.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Instruction                 & Issue     & Read Op.  & Exec Comp & Write Res \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1         & 2         & 3         & 4         \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 5         & 6         & 7         & 8         \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 6         & 9         & 19        & 20        \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 7         & 9         & 11        & 12        \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 8         & 21        & 61        & \hl{62}   \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 13        & 14        & 16        & 22        \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c c c c c c c @{}}
+            \toprule
+            Time    & Name              & \texttt{Busy} & \texttt{Op}   & \texttt{Fi}   & \texttt{Fj}   & \texttt{Fk}   & \texttt{Qj}       & \texttt{Qk}       & \texttt{Rj}   & \texttt{Rk}   \\
+            \midrule
+                    & \texttt{Integer}  & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult1}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Mult2}    & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Add}      & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+                    & \texttt{Divide}   & No            &               &               &               &               &                   &                   &               &               \\ [.3em]
+            \bottomrule
+        \end{tabular}
+        \caption*{Functional unit status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{F0}   & \texttt{F2}       & \texttt{F4}   & \texttt{F6}       & \texttt{F8}       & \texttt{F10}          & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   &               &                   &               &                   &                   &                       &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+\end{enumerate}
+The 62-cycle examle is a demonstration of: efficient hazard management, robust scheduling logic, clean and scalable hardware coordination. The scoreboard shines in showing how \textbf{simple rules, carefully enforced, can deliver powerful out-of-order behavior} without complexity of modern speculative or superscalar techniques.

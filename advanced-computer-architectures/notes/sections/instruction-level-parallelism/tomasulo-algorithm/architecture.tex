@@ -1,0 +1,181 @@
+\subsubsection{Architecture}
+
+The classic architecture includes:
+\begin{itemize}
+    \item An \textbf{Instruction Queue} that feeds instructions in program order.
+    \item Several Reservation Stations (RSs) sitting in front of Functional Units (FUs) (like \texttt{ADD}, \texttt{MUL}, \texttt{DIV} units).
+    \item A \textbf{Register File} that doesn't just store values, but also tracks \textbf{where the next value will come from}.
+    \item A \textbf{Common Data Bus (CDB)} that broadcasts results to all RSs and the Register File.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Components of a Reservation Station (RS)}}
+\end{flushleft}
+Each \definition{Reservation Station (RS)} is a mini-instruction buffer attached to a specific type of Functional Unit. It holds \textbf{1 instruction} and includes the following fields:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c | l @{}}
+        \toprule
+        Field & Description \\
+        \midrule
+        \textbf{\texttt{Tag}} (name)        & Unique ID of the RS (e.g., \texttt{RS1}, \texttt{RS2}, ...) \\ [.5em]
+        \textbf{\texttt{Busy}}              & A boolean flag: \emph{is the RS holding an instruction?} \\ [.5em]
+        \textbf{\texttt{OP}}                & Operation type (e.g., \texttt{ADD.D}, \texttt{MUL.D}) \\ [.5em]
+        \textbf{\texttt{Vj}, \texttt{Vk}}   & Value of operands (if available) \\ [.5em]
+        \textbf{\texttt{Qj}, \texttt{Qk}}   & Tag of RS producing \texttt{Vj}, \texttt{Vk} (if not available) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item If \texttt{Vj}/\texttt{Vk} are valid $\rightarrow$ operands are ready.
+    \item If \texttt{Qj}/\texttt{Qk} are nonzero $\rightarrow$ wait for the result tagged with that RS name to arrive on the CDB.
+\end{itemize}
+Only \textbf{one of (\texttt{V}, \texttt{Q})} is valid for each operand at any given time. Finally, note that for memory instructions (like Load/Store), \texttt{Vj} often holds the \textbf{address}, not a register value.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Register File and Store Buffers}}
+\end{flushleft}
+The Register File in Tomasulo's architecture does \textbf{more than just store values}. Each register contains:
+\begin{itemize}
+    \item \texttt{Vi}, current value (if available)
+    \item \texttt{Qi}, tag of the RS that will produce this value (if pending)
+\end{itemize}
+All depends on the \texttt{Qi} value:
+\begin{itemize}
+    \item If \texttt{Qi = 0} $\rightarrow$ the value is already available $\rightarrow$ use \texttt{Vi}.
+    \item If \texttt{Qi $\ne$ 0} $\rightarrow$ the register is waiting for an instruction to produce that value.
+\end{itemize}
+This tagging makes the register file an elegant interface for:
+\begin{itemize}
+    \item \textbf{Implicit register renaming}
+    \item \textbf{Hazard tracking}
+    \item \textbf{Register freeing}
+\end{itemize}
+Likewise, \textbf{Store Buffers} behave like a special type of RS:
+\begin{itemize}
+    \item They \textbf{wait} for both \textbf{address} and \textbf{data} to be ready \textbf{before sending it to memory}
+    \item Both elements may depend on other RS outputs, so Store Buffers also monitor the CDB.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Load/Store Buffers}}
+\end{flushleft}
+Memory operations need special handling due to:
+\begin{itemize}
+    \item Address calculation
+    \item Unknown data dependencies
+    \item Potential memory hazards
+\end{itemize}
+So we use:
+\begin{itemize}
+    \item \definition{Load Buffers}, consisting of two fields: \texttt{Busy}, \texttt{Address}. Calculated in two steps:
+    \begin{enumerate}
+        \item Address calculation using \texttt{base register + offset}.
+        \item Wait for memory unit availability to load the data.
+    \end{enumerate}
+    \item \definition{Store Buffers}, wait for the \textbf{data to be stored} and the \textbf{address}. Once both are ready, send to memory.
+\end{itemize}
+Store Buffers act like RSs, they hold partial information and wait on operand values (tags), same as \texttt{ADD} or \texttt{MUL} units.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this architectural design works?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Decouple instruction issue from operand readiness}, then out-of-order execution becomes natural.
+    \item \textbf{Multiple RSs per FU}, then enables multiple instructions to be in-flight for the same unit type.
+    \item \textbf{Register file doesn't need to ``remember everything''}, then RSs temporarily hold data and manage dependencies.
+    \item \textbf{Broadcast via CDB}, then all waiting units instantly get what they need, without central control.
+\end{itemize}
+In other words, the Tomasulo's architecture is a \textbf{beautifully decentralized, tag-driven pipeline}:
+\begin{itemize}
+    \item Each \textbf{Reservation Station} acts as a micro-scheduler for its FU.
+    \item The \textbf{Register File} manages \emph{what is available} vs. \emph{what is still pending}.
+    \item \textbf{Load/Store Buffers} elegantly handle memory-side hazards and operand waits.
+    \item The \textbf{CDB} ties it all together, broadcasting results as soon as they're ready.
+\end{itemize}
+This structure sets the stage for the dynamic instruction lifecycle, which we'll explore in detail in the next section.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Example of Tomasulo structure}}
+\end{flushleft}
+The following figure shows an example of RISC-V structure using Tomasulo. It is a very good example to understand how the architecture works.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/tomasulo-fpu.pdf}
+    \caption{The Basic Structure of a Tomasulo-Style FPU.\cite{hennessy2017computer} It illustrates the \textbf{hardware datapaht and control structure} used in a \textbf{RISC-V \definition{Floating-Point Unit (FPU)}} that supports \textbf{dynamic scheduling via Tomasulo's algorithm}. This architecture shows \textbf{how a processor executes FP instructions out of order}, tracks dependencies using \textbf{tags}, and delivers results using the \textbf{Common Data Bus (CDB)}.}
+\end{figure}
+
+\begin{itemize}
+    \item \definition{Instruction Queue}. Holds instructions waiting to be issued. The instructions are issued in-order (First In, First Out) to \textbf{Reservation Stations}.
+    
+    \item \definition{Reservation Stations (RSs)}. Act as \textbf{temporary instruction buffers} for each type of FU (e.g., \texttt{FP ADD}, \texttt{MULT}, \texttt{DIV}). Each RS holds:
+    \begin{itemize}
+        \item Operation Type (e.g., \texttt{ADD.D}, \texttt{MUL.D})
+        \item Operand values (\texttt{Vj}/\texttt{Vk}) or tags (\texttt{Qj}/\texttt{Qk})
+        \item Status bits (busy, ready, etc.)
+    \end{itemize}
+    Waits until \textbf{both operands are ready} and the FU is free, then issues to the FU.
+
+    \item \definition{Function Units (FUs)}. Includes separate \textbf{pipelined units} for \texttt{ADD}, \texttt{MULT}, and \texttt{DIV}. Each can execute one instruction at a time. Upon completion, sends result to the \textbf{CDB}.
+    
+    \item \definition{Register File (RF)}. Stores FP register values (\texttt{F0}-\texttt{F31}). Each register has: \textbf{Value field (Vi)}, and \textbf{Tag field (Qi)} that is the ID of the RS that will produce its value. When reading a register:
+    \begin{itemize}
+        \item If \texttt{Qi = 0}, value is ready $\rightarrow$ use \texttt{Vi}.
+        \item If \texttt{Qi $\ne$ 0}, value is pending $\rightarrow$ use tag to track it.
+    \end{itemize}
+
+    \item \definition{Common Data Bus (CDB)}. Broadcasts \textbf{completed results} (value and tag) to: \textbf{all waiting RSs} (those with \texttt{Qj}/\texttt{Qk} matching the tag), \textbf{Register File} (if that tag matches a register \textbf{Qi}). Enables \textbf{hardware forwarding}: results don't need to wait for write-back to the register file.
+    
+    \item \definition{Load/Store Queue} (optional). In a full Tomasulo implementation, memory operations are handled by \textbf{Load and Store buffers}. This diagram is focused on \textbf{FP register-register instructions}, so memory is abstracted.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Execution Flow}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Issue (Instruction Queue $\rightarrow$ RS)}
+    \begin{enumerate}
+        \item Fetch next \definition{Floating Point (FP)} instruction.
+        \item If a Reservation Station (RS) for the operation type is available:
+        \begin{enumerate}
+            \item Copy instruction into RS
+            \item Fetch operands from Register File (RF)
+            \begin{itemize}
+                \item If ready $\rightarrow$ store value in \texttt{Vj/Vk}
+                \item If not $\rightarrow$ store producer RS tag in \texttt{Qj/Qk}
+            \end{itemize}
+            \item Update the destination register's \texttt{Qi} with this RS tag (register renaming).
+        \end{enumerate}
+    \end{enumerate}
+    
+    \item \important{Execute (RS $\rightarrow$ FU)}
+    \begin{enumerate}
+        \item Once operands are ready (\texttt{Qj = Qk = 0}) and FU is free:
+        \begin{enumerate}
+            \item RS issues to its Functional Unit (FU)
+            \item FU computes the result (may take multiple cycles)
+            \item Execution is \textbf{out of order}, instructions are scheduled based on readiness, not program order.
+        \end{enumerate}
+    \end{enumerate}
+    
+    \item \important{Write Result (FU $\rightarrow$ CDB)}
+    \begin{enumerate}
+        \item When the FU finishes:
+        \begin{enumerate}
+            \item Sends the result with \textbf{its tag} on the \textbf{CDB}.
+            \item All RSs waiting on that tag update their operand fields.
+            \item Register file updates any registers whose \texttt{Qi} matches the tag.
+            \item The RS becomes free again.
+        \end{enumerate}
+    \end{enumerate}
+\end{enumerate}

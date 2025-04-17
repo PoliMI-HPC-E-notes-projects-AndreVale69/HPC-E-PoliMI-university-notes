@@ -18,6 +18,7 @@
     - add `Introduction`
     - add `Register Renaming: Static vs. Implicit`
     - add `Basic Concepts of Tomasulo's Algorithm`
+    - add `Architecture`
 
 --------------------
 

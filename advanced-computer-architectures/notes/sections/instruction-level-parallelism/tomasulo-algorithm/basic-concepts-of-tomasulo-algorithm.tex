@@ -1,0 +1,78 @@
+\subsubsection{Basic Concepts of Tomasulo's Algorithm}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{star} \textbf{Goals of Tomasulo's Design}}
+\end{flushleft}
+Tomasulo's algorithm was designed to solve a major performance bottleneck in pipelined processors: \textbf{pipeline stalls caused by operand unavailability} due to data hazards. The solution? Introduce a distributed, smart scheduling mechanism that:
+\begin{itemize}
+    \item Avoids \textbf{WAR and WAW} hazards (false dependencies)
+    \item Allows \textbf{out-of-order execution}
+    \item Enables \textbf{register renaming implicitly}
+    \item Uses \textbf{Reservation Stations (RSs)} and a \textbf{Common Data Bus (CDB)}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{heartbeat} \textbf{Reservation Stations (RSs): Tomasulo's Brain}}
+\end{flushleft}
+Rather than having a central scoreboard (as in CDC 6600), Tomasulo distributes the \textbf{control logic and buffering close to the Functional Units (FUs)} using \definition{Reservation Stations}.
+
+\highspace
+\textbf{Each functional unit} (like a floating-point adder or multiplier) \textbf{has its own RSs} in front of it. These are \textbf{small buffers} that:
+\begin{itemize}
+    \item \important{Hold instruction operands} (or \emph{tags} pointing to where the operand will come from).
+    \item \important{Wait until operands are ready}.
+    \item \important{Dispatch instructions into the FU} as soon as everything is available.
+\end{itemize}
+This local storage of operands \textbf{removes the need to stall} the entire pipeline, \textbf{each unit become self-scheduling}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Implicit Register Renaming with RS Tags}}
+\end{flushleft}
+Instead of keeping track of operand names (e.g., \texttt{F2}, \texttt{F4}, \texttt{F6}, etc.), \textbf{Tomasulo tracks}:
+\begin{itemize}
+    \item Either the \textbf{value} of the operand (if available)
+    \item Or the \textbf{tag} of the RS that will produce that value (if not yet ready)
+\end{itemize}
+This is very powerful because:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Registers are replaced by \textbf{RS names or actual values}
+    \item WAR and WAW hazards are \textbf{completely avoided}
+    \item Instruction scheduling becomes \textbf{data-driven}
+\end{itemize}
+We no longer wait for registers, we \textbf{wait for values}, and when they're ready, we go.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Tags, RSs, and the CDB}}
+\end{flushleft}
+A critical component that ties everything together is the \definition{Common Data Bus (CDB)}:
+\begin{enumerate}
+    \item When a \textbf{functional unit finishes} execution, the result is \textbf{broadcast on the CDB}.
+    \item Any \textbf{RS waiting for that result's tag} will grab the value and store it in its local buffer.
+    \item Also, the result is written to the \textbf{Register File}, \textbf{but only if no newer instruction is overwriting that register}.
+\end{enumerate}
+This broadcasting mechanism allows Tomasulo to perform a kind of \textbf{hardware-level forwarding}, operands are handed off \emph{before} they hit the register file.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | l @{}}
+        \toprule
+        Feature & Scoreboarding & Tomasulo \\
+        \midrule
+        Operand Waiting     & Wait for \textbf{register}                    & Wait for \textbf{value} or \textbf{tag} \\ [.5em]
+        Operand Tracking    & Centralized                                   & \textbf{Distributed} in RSs \\ [.5em]
+        WAR/WAW hazards     & Cause stalls                                  & \textbf{Avoided via renaming} \\ [.5em]
+        Communication       & Implicit write-back                           & \textbf{Broadcast over CDB} \\ [.5em]
+        Renaming            & \textcolor{Red2}{\faIcon{times} \textbf{None}}& \textcolor{Green3}{\faIcon{check} \textbf{Implicit via RS}} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Compared to Scoreboarding.}
+\end{table}
+
+\noindent
+Tomasulo replaces rigid, centralized scheduling with a \textbf{fluid, decentralized approach}. Reservation Stations \textbf{track availability}, \textbf{rename registers}, and \textbf{drive execution}. The Common Data Bus \textbf{broadcasts results} to all who need them.
+
+\highspace
+The processor becomes \textbf{dataflow-like}: instructions execute \emph{when their operands are ready}, not when some global scheduler says so.

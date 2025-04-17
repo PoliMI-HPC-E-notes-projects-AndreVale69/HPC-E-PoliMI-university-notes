@@ -16,6 +16,8 @@
 - add `Instruction Level Parallelism`
   - add `Tomasulo's Algorithm`
     - add `Introduction`
+    - add `Register Renaming: Static vs. Implicit`
+    - add `Basic Concepts of Tomasulo's Algorithm`
 
 --------------------
 

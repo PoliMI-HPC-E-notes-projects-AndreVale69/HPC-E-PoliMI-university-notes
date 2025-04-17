@@ -1,0 +1,75 @@
+\subsubsection{Register Renaming: Static vs. Implicit}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{First of all, why Register Renaming?}}
+\end{flushleft}
+One of the main challenges in pipelined and out-of-order execution is handling \textbf{false dependencies}. \definition{False Dependencies} (page \pageref{subsubsection: Name Dependencies}) occur when instructions appear to depend on each other \textbf{because they use the same register name}, but there is \textbf{no true data dependency} between them. These are name-related hazards, not value-related. There are two main types:
+\begin{itemize}
+    \item \important{WAR (Write After Dependencies)}: a later instruction writes to a register that a previous instruction needs to read.
+    \item \important{WAW (Write After Write)}: two instructions write to the same register, but the second one is issued before the first finishes.
+\end{itemize}
+These are not \emph{true} data dependencies (like Read After Write, RAW), but \textbf{name conflicts}, where different values want to use the same register name.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Register renaming}} solves this by dynamically or statically mapping registers to different physical storage locations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{hourglass-half} \textbf{Static Register Renaming (Compiler-Based)}}
+\end{flushleft}
+In \definition{Static Renaming}, the \textbf{compiler performs the renaming} at compile time, allocating \textbf{temporary} (non-architectural) \textbf{registers} to break WAR and WAW dependencies.
+
+\highspace
+For example:
+\begin{lstlisting}[language=unknown]
+DIV.D  F0, F2, F4
+ADD.D  F6, F0, F8      # RAW on F0
+S.D    F6, 0(R1)       # RAW on F6
+MUL.D  F6, F10, F8     # WAW & WAR on F6
+\end{lstlisting}
+There is a \textbf{WAW hazard} (both \texttt{ADD.D} and \texttt{MUL.D} write to \texttt{F6}), and a \textbf{WAR hazard} (\texttt{S.D} reads \texttt{F6} while \texttt{MUL.D} wants to write it). With static register renaming, the compiler assigns a new register (e.g., \texttt{S}) to avoid the conflict:
+\begin{lstlisting}[language=unknown]
+DIV.D  F0, F2, F4
+ADD.D  S, F0, F8       # RAW still valid
+S.D    S, 0(R1)        # Now reads S
+MUL.D  F6, F10, F8     # Safe to use F6
+\end{lstlisting}
+Now the hazards are gone: \texttt{ADD.D} writes to \texttt{S}, which is consumed by the store; \texttt{MUL.D} writes to \texttt{F6} independently.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Static Register Renaming - Limitation}}. Static Renaming requires \textbf{predicting all hazards} in advance and knowing the \textbf{full execution path} (hard with branches, loops, dynamic inputs, etc.). Also, it requires \textbf{many more architectural registers} to be encoded in the ISA, not always feasible.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Implicit Register Renaming (Hardware-Based - Tomasulo's way)}}
+\end{flushleft}
+Tomasulo's algorithm takes a smarter \textbf{dynamic} approach. Instead of using physical register names, it uses \definition{Reservation Stations (RS)} as \definition{Temporary Names (tags)} for operands. This renaming is done \textbf{implicitly} by the hardware at runtime.
+
+\highspace
+Using the previous example:
+\begin{lstlisting}[language=unknown]
+DIV.D  F0, F2, F4
+ADD.D  F6, F0, F8      # RAW on F0
+S.D    F6, 0(R1)       # RAW on F6
+MUL.D  F6, F10, F8     # WAW & WAR on F6
+\end{lstlisting}
+Tomasulo rewrites it with \textbf{RS identifiers}:
+\begin{lstlisting}[language=unknown]
+DIV.D  F0, F2, F4
+ADD.D  RS1, F0, F8       # ADD result goes to RS1
+S.D    RS1, 0(R1)        # Store reads from RS1
+MUL.D  F6, F10, F8       # Now safe, F6 is available
+\end{lstlisting}
+\begin{itemize}
+    \item \texttt{ADD.D} \textbf{doesn't write to} \texttt{F6}, but to a \emph{reservation station} named \texttt{RS1}.
+    \item \texttt{S.D} \textbf{reads from} \texttt{RS1}, not from \texttt{F6}.
+    \item This avoids \textbf{WAW (two writes to \texttt{F6})} and \textbf{WAR (store reads \texttt{F6} before \texttt{MUL.D} writes)}.
+\end{itemize}
+Tomasulo's algorithm \textbf{automatically tracks which RS (Reservation Stations) produces what} and \textbf{only writes to the actual register file once the instruction retires}. Until then, everything is handled with RS tags.
+
+\highspace
+This is the \textbf{core strength} of Tomasulo over simpler approaches like Scoreboarding or static renaming. It allows \textbf{aggressive out-of-order execution} without risking data hazards, making it fundamental in modern CPU design.
+
+\highspace
+Here we have only presented the \emph{secret sauce} of Tomasulo's power, in future sections we will gradually reveal how the tag-based mechanism works in practice.

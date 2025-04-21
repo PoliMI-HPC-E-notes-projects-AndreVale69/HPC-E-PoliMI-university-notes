@@ -21,6 +21,7 @@
     - add `Architecture`
     - add `Stages`
       - add `Stage 1: Issue`
+      - add `Stage 2: Execute Stage`
 
 --------------------
 

@@ -1,0 +1,158 @@
+\paragraph{Stage 2: Execute Stage}
+
+This is the phase where the instruction \textbf{actually performs the computation} in the appropriate \textbf{Functional Unit (FU)}, like \texttt{ADD}, \texttt{MULT}, or \texttt{DIV}. But, and this is key, it can only happen \textbf{when all operand values are ready} and \textbf{the Functional Unit (FU) is available}.
+
+\highspace
+So, execution isn't just about doing the math, it's also about \textbf{waiting for the right moment}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Preconditions: When can an Instruction start executing?}}
+\end{flushleft}
+To start execution, three things must happen:
+\begin{enumerate}
+    \item \textbf{Both operands are available}. In the Reservation Station (RS), this means:
+    \begin{equation*}
+        \texttt{Qj = Qk = 0}
+    \end{equation*}
+    No tags, just valid values in \texttt{Vj} and \texttt{Vk}.
+
+    \item \textbf{The Functional Unit (FU) is free}, e.g., the \texttt{FP ADD} unit is idle.
+    
+    \item (optional) \textbf{Instruction dependencies are resolved}, e.g., no pending branches or memory issues ahead.
+\end{enumerate}
+Only \textbf{when all conditions are met}, the instruction \emph{leaves} the Reservation Stations (RS) and enters the \textbf{Functional Unit} (FU).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{What Happens in the Execute Stage?}}
+\end{flushleft}
+Once \textbf{instructions are in Reservation Stations (RSs)} and waiting for operands, the \textbf{Execute Stage begins}. This is where:
+\begin{itemize}
+    \item The instruction is \textbf{dispatched to the Functional Unit (FU)}.
+    \item It \textbf{executes for its latency}.
+    \item The result is \textbf{held}, ready to be broadcast in Stage 3.
+\end{itemize}
+But unlike a classic pipeline, \textbf{Tomasulo waits for readiness}, not for a fixed cycle count.
+
+\highspace
+Let's break it into key sub-steps:
+\begin{enumerate}
+    \item \important{Operand Readiness Check}. Each Reservation Station (RS) monitors:
+    \begin{itemize}
+        \item \texttt{Qj}
+        \item \texttt{Qk}
+    \end{itemize}
+    If both are zero, it means that the \textbf{values} \texttt{Vj} \textbf{and} \texttt{Vk} \textbf{are ready}, and no other Reservation Station needs to broadcast them.
+
+    \textcolor{Green3}{\faIcon{check-circle}} In other words, when both operands are ready, the instruction can \textbf{start executing}.
+
+
+    \item \important{Check FU Availability}. Tomasulo now checks if the \textbf{relevant Functional Unit} (e.g., \texttt{FP ADD}, \texttt{FP MUL}, \texttt{FP DIV}) is \textbf{free}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] If \textcolor{Green3}{\textbf{yes}} $\rightarrow$ dispatch instruction from RS to FU.
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] If \textcolor{Red2}{\textbf{no}} $\rightarrow$ \textbf{stall inside the RS} until FU becomes free.
+    \end{itemize}
+    Multiple Reservation Stations might be ready, but \textbf{only one can use a given Functional Unit at a time}. A scheduler chooses which RS gets the FU (usually oldest-first).
+
+    
+    \item \important{Instruction Execution (Latency Counts)}. Once inside the Functional Unit (FU):
+    \begin{itemize}
+        \item The instruction performs its \textbf{actual arithmetic operation}.
+        \item This can take multiple cycles depending on the instruction type.
+        \begin{table}[!htp]
+            \centering
+            \begin{tabular}{@{} l l @{}}
+                \toprule
+                Instruction & Latency (example) \\
+                \midrule
+                \texttt{ADD.D} & $2$-$3$ cycles \\ [.3em]
+                \texttt{MUL.D} & $4$-$7$ cycles \\ [.3em]
+                \texttt{DIV.D} & $10+$ cycles \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+    \end{itemize}
+    This time is \textbf{internal to the FU}, the RS has already ``let go'' of the instruction. The RS is now \textbf{free} and can be reused after the instruction completes Stage 3 (write-back).
+
+    
+    \item \important{Memory Instructions (LOAD/STORE) - Special Case}. Unlike register-based instructions (e.g. \texttt{ADD.D F6, F2, F4}), memory instructions \textbf{read or write actual memory}, and memory access has some \emph{dangerous side effects}:
+    \begin{itemize}
+        \item It's \textbf{global}: memory affects all parts of the program.
+        \item It must be \textbf{precise}: no reordering can change program behavior.
+        \item It can \textbf{raise exceptions} (e.g., accessing invalid addresses).
+    \end{itemize}
+    So Tomasulo \textbf{handles LOAD and STORE more carefully} than other instructions.
+    \begin{itemize}
+        \item \important{LOAD Instruction \texttt{L.D F4, 0(R1)}}. Load the value from memory address \texttt{R1 + 0} into register \texttt{F4}. What happens:
+        \begin{enumerate}
+            \item \textbf{Wait for base register} (\texttt{R1}) to be ready.
+            \begin{itemize}
+                \item If \texttt{R1} is not ready, the Load Buffer stores a \textbf{tag}, just like in RSs.
+                \item Once ready, calculate \textbf{effective address} (e.g., 1000).
+            \end{itemize}
+
+            \item \textbf{Wait for access to memory}. If there's no memory conflict, proceed to load.
+            
+            \item \textbf{Stage 3 (write)}. The value is broadcast on the \textbf{CDB} to: waiting RSs (if any), register \texttt{F4} (if still tagged).
+        \end{enumerate}
+        \textbf{LOADs are usually allowed to execute out-of-order} (relative to other LOADs), \emph{as long as we're sure no STORE before them is writing to the same address}.
+
+        \item \important{STORE Instruction \texttt{S.D F4, 0(R1)}}. Store the value in \texttt{F4} to memory address \texttt{R1 + 0}. This is trickier, because:
+        \begin{itemize}
+            \item STORE instructions do \textbf{not write results to a register}.
+            \item They write \textbf{into memory}, which is a \textbf{shared global state}.
+            \item If we mess up the ordering, we can cause \textbf{wrong program results}.
+        \end{itemize}
+        What happens:
+        \begin{enumerate}
+            \item \textbf{Wait for both}:
+            \begin{enumerate}
+                \item The \textbf{data to be stored} (\texttt{F4}) $\rightarrow$ may need to track a tag.
+                \item The \textbf{address to store to} (\texttt{R1 + 0}) $\rightarrow$ also may depend on a tag.
+            \end{enumerate}
+
+            \item \textbf{Wait for memory access permission}:
+            \begin{itemize}
+                \item Tomasulo ensures \textbf{store ordering} is preserved.
+                \item This means \textbf{STOREs happen in program order}.
+                \item We cannot let a later STORE ``jump ahead'' of an earlier one.
+            \end{itemize}
+
+            \item \textbf{When both data and address are ready} $\rightarrow$ write to memory (not via CDB).
+        \end{enumerate}
+        \textbf{STORE instructions do not write anything on the CDB}, because they don't produce a result for future instructions, they only update memory.
+    \end{itemize}
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Classical Pipeline vs. Tomasulo}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l @{}}
+        \toprule
+        Classical Pipeline & Tomasulo \\
+        \midrule
+        Fixed issue $\rightarrow$ execute & Waits dynamically for operands \\ [.3em]
+        Register-based data flow & Tag-based tracking via RSs \\ [.3em]
+        RAW hazards stall issue & RAW stalls \textbf{only} inside RSs \\ [.3em]
+        WAR/WAW hazards possible & \textbf{Eliminated} via register renaming \\
+        \bottomrule
+    \end{tabular}
+    \caption{Classical Pipeline vs. Tomasulo.}
+\end{table}
+
+\noindent
+This is \textbf{dataflow execution}: instructions run \textbf{as soon as data is ready}, not when the program says so.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{undo} \textbf{Quick Recap}}
+\end{flushleft}
+\begin{enumerate}
+    \item Check if \texttt{Qj} and \texttt{Qk} are 0 (ready).
+    \item If yes and FU is free $\rightarrow$ dispatch.
+    \item Execute in FU (multi-cycle).
+    \item Prepare to broadcast result on CDB.
+\end{enumerate}

@@ -1,0 +1,121 @@
+\subsubsection{Stages}
+
+Tomasulo's execution model is based on three main pipeline stages:
+\begin{enumerate}
+    \item \important{Issue} (\textbf{in-order}): decode instruction, send to RS.
+    \item \important{Execute} (\textbf{out-of-order}): wait for operands, perform operation.
+    \item \important{Write Result} (\textbf{out-of-order}): broadcast result via CDB to RF and RSs.
+\end{enumerate}
+Each instruction flows through these three stages, but thanks to the algorithm's design, they don't have to do so in program order after issuing.
+
+\longline
+
+\paragraph{Stage 1: Issue}
+
+The \textbf{Issue Stage} is the first step in Tomasulo's 3-phase pipeline. In this stage, instructions are \textbf{decoded and dispatched} from the \textbf{Instruction Queue (IQ)} into \textbf{Reservation Stations (RSs)} (see Figure \ref{fig: tomasulo fpu}, page \pageref{fig: tomasulo fpu}), where they wait until operands and functional units are ready.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Main Responsibilities of the Issue Stage}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{Instruction decoding}. Identify the opcode and register operands.
+    \item \textbf{Reservation Station assignment}. Check for an available RS of the appropriate type (e.g., an \texttt{ADD.D} goes to an RS attached to the \texttt{FP ADD} unit).
+    \item \textbf{Operand availability check}. For each source register:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] If \textbf{ready}, read its \textbf{value} $\rightarrow$ store in \texttt{Vj}/\texttt{Vk}.
+        \item[\textcolor{Red2}{\faIcon{times}}] If \textbf{not ready}, read its \textbf{tag} $\rightarrow$ store in \texttt{Qj}/\texttt{Qk} (wait for it!).
+    \end{itemize}
+    \item \textbf{Destination register renaming}. Update the \textbf{register file's tag field (\texttt{Qi})}. It now points to the RS handling this instruction. This is \textbf{implicit register renaming}.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this stage in-order?}}
+\end{flushleft}
+Tomasulo always issues instructions \textbf{in program order}, one at a time. Why? Three reasons:
+\begin{itemize}
+    \item Ensures \textbf{precise exceptions}, it helps the machine know which instruction caused a fault.
+    \item Keeps memory operations (like stores) in \textbf{correct order}.
+    \item \textbf{Prevents complexity} from instruction reordering too early.
+\end{itemize}
+Out-of-Order behavior starts \textbf{after issue}, in the \textbf{Execute} stage.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What can cause a stall during Issue?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{Structural Hazard}: no free Reservation Station.
+    \item \textbf{Load/Store queue full}: for memory operations.
+    \item (in more advanced versions) \textbf{Pending branch}: speculative instructions must wait.
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why this Stage is powerful}}
+\end{flushleft}
+\begin{itemize}
+    \item Begins \textbf{implicit renaming}, eliminating \textbf{WAR and WAW} hazards.
+    \item Allows instructions to \textbf{wait for operands without blocking the pipeline}.
+    \item Decouples \textbf{instruction arrival} from \textbf{execution readiness}.
+\end{itemize}
+
+\begin{examplebox}[: Issue stage]
+    Say the instruction is:
+    \begin{lstlisting}[language=unknown]
+ADD.D F6, F2, F4\end{lstlisting}
+    \begin{enumerate}
+        \item Tomasulo checks: ``\emph{Is there a free \texttt{ADD} reservation station?}''
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] No, insert a \textbf{stall}: avoid \textbf{structural hazard}.
+        \end{itemize}
+
+        \item[\textcolor{Green3}{\faIcon{check}}] If there are available reservation stations, then checks:
+        \begin{enumerate}
+            \item Is \texttt{F2} ready?
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{check}}] Yes $\rightarrow$ \texttt{Vj =} value of \texttt{F2}
+                \item[\textcolor{Red2}{\faIcon{times}}] No $\rightarrow$ \texttt{Qj =} tag of RS producing \texttt{F2}
+            \end{itemize}
+
+            \item Is \texttt{F4} ready?
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{check}}] Yes $\rightarrow$ \texttt{Vk =} value of \texttt{F4}
+                \item[\textcolor{Red2}{\faIcon{times}}] No $\rightarrow$ \texttt{Qk =} tag of RS producing \texttt{F4}
+            \end{itemize}
+        \end{enumerate}
+
+        \item Finally, it updates: \texttt{F6.Qi = RS1} (renaming \texttt{F6} to \texttt{RS1}). This means: ``\emph{\texttt{F6} is not ready yet, it will be produced by \texttt{RS1}}''.
+    \end{enumerate}
+    From this point on, \textbf{any instruction that needs \texttt{F6} will wait for \texttt{RS1}}, not for \texttt{F6} directly.
+
+    For example, a second instruction appears:
+    \begin{lstlisting}[language=unknown]
+MUL.D F8, F6, F10\end{lstlisting}
+    Tomasulo checks: ``\emph{what's the status of \texttt{F6}?}''. It finds:
+    \begin{center}
+        \texttt{F6.Qi = RS1}
+    \end{center}
+
+    \texttt{F6} \textbf{does not contain a value yet}, but its value will come from \texttt{RS1}. So now, in the RS for the \texttt{MUL} instruction (say \texttt{RS2}), we set:
+    \begin{itemize}
+        \item \texttt{Qj = RS1} (because \texttt{F6} is not ready, and its result will come from \texttt{RS1}).
+        \item \texttt{Vk =} value of \texttt{F10} (assuming \texttt{F10} is ready).
+    \end{itemize}
+    This is the magic: \texttt{RS2} knows that it must \textbf{listen for \texttt{RS1}'s result} on the Common Data Bus (CDB).
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{undo} \textbf{Quick Recap}}
+\end{flushleft}
+\begin{enumerate}
+    \item Decode instruction
+    \item Allocate Reservation Station (RS)
+    \item Read operand values or tags
+    \item Rename destination register via tag (\texttt{Qi})
+    \item If no RS $\rightarrow$ stall
+\end{enumerate}
+This stage is like \textbf{preparing an instruction for its flight}, loading its bags, assigning it a gate, and scheduling it to depart; but waiting for the runway (operands and Functional Unit) to be clear.

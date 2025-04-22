@@ -22,6 +22,7 @@
     - add `Stages`
       - add `Stage 1: Issue`
       - add `Stage 2: Execute Stage`
+      - add `Stage 3: Write Result`
 
 --------------------
 

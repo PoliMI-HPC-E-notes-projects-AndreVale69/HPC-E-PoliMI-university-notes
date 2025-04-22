@@ -1,0 +1,92 @@
+\paragraph{Stage 3: Write Result}
+
+This is the \textbf{moment the instruction finishes its computation} in the Functional Unit (FU), and the result is made \textbf{globally visible} by broadcasting it over the \textbf{Common Data Bus (CDB)}. It's the stage where:
+\begin{itemize}
+    \item The \textbf{value computed by the FU} is sent to:
+    \begin{itemize}
+        \item All \textbf{Reservation Stations (RSs)} waiting for it;
+        \item The \textbf{Register File (RF)} (if still tagged with RS).
+    \end{itemize}
+    \item The instruction is now officially ``\textbf{done}''.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{What happens step-by-step}}
+\end{flushleft}
+Let's say we have this instruction in Reservation Station 3 (\texttt{RS3}):
+\begin{lstlisting}[language=unknown]
+MUL.D F6, F2, F4
+\end{lstlisting}
+\texttt{RS3} starts execution in the \texttt{MUL} unit, takes several cycles, and finally finishes. Now we begin:
+\begin{enumerate}
+    \item \important{Broadcast on CDB}. The Functional Unit (FU) places the result on the \textbf{Common Data Bus (CDB) along with its tag (\texttt{RS3})}:
+    \begin{equation*}
+        \texttt{CDB} \leftarrow \left\langle \texttt{tag} = \texttt{RS3}, \texttt{value} = \texttt{result} \right\rangle 
+    \end{equation*}
+    This is the Tomasulo version of a ``public announcement'': ``\emph{\texttt{RS3} has finished computing a result. Anyone waiting for this, come get it!}''.
+    
+    \item \important{Reservation Stations listen for Tags}. Every Reservation Station (RS) in the system checks: ``\emph{does my \texttt{Qj} or \texttt{Qk} match the tag on the CDB?}''. If yes:
+    \begin{itemize}
+        \item The Reservation Station (RS) grabs the \textbf{value}.
+        \item Stores it in \texttt{Vj} or \texttt{Vk}.
+        \item Clears the tag:
+        \begin{equation*}
+            \texttt{Qj} \leftarrow 0 \hspace{1em} \lor \hspace{1em} \texttt{Qk} \leftarrow 0 
+        \end{equation*}
+        Meaning: operand is now ready.
+    \end{itemize}
+    This process allows many instructions to \textbf{simultaneously wake up} when the result they needed finally becomes available.
+    
+    \item \important{Register File Update}. The \textbf{Register File} checks: ``\emph{is there any register whose \texttt{Qi = RS3}?}''. If yes:
+    \begin{itemize}
+        \item It writes the result into that register.
+        \item Clears the tag field (\texttt{Qi = 0}), this means ``\texttt{F6} is now valid and available''.
+    \end{itemize}
+    If the register has already been renamed again (e.g., \texttt{Qi = RS4}), we \textbf{don't write} to it, this avoid \textbf{WAW hazards}.
+
+    \item \important{Free the RS and FU}. The instruction in \texttt{RS3} is now complete, \texttt{RS3} is marked free, and the Functional Unit (FU) becomes available again for other instructions.
+\end{enumerate}
+
+\begin{examplebox}[: why don't we write to a register when it has been renamed?]
+    Suppose we have two instructions writing to the \textbf{same register}:
+    \begin{lstlisting}[language=unknown]
+ADD.D  F6, F2, F4    ; instruction A
+MUL.D  F6, F6, F8    ; instruction B\end{lstlisting}
+    Instruction 1 is issued first, but instruction 2 also \textbf{writes to \texttt{F6}} (again). This is a \textbf{Write After Write (WAW)} situation.
+    \begin{enumerate}
+        \item Instruction 1 (\texttt{ADD.D}) is issued $\rightarrow$ assigned to \texttt{RS1}
+        \begin{itemize}
+            \item Tomasulo sets: \texttt{F6.Qi} $\leftarrow$ \texttt{RS1} (``\emph{\texttt{F6} will come from \texttt{RS1}}'').
+        \end{itemize}
+        \item Instruction 2 (\texttt{MUL.D}) is issued \textbf{immediately after} $\rightarrow$ assigned to \texttt{RS2}
+        \begin{itemize}
+            \item Tomasulo updates again: \texttt{F6.Qi} $\leftarrow$ \texttt{RS2} (``\emph{\texttt{F6} will now come from \texttt{RS2}}'').
+        \end{itemize}
+    \end{enumerate}
+    Now we have:
+    \begin{itemize}
+        \item Two instructions writing to \texttt{F6}.
+        \item But \textbf{only the result of \texttt{RS2} should actually end up in \texttt{F6}}.
+        \item \textbf{\texttt{RS1}'s result is now obsolete}, because it was overwritten by a newer instruction.
+    \end{itemize}
+    \textbf{When \texttt{RS1} finishes (WRITE STAGE)}, \texttt{RS1} broadcasts its result on the CDB:
+    \begin{equation*}
+        \left\langle \texttt{Tag} = \texttt{RS1}, \texttt{Value} = \dots \right\rangle
+    \end{equation*}
+    Tomasulo checks the Register File: ``\emph{does any register have \texttt{Qi = RS1}?}'':
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] If \textcolor{Green3}{\textbf{yes}}, update that register.
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] If \textcolor{Red2}{\textbf{no}} (this case), \texttt{F6.Qi = RS2}, not \texttt{RS1} anymore.
+    \end{itemize}
+    \textbf{So we skip the write}. Because if we allowed \texttt{RS1} to write to \texttt{F6} now, it would \textbf{overwrite the result of \texttt{RS2}}, which hasn't been computed yet, and then we'd break correctness.
+
+    The is how \textbf{Tomasulo avoids WAW hazards}: only write to a register if it's still waiting for our result. If someone newer came along and renamed the register again, we're out. Our value is no longer needed in the register file.
+\end{examplebox}
+
+\begin{itemize}
+    \item CDB allows \textbf{many instructions} to grab the result \textbf{at the same time}.
+    \item Values are \textbf{forwarded before being stored} (no need to wait for register write-back).
+    \item \textbf{False dependencies (WAR/WAW)} are avoided automatically.
+    \item \textbf{RAW dependencies} are resolved \textbf{dynamically}, as instructions ``listen'' for the values they need.
+\end{itemize}

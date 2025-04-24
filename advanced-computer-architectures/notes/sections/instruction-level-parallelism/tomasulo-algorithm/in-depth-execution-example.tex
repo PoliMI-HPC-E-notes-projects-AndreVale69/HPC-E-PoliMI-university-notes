@@ -1,0 +1,1579 @@
+\subsubsection{In-Depth Execution Example}
+
+\begin{examplebox}[: Dependence and Hazard Analysis]
+    We're given a sequence of floating-point instructions to be executed by Tomasulo's algorithm:
+\begin{lstlisting}[language=unknown, mathescape=true]
+L.D F6, 34(R2)      ; F6  $\textcolor{codegreen}{\leftarrow}$ Mem[R2 + 34]
+L.D F2, 45(R3)      ; F2  $\textcolor{codegreen}{\leftarrow}$ Mem[R3 + 45]
+MUL.D F0, F2, F4    ; F0  $\textcolor{codegreen}{\leftarrow}$ F2 $\textcolor{codegreen}{\times}$ F4
+SUB.D F8, F6, F2    ; F8  $\textcolor{codegreen}{\leftarrow}$ F6 $\textcolor{codegreen}{-}$ F2
+DIV.D F10, F0, F6   ; F10 $\textcolor{codegreen}{\leftarrow}$ F0 $\textcolor{codegreen}{\div}$ F6
+ADD.D F6, F8, F2    ; F6  $\textcolor{codegreen}{\leftarrow}$ F8 + F2
+\end{lstlisting}
+    We begin by identifying \textbf{data dependencies} (RAW, WAR, WAW) between these instructions. Let's go instruction by instruction and analyze dependencies:
+    \begin{itemize}
+        \item Instruction 1: \texttt{L.D F6, 34(R2)} $\rightarrow$ No dependencies, loads into \texttt{F6}.
+        
+        \item Instruction 2: \texttt{L.D F2, 45(R3)} $\rightarrow$ No dependencies, loads into \texttt{F2}.
+        
+        \item Instruction 3: \texttt{MUL.D F0, F2, F4}
+        \begin{itemize}
+            \item \textbf{RAW} dependency on \texttt{F2}, produced by Instr. 2
+            \item \texttt{F4} is assumed ready (not in this instruction stream)
+        \end{itemize}
+        
+        \item Instruction 4: \texttt{SUB.D F8, F6, F2}
+        \begin{itemize}
+            \item \textbf{RAW} dependency on \texttt{F6}, from Instr. 1
+            \item \textbf{RAW} dependency on \texttt{F2}, from Instr. 2
+        \end{itemize}
+
+        \item Instruction 5: \texttt{DIV.D F10, F0, F6}
+        \begin{itemize}
+            \item \textbf{RAW} dependency on \texttt{F0}, from Instr. 3
+            \item \textbf{RAW} dependency on \texttt{F6}, from Instr. 1 (but will be overwritten later)
+        \end{itemize}
+
+        \item Instruction 6: \texttt{ADD.D F6, F8, F2}
+        \begin{itemize}
+            \item \textbf{RAW} dependency on \texttt{F8}, from Instr. 4
+            \item \textbf{RAW} dependency on \texttt{F2}, from Instr. 2
+            \item \textbf{WAW} hazard: Instr. 1 wrote \texttt{F6}, this one \textbf{overwrites} it again.
+            \item \textbf{WAR} hazard: Instr. 5 reads \texttt{F6}, but this instruction \textbf{writes} it again.
+        \end{itemize}
+    \end{itemize}
+    Some key observations:
+    \begin{itemize}
+        \item Instr. 1 and 2 are \textbf{independent loads}, they will issue immediately.
+        \item Instr. 3 (\texttt{MUL.D}) has to \textbf{wait for \texttt{F2}}, but \texttt{F4} is assumed ready.
+        \item Instr. 4 and 5 have \textbf{multiple dependencies}, they will wait in Reservation Station (RS) until results are available.
+        \item Instr. 6 creates \textbf{WAW and WAR} hazards on \texttt{F6}, this is where \textbf{Tomasulo's register renaming} shines:
+        \begin{itemize}
+            \item The second write to \texttt{F6} gets a \textbf{new tag}.
+            \item The WAR/WAW conflicts are eliminated by tracking \textbf{RS tags instead of \texttt{F6} name}.
+        \end{itemize}
+    \end{itemize}
+\end{examplebox}
+
+\begin{examplebox}[: Register Renaming]
+    The goal of this section is to demonstrate how \textbf{register renaming eliminates false dependencies} (WAR and WAW) and allows \textbf{out-of-order execution} by tagging instructions with Reservation Station IDs instead of register names.
+
+    \highspace
+    Let's revisit the original instruction sequence:
+    \begin{lstlisting}[language=unknown]
+L.D F6, 34(R2)
+L.D F2, 45(R3)
+MUL.D F0, F2, F4
+SUB.D F8, F6, F2
+DIV.D F10, F0, F6
+ADD.D F6, F8, F2\end{lstlisting}
+    Instead of using \texttt{F6}, \texttt{F2}, etc. directly, Tomasulo assigns a Reservation Station (RS) to track \textbf{who will produce} each value. This Reservation Station (RS) \textbf{renames} the register in the hardware temporarily. This helps \textbf{avoid}:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textbf{WAW} hazard $\rightarrow$ only the most recent instruction writes to the final destination.
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textbf{WAR} hazard $\rightarrow$ consumers of earlier values don't get overwritten by later writers.
+    \end{itemize}
+    Here's a sample of how registers and reservation stations look during execution:
+
+    \begin{center}
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c | c | l | l @{}}
+                \toprule
+                Instruction & RS & Dest Reg. & \texttt{Qi} Field in RF & Renaming Effect \\
+                \midrule
+                \texttt{L.D} $\rightarrow$ \texttt{F6}      & \texttt{LB1}  & \texttt{F6}   & \texttt{F6.Qi} $\leftarrow$ \texttt{LB1}      & \texttt{F6} will be produced by \texttt{LB1}      \\ [.3em]
+                \texttt{L.D} $\rightarrow$ \texttt{F2}      & \texttt{LB2}  & \texttt{F2}   & \texttt{F2.Qi} $\leftarrow$ \texttt{LB2}      & \texttt{F2} will be produced by \texttt{LB2}      \\ [.3em]
+                \texttt{MUL.D} $\rightarrow$ \texttt{F0}    & \texttt{MUL1} & \texttt{F0}   & \texttt{F0.Qi} $\leftarrow$ \texttt{MUL1}     & \texttt{F0} will be produced by \texttt{MUL1}     \\ [.3em]
+                \texttt{SUB.D} $\rightarrow$ \texttt{F8}    & \texttt{SUB1} & \texttt{F8}   & \texttt{F8.Qi} $\leftarrow$ \texttt{SUB1}     & \texttt{F8} will be produced by \texttt{SUB1}     \\ [.3em]
+                \texttt{DIV.D} $\rightarrow$ \texttt{F10}   & \texttt{DIV1} & \texttt{F10}  & \texttt{F10.Qi} $\leftarrow$ \texttt{DIV1}    & \texttt{F10} will be produced by \texttt{DIV1}    \\ [.3em]
+                \texttt{ADD.D} $\rightarrow$ \texttt{F6}    & \texttt{ADD1} & \texttt{F6}   & \texttt{F6.Qi} $\leftarrow$ \texttt{ADD1}     & \texttt{F6} now renamed again by \texttt{ADD1}    \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+    \end{center}
+
+    \noindent
+    Let's follow \texttt{F6} across the timeline:
+    \begin{enumerate}
+        \item Instruction 1: \texttt{F6} $\leftarrow$ \texttt{L.D} $\Rightarrow$ RF: \texttt{F6.Qi = LB1}
+        \item Instruction 5: \texttt{DIV.D} uses \texttt{F6} $\Rightarrow$ waits on \texttt{LB1}'s result
+        \item Instruction 6: \texttt{F6} $\leftarrow$ \texttt{ADD.D} $\Rightarrow$ RF: \texttt{F6.Qi = ADD1}
+    \end{enumerate}
+    So by the time \texttt{ADD.D} issues:
+    \begin{itemize}
+        \item \textbf{Register File (RF) no longer tracks \texttt{LB1}}, even though that result hasn't been written yet.
+        \item \textbf{\texttt{DIV.D} is still listening for \texttt{LB1}'s result}.
+        \item \textbf{WAR/WAW hazards are avoided} because consumers and writers track \textbf{RS tags}, not the physical register name \texttt{F6}.
+    \end{itemize}
+    Now consider propagating the result with tags. Let's say \texttt{MUL1} finishes first:
+    \begin{enumerate}
+        \item It broadcasts $\left\langle\texttt{Tag = MUL1}, \texttt{Value = (result)}\right\rangle$
+        \item The \textbf{Register File} updates:
+        \begin{itemize}
+            \item If \texttt{Qi} $=$ \texttt{MUL1} $\rightarrow$ write result into the register.
+            \item If \texttt{Qi} $\ne$ \texttt{MUL1} $\rightarrow$ skip write.
+        \end{itemize}
+        \item RSs waiting on \texttt{Qj = MUL1} or \texttt{Qk = MUL1}, grab the value.
+    \end{enumerate}
+    Same logic applies for \texttt{LB1}, \texttt{ADD1}, etc. \emph{Why Register Renaming Solves WAR and WAW?}
+    \begin{center}
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} c | p{13.5em} | p{13.5em} @{}}
+                \toprule
+                Hazard & Traditional Pipeline & Tomasulo's Solution \\
+                \midrule
+                \textbf{WAR} & Later write may overwrite a value before it's read.                      & Each reader remembers \textbf{which tag} to wait for, not the register name.  \\ [.5em]
+                \textbf{WAW} & Multiple instructions write to same register $\rightarrow$ wrong order.  & Only the \textbf{last tag} (\texttt{Qi}) is honored; old ones are discarded.  \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+    \end{center}
+
+    \noindent
+    Register renaming in Tomasulo means:
+    \begin{itemize}
+        \item Every instruction output gets a \textbf{temporary, unique name}, called the \emph{Reservation Station tag}.
+        \item The \textbf{Register File tracks tags}, not values, while results are still pending.
+        \item When a \textbf{result is ready}:
+        \begin{enumerate}
+            \item It's broadcast with its tag
+            \item Listeners receive it
+            \item Register File updated only \textbf{if still needed}.
+        \end{enumerate}
+    \end{itemize}
+    This make execution:
+    \begin{itemize}
+        \item \textbf{Safe} (no false hazards)
+        \item \textbf{Flexible} (out-of-order)
+        \item \textbf{Clean} (decouples values from register names)
+    \end{itemize}
+\end{examplebox}
+
+\newpage
+
+\noindent
+Now we bring Tomasulo to life cycle-by-cycle. We'll track each instruction through the \textbf{three stages}:
+\begin{itemize}
+    \item Issue
+    \item Start Execution (Execute Start)
+    \item Write Result (Write)
+\end{itemize}
+The instructions are:
+\begin{lstlisting}[language=unknown]
+L.D F6, 34(R2)
+L.D F2, 45(R3)
+MUL.D F0, F2, F4
+SUB.D F8, F6, F2
+DIV.D F10, F0, F6
+ADD.D F6, F8, F2\end{lstlisting}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are \texttt{SUBD} and \texttt{DIVD} merged into \texttt{ADDD} and \texttt{MULD} units?}}
+\end{flushleft}
+\texttt{ADDD} and \texttt{SUBD} are both \textbf{floating-point addition operations}, differing only in the operation:
+\begin{itemize}
+    \item \texttt{ADDD F6, F2, F4} $\rightarrow$ \texttt{F6 = F2 + F4}
+    \item \texttt{SUBD F6, F2, F4} $\rightarrow$ \texttt{F6 = F2 - F4 = F2 + (-F4)}
+\end{itemize}
+They both use the \textbf{same operand types}, have the \textbf{same input/output behavior} and can be performed by the \textbf{same kind of floating-point adder/subtractor unit}. Therefore, a single \texttt{ADD} unit and its reservation stations can be reused for both operations. That's why in the RS table, \texttt{SUBD} uses an \texttt{ADD}-type RS (e.g., \texttt{ADD1}, \texttt{ADD2}).
+
+\highspace
+Same for \texttt{MULD} and \texttt{DIVD}. These are both \textbf{multiplicative FP operations}. Architecturally, many processors use a \textbf{shared pipeline or RS pool} for:
+\begin{itemize}
+    \item \texttt{MULD} (fastest latency)
+    \item \texttt{DIVD} (slower latency but same operand structure)
+\end{itemize}
+So \texttt{MULD} and \texttt{DIVD} share \texttt{MUL} \textbf{reservation stations} and a \textbf{shared execution unit or Functional Unit slot}. That's why we see:
+\begin{itemize}
+    \item \texttt{MULD F0, F2, F4} issued to \texttt{MUL1}
+    \item \texttt{DIVD F10, F0, F6} is waiting in \texttt{MUL2} for \texttt{F0}
+\end{itemize}
+They both use the \textbf{same RS pool}, because they're functionally similar in structure, and sharing resources saves hardware area. Also note that in floating-point arithmetic we have:
+\begin{equation*}
+    \texttt{A} \div \texttt{B} = \texttt{A} \times \left(\dfrac{1}{\texttt{B}}\right)
+\end{equation*}
+
+\newpage
+
+\noindent
+Instead of implementing a full-blown divider, many systems compute the \textbf{reciprocal of \texttt{B}} $\left(\frac{1}{\texttt{B}}\right)$ and then multiply:
+\begin{lstlisting}[language=unknown, mathescape=true]
+DIV.D   F10, F0, F6     ; F10 $\textcolor{codegreen}{\leftarrow}$ F0 $\textcolor{codegreen}{\div}$ F6
+$\approx$
+RECIP   F12, F6         ; F12 $\textcolor{codegreen}{\leftarrow}$  1 $\textcolor{codegreen}{\div}$ F6
+MULD    F10, F0, F12    ; F10 $\textcolor{codegreen}{\leftarrow}$ F0 $\textcolor{codegreen}{\times}$ F12
+\end{lstlisting}
+This transformation is:
+\begin{itemize}
+    \item \textbf{Valid numerically}, though it may lose precision.
+    \item \textbf{Common in vector processors}, \textbf{GPUs}, and some scalar floating-point pipelines (e.g., ARM, GPUs).
+    \item Used when latency and area are more important than perfect accuracy.
+\end{itemize}
+This allows the processor to \textbf{reuse the multiplier} (which is fast and compact) instead of having a separate, slow divider.
+
+\begin{enumerate}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F6, 34(R2)} is issued.
+        \begin{itemize}
+            \item \texttt{LoadBuffer1} allocated.
+            \item \texttt{F6.Qi} $=$ \texttt{Load1}
+        \end{itemize}
+        \item Base address \texttt{R2} assumed ready $\rightarrow$ can start address calculation in next cycle.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & \hl{1}&               &               \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   &       &               &               \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  & \hl{34}       &               & \hl{\texttt{v(R2)}}   &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}). Tracks the \textbf{status of the Load Buffer(LB)} and \textbf{Load execution units}.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{ADD1}   &               &               &                       &               \\ [.3em]
+            \texttt{ADD2}   &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{ExADD}  &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{ExADD}. Tracks the use of the \textbf{addition} arithmetic \textbf{Functional Unit} (FU).}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{MUL1}   &               &               &                       &               \\ [.3em]
+            \texttt{MUL2}   &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{ExMUL}  &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{ExMUL}. Tracks the use of the \textbf{multiplication} arithmetic \textbf{Functional Unit} (FU).}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0             & 1             & 2             & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10            & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     &               &               &               &               &               &               & \hl{\texttt{Load1}}   &               &               &               &               &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status. Shows the state of \textbf{register renaming} during execution. In other words, it shows the state of each floating-point register (\texttt{F0}-\texttt{F31}). It is a \textbf{snapshot of the \texttt{Qi} field} for each register in the floating-point register file.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 2
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F2, 45(R3)} is issued
+        \begin{itemize}
+            \item \texttt{LoadBuffer2} allocated
+            \item \texttt{F2.Qi} $=$ \texttt{Load2}
+        \end{itemize}
+        \item \texttt{LD F6} (Instr. 1) starts execution:
+        \begin{itemize}
+            \item Address calculated (\texttt{R2 + 34})
+            \item Memory load begins
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & \hl{2}        &               \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & \hl{2}&               &               \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   &       &               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  & 34            &               & \texttt{v(R2)}        &               \\ [.3em]
+            \texttt{Load2}  & \hl{45}       &               & \hl{\texttt{v(R3)}}   &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} & \hl{34}       &               & \hl{\texttt{v(R2)}}   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.45\textwidth}
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{ADD1}   &               &               &                       &               \\ [.3em]
+                \texttt{ADD2}   &               &               &                       &               \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  &               &               &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   &               &               &                       &               \\ [.3em]
+                \texttt{MUL2}   &               &               &                       &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  &               &               &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0             & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10            & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     &               &               & \hl{\texttt{Load2}}   &               &               &               & \texttt{Load1}        &               &               &               &               &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 3
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD F0, F2, F4} is issued
+        \begin{itemize}
+            \item Reservation Station \texttt{= MUL1}
+            \item Needs:
+            \begin{itemize}
+                \item \texttt{F2} $\rightarrow$ still pending from \texttt{Load2} $\rightarrow$ \texttt{Qj = Load2}
+                \item \texttt{F4} $\rightarrow$ assumed ready $\rightarrow$ \texttt{Vk = value = v(F4)}
+            \end{itemize}
+            \item \texttt{F0.Qi} $=$ \texttt{MUL1}
+        \end{itemize}
+        \item \texttt{LD F2} (Instr. 2) starts execution: Address calculated (\texttt{R3 + 45}); Memory load begins.
+        \item Load (\texttt{LD F6}) has a delay and is still not finished. This is important because it causes \textbf{dependent instructions to wait}. However, this is the brilliance of Tomasulo's dataflow: these \textbf{instructions don't block the pipeline}, they just \textbf{wait for the tag (\texttt{Load1}) to appear in the CDB}.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             &               \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     &               &               \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & \hl{3}&               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &       &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  & 34            &               & \texttt{v(R2)}        &               \\ [.3em]
+            \texttt{Load2}  & 45            &               & \texttt{v(R3)}        &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} & 34            &               & \texttt{v(R2)}        &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.45\textwidth}
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{ADD1}   &               &               &                       &               \\ [.3em]
+                \texttt{ADD2}   &               &               &                       &               \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  &               &               &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}   & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   &               & \hl{\texttt{Load2}}   & \hl{\texttt{v(F4)}}   &               \\ [.3em]
+                \texttt{MUL2}   &               &                       &                       &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  &               &                       &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10            & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \hl{\texttt{MUL1}}    &               & \texttt{Load2}        &               &               &               & \texttt{Load1}        &               &               &               &               &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 4
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{SUBD  F8, F6, F2} is issued
+        \begin{itemize}
+            \item Reservation Station \texttt{= SUB1}
+            \item Needs:
+            \begin{itemize}
+                \item \texttt{F6} $\rightarrow$ pending from \texttt{Load1} $\rightarrow$ \texttt{Qj = Load1}
+                
+                But the RS Load listens to the CDB for the \texttt{Load1} tag. It sees the result of the CDB broadcast and overwrites its state:
+                \begin{equation*}
+                    \Rightarrow \texttt{Qj = 0} \hspace{2em} \texttt{Vj = v(F6)}
+                \end{equation*}
+                \item \texttt{F2} $\rightarrow$ pending from \texttt{Load2} $\rightarrow$ \texttt{Qk = Load2}
+            \end{itemize}
+            \item \texttt{F8.Qi} $=$ \texttt{SUB1}
+        \end{itemize}
+        \item No execution start yet for \texttt{MUL} or \texttt{SUB}, still waiting on operands. BUT, the result of loading the first instruction (value from memory) is sent on the Common Data Bus (CDB). And the \texttt{SUB} instruction has grabbed it and is now ready to start executing.
+    \end{itemize}
+    Also, in the register result status table, we insert the value of \texttt{F6} (\texttt{v(F6)}) instead of leaving the \texttt{Load1} tag. This is because the CDB sends the result to all listeners.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & \hl{4}        \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     &               &               \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     &               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   &\hl{4} &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  &       &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  & 34            &               & \texttt{v(R2)}        &               \\ [.3em]
+            \texttt{Load2}  & 45            &               & \texttt{v(R3)}        &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} & 34            &               & \texttt{v(R2)}        &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+            \midrule
+            \texttt{ADD1}   & \hl{\texttt{v(F6)}}   & $\cancelto{0}{\texttt{Load1}}$    &                       & \hl{\texttt{Load2}}   \\ [.3em]
+            \texttt{ADD2}   &                       &                                   &                       &                       \\
+            \cmidrule{1-5}
+            \texttt{ExADD}  &                       &                                   &                       &                       \\
+            \bottomrule
+        \end{tabular}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{table}
+    
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{MUL1}   &               & \texttt{Load2}        & \texttt{v(F4)}        &               \\ [.3em]
+            \texttt{MUL2}   &               &                       &                       &               \\
+            \cmidrule{1-5}
+            \texttt{ExMUL}  &               &                       &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10            & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{Load2}        &               &               &               & \hl{\texttt{v(F6)}}   &               & \hl{\texttt{ADD1}}    &               &               &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 5
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{DIVD F10, F0, F6} is issued
+        \begin{itemize}
+            \item Reservation Station \texttt{= DIV1}
+            \item Needs:
+            \begin{itemize}
+                \item \texttt{F0} $\rightarrow$ pending from \texttt{MUL1} $\rightarrow$ \texttt{Qj = MUL1}
+                \item \texttt{F6} is available thanks to the CDB
+            \end{itemize}
+            \item \texttt{F10.Qi} $=$ \texttt{DIV1}
+        \end{itemize}
+        \item \texttt{LD F2} (Instr. 2) starts execution:
+        \begin{itemize}
+            \item Addressed calculated (\texttt{R3 + 45})
+            \item Memory load begins
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & \hl{5}        &               \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     &               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & \hl{5}&               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   &       &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  & 45            &               & \texttt{v(R3)}        &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} & \hl{45}       &               & \hl{\texttt{v(R3)}}   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+            \midrule
+            \texttt{ADD1}   & \texttt{v(F6)}        &                                   &                       & \texttt{Load2}        \\ [.3em]
+            \texttt{ADD2}   &                       &                                   &                       &                       \\
+            \cmidrule{1-5}
+            \texttt{ExADD}  &                       &                                   &                       &                       \\
+            \bottomrule
+        \end{tabular}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}   & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   &               & \texttt{Load2}        & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &               & \hl{\texttt{MUL1}}    & \hl{\texttt{v(F6)}}   &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  &               &                       &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{Load2}        &               &               &               & \texttt{v(F6)}        &               & \texttt{ADD1} &               & \hl{\texttt{MUL2}}    &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 6
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{ADDD F6, F8, F2} is issued
+        \begin{itemize}
+            \item Reservation Station \texttt{= ADD2}
+            \item Needs:
+            \begin{itemize}
+                \item \texttt{F8} $\rightarrow$ pending from \texttt{ADD1} (\texttt{SUB1}) $\rightarrow$ \texttt{Qj = ADD1}
+                \item \texttt{F2} $\rightarrow$ pending from \texttt{Load2} $\rightarrow$ \texttt{Qk = Load2}
+            \end{itemize}
+            \item \texttt{F6.Qi} $= \cancelto{\texttt{ADD2}}{\texttt{Load1}}$
+        \end{itemize}
+        \item \textbf{WAR on \texttt{F6} has been eliminated}:
+        \begin{itemize}
+            \item Tomasulo \textbf{renames the destination register} of the \texttt{ADDD} instruction: \texttt{F6} will now be written by \texttt{ADD2}, not by \texttt{Load1} (cycle 1).
+            \item But crucially, \texttt{DIVD} was issued \textbf{earlier} (previous cycle); it already read \texttt{F6}'s value from the Reservation Station of the \texttt{Load1}. It stored that value in \texttt{Vk} inside its RS (tag \texttt{MUL2}).
+            \item So even though \texttt{ADDD} will \textbf{overwrite} \texttt{F6} \textbf{later}, it doesn't matter: \texttt{DIVD} already took what it needed and moved on.
+        \end{itemize}
+        The same rule is applied to \texttt{SUBD}.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             &               \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     &               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & \hl{6}&               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  & 45            &               & \texttt{v(R3)}        &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} & 45            &               & \texttt{v(R3)}        &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+            \midrule
+            \texttt{ADD1}   & \texttt{v(F6)}        &                                   &                       & \texttt{Load2}        \\ [.3em]
+            \texttt{ADD2}   &                       & \hl{\texttt{ADD1}}                &                       & \hl{\texttt{Load2}}   \\
+            \cmidrule{1-5}
+            \texttt{ExADD}  &                       &                                   &                       &                       \\
+            \bottomrule
+        \end{tabular}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{table}
+    
+    \begin{table}[!htp]
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}   & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   &               & \texttt{Load2}        & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &               & \texttt{MUL1}         & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  &               &                       &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExMUL}.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{Load2}        &               &               &               & \hl{\texttt{ADD2}}    &               & \texttt{ADD1} &               & \texttt{MUL2}         &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 7
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F2} \textbf{completes execution}. It \textbf{broadcasts its result} (value of \texttt{F2}) via the Common Data Bus (CDB). \textbf{Forwarding} takes place to both:
+        \begin{itemize}
+            \item \textbf{Register File}: if \texttt{Qi = Load2}, then \texttt{F2 = value} $\Rightarrow$ \texttt{Qi = 0}
+            \item \textbf{Reservation Stations}:
+            \begin{itemize}
+                \item \texttt{MULD} (\texttt{MUL1}): \texttt{Qj = Load2} $\rightarrow$ now \texttt{Vj = v(F2)} and \texttt{Qj = 0}
+                \item \texttt{SUBD} (\texttt{ADD1}): \texttt{Qk = Load2} $\rightarrow$ now \texttt{Vk = v(F2)} and \texttt{Qk = 0}
+                \item \texttt{ADDD} (\texttt{ADD2}): \texttt{Qk = Load2} $\rightarrow$ now \texttt{Vk = v(F2)} and \texttt{Qk = 0}
+            \end{itemize}
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \texttt{DIVD  F10, F0, F6} still waiting. Needs \texttt{F0}, which is being computed by \texttt{MULD} (\texttt{Tag = MUL1}). Can't execute yet.
+        \item[\textcolor{Red2}{\faIcon{times}}] \texttt{ADDD  F6, F8, F2} still waiting. Needs \texttt{F0}, but still waiting on \texttt{F8}, \texttt{tag = ADD1} (result of \texttt{SUBD}).
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & \hl{7}        \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     &               &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     &               &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  & 45            &               & \texttt{v(R3)}        &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} & 45            &               & \texttt{v(R3)}        &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+            \midrule
+            \texttt{ADD1}   & \texttt{v(F6)}        &                                   & \hl{\texttt{v(F2)}}   &                       \\ [.3em]
+            \texttt{ADD2}   &                       & \texttt{ADD1}                     & \hl{\texttt{v(F2)}}   &                       \\
+            \cmidrule{1-5}
+            \texttt{ExADD}  &                       &                                   &                       &                       \\
+            \bottomrule
+        \end{tabular}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{table}
+
+    \newpage
+    
+    \begin{table}[!htp]
+            \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   & \hl{\texttt{v(F2)}}   &                       & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &                       & \texttt{MUL1}         & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  &                       &                       &                       &               \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{\texttt{ExMUL}.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \hl{\texttt{v(F2)}}   &               &               &               & \texttt{ADD2}         &               & \texttt{ADD1} &               & \texttt{MUL2}         &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 8
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD F0, F2, F4} \textbf{starts execution} in \texttt{MUL1}:
+        \begin{itemize}
+            \item It was waiting on \texttt{F2} (now received via CDB) and \texttt{F4} was already ready
+            \item Now: \texttt{Qj = 0}, \texttt{Qk = 0} $\rightarrow$ \faIcon{check} ready to execute
+            \item Executing in \texttt{MUL1} Functional Unit
+        \end{itemize}
+        \item \texttt{SUBD F8, F6, F2} \textbf{starts execution} in \texttt{ADD1}:
+        \begin{itemize}
+            \item \texttt{F6} was already ready from Cycle 4 (CDB)
+            \item \texttt{F2} now arrives, both operands are ready
+            \item Executing in \texttt{ADD1} Functional Unit
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & \hl{8}        &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & \hl{8}        &               \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+                \midrule
+                \texttt{ADD1}   & \texttt{v(F6)}        &                                   & \texttt{v(F2)}        &                       \\ [.3em]
+                \texttt{ADD2}   &                       & \texttt{ADD1}                     & \texttt{v(F2)}        &                       \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  & \hl{\texttt{v(F6)}}   &                                   & \hl{\texttt{v(F2)}}   &                       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &                       & \texttt{MUL1}         & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \hl{\texttt{v(F2)}}   &                       & \hl{\texttt{v(F4)}}   &               \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8             & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{v(F2)}        &               &               &               & \texttt{ADD2}         &               & \texttt{ADD1} &               & \texttt{MUL2}         &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+    \setcounter{enumi}{9}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 10
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{SUBD F8, F6, F2} \textbf{finishes execution and writes result}:
+        \begin{itemize}
+            \item The result of \texttt{F8 = F6 - F2} is now available
+            \item \textbf{Broadcasts on the CDB}:
+            \begin{itemize}
+                \item \texttt{Tag = ADD1} (RS that held \texttt{SUBD})
+                \item \texttt{Value = } result of \texttt{F6 - F2}
+            \end{itemize}
+        \end{itemize}
+        \item Forwarding from CDB occurs:
+        \begin{itemize}
+            \item \textbf{Register File}:
+            \begin{itemize}
+                \item \texttt{F8.Qi == ADD1}, then write result in \texttt{F8} and set \texttt{F8.Qi = 0}
+            \end{itemize}
+            \item \textbf{Reservation Stations}:
+            \begin{itemize}
+                \item \texttt{ADDD F6, F8, F2} is waiting for \texttt{F8};
+                \item If \texttt{Qj == ADD1}, then \texttt{Vj = v(F8)} and \texttt{Qj = 0}
+            \end{itemize}
+        \end{itemize}
+        \item The current execution \texttt{MULD} is still running (latency is 10 cycles) and will finish around cycle 17.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & 8             &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & 8             & \hl{10}       \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     &               &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+                \midrule
+                \texttt{ADD1}   & \texttt{v(F6)}        &                                   & \texttt{v(F2)}        &                       \\ [.3em]
+                \texttt{ADD2}   & \hl{\texttt{v(F8)}}   &                                   & \texttt{v(F2)}        &                       \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  & \texttt{v(F6)}        &                                   & \texttt{v(F2)}        &                       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &                       & \texttt{MUL1}         & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{v(F2)}        &               &               &               & \texttt{ADD2}         &               & \hl{\texttt{v(F8)}}   &               & \texttt{MUL2}         &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 11
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{ADDD  F6, F8, F2} \textbf{starts execution}.
+        \item \texttt{MULTD F0, F2, F4} continues execution.
+        \item \texttt{DIVD} still waiting.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & 8             &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & 8             & 10            \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     & \hl{11}       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+                \midrule
+                \texttt{ADD1}   &                       &                                   &                       &                       \\ [.3em]
+                \texttt{ADD2}   & \texttt{v(F8)}        &                                   & \texttt{v(F2)}        &                       \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  & \hl{\texttt{v(F8)}}   &                                   & \hl{\texttt{v(F2)}}   &                       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &                       & \texttt{MUL1}         & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{v(F2)}        &               &               &               & \texttt{ADD2}         &               & \texttt{v(F8)}        &               & \texttt{MUL2}         &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+    \setcounter{enumi}{12}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 13
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{ADDD  F6, F8, F2} \textbf{completes execution and write result}.
+        \item \textbf{WAW hazard on \texttt{F6} is avoided}:
+        \begin{itemize}
+            \item \texttt{LD F6, 34(R2)} originally wrote to \texttt{F6} $\rightarrow$ \texttt{F6.Qi = Load1}
+            \item \texttt{ADDD F6, F8, F2} overwrites \texttt{F6} $\rightarrow$ \texttt{F6.Qi = ADD2}
+            \item But \texttt{DIVD}, which uses \texttt{F6}, was issued in cycle 5:
+            \begin{itemize}
+                \item It read the \textbf{value of} \texttt{F6} at that time from \texttt{Load 1}
+                \item It stored it into its reservation station
+                \item So even if \texttt{F6} gets overwritten later by \texttt{ADDD}, it doesn't matter
+                \item \texttt{DIVD} already has the value it needed
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & 8             &               \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & 8             & 10            \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     & 11            & \hl{13}       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+                \midrule
+                \texttt{ADD1}   &                       &                                   &                       &                       \\ [.3em]
+                \texttt{ADD2}   & \texttt{v(F8)}        &                                   & \texttt{v(F2)}        &                       \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  & \texttt{v(F8)}        &                                   & \texttt{v(F2)}        &                       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   &                       & \texttt{MUL1}         & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+            \toprule
+            RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10                    & $\dots$           & 31            \\
+            \midrule
+            \texttt{Qi}     & \texttt{MUL1}         &               & \texttt{v(F2)}        &               &               &               & \hl{\texttt{v(F6)}}   &               & \texttt{v(F8)}        &               & \texttt{MUL2}         &                   &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+    \setcounter{enumi}{17}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 18
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD F0, F2, F4} \textbf{completes execution}. Executed in \texttt{MUL1} from cycle 8 to 18 (10 cycles total latency) and now broadcasts result on the Common Data Bus (CDB).
+        \item \texttt{DIVD} is waiting for \texttt{F0}, but it is \textbf{now fully ready to start execution in the next cycle}.
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & 8             & \hl{18}       \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & 8             & 10            \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     &               &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     & 11            & 13            \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+                \midrule
+                \texttt{ADD1}   &                       &                                   &                       &                       \\ [.3em]
+                \texttt{ADD2}   &                       &                                   &                       &                       \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  &                       &                                   &                       &                       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\ [.3em]
+                \texttt{MUL2}   & \hl{\texttt{v(F0)}}   &                       & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \texttt{v(F2)}        &                       & \texttt{v(F4)}        &               \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+                \toprule
+                RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10                    & $\dots$           & 31            \\
+                \midrule
+                \texttt{Qi}     & \hl{\texttt{v(F0)}}   &               & \texttt{v(F2)}        &               &               &               & \texttt{v(F6)}        &               & \texttt{v(F8)}        &               & \texttt{MUL2}         &                   &               \\
+                \bottomrule
+            \end{tabular}   
+        \end{adjustbox}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 19
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{DIVD F10, F0, F6} \textbf{begins execution in} \texttt{MUL2}.
+        \item Division latency is not shown, but based on typical values in FP pipelines (and possibly earlier context), it may be \textbf{up to 20 cycles}. Therefore, \texttt{DIVD} will likely finish in a later cycle (e.g., $38+$ depending on design).
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & 8             & 18            \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & 8             & 10            \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     & \hl{19}       &               \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     & 11            & 13            \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+                \midrule
+                \texttt{ADD1}   &                       &                                   &                       &                       \\ [.3em]
+                \texttt{ADD2}   &                       &                                   &                       &                       \\
+                \cmidrule{1-5}
+                \texttt{ExADD}  &                       &                                   &                       &                       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   &                       &                       &                       &               \\ [.3em]
+                \texttt{MUL2}   & \texttt{v(F0)}        &                       & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \hl{\texttt{v(F0)}}   &                       & \hl{\texttt{v(F6)}}   &               \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+                \toprule
+                RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10                    & $\dots$           & 31            \\
+                \midrule
+                \texttt{Qi}     & \texttt{v(F0)}        &               & \texttt{v(F2)}        &               &               &               & \texttt{v(F6)}        &               & \texttt{v(F8)}        &               & \texttt{MUL2}         &                   &               \\
+                \bottomrule
+            \end{tabular}   
+        \end{adjustbox}
+        \caption*{Register Result Status.}
+    \end{table}
+
+    \newpage
+    \setcounter{enumi}{58}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 59
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{DIVD F10, F0, F6} \textbf{completes execution and writes result} after a long 40-cycle latency.
+        \item All instructions have issued, executed and written their results. No hazards occured, and Tomasulo's algorithm correctly handled:
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check-circle}}]
+            \item RAW (by waiting with tags).
+            \item WAR and WAW (by renaming registers with \texttt{Qi}, \texttt{Qj}, \texttt{Qk}).
+            \item Long execution delays (like the 40-cycle \texttt{DIVD}) without blocking unrelated instructions.
+        \end{itemize}
+    \end{itemize}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            Instruction                 & Issue & Start Execute & Write Result  \\
+            \midrule
+            \texttt{LD    F6, 34(R2)}   & 1     & 2             & 4             \\ [.3em]
+            \texttt{LD    F2, 45(R3)}   & 2     & 5             & 7             \\ [.3em]
+            \texttt{MULTD F0, F2, F4}   & 3     & 8             & 18            \\ [.3em]
+            \texttt{SUBD  F8, F6, F2}   & 4     & 8             & 10            \\ [.3em]
+            \texttt{DIVD  F10, F0, F6}  & 5     & 19            & \hl{59}       \\ [.3em]
+            \texttt{ADDD  F6, F8, F2}   & 6     & 11            & 13            \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}   & \texttt{Qj}   & \texttt{Vk}           & \texttt{Qk}   \\
+            \midrule
+            \texttt{Load1}  &               &               &                       &               \\ [.3em]
+            \texttt{Load2}  &               &               &                       &               \\
+            \cmidrule{1-5}
+            \texttt{EXLoad} &               &               &                       &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\texttt{EXLoad} (or \texttt{EX\_LD}).}
+    \end{table}
+
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+        \begin{tabular}{@{} l | c c c c @{}}
+            \toprule
+            Name            & \texttt{Vj}           & \texttt{Qj}                       & \texttt{Vk}           & \texttt{Qk}           \\
+            \midrule
+            \texttt{ADD1}   &                       &                                   &                       &                       \\ [.3em]
+            \texttt{ADD2}   &                       &                                   &                       &                       \\
+            \cmidrule{1-5}
+            \texttt{ExADD}  &                       &                                   &                       &                       \\
+            \bottomrule
+        \end{tabular}
+        \captionof*{table}{\texttt{ExADD}.}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.43\textwidth}
+        \centering
+            \begin{tabular}{@{} l | c c c c @{}}
+                \toprule
+                Name            & \texttt{Vj}           & \texttt{Qj}           & \texttt{Vk}           & \texttt{Qk}   \\
+                \midrule
+                \texttt{MUL1}   &                       &                       &                       &               \\ [.3em]
+                \texttt{MUL2}   & \texttt{v(F0)}        &                       & \texttt{v(F6)}        &               \\
+                \cmidrule{1-5}
+                \texttt{ExMUL}  & \texttt{v(F0)}        &                       & \texttt{v(F6)}        &               \\
+                \bottomrule
+            \end{tabular}
+        \captionof*{table}{\texttt{ExMUL}.}
+    \end{minipage}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l | c c c c c c c c c c c c c @{}}
+                \toprule
+                RF              & 0                     & 1             & 2                     & 3             & 4             & 5             & 6                     & 7             & 8                     & 9             & 10                    & $\dots$           & 31            \\
+                \midrule
+                \texttt{Qi}     & \texttt{v(F0)}        &               & \texttt{v(F2)}        &               &               &               & \texttt{v(F6)}        &               & \texttt{v(F8)}        &               & \hl{\texttt{v(F10)}}  &                   &               \\
+                \bottomrule
+            \end{tabular}   
+        \end{adjustbox}
+        \caption*{Register Result Status.}
+    \end{table}
+\end{enumerate}

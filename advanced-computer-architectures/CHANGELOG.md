@@ -24,6 +24,7 @@
       - add `Stage 2: Execute Stage`
       - add `Stage 3: Write Result`
     - add `In-Depth Execution Example`
+    - add `Tomasulo vs. Scoreboarding`
 
 --------------------
 

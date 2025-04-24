@@ -1,0 +1,125 @@
+\subsubsection{Tomasulo vs. Scoreboarding}
+
+Both Tomasulo's algorithm and Scoreboarding (introduced in the CDC 6600) are \textbf{dynamic instruction scheduling} techniques designed to:
+\begin{itemize}
+    \item Improve \textbf{Instruction-Level Parallelism (ILP)}
+    \item Allow \textbf{out-of-order execution}
+    \item Handle \textbf{data hazards} without compiler involvement
+\end{itemize}
+But they differ in:
+\begin{itemize}
+    \item \emph{How they track operands}
+    \item \emph{Where renaming happens}
+    \item \emph{How results are forwarded}
+    \item \emph{How decentralized the logic is}
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{How Tomasulo improves over Scoreboarding}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Eliminates WAR and WAW hazards}. Scoreboarding can only resolve RAW hazards, WAR and WAW cause \textbf{stalls} in Scoreboarding. Tomasulo's \textbf{register renaming via RS tags} removes these conflicts entirely.
+    \item \important{Allows hardware-level dataflow execution}. Scoreboarding relies on centralized logic to check operand availability. Tomasulo allows \textbf{instructions to execute as soon as operands are available}, independently. This creates a \textbf{data-driven execution model}, more similar to modern superscalar and out-of-order CPUs.
+    \item \important{Forwarding via the Common Data Bus (CDB)}
+    \begin{itemize}
+        \item In Scoreboarding: instructions must wait for register file updates
+        \item In Tomasulo: values are \textbf{broadcast to all RSs and RF} as soon as they're computed
+    \end{itemize}
+    \item \important{Reservation Stations $=$ Smarter Instruction Buffers}.
+    
+    Hold operands, operation type, and source RS tags. Track readiness locally and act like \textbf{mini control units}, freeing up the need for centralized logic (Scoreboard).
+\end{enumerate}
+However, despite its limitations, Scoreboarding:
+\begin{itemize}
+    \item \textbf{Simpler to implement}
+    \item Historically foundational (used in the CDC 6600)
+    \item More \textbf{hardware-economical} for small-scale or embedded designs
+\end{itemize}
+But for high-performance out-of-order execution, Tomasulo's model is the clear winner.
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            \textbf{Scoreboarding}                                                  & \textbf{Tomasulo's Algorithm} \\
+            \midrule
+            \multicolumn{2}{c}{\textbf{Operand Tracking}} \\ [1em]
+            Uses \textbf{register availability}                                     & Uses \textbf{tag-based tracking} via RS \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Register Renaming}} \\ [1em]
+            \textcolor{Red2}{\faIcon{times}} None                                   & \textcolor{Green3}{\faIcon{check}} Implicit via RSs (\texttt{Qi}/\texttt{Qj}/\texttt{Qk}) \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{WAR/WAW Hazards}} \\ [1em]
+            \textcolor{Red2}{\faIcon{times}} Must be stalled explicitly             & \textcolor{Green3}{\faIcon{check}} Eliminated by renaming \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Operand Read Timing}} \\ [1em]
+            At execution \textbf{start}                                             & At \textbf{issue} (or when available) via CDB \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Operand Forwarding}} \\ [1em]
+            \textcolor{Red2}{\faIcon{times}} No, must wait for register write-back  & \textcolor{Green3}{\faIcon{check}} Yes, uses \textbf{Common Data Bus} (CDB) \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Control Model}} \\ [1em]
+            Centralized Scoreboard                                                  & Decentralized logic at each RS $+$ FU \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Functional Units}} \\ [1em]
+            Check Scoreboard for availability                                       & RS check tags and readiness locally \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Instruction Readiness}} \\ [1em]
+            RAW only (no renaming)                                                  & RAW $+$ renamed operands (data-driven) \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Common Bus}} \\ [1em]
+            \textcolor{Red2}{\faIcon{times}} No shared result forwarding            & \textcolor{Green3}{\faIcon{check}} Shared broadcast on CDB \\
+            \cmidrule{1-2}
+            \multicolumn{2}{c}{\textbf{Complexity}} \\ [1em]
+            Simpler renaming logic                                                  & More complex, but higher performance \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Tomasulo vs. Scoreboarding.}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Drawbacks of Tomasulo's Algorithm}}
+\end{flushleft}
+While Tomasulo's algorithm was a \textbf{revolutionary advancement} in dynamic scheduling, especially for floating-point pipelines, it is not without \textbf{limitations}. As computer architecture evolved into superscalar and multithreaded designs, certain drawbacks of Tomasulo's original formulation became more evident.
+\begin{enumerate}
+    \item \important{Complex Hardware Implementation}. Tomasulo's distributed, tag-driven control system requires:
+    \begin{itemize}
+        \item \textbf{Reservation Stations (RS)} with operand tracking logic
+        \item \textbf{Register File with tag fields} (\texttt{Qi})
+        \item A \textbf{Common Data Bus (CDB)} that broadcasts to \textbf{many destinations}
+        \item Logic to \textbf{match tags and grab values} dynamically
+    \end{itemize}
+    While this provides high performance, it increases \textbf{hardware area}, \textbf{control complexity} and \textbf{power consumption}.
+    
+    In particular, \textbf{scaling the CDB} becomes harder with many Functional Units and many RSs, since broadcasting to all of them becomes a bottleneck.
+
+
+    \item \important{Centralized Common Data Bus (CDB) Bottleneck}. Tomasulo relies on a \textbf{single CDB} to broadcast results to all waiting RSs and update the register file. But:
+    \begin{itemize}
+        \item Only \textbf{one instruction can write} on the CDB per cycle
+        \item This \textbf{limits write throughput}
+        \item It becomes a \textbf{bottleneck} in wide-issue (superscalar) processors
+    \end{itemize}
+    Modern designs mitigate this with multiple CDBs, local bypassing networks, and reorder buffers (ROB) with centralized commit stages (advanced topics).
+    
+    
+    \item \important{Lack of Support for Precise Exceptions}. Tomasulo as originally designed does \textbf{not support precise exceptions}.\footnote{In precise exception handling, all instructions \textbf{before the faulting one} must complete, and none \textbf{after it} should affect the architectural state.} This problem is due to the structure of the algorithm:
+    \begin{itemize}
+        \item Tomasulo allows \textbf{out-of-order completion} and \textbf{in-place register writes}
+        \item Once a value is written to the register file via CDB, it's hard to ``undo'' it.
+    \end{itemize}
+    Scoreboarding can handle precise exceptions more gracefully. However, modern CPUs integrate Tomasulo-style scheduling with ROB (Reorder Buffer) to restore precise exceptions.
+    
+    
+    \item \important{Limited Scalability for Superscalar Designs}. Original Tomasulo was built for \textbf{one instruction per cycle} pipelines (like IBM 360/91). But in \textbf{superscalar} processors:
+    \begin{itemize}
+        \item Multiple instructions issue and retire each cycle;
+        \item The CDB and tag-matching logic must scale accordingly;
+        \item Reservation Stations structures become more complex with many FUs and wider pipelines.
+    \end{itemize}
+    Modern out-of-order cores use advanced techniques such as Register Alias Tables (RAT), physical register files, and ROB-based commit logic. These ideas \textbf{evolved from Tomasulo} , but allow better scaling and modularity.
+\end{enumerate}

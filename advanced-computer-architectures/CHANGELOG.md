@@ -17,6 +17,7 @@
 - add `Instruction Level Parallelism`
   - add `Register Renaming`
     - add `Introduction`
+    - add `Tomasulo's Algorithm`
 
 --------------------
 

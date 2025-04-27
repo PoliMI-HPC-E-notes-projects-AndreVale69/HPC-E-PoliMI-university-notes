@@ -1,0 +1,127 @@
+\subsubsection{Tomasulo's Algorithm}
+
+Tomasulo's algorithm is a classic dynamic scheduling method that \textbf{naturally incorporates implicit register renaming}. It is designed to \textbf{overlap instruction execution} even when instructions involve true or false dependencies, by dynamically resolving hazards at runtime.
+
+\highspace
+In this section, we focus specifically on \textbf{how Tomasulo's algorithm deals with a single loop}, showing the issues of data hazards and motivating why \textbf{renaming}, even if implicit, is critical.
+
+\highspace
+Note that these topics are already covered in the Tomasulo section (\ref{ref: implicit register renaming in Tomasulo algorithm}, page \hqpageref{ref: implicit register renaming in Tomasulo algorithm}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Renaming?}}
+\end{flushleft}
+Consider the following floating-point loop:
+\begin{lstlisting}[language=unknown, mathescape=true]
+Loop:  LD    F0, 0(R1)      ; Load word into F0 from address 0+R1
+       MULTD F4, F0, F2     ; Multiply F0 and F2, result into F4
+       SD    F4, 0(R1)      ; Store word from F4 to address 0+R1
+       SUBI  R1, R1, #8     ; Decrement R1 by 8
+       BNEZ  R1, Loop       ; Branch to Loop if R1 $\textcolor{codegreen}{\ne}$ 0
+\end{lstlisting}
+Each loop iteration consists of five instructions. We assume branch prediction correctly predicts the loop branch as taken. \emph{But are there dependencies?} Yes, \textbf{several hazards arise}:
+\begin{enumerate}
+    \item RAW (Read After Write) on \texttt{F0} and \texttt{F4}
+    \item WAW (Write After Write) on \texttt{F0} and \texttt{F4} across iterations
+    \item WAR (Write After Read) on \texttt{R1} due to address updates and branching
+\end{enumerate}
+These \textbf{hazards limit how aggressively we can overlap loop iterations}. Let's break down the hazard types across consecutive iterations:
+\begin{itemize}
+    \item \textbf{Within a single iteration}:
+    \begin{itemize}
+        \item \texttt{MULTD} depends on the result of \texttt{LD} (needs \texttt{F0}).
+        \item \texttt{SD} depends on the result of \texttt{MULTD} (needs \texttt{F4}).
+        \item \texttt{BNEZ} depends on \texttt{SUBI} to determine the loop condition.
+    \end{itemize}
+    
+    \item \textbf{Across iterations}:
+    \begin{itemize}
+        \item \texttt{LD} of next iteration \textbf{writes} \texttt{F0}, creating a \textbf{WAW hazard} with the previous \texttt{LD}.
+        \item \texttt{MULTD} of next iteration \textbf{writes} \texttt{F4}, also leading to \textbf{WAW hazard}.
+        \item \texttt{SUBI} and \texttt{BNEZ} reuse \texttt{R1}, creating \textbf{WAR hazards}.
+    \end{itemize}
+\end{itemize}
+\textbf{Without renaming}, these hazards \textbf{would serialize iterations}, nullifying any gain from speculative execution.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Tomasulo's Contribution: Implicit Register Renaming}}
+\end{flushleft}
+Tomasulo's algorithm automatically resolves these hazards by \textbf{renaming registers dynamically}:
+\begin{itemize}
+    \item It uses \textbf{reservation stations} that hold \textbf{tags} instead of register names.
+    \item When an instruction needs a value, it can either:
+    \begin{itemize}
+        \item Use the value directly if it's ready;
+        \item Or wait for a tag associated with the producing reservation station.
+    \end{itemize}
+    \item WAW and WAR hazards are naturally eliminated because \textbf{register\break names are no longer the synchronization point}, tags are!
+\end{itemize}
+Thus, \textbf{each iteration of the loop can proceed independently} as soon as its operands are available, even if they involve the same architectural register names.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Loop Unrolling combined with Register Renaming}}
+\end{flushleft}
+While Tomasulo's algorithm handles implicit renaming at runtime, an alternative strategy to reduce the impact of dependencies, particularly across loop iterations, is to act \textbf{at compile time}, through a technique called \definition{Loop Unrolling} combined with \textbf{Register Renaming}.
+
+\highspace
+\definition{Loop Unrolling} is a \textbf{compiler optimization technique} (or sometimes a manual optimization) that \textbf{expands the loop body} by replicating its operations multiple times in sequence, reducing the number of iterations and minimizing the overhead of branch instructions. Instead of executing a small amount of work many times, we ``\textbf{\emph{stretch out}}'' multiple loop iterations into a single, larger block of straight-line code.
+
+\highspace
+In our context, Loop Unrolling aims to \textbf{expose more parallelism statically} and to \textbf{reduce the loop overhead} by executing multiple iterations at once. Register Renaming in this context is crucial: \textbf{it eliminates artificial WAW and WAR dependencies} that would otherwise serialize execution.
+
+\highspace
+Let's revisit the same loop we discussed before:
+\begin{lstlisting}[language=unknown]
+Loop:  LD    F0, 0(R1)
+       MULTD F4, F0, F2
+       SD    F4, 0(R1)
+       SUBI  R1, R1, #8
+       BNEZ  R1, Loop
+\end{lstlisting}
+If we simply replicate this loop multiple times without renaming registers, WAW and WAR hazards would prevent full exploitation of the increased instruction stream. \hl{To eliminate such hazards}, \textbf{we must rename the registers} properly \hl{during unrolling}.
+
+\newpage
+
+\noindent
+Here's the unrolled version of the loop, unrolled four times, with \textbf{explicit register renaming} to avoid hazards:
+\begin{lstlisting}[language=unknown]
+Loop:  LD    F0, 0(R1)
+       MULTD F4, F0, F2
+       SD    F4, 0(R1)
+
+       LD    F6, -8(R1)
+       MULTD F8, F6, F2
+       SD    F8, -8(R1)
+
+       LD    F10, -16(R1)
+       MULTD F12, F10, F2
+       SD    F12, -16(R1)
+
+       LD    F14, -24(R1)
+       MULTD F16, F14, F2
+       SD    F16, -24(R1)
+
+       SUBI  R1, R1, #32
+       BNEZ  R1, Loop
+\end{lstlisting}
+\begin{itemize}
+    \item Observations
+    \begin{itemize}
+        \item New registers are introduced: \texttt{F6}, \texttt{F8}, \texttt{F10}, \texttt{F12}, \texttt{F14}, \texttt{F16}.
+        \item \textbf{No two iterations reuse the same destination register}.
+        \item \textbf{WAW hazards} between iterations are eliminated.
+        \item \textbf{More operations are ready to issue independently}.
+        \item Original loop: 5 instructions per iteration. Unrolled loop: 14 instructions for 4 iterations, so 3.5 instructions per iteration on average. Thus, unrolling not only \textbf{exposes parallelism} but also \textbf{increases code density efficiency}.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Benefits}}
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textbf{Higher ILP}: Each iteration's operations are now largely independent.
+        \item \textbf{Reduced Loop Overhead}: The branch and counter updates are performed once every 4 iterations, decreasing control dependencies.
+        \item \textbf{Efficient Use of Hardware}: Multiple functional units can work simultaneously, better exploiting available execution bandwidth.
+        \item \textbf{Preparation for Further Optimizations}: The code can now be \emph{rescheduled} to minimize stalls (we'll see this in future sections).
+    \end{itemize}
+\end{itemize}
+Unrolling loops and using explicit register renaming during compilation allows modern processors to better leverage their instruction issuing capabilities and reduces the penalty of false dependencies. However, \textbf{compiler-driven renaming is limited} by the number of registers available in the ISA. This limitation is why \textbf{hardware support for implicit register renaming}, as seen with Tomasulo's algorithm, \hl{remains essential} in high-performance out-of-order processors.

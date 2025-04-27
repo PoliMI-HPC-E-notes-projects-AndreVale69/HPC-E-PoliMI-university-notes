@@ -23,16 +23,16 @@ In \definition{Static Renaming}, the \textbf{compiler performs the renaming} at 
 For example:
 \begin{lstlisting}[language=unknown]
 DIV.D  F0, F2, F4
-ADD.D  F6, F0, F8      # RAW on F0
-S.D    F6, 0(R1)       # RAW on F6
-MUL.D  F6, F10, F8     # WAW & WAR on F6
+ADD.D  F6, F0, F8      ; RAW on F0
+S.D    F6, 0(R1)       ; RAW on F6
+MUL.D  F6, F10, F8     ; WAW & WAR on F6
 \end{lstlisting}
 There is a \textbf{WAW hazard} (both \texttt{ADD.D} and \texttt{MUL.D} write to \texttt{F6}), and a \textbf{WAR hazard} (\texttt{S.D} reads \texttt{F6} while \texttt{MUL.D} wants to write it). With static register renaming, the compiler assigns a new register (e.g., \texttt{S}) to avoid the conflict:
 \begin{lstlisting}[language=unknown]
 DIV.D  F0, F2, F4
-ADD.D  S, F0, F8       # RAW still valid
-S.D    S, 0(R1)        # Now reads S
-MUL.D  F6, F10, F8     # Safe to use F6
+ADD.D  S, F0, F8       ; RAW still valid
+S.D    S, 0(R1)        ; Now reads S
+MUL.D  F6, F10, F8     ; Safe to use F6
 \end{lstlisting}
 Now the hazards are gone: \texttt{ADD.D} writes to \texttt{S}, which is consumed by the store; \texttt{MUL.D} writes to \texttt{F6} independently.
 
@@ -42,7 +42,7 @@ Now the hazards are gone: \texttt{ADD.D} writes to \texttt{S}, which is consumed
 \newpage
 
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{check-circle} \textbf{Implicit Register Renaming (Hardware-Based - Tomasulo's way)}}
+    \hqlabel{ref: implicit register renaming in Tomasulo algorithm}{\textcolor{Green3}{\faIcon{check-circle} \textbf{Implicit Register Renaming (Hardware-Based - Tomasulo's way)}}}
 \end{flushleft}
 Tomasulo's algorithm takes a smarter \textbf{dynamic} approach. Instead of using physical register names, it uses \definition{Reservation Stations (RS)} as \definition{Temporary Names (tags)} for operands. This renaming is done \textbf{implicitly} by the hardware at runtime.
 
@@ -50,16 +50,16 @@ Tomasulo's algorithm takes a smarter \textbf{dynamic} approach. Instead of using
 Using the previous example:
 \begin{lstlisting}[language=unknown]
 DIV.D  F0, F2, F4
-ADD.D  F6, F0, F8      # RAW on F0
-S.D    F6, 0(R1)       # RAW on F6
-MUL.D  F6, F10, F8     # WAW & WAR on F6
+ADD.D  F6, F0, F8      ; RAW on F0
+S.D    F6, 0(R1)       ; RAW on F6
+MUL.D  F6, F10, F8     ; WAW & WAR on F6
 \end{lstlisting}
 Tomasulo rewrites it with \textbf{RS identifiers}:
 \begin{lstlisting}[language=unknown]
 DIV.D  F0, F2, F4
-ADD.D  RS1, F0, F8       # ADD result goes to RS1
-S.D    RS1, 0(R1)        # Store reads from RS1
-MUL.D  F6, F10, F8       # Now safe, F6 is available
+ADD.D  RS1, F0, F8       ; ADD result goes to RS1
+S.D    RS1, 0(R1)        ; Store reads from RS1
+MUL.D  F6, F10, F8       ; Now safe, F6 is available
 \end{lstlisting}
 \begin{itemize}
     \item \texttt{ADD.D} \textbf{doesn't write to} \texttt{F6}, but to a \emph{reservation station} named \texttt{RS1}.

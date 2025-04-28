@@ -3,7 +3,7 @@
 Tomasulo's algorithm is a classic dynamic scheduling method that \textbf{naturally incorporates implicit register renaming}. It is designed to \textbf{overlap instruction execution} even when instructions involve true or false dependencies, by dynamically resolving hazards at runtime.
 
 \highspace
-In this section, we focus specifically on \textbf{how Tomasulo's algorithm deals with a single loop}, showing the issues of data hazards and motivating why \textbf{renaming}, even if implicit, is critical.
+In this section, we focus specifically on \textbf{how Tomasulo's algorithm deals with a single loop}, showing the issues of data hazards and motivating why \textbf{renaming}, even if implicit, is critical. Furthermore, we show three techniques, included register renaming, to reach the best optimization. We also show three techniques, including register renaming, to achieve the best optimization.
 
 \highspace
 Note that these topics are already covered in the Tomasulo section (\ref{ref: implicit register renaming in Tomasulo algorithm}, page \hqpageref{ref: implicit register renaming in Tomasulo algorithm}).
@@ -124,4 +124,88 @@ Loop:  LD    F0, 0(R1)
         \item \textbf{Preparation for Further Optimizations}: The code can now be \emph{rescheduled} to minimize stalls (we'll see this in future sections).
     \end{itemize}
 \end{itemize}
-Unrolling loops and using explicit register renaming during compilation allows modern processors to better leverage their instruction issuing capabilities and reduces the penalty of false dependencies. However, \textbf{compiler-driven renaming is limited} by the number of registers available in the ISA. This limitation is why \textbf{hardware support for implicit register renaming}, as seen with Tomasulo's algorithm, \hl{remains essential} in high-performance out-of-order processors.
+Finally, Tomasulo's algorithm \textbf{does not perform loop unrolling} by itself. Loop Unrolling is a \textbf{compiler optimization}. However, thanks to \textbf{dynamic register renaming and scheduling}, Tomasulo can \textbf{overlap multiple loop iterations even without unrolling}. \hl{This behavior mimics some of benefits of loop unrolling at runtime}, but it doesn't physically unroll the code or replicate instructions.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bolt} \textbf{Even more performance: Code Scheduling with Register Renaming}}
+\end{flushleft}
+Once we have \textbf{unrolled a loop} and \textbf{renamed registers} to avoid false dependencies, the next logical optimization is \textbf{code scheduling}. The goal is now to \textbf{rearrange the unrolled instructions to minimize stalls}, especially those caused by \textbf{true RAW (Read After Write)} dependencies or \textbf{long execution latencies} (e.g., memory loads or floating-point operations). Thus, \textbf{even with register renaming}, \textbf{the order in which instructions are issued} still matters to achieve \textbf{maximum parallelism}.
+
+\highspace
+\definition{Code Scheduling} is the process of \textbf{reordering the instructions} in a program (especially after loop unrolling and register renaming) \textbf{to minimize and maximize parallelism} during execution. It is a \textbf{compiler-level} or sometimes \textbf{hardware-level} optimization. The \hl{goal is to feed the CPU continuously with ready-to-execution instructions}.
+
+\highspace
+Let's look at the previous code again, and by unrolling the loop by a factor of 4 and renaming the registers correctly, we had this sequence:
+\begin{lstlisting}[language=unknown]
+LD    F0, 0(R1)
+MULTD F4, F0, F2
+SD    F4, 0(R1)
+LD    F6, -8(R1)
+MULTD F8, F6, F2
+SD    F8, -8(R1)
+LD    F10, -16(R1)
+MULTD F12, F10, F2
+SD    F12, -16(R1)
+LD    F14, -24(R1)
+MULTD F16, F14, F2
+SD    F16, -24(R1)
+SUBI  R1, R1, #32
+BNEZ  R1, Loop
+\end{lstlisting}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem}}: if we execute this exactly in order, some instructions will have to wait unnecessarily for their operands because of true dependencies (particularly between \texttt{LD} and \texttt{MULTD}). So the \textbf{key idea} of code scheduling is:
+\begin{itemize}
+    \item \textbf{Group independent instructions together} as much as possible.
+    \item \textbf{Delay dependent instructions} just enough to satisfy their true data dependencies.
+    \item \textbf{Hide long latencies} (e.g., waiting for a memory load) by \textbf{doing useful work in parallel}.
+\end{itemize}
+After careful rescheduling, the reordered code looks like:
+\begin{lstlisting}[language=unknown]
+LD    F0, 0(R1)
+LD    F6, -8(R1)
+LD    F10, -16(R1)
+LD    F14, -24(R1)
+MULTD F4, F0, F2
+MULTD F8, F6, F2
+MULTD F12, F10, F2
+MULTD F16, F14, F2
+SD    F4, 0(R1)
+SD    F8, -8(R1)
+SD    F12, -16(R1)
+SUBI  R1, R1, #32
+BNEZ  R1, Loop
+SD    F16, -24(R1)   ; In branch delay slot
+\end{lstlisting}
+The changes are:
+\begin{itemize}
+    \item All \textbf{loads} are moved upfront, memory latency can be hidden while computing.
+    \item \textbf{Multiplications} (dependent on loads) are grouped next.
+    \item \textbf{Stores} happen \textbf{only after the corresponding multiply is finished}, respecting the RAW dependency.
+    \item \texttt{SUBI} and \texttt{BNEZ} are moved right before the branch to reduce branching penalties.
+    \item The \textbf{last store} (\texttt{SD F16}) is placed in the \textbf{branch delay slot}, making clever use of a wasted cycle.
+\end{itemize}
+And the benefits are:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Load latency hidden}}. Loads start early while compute units are idle.
+    \item \textcolor{Green3}{\textbf{Maximal Floating Point unit usage}}. Multiple \texttt{MULTD}s can be issued in parallel.
+    \item \textcolor{Green3}{\textbf{Minimal pipeline stalls}}. Operands ready when needed.
+    \item \textcolor{Green3}{\textbf{Reduced branch penalties}}. Good use of branch delay slot.
+\end{itemize}
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l p{24em} @{}}
+            \toprule
+            Technique & How Tomasulo handles it \\
+            \midrule
+            \textbf{Register Renaming}   & \textcolor{Green3}{\faIcon{check} \textbf{Yes}}, dynamic, using RSs and tags. \\ [.3em]
+            \textbf{Code Scheduling}     & \textcolor{Green3}{\faIcon{check} \textbf{Yes}}, dynamic, based on operand availability. \\ [.3em]
+            \textbf{Loop Unrolling}      & \textcolor{Red2}{\faIcon{times} \textbf{No}}, but it can dynamically overlap iterations thanks to renaming $+$ scheduling. \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Does Tomasulo's algorithm adopt Loop Unrolling, Register Renaming, and Code Scheduling?}
+\end{table}

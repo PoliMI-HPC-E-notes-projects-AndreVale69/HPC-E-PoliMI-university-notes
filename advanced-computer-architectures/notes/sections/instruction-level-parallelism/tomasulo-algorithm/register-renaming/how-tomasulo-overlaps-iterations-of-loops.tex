@@ -1,0 +1,24 @@
+\paragraph{How Tomasulo Overlaps Iterations of Loops}
+
+Tomasulo's algorithm can \textbf{dynamically overlap multiple iterations} of a loop \textbf{even without unrolling the code}, thanks to \textbf{three main tricks}:
+\begin{itemize}
+    \item \important{Implicit Register Renaming via Reservation Stations}. Tomasulo does \textbf{not use the architectural register names} (like \texttt{F0}, \texttt{F4}) to track data anymore. Instead, it replaces every operand with a \textbf{dynamic tag} that points to a \textbf{Reservation Station (RS)}. This means: two iterations that both write to \texttt{F0} are treated separately, because each \texttt{LD} or \texttt{MULTD} producing \texttt{F0} will \textbf{have its own RS tag}.
+    
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{WAR and WAW hazards disappear.}}
+    
+
+    \item \important{Each instruction gets its own Reservation Station}. In Tomasulo, each new instruction (even from a new loop iteration) \textbf{gets its own Reservation Station}. So multiple instances of \texttt{LD}, \texttt{MULTD}, etc., from different loop iterations \textbf{can be active at the same time}. Even if the instructions all logically use \texttt{F0}, \texttt{F4}, etc., \textbf{hardware sees them as completely different} because they are tied to \textbf{different RS entries}.
+    
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Dynamic loop unrolling effect}}: many loop iterations proceed in parallel without modifying the loop code.
+
+    
+    \item \important{Multiple Functional Units and Branch Prediction}. To exploit this properly, we must have:
+    \begin{enumerate}
+        \item \textbf{Multiple Functional Units} (e.g., several FP multipliers and memory load units).
+        \item \textbf{Branch Prediction} that allows \textbf{speculative execution} beyond the loop control instruction (like \texttt{BNEZ}).
+    \end{enumerate}
+    Thus, Tomasulo \textbf{speculatively fetches, issues, and schedules} instructions from \textbf{many iterations ahead}, even \textbf{before knowing} if the loop will finish.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Instruction issuing moves faster than control flow.}}
+\end{itemize}
+Tomasulo overlaps loop iterations \textbf{by making the Reservation Stations act like an extended virtual register file}, where each operation, even from different iterations, can proceed independently and dynamically, breaking naming limitations. This is sometimes called: \definition{Dynamic Loop Unrolling}, \definition{Dynamic Specualtive Execution}, \definition{Dynamic Out-of-Order Parallelism}. All enabled automatically by Tomasulo's mechanism.

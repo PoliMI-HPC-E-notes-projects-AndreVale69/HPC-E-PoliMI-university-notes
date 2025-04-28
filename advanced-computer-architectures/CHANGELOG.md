@@ -15,9 +15,11 @@
 ### v0.7.0
 
 - add `Instruction Level Parallelism`
-  - add `Register Renaming`
-    - add `Introduction`
-    - add `Tomasulo's Algorithm`
+  - add `Tomasulo's Algorithm`
+    - add `Register Renaming`
+      - add `Introduction`
+      - add `Loop Unrolling and Code Scheduling`
+      - add `How Tomasulo Overlaps Iterations of Loops`
 
 --------------------
 

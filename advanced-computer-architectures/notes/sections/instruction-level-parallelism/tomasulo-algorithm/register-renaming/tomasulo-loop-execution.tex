@@ -1,0 +1,1310 @@
+\paragraph{Tomasulo Loop Execution}
+
+We now analyze a \textbf{concrete example} of how Tomasulo's algorithm \textbf{dynamically overlaps multiple loops iterations}, using \textbf{register renaming} and \textbf{out-of-order execution}.
+
+\highspace
+The loop we consider is:
+\begin{lstlisting}[language=unknown]
+Loop:
+        LD    F0, 0(R1)
+        MULTD F4, F0, F2
+        SD    F4, 0(R1)
+        SUBI  R1, R1, #8
+        BNEZ  R1, Loop
+\end{lstlisting}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Setup Assumptions}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Cache miss} on the \textbf{first} \texttt{LD} $\rightarrow$ 8 clock cycles.
+    \item \textbf{Cache hit} on the \textbf{second} \texttt{LD} $\rightarrow$ 1 clock cycles.
+    \item \texttt{FP MULTD} operation \textbf{latency} $\rightarrow$ 4 clock cycles.
+    \item \textbf{Branch Prediction} $\rightarrow$ branch assumed \textbf{taken} (so iterations continue).
+    \item Only \texttt{SUBI} and \texttt{BNEZ} clock times are shown explicitly for clarity.
+    \item 5 instructions per loop iteration.
+\end{itemize}
+Thus, \textbf{memory accesses are slow}, and \textbf{floating-point operations are moderately slow} compared to integer operations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Hazards}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{RAW hazards} on \texttt{F0}, \texttt{F4}, \texttt{R1}.
+    \item[\textcolor{Green3}{\faIcon{check}}] (\textcolor{Green3}{\textbf{eliminated dynamically}}, thanks to Tomasulo's implicit register renaming) \textbf{WAW hazards} mainly on \texttt{R1}.
+    \item[\textcolor{Green3}{\faIcon{check}}] (\textcolor{Green3}{\textbf{eliminated dynamically}}, thanks to Tomasulo's implicit register renaming) \textbf{WAW hazards} on \texttt{F0} and \texttt{F4} across iterations.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Structures in Tomasulo's algorithm}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Instruction Status Table} (or Instruction Queue, or Tracking Table), tracks the status of each issued instruction through its three major stages: issue, execute and write result. Allow us to monitor the instruction flow cycle-by-cycle.
+    
+    \item \textbf{Reservation Stations Table}, temporarily hold instructions waiting to execute, \textbf{along with operand values or operand tags} if values are not yet available. Performs dynamic register renaming and resolve dependencies internally before issuing instructions to functional units.
+
+    \item \textbf{Register Result Status Table}, tells \textbf{which Reservation Station (RS) is responsible for generating the current value of each architectural register}. Allows forwarding and prevents WAR/WAW hazards, by making reads wait for the right instruction to finish.
+    
+    \item \textbf{Load and Store Buffers (Memory Buffers)}, manage memory operations separately, since memory addresses take time to compute and loads/stores have different latencies. Supports out-of-order memory access while ensuring correct memory ordering when necessary.
+\end{itemize}
+
+\begin{enumerate}
+    %
+    % Cycle 1
+    %
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item The \textbf{first instruction} from iteration 1, \texttt{LD F0, 0(R1)}, is issued. It is assigned to Load Buffer 1 (\texttt{Load1}), marked as busy. The memory address to load from is calculated: \texttt{R1 = 80}, so the load address is \texttt{80}.
+        \item \texttt{F0} is now associated with \texttt{Load1} in the register status table. This means:
+        \begin{itemize}
+            \item Any instruction that wants to read \texttt{F0} must wait for \texttt{Load1} to complete and broadcast its result.
+            \item Tomasulo does not write to \texttt{F0} immediately, tag \texttt{Load1} is what matters now.
+        \end{itemize}
+        \item The other instructions (\texttt{MULTD}, \texttt{SD}, etc.) are \textbf{not issued yet} in this cycle. They are waiting because their source operands depend on \texttt{F0} (the load result), which is \textbf{not ready} yet. Only the first load is active at this point.
+    \end{itemize}
+    At cycle \theenumi, we \textbf{prepare the first data} to flow through Tomasulo's architecture: we \textbf{rename} \texttt{F0} dynamically, \textbf{assign} it to a load buffer, and \textbf{start the memory access} (which will take 8 cycles because of cache miss). All following instructions \textbf{must track this tag} (\texttt{Load1}) to know when \texttt{F0} will be ready.
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & \hl{1}&           &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     &       &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      &       &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      &       &           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     &       &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      &       &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy  & Addr   & FU   \\
+            \midrule
+            \texttt{Load1}      & \hl{Yes}  & \hl{80}   & \textbackslash    \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash    \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash    \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & No        &           &                   \\ [.3em]
+            \texttt{Store2}     & No        &           &                   \\ [.3em]
+            \texttt{Store3}     & No        &           &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}       & \texttt{Vj}       & \texttt{Vk}       & \texttt{Qj}       & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                   &                   &                   &                   &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                   &                   &                   &                   &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                   &                   &                   &                   &                   \\ [.3em]
+                        & \texttt{Mult1}    & No        &                   &                   &                   &                   &                   \\ [.3em]
+                        & \texttt{Mult2}    & No        &                   &                   &                   &                   &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}   & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & \hl{80}           & \hl{\texttt{Load1}}   &               &               &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 2
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Instruction \texttt{MULTD F4, F0, F2} (from iteration 1) is \textbf{issued}. It is assigned to \texttt{Mult1} (a multiplication Reservation Station). Operands:
+        \begin{itemize}
+            \item \texttt{F2} is ready, its value is available $\rightarrow$ \texttt{Vj = R(F2)}
+            \item \texttt{F0} is \emph{not} ready, \textbf{waiting on} \texttt{Load1} to produce it $\rightarrow$ \texttt{Qj = Load1}.
+        \end{itemize}
+        
+        \item \texttt{F0} is still pending, being loaded by \texttt{Load1}. \texttt{F4} will eventually be produced by the \texttt{MULTD} operation (currently waiting for \texttt{F0} to complete).
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     &           &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & \hl{2}&           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      &       &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      &       &           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     &       &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      &       &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & Yes       & 80        & \textbackslash    \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash    \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash    \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & No        &           &                   \\ [.3em]
+            \texttt{Store2}     & No        &           &                   \\ [.3em]
+            \texttt{Store3}     & No        &           &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}       & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Mult1}    & \hl{Yes}  & \hl{\texttt{MULTD}}   &                   & \hl{\texttt{R(F2)}}   & \hl{\texttt{Load1}}   &                   \\ [.3em]
+                        & \texttt{Mult2}    & No        &                       &                   &                       &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 80                & \texttt{Load1}        &               & \hl{\texttt{Mult1}}   &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 3
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Instruction \texttt{SD F4, 0(R1)} (store) from iteration 1 is \textbf{issued}. It is assigned to \texttt{Store1} (store buffer). The store buffer must wait for \texttt{F4} to be computed by \texttt{Mult1}. We record the tag of the functional unit that will produce the needed value \texttt{F4}.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     &           &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & \hl{3}&           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      &       &           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     &       &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      &       &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & Yes       & 80        & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & \hl{Yes}  & \hl{80}   & \hl{\texttt{Mult1}}   \\ [.3em]
+            \texttt{Store2}     & No        &           &                       \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}       & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Mult1}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load1}        &                   \\ [.3em]
+                        & \texttt{Mult2}    & No        &                       &                   &                       &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 80                & \texttt{Load1}        &               & \texttt{Mult1}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+    \setcounter{enumi}{5}
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 6
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item We have skipped cycle 4 and 5 because we are only waiting for \texttt{LD}, \texttt{MULTD} or \texttt{SD} updates. In cycle 5, register \texttt{R1} becomes \texttt{72} due to the operation \texttt{SUBI R1, R1, \#8}.
+
+        
+        \item Instruction \texttt{LD F0, 0(R1)} from iteration 2 is now issued into \texttt{Load2} buffer. This new load has a cache hit (remember: only the first load had a cache miss).
+        
+
+        \item \texttt{F0} is again associated with \texttt{Load2} (the second load). The previous \texttt{F0} result (from \texttt{Load1}) is \textbf{overwritten} by the new \texttt{F0} pending load. Even though the logical register \texttt{F0} is overwritten, the data dependency graph remains correct, because \textbf{Tomasulo tracks data flow by tags}, not register names. Thus:
+        \begin{itemize}
+            \item \texttt{MULTD F4, F0, F2} (iteration 1): waits for \texttt{Load1} to complete (old \texttt{F0})
+            \item \texttt{MULTD F4, F0, F2} (iteration 2): will wait for \texttt{Load2} to complete (new \texttt{F0})
+        \end{itemize}
+        
+        \textcolor{Green3}{\faIcon{check-circle}} \textbf{WAW hazard avoided} by dynamic renaming. New instructions get the new \texttt{F0} and old instructions already locked the old value.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     &           &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & \hl{6}&           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     &       &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      &       &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & Yes       & 80        & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & \hl{Yes}  & \hl{72}   & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & No        &           &                       \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}       & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Mult1}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load1}        &                   \\ [.3em]
+                        & \texttt{Mult2}    & No        &                       &                   &                       &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 72                & \hl{\texttt{Load2}}   &               & \texttt{Mult1}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 7
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \textbf{Even though the second load is ready} (cache hit, 1 cycle latency, and issued in cycle 6), it must \textbf{wait for the first load to complete} because they share the same architectural address and could have aliasing or store/load order dependencies. So unless advanced speculation is used, \textbf{loads and stores to the same address must be done in program order}.
+        
+        This is called \definition{Memory Disambiguation}. In out-of-order processors, memory disambiguation is the logic that \textbf{decides whether two loads/stores/loads can safely reorder}. Tomasulo in its original form \textbf{does not perform aggressive disambiguation}.
+
+
+        \item \texttt{MULTD F4, F0, F2} (iteration 2) is issued.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     &           &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     &           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & \hl{7}&           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      &       &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & Yes       & 80        & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & Yes       & 72        & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & No        &           &                       \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}       & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Mult1}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load1}        &                   \\ [.3em]
+                        & \texttt{Mult2}    & \hl{Yes}  & \hl{\texttt{MULTD}}   &                   & \hl{\texttt{R(F2)}}   & \hl{\texttt{Load2}}   &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 72                & \texttt{Load2}        &               & \hl{\texttt{Mult2}}   &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 8
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{SD F4, 0(R1)} (iteration 2) is issued.  It is assigned to \texttt{Store2} (store buffer). The store buffer must wait for \texttt{F4} to be computed by \texttt{Mult2}. We record the tag of the functional unit that will produce the needed value \texttt{F4}.
+
+        \item \textbf{WAW (Write After Write) hazards on registers \texttt{F0} and \texttt{F4} have been resolved}, meaning the first and second iterations are now \textbf{fully overlapped}.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     &           &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     &           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & \hl{8}&           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & Yes       & 80        & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & Yes       & 72        & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & \hl{Yes}  & \hl{72}   & \hl{\texttt{Mult2}}   \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}       & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Mult1}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load1}        &                   \\ [.3em]
+                        & \texttt{Mult2}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load2}        &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 72                & \texttt{Load2}        &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 9
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F0, 0(R1)} (iteration 1, address 80, cache miss) finally completes and writes back in the next cycle (1 cycle latency). Now the \texttt{LD F0, 0(R1)} from iteration 2 can start its execution.
+
+
+        \item Even though we don't track the \texttt{SUBI} instruction, it is issued in this cycle (iteration 2).
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & \hl{9}    &           \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     &           &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & Yes       & 80        & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & Yes       & 72        & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}        \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}       & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                   &                       &                       &                   \\ [.3em]
+                        & \texttt{Mult1}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load1}        &                   \\ [.3em]
+                        & \texttt{Mult2}    & Yes       & \texttt{MULTD}        &                   & \texttt{R(F2)}        & \texttt{Load2}        &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 72                & \texttt{Load2}        &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 10
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F0, 0(R1)} (iteration 1) now writes back (1 cycle latency). It also sends the result through the CDB. The value written can be represented as \texttt{M[80]}, indicating the location of memory at address \texttt{80}.
+
+        \texttt{Mult1} was listening in the CDB for the \texttt{Load1} value; now it receives the update, so it sets the \texttt{Qj} entry to zero and updates its \texttt{Vj} value with the value in memory at address \texttt{80} (\texttt{M[80]}).
+        
+        \item The second load (\texttt{Load2}) completes its execution in 1 cycle thanks to the cache hit. In the next cycle, the result is written back. This instruction was blocked by the previous load to avoid too aggressive memory disambiguation.
+
+        \item Even though we don't track the \texttt{BNEZ} instruction, it is issued in this cycle (iteration 2). This updates the value in register \texttt{R1} from \texttt{72} to \texttt{64} (minus \texttt{8}).
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & \hl{10}   \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & \hl{10}   &           \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & \hl{No}   &           & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & Yes       & 72        & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}        \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{4}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \hl{\texttt{M[80]}}   & \texttt{R(F2)}        &                       &                   \\ [.3em]
+                        & \texttt{Mult2}    & Yes       & \texttt{MULTD}        &                       & \texttt{R(F2)}        & \texttt{Load2}        &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{Load2}        &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 11
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F0, 0(R1)} (iteration 2) now writes back (1 cycle latency). It also sends the result through the CDB. The value written can be represented as \texttt{M[72]}, indicating the location of memory at address \texttt{72}.
+
+        \texttt{Mult2} was listening in the CDB for the \texttt{Load2} value; now it receives the update, so it sets the \texttt{Qj} entry to zero and updates its \texttt{Vj} value with the value in memory at address \texttt{72} (\texttt{M[72]}).
+        
+        \item The third load (\texttt{Load3}) starts its execution because the cycle continues to execute. So we are now at iteration number 3, at the first load command: \texttt{LD F0, 0(R1)}. So we add the entry \texttt{Load3} to the table \emph{Load and Store Buffers}.
+
+        \item \texttt{Mult1} continues its execution, it has 3 cycles left to complete.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & \hl{11}   \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & \hl{No}   &           & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & \hl{Yes}  & \hl{64}   & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}        \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{3}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[80]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+            \hl{4}      & \texttt{Mult2}    & Yes       & \texttt{MULTD}        & \hl{\texttt{M[72]}}   & \texttt{R(F2)}        &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \hl{\texttt{Load3}}   &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 12
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD F4, F0, F2} (iteration 3) cannot be issued, because in Tomasulo's algorithm, to issue a new instruction there must be a free Reservation Station available for that operation type (here, floating-point multiply). If no RS is free, the instruction cannot be issued and must wait.
+
+        Since both \texttt{Mult1} and \texttt{Mult2} are occupied executing previous multiplies, the third multiply (from iteration 3) cannot issue yet.
+        
+
+        \item \texttt{Mult1} continues its execution, it has 2 cycles left to complete.
+
+
+        \item \texttt{Mult2} continues its execution, it has 3 cycles left to complete.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & Yes       & 64        & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}        \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{2}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[80]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+            \hl{3}      & \texttt{Mult2}    & Yes       & \texttt{MULTD}        & \texttt{M[72]}        & \texttt{R(F2)}        &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{Load3}        &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 13
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{LD F0, 0(R1)} completes its execution and writes the result back to the CDB (\texttt{M[64]}).
+        
+
+        \item \texttt{Mult1} continues its execution, it has 1 cycle left to complete.
+
+
+        \item \texttt{Mult2} continues its execution, it has 2 cycles left to complete.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     &           &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & \hl{No}   &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}        \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{1}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[80]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+            \hl{2}      & \texttt{Mult2}    & Yes       & \texttt{MULTD}        & \texttt{M[72]}        & \texttt{R(F2)}        &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \hl{\texttt{M[64]}}   &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 14
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{Mult1} finishes its execution at the end of this cycle! This will allow the \texttt{Store1} to write the result in memory at the address \texttt{80}, and also to the \texttt{MULTD} instruction in the iteration 3 to be issued.
+        
+
+        \item \texttt{Mult2} continues its execution, it has 1 cycle left to complete.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     & \hl{14}   &           \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     &           &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash        \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash        \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \texttt{Mult1}        \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}        \\ [.3em]
+            \texttt{Store3}     & No        &           &                       \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{0}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[80]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+            \hl{1}      & \texttt{Mult2}    & Yes       & \texttt{MULTD}        & \texttt{M[72]}        & \texttt{R(F2)}        &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{M[64]}        &               & \texttt{Mult2}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 15
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD} (iteration 1) writes the result to the CDB; this triggers the \texttt{Store1} listener, which waits for the result to be stored in memory (the result of the load, \texttt{M[80]}, multiplied by the value of register \texttt{F2}), and the \texttt{MULTD} of iteration 3, which waits for a free reservation station to be issued.
+        
+
+        \item \texttt{Mult2} finishes its execution at the end of this cycle! This will allow the \texttt{Store2} to write the result in memory at the address \texttt{72}.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     & 14        & \hl{15}   \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     &           &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     & \hl{15}   &           \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash                    \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \hl{\texttt{M[80] $\times$ F2}}   \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{Mult2}                    \\ [.3em]
+            \texttt{Store3}     & No        &           &                                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{4}      & \texttt{Mult1}    & \hl{Yes}  & \hl{\texttt{MULTD}}   & \hl{\texttt{M[64]}}   & \hl{\texttt{R(F2)}}   &                       &                   \\ [.3em]
+            \hl{0}      & \texttt{Mult2}    & Yes       & \texttt{MULTD}        & \texttt{M[72]}        & \texttt{R(F2)}        &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{M[64]}        &               & \hl{\texttt{Mult1}}   &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 16
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{MULTD} (iteration 2) writes the result to the CDB; this triggers the \texttt{Store2} listener, which waits for the result to be stored in memory (the result of the load, \texttt{M[72]}, multiplied by the value of register \texttt{F2}).
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     & 14        & 15        \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     & \hl{16}   &           \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     & 15        & \hl{16}   \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     &           &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash                    \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & Yes       & 80        & \hl{\texttt{M[80] $\times$ F2}}   \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \hl{\texttt{M[72] $\times$ F2}}   \\ [.3em]
+            \texttt{Store3}     & \hl{Yes}  & \hl{64}   & \hl{\texttt{Mult1}}               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{3}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[64]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+                        & \texttt{Mult2}    & \hl{No}   &                       &                       &                       &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{M[64]}        &               & \texttt{Mult1}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 17
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{SD} (iteration 1) writes the result of the expression \texttt{M[80] $\times$ F2} to memory at address \texttt{80}.
+        \item Since the \texttt{SD} instruction (iteration 1) has finished its execution, the second store (iteration 2) can start its execution and send the result to memory between \texttt{M[72]} and \texttt{F2}.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     & 14        & 15        \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     & 16        & \hl{17}   \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     & 15        & 16        \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     & \hl{17}   &           \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash                    \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & \hl{No}   &           &                                   \\ [.3em]
+            \texttt{Store2}     & Yes       & 72        & \texttt{M[72] $\times$ F2}        \\ [.3em]
+            \texttt{Store3}     & Yes       & 64        & \texttt{Mult1}                    \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{2}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[64]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+                        & \texttt{Mult2}    & No        &                       &                       &                       &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{M[64]}        &               & \texttt{Mult1}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+
+    \newpage
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Cycle 18
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \texttt{SD} (iteration 2) writes the result of the expression \texttt{M[72] $\times$ F2} to memory at address \texttt{72}.
+    \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c l | c c c @{}}
+            \toprule
+            Iter.       & Instruction                   & Issue & Exec Comp & Write Res \\
+            \midrule
+            1           & \texttt{LD    F0, 0, R1}      & 1     & 9         & 10        \\ [.3em]
+            1           & \texttt{MULTD F4, F0, F2}     & 2     & 14        & 15        \\ [.3em]
+            1           & \texttt{SD    F4, 0(R1)}      & 3     & 16        & 17        \\ [.3em]
+            2           & \texttt{LD    F0, 0, R1}      & 6     & 10        & 11        \\ [.3em]
+            2           & \texttt{MULTD F4, F0, F2}     & 7     & 15        & 16        \\ [.3em]
+            2           & \texttt{SD    F4, 0(R1)}      & 8     & 17        & \hl{18}   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Instruction status.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+                                & Busy      & Addr      & FU   \\
+            \midrule
+            \texttt{Load1}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load2}      & No        &           & \textbackslash                    \\ [.3em]
+            \texttt{Load3}      & No        &           & \textbackslash                    \\
+            \cmidrule{1-4}
+            \texttt{Store1}     & No        &           &                                   \\ [.3em]
+            \texttt{Store2}     & \hl{No}   &           &                                   \\ [.3em]
+            \texttt{Store3}     & Yes       & 64        & \texttt{Mult1}                    \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Load and Store Buffers.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l | c c c c c c @{}}
+            \toprule
+            Time        & Name              & Busy      & \texttt{Op}           & \texttt{Vj}           & \texttt{Vk}           & \texttt{Qj}           & \texttt{Qk}       \\
+            \midrule
+                        & \texttt{Add1}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add2}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+                        & \texttt{Add3}     & No        &                       &                       &                       &                       &                   \\ [.3em]
+            \hl{1}      & \texttt{Mult1}    & Yes       & \texttt{MULTD}        & \texttt{M[64]}        & \texttt{R(F2)}        &                       &                   \\ [.3em]
+                        & \texttt{Mult2}    & No        &                       &                       &                       &                       &                   \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Reservation Stations.}
+    \end{table}
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c | c | c c c c c c c | c | c @{}}
+            \toprule
+            Clock       & \texttt{R1}       & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}       & \texttt{F8}   & \texttt{F10}  & \texttt{F12}  & $\dots$   & \texttt{F30}  \\
+            \midrule
+            \theenumi   & 64                & \texttt{M[64]}        &               & \texttt{Mult1}        &                   &               &               &               &           &               \\
+            \bottomrule
+        \end{tabular}
+        \caption*{Register result status.}
+    \end{table}
+\end{enumerate}

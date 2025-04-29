@@ -20,6 +20,7 @@
       - add `Introduction`
       - add `Loop Unrolling and Code Scheduling`
       - add `How Tomasulo Overlaps Iterations of Loops`
+      - add `Tomasulo Loop Execution`
 
 --------------------
 

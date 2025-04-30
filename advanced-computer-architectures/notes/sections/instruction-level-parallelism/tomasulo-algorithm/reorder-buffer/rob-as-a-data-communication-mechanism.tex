@@ -1,0 +1,82 @@
+\paragraph{ROB as a Data Communication Mechanism}
+
+In Tomasulo's original algorithm, \textbf{Reservation Stations (RSs)} handled register renaming and operand forwarding. However, with the introduction of the ROB, it \textbf{replaces the renaming and forwarding function of RSs}. Before we explain how, we need to understand some \emph{basic} concepts of ROB.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What are ROB numbers?}}
+\end{flushleft}
+A \definition{ROB number} is simply an \textbf{index} (or tag, in Tomasulo's algorithm) \textbf{identifying} a specific \textbf{entry in the Reorder Buffer}. Each instruction that is issued receives a \underline{unique} ROB number that corresponds to its place in the ROB, its \textbf{slot identifier} (slot ID).
+
+\highspace
+The ROB number is then used in two key ways:
+\begin{enumerate}
+    \item \important{As a destination tag (Register Renaming)}. When an \textbf{instruction} is issued and it \textbf{will write to a register}:
+    \begin{itemize}
+        \item The destination register is \textbf{not renamed to another physical register} (like in a pure register renaming scheme).
+        \item Instead, the \textbf{architectural register is mapped to the instruction's ROB number}.
+    \end{itemize}
+    It is the \emph{identical} logic of tag in Tomasulo algorithm.
+
+    \item \important{For Operand Dependency Resolution}. Later \textbf{instructions that depend on the result} of the ROB number do not need to stall:
+    \begin{itemize}
+        \item They \textbf{record the ROB number} as the operand source.
+        \item Once the ROB number becomes ``ready'' (i.e., the value is written to the ROB), dependent instructions can \textbf{read the value from the ROB number} and proceed to execution.
+    \end{itemize}
+    In tomasulo algorithm this feature is provided by the CDB, where each instruction listens to that because it waits for the result of the tag.
+
+    As happens in tomasulo algorithm, this mechanism:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Avoids \textbf{WAR and WAW hazards}.
+        \item Enables \textbf{data forwarding} even before instructions commit.
+    \end{itemize}
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l @{}}
+        \toprule
+        Tomasulo & ROB-based Tomasulo \\
+        \midrule
+        Tags $=$ RS entry IDs       & Tags $=$ ROB entry numbers            \\ [.3em]
+        Values broadcast via CDB    & Same, but identified by ROB number    \\ [.3em]
+        RS buffers result locally   & ROB stores result globally            \\ [.3em]
+        Commit on write-back        & Commit delayed and via ROB head       \\
+        \bottomrule
+    \end{tabular}
+    \caption{Quick comparison between Tomasulo with and without ROB.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Updated Role of Reservation Stations}}
+\end{flushleft}
+The ROB not only buffers instruction results but also \textbf{propagates those results to dependent instructions} as soon as they are ready, even if not yet committed. So, with the ROB managing renaming and data forwarding:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \hl{Reservation Stations} are \textbf{no longer responsible for naming/tagging}.
+    \item[\textcolor{Green3}{\faIcon{check}}] Their role is now focused on:
+    \begin{itemize}
+        \item \textbf{Buffering decoded instructions} before they're issued to the Functional Units (FUs);
+        \item \textbf{Holding operand values} (or ROB tags) temporarily;
+        \item Helping reduce \textbf{structural hazards}.
+    \end{itemize}
+\end{itemize}
+\hl{Reservation Stations} now act like \textbf{staging areas}, not tracking results or resolving dependencies directly.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | l @{}}
+        \toprule
+        Function                        & Tomasulo & ROB-based Tomasulo \\
+        \midrule
+        Register Renaming               & RS       & ROB                \\ [.3em]
+        Data forwarding                 & RS       & ROB                \\ [.3em]
+        Instruction buffering           & RS       & RS (same)          \\ [.3em]
+        Operand availability tracking   & RS       & RS (via ROB tags)  \\ [.3em]
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of architectural changes.}
+\end{table}
+
+\noindent
+In modern speculative Tomasulo architectures, the ROB becomes the central structure for both result tracking and inter-instruction communication. RSs are demoted to lightweight instruction and operand buffers.

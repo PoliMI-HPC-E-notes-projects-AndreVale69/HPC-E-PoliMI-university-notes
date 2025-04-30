@@ -1,0 +1,118 @@
+\paragraph{Why ROB is really needed}
+
+Modern high-performance processors use \textbf{out-of-order execution (OoO)} to improve instruction-level parallelism. However, they must still ensure \textbf{in-order commit} to preserve correct program behavior. This is where the \definition{Reorder Buffer (ROB)} comes into play.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Out-of-Order Execution and In-Order Commit?}}
+\end{flushleft}
+Out-of-Order execution because:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Dependencies} (e.g., RAW hazards) and \textbf{delays} (e.g., memory access) prevent some instructions from being executed immediately.
+    \item[\textcolor{Green3}{\faIcon{check}}] OoO execution \textbf{allows the processor to bypass stalled instructions} and execute independent ones earlier.
+    \item[\textcolor{Green3}{\faIcon{\speedIcon}}] This helps keep functional units busy and \textbf{improves throughput}.
+\end{itemize}
+For example, if an instruction is waiting for a memory load, another instruction, for example an ALU op, can execute immediately.
+
+\highspace
+Unfortunately, Out-of-Order execution \textbf{introduces risk}:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{exclamation-triangle}}]
+    \item Executing instructions out of order can \hl{break} the \textbf{precise exception model}.
+    \item Also, \textbf{speculative} instructions (e.g., those after a branch) could be \textbf{incorrect}.
+\end{itemize}
+To preserve \textbf{program correctness}, \textbf{instructions must commit (retire) in order}, exactly as they appear in the original program.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{ROB's role in bridging OoO and In-Order Commit}}
+\end{flushleft}
+The \definition{Reorder Buffer (ROB)} is a hardware structure used in modern out-of-order processors to: \textbf{support out-of-order execution while enforcing in-order commitment of instructions}, ensuring correct architectural state and precise exception handling.
+
+\highspace
+The ROB is the key mechanism enabling this balance:
+\begin{itemize}
+    \item During \textbf{issue}: \hl{allocate an entry} in the ROB, marking the instruction's place in program order.
+    \item During \textbf{execution}: \hl{store the result} in the ROB as soon as the instruction finishes.
+    \item During \textbf{commit}: \hl{only commit} the instruction (i.e., update architectural registers or memory) \hl{if}:
+    \begin{enumerate}
+        \item It is \textbf{at the head} of the ROB
+        \item Its \textbf{execution has completed}
+        \item It is \textbf{not speculative}
+    \end{enumerate}
+\end{itemize}
+This design ensures:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Architectural \textbf{state} (register file, memory) is \textbf{updated in program order only}.
+    \item \textbf{Speculative results} are kept in the ROB until validated.
+    \item It is possible to \textbf{undo speculated instructions} if needed (e.g., branch misprediction).
+\end{itemize}
+The ROB allows a \textbf{processor to execute instructions as soon as their operands are ready}, regardless of program order, while \textbf{ensuring they commit their results in-order}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What about Precise Exception support?}}
+\end{flushleft}
+An exception is \emph{precise} if:
+\begin{enumerate}
+    \item The processor can \textbf{stop at a well-defined point}, corresponding to a specific instruction.
+    \item All \textbf{previous instructions are fully committed}, and
+    \item \textbf{No subsequent instruction} has \textbf{modified} the architectural \textbf{state}.
+\end{enumerate}
+This allows the OS or exception handler to reliably identify and handle the error. In \textbf{out-of-order execution}, instructions complete in a different order than they appear in the program. \textbf{Without careful control} instructions \emph{after} the faulting one could have modified registers or memory and this would \textbf{leave the system} in an \textbf{inconsistent state}.
+
+\highspace
+The \textbf{Reorder Buffer (ROB) solves} this by:
+\begin{enumerate}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textcolor{Green3}{\textbf{Storing all results temporarily}}: Instructions write their output to the ROB instead of the register file or memory.
+    \item \textcolor{Green3}{\textbf{Committing results in-order}}: Only when an instruction is at the \textbf{head} of the ROB and marked \textbf{completed}, its result is written to the architectural state.
+    \item \textcolor{Green3}{\textbf{Rejecting speculative results}}: If an exception or misprediction occurs:
+    \begin{enumerate}
+        \item The ROB \textbf{flushes all speculative entries after the faulting instructions}.
+        \item Execution restarts from the faulting instruction or the exception handler.
+    \end{enumerate}
+    This rollback is clean because the \textbf{architectural state remains untouched} beyond the last committed instruction.
+\end{enumerate}
+
+\newpage
+
+\begin{examplebox}[: Precise Exception support]
+    Imagine a sequence:
+    \begin{lstlisting}[mathescape=true]
+Instr 1 $\rightarrow$ OK
+Instr 2 $\rightarrow$ OK
+Instr 3 $\rightarrow$ Exception (e.g., divide by zero)
+Instr 4 $\rightarrow$ Executed early (OoO), wrote to reg R5\end{lstlisting}
+    \textcolor{Red2}{\faIcon{times}} Without the ROB:
+    \begin{itemize}
+        \item Instruction 4 might modify R5 \emph{before} the exception at \textsl{Instr 3} is recognized.
+        \item This makes the exception imprecise, corrupting the state.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check}} With the ROB:
+    \begin{itemize}
+        \item Instruction 4's result is held in the ROB.
+        \item Since \texttt{Instr 3} caused an exception, no later instruction commits.
+        \item \texttt{R5} is unaffected, precise state is preserved.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Functional Roles of the ROB}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Result Buffering}. Holds \hl{results of instructions} that:
+    \begin{itemize}
+        \item Have \textbf{completed execution}.
+        \item But have \textbf{not yet committed} to the architectural state (e.g., register file or memory).
+    \end{itemize}
+    
+    \item \important{Speculative Result Propagation}. ROB acts as a \textbf{buffer to pass results among instructions that have started speculatively after a branch}. This allows speculative instructions (e.g., those after a predicted branch) to forward their results internally via the ROB without prematurely updating architectural registers.
+    
+    \item \important{Precise Interrupt Support}. Originally introduced in 1988, the ROB was created to:
+    \begin{itemize}
+        \item Preserve the \textbf{precise interrupt model}.
+        \item Guarantee that \textbf{only committed instructions affect} the architectural \textbf{state}.
+        \item Enable \textbf{rollback on branch misprediction or exceptions} by flushing speculative ROB entries.
+    \end{itemize}
+\end{enumerate}
+The ROB is not merely a commit buffer, it is also a \textbf{speculation-aware result forwarding structure}, enabling safe communication among instructions that may never actually commit.

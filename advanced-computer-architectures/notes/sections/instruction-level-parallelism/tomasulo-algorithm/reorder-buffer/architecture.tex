@@ -1,0 +1,172 @@
+\paragraph{Architecture}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/tomasulo-fpu-rob.pdf}
+    \caption{The basic structure of a FP unit using Tomasulo's algorithm and extended to handle speculation (ROB).\cite{hennessy2017computer}}
+\end{figure}
+
+\noindent
+This architecture shows a \textbf{speculative version of Tomasulo's algorithm}, integrating a Reorder Buffer (ROB) and eliminating the classic \textbf{store buffer}. It's designed for \textbf{floating-point}, but the same design applies to general OoO pipelines.
+\begin{itemize}
+    \item \important{Instruction Queue}. Holds fetched instructions awaiting issue. Supplies instructions to \textbf{reservation stations} and the \textbf{ROB} in parallel.
+    
+    \item \important{Reservation Stations}. Acts as \textbf{temporary buffers} between issue and execution. Each FP unit (adder, multiplier) has dedicated RSs. Stores instructions with operand tags or values. \hl{Unlike the classic Tomasulo}, \textbf{renaming is handled via the ROB}.
+
+    \item \important{Floating-Point Units}. Includes \textbf{FP Adders} and \textbf{FP Multipliers}. Execution units receive instructions from RSs when operands are ready.
+    
+    \item \important{Common Data Bus (CDB)}. Used to broadcast result values and their corresponding \textbf{ROB tag}. All waiting instructions and ROB entries \textbf{listen} to the CDB.
+    
+    \item \important{Reorder Buffer (ROB)}. Central to this architecture, replaces:
+    \begin{enumerate}
+        \item Register renaming logic
+        \item Store buffers
+    \end{enumerate}
+    Each ROB entry holds critical metadata about one in-flight instruction:
+    \begin{itemize}
+        \item \important{Busy field}. Indicates whether the ROB entry is currently active (busy) or free (available).
+        \item \important{Instruction type field}. Specifies the instruction category:
+        \begin{itemize}
+            \item Branch (no destination result),
+            \item Store (destination is memory address),
+            \item Load/ALU (destination is a register).
+        \end{itemize}
+        \item \important{Destination field}
+        \begin{itemize}
+            \item For load and ALU instructions: \textbf{target register} number.
+            \item For store instructions: \textbf{memory address} where the value must be written.
+        \end{itemize}
+        \item \important{Value field}. Holds the \textbf{result} of the instruction after execution, kept until commit.
+        \item \important{Ready Bit}. Set when execution has completed and the result is valid.
+        \item \important{Speculative Flag}. Shows whether the instruction is executed speculatively (e.g., after a predicted branch) or not.
+    \end{itemize}
+
+    \item \important{Load Buffers \& Address Unit}.
+
+    \definition{Load Buffers} is a \textbf{queue or small table} that holds load instructions \textbf{waiting to access memory}. It \textbf{temporarily buffers} loads \emph{after issue} and \emph{before} they actually perform a memory access. Its purpose is shown in the example on page \pageref{paragraph: Tomasulo Loop Execution}.
+
+    \definition{Address Unit} is a specialized hardware block \textbf{dedicated to calculating effective addresses} for loads and stores. Given a base register value and an offset, it computes an effective address.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How Load Buffers and Address Unit Work Together?}}
+    \begin{enumerate}
+        \item \textbf{Issue Stage}: the instruction is issued. Allocates an entry in the ROB and Load Buffer.
+        \item \textbf{Address Calculation}: Address Unit computes the effective address.
+        \item \textbf{Memory Access Decision}: if there is no preceding store to the same address (or speculation allows), the load can access memory early. If not, the load must wait until memory disambiguation clears it.
+        \item \textbf{Load Execution}: read data from memory. Write the result into the ROB entry. When ready and safe, commit to the architectural register file.
+    \end{enumerate}
+
+    \item \important{Register File (FP Registers)}: not updated directly after execution. Instead, it is \textbf{updated only when instructions commit via the ROB}, preserving the \textbf{precise state model}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Key Innovations in this design}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{ROB replaces store buffers}: the store buffer doesn't exist anymore, now memory writes are delayed until commit.
+    \item \textbf{Register renaming is moved from RSs to ROB}: simplifies dependency tracking.
+    \item \textbf{Precise exceptions and speculative execution are both supported} via ROB tracking and flushing.
+    \item \textbf{CDB remains critical} for result forwarding and readiness detection.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Ready Bit}}
+\end{flushleft}
+The \definition{Ready Bit} is a control bit that indicates whether the instruction associated with this ROB entry has \textbf{completed execution} and its \textbf{result is available}. It is \textbf{set to true} when:
+\begin{enumerate}
+    \item The instruction finishes execution.
+    \item The result is written into the ROB.
+\end{enumerate}
+Its purpose is to \textbf{inform dependent instructions that they can now read this value} (via the CDB or directly from the ROB). Also, it enables commit: an instruction can \textbf{only commit if its ready bit is set}.
+
+\highspace
+In other words, the ready bit \textbf{tracks the availability of the computed result}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Speculative Flag}}
+\end{flushleft}
+The \definition{Speculative Flag} is a control bit that indicates whether the \textbf{instruction was issued after an unresolved branch prediction} (or other speculative control decision). It is:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{toggle-on}}] \textbf{Set to true} only when the instruction is \textbf{issued speculatively}, \textbf{\underline{before}} the control flow is confirmed.
+    \item[\textcolor{Red2}{\faIcon{toggle-off}}] \textbf{Cleared} when the speculation is resolved (e.g., branch prediction validated).
+\end{itemize}
+Its purpose is to ensure that \textbf{speculative instructions do not prematurely update} the architectural state. Allows all speculative instructions to be\break \textbf{flushed} upon misprediction or exception.
+
+\highspace
+In other words, the speculative flag tracks whether the instruction is \textbf{tentative} or \textbf{safe}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{ROB Structure and Operation: Circular Buffer}}
+\end{flushleft}
+The Reorder Buffer (ROB) is implemented as a \textbf{circular buffer} (circular FIFO, First-In-First-Out, queue), managed with \textbf{two pointers}:
+\begin{itemize}
+    \item \definitionWithSpecificIndex{Head pointer}{ROB Head pointer}{}. Points to the \textbf{oldest instruction} that is \textbf{next to commit} (i.e., retire).
+    
+    The head \textbf{advances} when instructions commit.
+
+    \item \definitionWithSpecificIndex{Tail pointer}{ROB Tail pointer}{}. Points to the \textbf{next free entry}, where a new issued instruction will be inserted.
+    
+    The tails \textbf{advances} when new instructions are issued.
+\end{itemize}
+
+\begin{examplebox}[: ROB Circular Buffer]
+    \begin{center}
+        \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+            \toprule
+            \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+            \midrule
+            \texttt{ROB0} & Yes  & In           & No    & \texttt{F0}   & $-$     & No   \\ [.3em]
+            \texttt{ROB1} & No   & $-$            & $-$     & $-$    & $-$     & $-$   \\ [.3em]
+            \texttt{ROB2} & No   & $-$            & $-$     & $-$    & $-$     & $-$   \\ [.3em]
+            \texttt{ROB3} & No   & $-$            & $-$     & $-$    & $-$     & $-$   \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    \begin{itemize}
+        \item \textbf{Head} points at \texttt{ROB0} (first to commit once ready).
+        \item \textbf{Tail} points at \texttt{ROB1} (next free entry for a new instruction).
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Two Pointers?}}
+\end{flushleft}
+The head and tail pointers allow the ROB to \textbf{efficiently manage} dynamic instruction issue and commit while \textbf{preserving program order}, and they \textbf{minimize hardware complexity} by avoiding costly entry movement.
+\begin{enumerate}
+    \item \important{Sequential Insertion at the Tail (Issue Stage)}. When a new instruction issues, it needs a free ROB entry. The tail pointer indicates where to insert the new instruction. After insertion, the tail advances to the next free slot. This preserves the program order at issue time.
+
+    \textbf{New instructions always go at the tail}.
+
+
+    \item \important{Sequential Retirement from the Head (Commit Stage)}.  When an instruction completes and satisfies all commit conditions (ready, not speculative, prior instructions retired), it retires. The head pointer shows which instruction should commit next. After commit, the head advances to the next oldest instruction.
+    
+    \textbf{Commit always happens starting from the head, ensuring in-order commit}.
+    
+
+    \newpage
+    
+    
+    \item \important{Circular Buffer Efficiency}.  Memory and hardware are limited: we don't want an infinitely growing ROB. Using a circular buffer:
+    \begin{itemize}
+        \item When the tail reaches the end of the buffer, it wraps around to position 0.
+        \item Same for the head.
+    \end{itemize}
+    This reuses space efficiently without needing to shift entries manually.
+    
+    \textbf{Circular structure avoids expensive data movement and saves silicon area}.
+    
+    
+    \item \important{Detecting Full and Empty Conditions}. With just head and tail:
+    \begin{itemize}
+        \item If head $=$ tail and entry busy $\rightarrow$ ROB is full (cannot issue more instructions).
+        \item If head $=$ tail and entry not busy $\rightarrow$ ROB is empty (no instructions to retire).
+    \end{itemize}
+    
+    \textbf{Simple hardware checks based on two pointers}.
+\end{enumerate}

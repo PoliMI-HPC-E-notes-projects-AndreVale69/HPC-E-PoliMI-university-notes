@@ -1,0 +1,348 @@
+\paragraph{Speculative Tomasulo Algorithm with ROB}
+
+The speculative Tomasulo architecture extends the original Tomasulo's algorithm by integrating a Reorder Buffer (ROB). This allows:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Dynamic register renaming using ROB entries;
+    \item In-order commit;
+    \item Precise exception handling;
+    \item Efficient speculative execution with safe rollback.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Main Innovations Introduced by the ROB}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Pointers towards ROB Entries}. Operands are no longer tracked via Reservation Stations. Instead, \textbf{operands are identified by ROB numbers}. This ensures centralized tracking of instruction dependencies.
+
+    \item \important{Implicit Register Renaming}. When a destination register is renamed:
+    \begin{itemize}
+        \item It is mapped to a \textbf{ROB entry};
+        \item This removes \textbf{WAR} and \textbf{WAW hazards} automatically;
+        \item Enables \textbf{dynamic loop unrolling} without conflicts.
+    \end{itemize}
+    
+    \item \important{Delayed Update of Architectural State}. Registers and memory are \textbf{not updated at execution time}. They are updated \textbf{only when the instruction is at the head of the ROB and is ready to commit}. This guarantees correct program state even in speculative execution.
+
+    \item \important{Easy Speculation Management}. By holding all results inside the ROB until commit:
+    \begin{itemize}
+        \item \textbf{Mispredictions} can be handled by \textbf{flushing speculative entries};
+        \item \textbf{Precise exceptions} are maintained, ensuring a clean rollback mechanism.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Operating phases of the Speculative Tomasulo Algorithm}}
+\end{flushleft}
+The execution flow is divided into four main stages:
+\begin{enumerate}
+    \item \important{Issue: Fetch and Prepare the Instruction}
+
+    The \textbf{Issue phase} is the step where an instruction is fetched from the \textbf{Instruction Queue} and prepared for execution. In this phase:
+    \begin{itemize}
+        \item The processor checks if there are \textbf{resources available} to allow the instruction to proceed.
+        \item It allocates both a \textbf{Reservation Station (RS) slot} and a \textbf{ROB entry}.
+    \end{itemize}
+    Only if both are available, the instruction can continue.
+    \begin{enumerate}
+        \item \important{Check for Available Slots}. The issue logic checks:
+        \begin{itemize}
+            \item \emph{Is there a free Reservation Stations?}
+            \item \emph{Is there a free ROB entry?}
+        \end{itemize}
+        If yes, the instruction is issued into the pipeline. \textbf{If no}, the \textbf{instruction stalls} in the Instruction Queue and waits.
+        \item \important{Fetch Operands}. Once issued, the instruction's \textbf{source operands are fetched}. If an operand is:
+        \begin{itemize}
+            \item \textbf{Ready in the Register File} $\rightarrow$ send it immediately to the Reservation Station.
+            \item \textbf{Pending in the ROB} $\rightarrow$ send the ROB number (tag) to the Reservation Station instead (to wait for the value).
+        \end{itemize}
+        Thus, the RS either: receives the actual operand value (if available), or a \textbf{tag} (ROB number) pointing to where the value will appear later.
+        \item \important{Allocate ROB Entry for the Result}. A \textbf{ROB entry} is assigned to the instruction. The \textbf{ROB number} is sent to the Reservation Station. This number will later be used to \textbf{tag the result on the Common Data Bus (CDB)} after execution. This \hl{ROB number replaces the register name during speculative execution}.
+    \end{enumerate}
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What Happens If No Space?}} If either no RS slot is free, or no ROB entry is free, then the instruction \textbf{cannot issue} and \textbf{must stall}. This ensures the system \textbf{never overflows} the ROB or Reservation Stations, maintaining control over execution resources.
+
+
+    \item \important{Execution Started}
+    
+    After the instruction is successfully issued and resides in a \textbf{Reservation Station (RS)}, the next step is \textbf{starting execution}. Execution can start only when \textbf{all required operands are available}.
+    \begin{enumerate}
+        \item \important{Check Operand Availability}. The Reservation Station \textbf{monitors the availability} of operands. If \textbf{both operands are available} (i.e., no more pending data hazards):
+        \begin{itemize}
+            \item Instruction \textbf{immediately starts execution} on its operands.
+            \item This stage is called \textbf{EX} (Execute).
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{RAW hazards (Read After Write) must already be solved to start execution.}}
+
+        \item \important{Monitoring for Pending Operands}. If one or more operands are \textbf{not yet ready} (e.g., still waiting for a previous instruction to produce them):
+        \begin{itemize}
+            \item The RS \textbf{listens} to the \textbf{Common Data Bus (CDB)}.
+            \item As soon as the missing operand appears on the CDB, it captures it and becomes ready.
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Dynamic readiness: the RS waits without blocking the pipeline.}}
+
+        \newpage
+
+        \item \important{Special Case: Store Instructions}. For \textbf{store} instructions:
+        \begin{itemize}
+            \item Only the \textbf{base register} (address computation) must be available to start execution.
+            \item At this point, the \textbf{effective memory address} is computed.
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{The store value itself can still arrive later, closer to the commit phase.}}
+    \end{enumerate}
+    \hl{Instructions don't wait statically, they dynamically listen and proceed as soon as they can, maximizing execution overlap.}
+
+
+    \item \important{Execution Completed \& Write Result}
+    
+    \textbf{Once the execution of the instruction finishes}, the result must be \textbf{broadcast} and \textbf{stored} so that dependent instructions can proceed and the instruction can eventually commit.
+    \begin{enumerate}
+        \item \important{Broadcast the Result on the Common Data Bus (CDB)}.  The completed instruction \textbf{places its result} on the \textbf{Common Data Bus}. This \textbf{broadcasts} the result to:
+        \begin{itemize}
+            \item All \textbf{Reservation Stations} that are waiting for it;
+            \item The corresponding \textbf{ROB entry} (updating its \texttt{Value} field).
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Any instruction that was stalled waiting for this operand can now proceed.}}
+
+        \item \important{Update the ROB Entry}. The \texttt{Value} field of the instruction's \textbf{ROB entry} is updated with the computed result. The instruction's \textbf{Ready bit} inside the ROB is set to \textbf{true}, meaning the instruction is now completed and awaiting commit.
+        
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{The ROB now safely holds the completed result, ready for in-order retirement.}}
+        
+        \item \important{Release the Reservation Station}. The Reservation Station that held this instruction is now \textbf{marked as free}. It becomes available for \textbf{issuing new instructions}.
+
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{This keeps the hardware resource usage efficient and avoids blocking incoming instructions.}}
+        
+        \item \important{Special Case: Store Instructions}. For \textbf{store} operations:
+        \begin{itemize}
+            \item The \textbf{data to be stored} (not just the address) is written into the ROB's \texttt{Value} field.
+            \item If the value wasn't ready at the start of the store's execution, the RS monitors the CDB until the data is captured.
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{This ensures the store operation has both address and data ready by the time it needs to commit.}}
+    \end{enumerate}
+    \hl{Results are not immediately written to registers; they are buffered safely into the ROB and forwarded to dependent instructions dynamically.}
+
+    \newpage
+
+    \item \important{Commit: Updating the Architectural State}
+    
+    The \textbf{Commit phase} is when the result of an instruction is \textbf{safely written into the Register File or memory}, and the instruction is \textbf{retired from the ROB}. \hl{Commit happens strictly \textbf{in program order}}:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Only the instruction at the \textbf{head of the ROB} can be considered for commit.
+        \item The instruction must have \textbf{finished execution} and have its \textbf{result ready}.
+    \end{itemize}
+    \begin{enumerate}
+        \item \important{Normal Commit}. If the instruction at the head is \textbf{completed} (\texttt{Ready bit = true}):
+        \begin{itemize}
+            \item Its \textbf{result is written into the Register File} (if it's a computational instruction);
+            \item The \textbf{ROB entry is freed}.
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{The architectural state is updated in strict program order.}}
+
+        \item \important{Store Commit}. If the instruction at the head is a \textbf{store}:
+        \begin{itemize}
+            \item Instead of updating the Register File, it \textbf{writes the data into memory};
+            \item Afterward, the instruction is removed from the ROB.
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Memory operations happen precisely at the correct point, preserving correct memory ordering.}}
+        
+        \item \important{Branch Commit and Misprediction Handling}. If the instruction at the head is a \textbf{branch}:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] If the branch was \textbf{predicted correctly}, it is committed normally, no special action.
+            \item[\textcolor{Red2}{\faIcon{times}}] If the branch was \textbf{mispredicted}:
+            \begin{itemize}
+                \item The \textbf{ROB is flushed}, all speculative instructions after the branch are discarded.
+                \item Execution \textbf{restarts} at the correct successor (true path).
+            \end{itemize}
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Mispredictions are corrected cleanly, and speculative\break damage is avoided.}}
+
+        This flushing process is sometimes called \textbf{graduation} in technical literature\footnote{%
+            \definition{Graduation} is the final commit of an instruction from the ROB into the architectural state (registers or memory), happening in program order after execution is completed and speculation has been validated. In literature like \emph{Computer Architecture: A Quantitative Approach}\cite{hennessy2017computer}, graduation and commit are used interchangeably.
+
+            In other words, it is another technical term for instruction commit in speculative out-of-order processors.
+        }.
+    \end{enumerate}
+    \hl{Only when the instruction is at the ROB head, completed, and non-speculative, it can safely update the real architectural state (register file or memory).} This phase ensures that the processor maintains a \textbf{precise state} even under heavy speculation and out-of-order execution.
+\end{enumerate}
+
+\newpage
+
+\begin{examplebox}[: Speculative Tomasulo Algorithm with ROB - Execution Overlap]
+    We are executing this loop:
+    \begin{lstlisting}[language=unknown]
+Loop:
+        LD    F0, 0(R1)
+        MULTD F4, F0, F2  # RAW hazard on F0
+        SD    F4, 0(R1)   # RAW hazard on F4
+        SUBI  R1, R1, #8
+        BNEZ  R1, Loop    # RAW and WAR hazards on R1\end{lstlisting}
+    \begin{itemize}
+        \item \texttt{LD} loads from memory address pointed by \texttt{R1} into \texttt{F0}.
+        \item \texttt{MULTD} depends on \texttt{F0} being ready $\rightarrow$ must wait for the \texttt{LD}.
+        \item \texttt{SD} depends on \texttt{F4} $\rightarrow$ must wait for \texttt{MULTD}.
+        \item \texttt{SUBI} modifies \texttt{R1} (address computation for next iteration).
+        \item \texttt{BNEZ} depends on the result of \texttt{SUBI} to decide whether to branch.
+    \end{itemize}
+    \begin{itemize}
+        \item \important{First iteration issued}
+        \begin{center}
+            \begin{adjustbox}{width={.92\textwidth},totalheight={\textheight},keepaspectratio}
+                \begin{tabular}{@{} c | c | l | l | c | c | c @{}}
+                    \toprule
+                    \texttt{ROB\#}      & \texttt{BUSY}     & \texttt{INSTR. TYPE}      & \texttt{READY}        & \texttt{DEST.}        & \texttt{VALUE}        & \texttt{SPEC.}    \\
+                    \midrule
+                    \texttt{ROB0}       & Yes               & \texttt{LD F0, 0(R1)}     & No (exec. start)      & \texttt{F0}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB1}       & Yes               & \texttt{MULTD F4, F0, F2} & No (issued)           & \texttt{F4}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB2}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & No                \\ [.3em]
+                    \texttt{ROB3}       & Yes               & \texttt{SUBI R1, R1, \#8} & No (issued)           & \texttt{R1}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB4}       & Yes               & \texttt{BNEZ R1, Loop}    & No (issued)           & $-$                   & $-$                   & No                \\ [.3em]
+                    \texttt{ROB5}       & No                &                           &                       &                       &                       &                   \\ [.3em]
+                    \texttt{ROB6}       & No                &                           &                       &                       &                       &                   \\ [.3em]
+                    \texttt{ROB7}       & No                &                           &                       &                       &                       &                   \\
+                    \bottomrule
+                \end{tabular}
+            \end{adjustbox}
+            \captionof*{table}{The head is at \texttt{ROB0} and the tail is at \texttt{ROB5}.}
+            \begin{tabular}{@{} l | c c c c c c @{}}
+                \toprule
+                \texttt{Register \#}    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{F6}   & \texttt{F8}   & \texttt{F10}  \\
+                \midrule
+                Pointer                 & \texttt{ROB0} &               & \texttt{ROB1} &               &               &               \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+        The actions are:
+        \begin{itemize}
+            \item All these 5 instructions are issued one after another.
+            \item Each gets a \textbf{ROB entry}.
+            \item The \textbf{Rename Table} is updated:
+            \begin{itemize}
+                \item \texttt{F0} is renamed to \texttt{ROB0};
+                \item \texttt{F4} to \texttt{ROB1};
+                \item Memory address for \texttt{SD} points to \texttt{ROB2};
+                \item \texttt{R1} to \texttt{ROB3} (because \texttt{SUBI} modifies \texttt{R1}).
+            \end{itemize}
+        \end{itemize}
+        ROB entries are allocated from \texttt{ROB0} to \texttt{ROB4}.
+
+
+        \newpage
+
+
+        \item \important{After Some Cycles (ROB Full)}
+        \begin{center}
+            \begin{adjustbox}{width={.92\textwidth},totalheight={\textheight},keepaspectratio}
+                \begin{tabular}{@{} c | c | l | l | c | c | c @{}}
+                    \toprule
+                    \texttt{ROB\#}      & \texttt{BUSY}     & \texttt{INSTR. TYPE}      & \texttt{READY}        & \texttt{DEST.}        & \texttt{VALUE}        & \texttt{SPEC.}    \\
+                    \midrule
+                    \texttt{ROB0}       & Yes               & \texttt{LD F0, 0(R1)}     & Ready to Commit       & \texttt{F0}           & \texttt{M[0+[R1]]}    & No                \\ [.3em]
+                    \texttt{ROB1}       & Yes               & \texttt{MULTD F4, F0, F2} & No (issued)           & \texttt{F4}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB2}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & No                \\ [.3em]
+                    \texttt{ROB3}       & Yes               & \texttt{SUBI R1, R1, \#8} & Exec. Started         & \texttt{R1}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB4}       & Yes               & \texttt{BNEZ R1, Loop}    & No (issued)           & $-$                   & $-$                   & No                \\ [.3em]
+                    \texttt{ROB5}       & Yes               & \texttt{LD F0, 0(R1)}     & No (issued)           & \texttt{F0}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB6}       & Yes               & \texttt{MULTD F4, F0, F2} & No (issued)           & \texttt{F4}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB7}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & Yes               \\
+                    \bottomrule
+                \end{tabular}
+            \end{adjustbox}
+            \captionof*{table}{The head is still at \texttt{ROB0} and the tail is stall.}
+            \begin{tabular}{@{} l | c c c c c c @{}}
+                \toprule
+                \texttt{Register \#}    & \texttt{F0}           & \texttt{F2}   & \texttt{F4}           & \texttt{F6}   & \texttt{F8}   & \texttt{F10}  \\
+                \midrule
+                Pointer                 & \hl{\texttt{ROB5}}    &               & \hl{\texttt{ROB6}}    &               &               &               \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+        Now, after some execution, the situation is:
+        \begin{itemize}
+            \item \textbf{ROB is full}:  we used all 8 entries (\texttt{ROB0} to \texttt{ROB7}).
+            \item Meanwhile:
+            \begin{itemize}
+                \item \texttt{LD (ROB0)} has completed (\texttt{Ready = Yes}).
+                \item \texttt{MULTD (ROB1)} is still waiting to execute (waiting on \texttt{F0}).
+                \item \texttt{SUBI (ROB3)} has started executing (updating \texttt{R1}).
+            \end{itemize}
+            \item Second iteration of the loop started speculative issuing:
+            \begin{itemize}
+                \item A new \texttt{LD} into \texttt{F0} (\texttt{ROB5});
+                \item A new \texttt{MULTD} into \texttt{F4} (\texttt{ROB6});
+                \item A new \texttt{SD} (\texttt{ROB7}).
+            \end{itemize}
+        \end{itemize}
+        Speculative entries being appearing (\texttt{ROB5}-\texttt{ROB7} marked speculative). New renamings happen:
+        \begin{itemize}
+            \item \texttt{F0} is now renamed to \texttt{ROB5} (overriding previous \texttt{ROB0}).
+            \item \texttt{F4} is renamed to \texttt{ROB6}.
+        \end{itemize}
+        The processor allows speculative execution past the \texttt{BNEZ}, but only under the assumption that the branch prediction was correct.
+
+
+        \newpage
+
+
+        \item \important{First Commit and Progress}
+        \begin{center}
+            \begin{adjustbox}{width={.92\textwidth},totalheight={\textheight},keepaspectratio}
+                \begin{tabular}{@{} c | c | l | l | c | c | c @{}}
+                    \toprule
+                    \texttt{ROB\#}      & \texttt{BUSY}     & \texttt{INSTR. TYPE}      & \texttt{READY}        & \texttt{DEST.}        & \texttt{VALUE}        & \texttt{SPEC.}    \\
+                    \midrule
+                    \texttt{ROB0}       & No                &                           &                       &                       &                       &                   \\ [.3em]
+                    \texttt{ROB1}       & Yes               & \texttt{MULTD F4, F0, F2} & Exec. Started         & \texttt{F4}           & *                     & No                \\ [.3em]
+                    \texttt{ROB2}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & No                \\ [.3em]
+                    \texttt{ROB3}       & Yes               & \texttt{SUBI R1, R1, \#8} & Exec. Started         & \texttt{R1}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB4}       & Yes               & \texttt{BNEZ R1, Loop}    & No (issued)           & $-$                   & $-$                   & No                \\ [.3em]
+                    \texttt{ROB5}       & Yes               & \texttt{LD F0, 0(R1)}     & No (issued)           & \texttt{F0}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB6}       & Yes               & \texttt{MULTD F4, F0, F2} & No (issued)           & \texttt{F4}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB7}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & Yes               \\
+                    \bottomrule
+                \end{tabular}
+            \end{adjustbox}
+            \captionof*{table}{*: the value \texttt{M[0+[R1]]*F2} is under computation. The head is at \texttt{ROB1} and the tail is at \texttt{ROB0}.}
+        \end{center}
+        Next cycle:
+        \begin{itemize}
+            \item \texttt{ROB0} commits:
+            \begin{itemize}
+                \item \texttt{LD} completed $\rightarrow$ value is written to the Register File (\texttt{F0} updated).
+                \item \texttt{ROB0} is freed (\texttt{Busy = No}).
+            \end{itemize}
+            \item \texttt{MULTD} at \texttt{ROB1} finally starts execution (*): now that \texttt{F0} is available, it can compute \texttt{F4 = F0 $\times$ F2}.
+            \item \texttt{SUBI} at \texttt{ROB3} also continues execution.
+        \end{itemize}
+        Instructions are allowed to move forward even if speculative ones are pending behind.
+
+
+        \item \important{ROB Remains Full (and Critical Situation)}
+        \begin{center}
+            \begin{adjustbox}{width={.92\textwidth},totalheight={\textheight},keepaspectratio}
+                \begin{tabular}{@{} c | c | l | l | c | c | c @{}}
+                    \toprule
+                    \texttt{ROB\#}      & \texttt{BUSY}     & \texttt{INSTR. TYPE}      & \texttt{READY}        & \texttt{DEST.}        & \texttt{VALUE}        & \texttt{SPEC.}    \\
+                    \midrule
+                    \texttt{ROB0}       & Yes               & \texttt{SUBI R1, R1, \#8} & No (issued)           & \texttt{R1}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB1}       & Yes               & \texttt{MULTD F4, F0, F2} & Exec. Started         & \texttt{F4}           & *                     & No                \\ [.3em]
+                    \texttt{ROB2}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & No                \\ [.3em]
+                    \texttt{ROB3}       & Yes               & \texttt{SUBI R1, R1, \#8} & Exec. Started         & \texttt{R1}           & $-$                   & No                \\ [.3em]
+                    \texttt{ROB4}       & Yes               & \texttt{BNEZ R1, Loop}    & No (issued)           & $-$                   & $-$                   & No                \\ [.3em]
+                    \texttt{ROB5}       & Yes               & \texttt{LD F0, 0(R1)}     & No (issued)           & \texttt{F0}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB6}       & Yes               & \texttt{MULTD F4, F0, F2} & No (issued)           & \texttt{F4}           & $-$                   & Yes               \\ [.3em]
+                    \texttt{ROB7}       & Yes               & \texttt{SD F4, 0(R1)}     & No (issued)           & \texttt{M[0+[R1]]}    & $-$                   & Yes               \\
+                    \bottomrule
+                \end{tabular}
+            \end{adjustbox}
+            \captionof*{table}{*: the value \texttt{M[0+[R1]]*F2} is still under computation. The head is still at \texttt{ROB1} and the tail is stall.}
+        \end{center}
+        The situation is:
+        \begin{itemize}
+            \item ROB remains fully occupied because new speculative instructions filled it (\texttt{ROB5} to \texttt{ROB7}).
+            \item The ongoing speculative execution \textbf{relies heavily} on correct branch prediction (\texttt{BNEZ}).
+            \item \textbf{Problem}: If the branch was \textbf{mispredicted}, all speculative instructions (\texttt{ROB5}, \texttt{ROB6}, \texttt{ROB7}) must be \textbf{flushed}.
+        \end{itemize}
+    \end{itemize}
+    This example shows how the ROB manages \textbf{execution overlap}, \textbf{hazard resolution}, \textbf{speculation}, and \textbf{in-order commit} even under complex dependencies.
+\end{examplebox}

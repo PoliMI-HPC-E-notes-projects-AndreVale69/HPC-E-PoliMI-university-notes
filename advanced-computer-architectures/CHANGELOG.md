@@ -22,6 +22,7 @@
       - add `Why ROB is really needed`
       - add `ROB as a Data Communication Mechanism`
       - add `Architecture`
+      - add `Speculative Tomasulo Algorithm with ROB`
 
 --------------------
 

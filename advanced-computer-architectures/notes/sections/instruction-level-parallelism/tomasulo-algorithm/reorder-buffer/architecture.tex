@@ -170,3 +170,313 @@ The head and tail pointers allow the ROB to \textbf{efficiently manage} dynamic 
     
     \textbf{Simple hardware checks based on two pointers}.
 \end{enumerate}
+
+\begin{examplebox}[: ROB and Rename Table]
+    The \definition{Rename Table} is a small \textbf{hardware table} that records \textbf{where the \emph{most recent} value} of each register \textbf{will come from}, \textbf{while the instruction is still speculative or not yet committed}. It connects logical (architecture) registers (like \texttt{F0}, \texttt{F2}, etc.) to ROB entries that are producing their updated value.
+
+    \highspace
+    It works like this:
+    \begin{itemize}
+        \item When an instruction is issued that \textbf{writes} a register:
+        \begin{itemize}
+            \item The Rename Table \textbf{maps} that register to its \textbf{new ROB number}.
+        \end{itemize}
+        \item When an instruction needs to \textbf{read} a register:
+        \begin{itemize}
+            \item It \textbf{checks the Rename Table}:
+            \begin{itemize}
+                \item If an ROB entry is mapped: the instruction reads the pending value from the ROB.
+                \item If no mapping: the instruction reads from the architectural register file.
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+
+    \highspace
+    Now we present an example using the ROB and the Rename Table. At the beginning of this example, we have a ROB almost empty and a Rename Table partially filled.
+
+    \newpage
+
+    \begin{enumerate}
+        \item \textbf{Cycle \theenumi}, first step.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & Yes     & \texttt{In}       & No    & \texttt{F0}   & $-$     & No   \\ [.3em]
+                \texttt{ROB1} & Yes     & \texttt{In+1}     & No    & \texttt{F2}   & $-$     & No   \\ [.3em]
+                \texttt{ROB2} & No      & $-$               & $-$   & $-$           & $-$     & $-$   \\ [.3em]
+                \texttt{ROB3} & No      & $-$               & $-$   & $-$           & $-$     & $-$   \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is at \texttt{ROB0} and Tail is at \texttt{ROB2}.}
+        \end{center}
+        Two instructions were issued:
+        \begin{itemize}
+            \item \texttt{In} writes to \texttt{F0}, mapped to \texttt{ROB0}.
+            \item \texttt{In+1} writes to \texttt{F2}, mapped to \texttt{ROB1}.
+        \end{itemize}
+        Both are non-speculative (\texttt{SPEC = No})
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}   & \texttt{F6}   & \texttt{F8} \\
+                \midrule
+                Pointer     & \texttt{ROB0} & \texttt{ROB1} &               &               &             \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+        \texttt{F0} and \texttt{F2} are now renamed: if anyone uses \texttt{F0}/\texttt{F2}, they will look at the respective \texttt{ROB} entry, not the old register.
+
+
+        \item \textbf{Cycle \theenumi}, second step.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & Yes         & \texttt{In}           & No        & \texttt{F0}       & $-$     & No          \\ [.3em]
+                \texttt{ROB1} & Yes         & \texttt{In+1}         & No        & \texttt{F2}       & $-$     & No          \\ [.3em]
+                \texttt{ROB2} & \hl{Yes}    & \hl{\texttt{In+2}}    & \hl{No}   & \hl{\texttt{F4}}  & $-$     & \hl{No}     \\ [.3em]
+                \texttt{ROB3} & No          & $-$                   & $-$       & $-$               & $-$     & $-$         \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is still at \texttt{ROB0} and Tail is now at \texttt{ROB3}.}
+        \end{center}
+        Another instruction issued:
+        \begin{itemize}
+            \item \texttt{In+2} writes to \texttt{F4}, mapped to \texttt{ROB2}.
+        \end{itemize}
+        Still non-speculative.
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}   & \texttt{F8} \\
+                \midrule
+                Pointer     & \texttt{ROB0} & \texttt{ROB1} & \hl{\texttt{ROB2}}    &               &             \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \newpage
+
+
+        \item \textbf{Cycle \theenumi}, speculative instruction issued.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & Yes         & \texttt{In}           & No        & \texttt{F0}       & $-$     & No          \\ [.3em]
+                \texttt{ROB1} & Yes         & \texttt{In+1}         & No        & \texttt{F2}       & $-$     & No          \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$     & No          \\ [.3em]
+                \texttt{ROB3} & \hl{Yes}    & \hl{\texttt{In+3}}    & \hl{No}   & \hl{\texttt{F6}}  & $-$     & \hl{Yes}    \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is still at \texttt{ROB0}. As for Tail, since all four entries (\texttt{ROB0} through \texttt{ROB3}) are occupied and there are no free entries, Tail cannot move forward until there is a free ROB entry. Tail must logically ``point'' to the next free entry, but since there is none available, it ``hovers'' behind or at \texttt{ROB0}, waiting for a free entry after a commit. So Tail is \emph{stalled} at \texttt{ROB0} because the ROB is full.}
+        \end{center}
+        A new instruction (\texttt{In+3}) was issued and allocated into \texttt{ROB3}. \texttt{In+3} writes to register \texttt{F6}. The speculative bit is set to ``Yes'', so this instruction depends on an unresolved branch (it's speculative).
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}           & \texttt{F8} \\
+                \midrule
+                Pointer     & \texttt{ROB0} & \texttt{ROB1} & \texttt{ROB2}         & \hl{\texttt{ROB3}}    &             \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \item \textbf{Cycle \theenumi}, first execution result ready.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & Yes         & \texttt{In}           & \hl{Yes}  & \texttt{F0}       & \hl{10}   & No            \\ [.3em]
+                \texttt{ROB1} & Yes         & \texttt{In+1}         & No        & \texttt{F2}       & $-$       & No            \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$       & No            \\ [.3em]
+                \texttt{ROB3} & Yes         & \texttt{In+3}         & No        & \hl{\texttt{F6}}  & $-$       & Yes           \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is still at \texttt{ROB0}. Tail is still waiting.}
+        \end{center}
+        The instruction at \texttt{ROB0} (\texttt{In}) \textbf{completed execution}: it is ready (Yes) and the result is 10. \textbf{But it has not yet committed} because commits happen separately.
+
+        The value 10 is still in the ROB, not yet in the register file. \texttt{F0} is still mapped to ROB0 (waiting commit).
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}           & \texttt{F8} \\
+                \midrule
+                Pointer     & \texttt{ROB0} & \texttt{ROB1} & \texttt{ROB2}         & \texttt{ROB3}         &             \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \newpage
+
+
+        \item \textbf{Cycle \theenumi}, first commit happens.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & \hl{No}     & $-$                   & $-$       & $-$               & $-$       & $-$           \\ [.3em]
+                \texttt{ROB1} & Yes         & \texttt{In+1}         & No        & \texttt{F2}       & $-$       & No            \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$       & No            \\ [.3em]
+                \texttt{ROB3} & Yes         & \texttt{In+3}         & No        & \hl{\texttt{F6}}  & $-$       & Yes           \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is now at \texttt{ROB1}. Tail finally finds an empty entry and points to it (\texttt{ROB0}).}
+        \end{center}
+        Instruction \texttt{In} (\texttt{ROB0}) \textbf{committed}:
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item It was ready (\texttt{Ready = Yes});
+            \item Not speculative (\texttt{Spec = No});
+            \item Head pointer advanced from \texttt{ROB0} $\rightarrow$ \texttt{ROB1}.
+        \end{itemize}
+        \textbf{Register File updated}:
+        \begin{itemize}
+            \item \texttt{F0} now officially $=$ 10 (not pending anymore).
+        \end{itemize}
+        \textbf{Rename Table updated}:
+        \begin{itemize}
+            \item \texttt{F0} no longer points to a ROB entry, but to the \textbf{final committed value} (10).
+        \end{itemize}
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}           & \texttt{F8} \\
+                \midrule
+                Pointer     & \hl{10}       & \texttt{ROB1} & \texttt{ROB2}         & \texttt{ROB3}         &             \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \item \textbf{Cycle \theenumi}, new instructions, partial execution.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & \hl{Yes}    & \hl{\texttt{In+4}}    & \hl{No}   & \hl{\texttt{F8}}  & $-$       & \hl{Yes}      \\ [.3em]
+                \texttt{ROB1} & Yes         & \texttt{In+1}         & \hl{Yes}  & \texttt{F2}       & \hl{20}   & No            \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$       & No            \\ [.3em]
+                \texttt{ROB3} & Yes         & \texttt{In+3}         & No        & \texttt{F6}       & $-$       & Yes           \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is still at \texttt{ROB1}. Tail stalled because ROB is full.}
+        \end{center}
+        A new instruction (\texttt{In+4}) was issued and allocated to \texttt{ROB0}:
+        \begin{itemize}
+            \item Destination: \texttt{F8}
+            \item Marked speculative (\texttt{SPEC = Yes})
+        \end{itemize}
+        Meanwhile the instruction \texttt{In+1} (in \texttt{ROB1}) has \textbf{completed execution} (\texttt{READY = Yes}) with the value 20.
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}           & \texttt{F8}           \\
+                \midrule
+                Pointer     & 10            & \texttt{ROB1} & \texttt{ROB2}         & \texttt{ROB3}         & \hl{\texttt{ROB0}}    \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \newpage
+
+
+        \item \textbf{Cycle \theenumi}, commit of a non-speculative instruction.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & Yes         & \texttt{In+4}         & No        & \texttt{F8}       & $-$       & Yes           \\ [.3em]
+                \texttt{ROB1} & \hl{No}     & $-$                   & $-$       & $-$               & $-$       & $-$           \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$       & No            \\ [.3em]
+                \texttt{ROB3} & Yes         & \texttt{In+3}         & No        & \texttt{F6}       & $-$       & Yes           \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is now at \texttt{ROB2}. Tail is now at \texttt{ROB1}.}
+        \end{center}
+        Instruction \texttt{In+1} in \texttt{ROB1} has committed, and its destination register \texttt{F2} now holds the value 20. \texttt{ROB1} is now free (\texttt{BUSY = No}) and the head moves forward to \texttt{ROB2}.
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}           & \texttt{F8}           \\
+                \midrule
+                Pointer     & 10            & \hl{20}       & \texttt{ROB2}         & \texttt{ROB3}         & \texttt{ROB0}         \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \item \textbf{Cycle \theenumi}, misprediction.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & Yes         & \texttt{In+4}         & No        & \texttt{F8}       & $-$       & Yes           \\ [.3em]
+                \texttt{ROB1} & No          & $-$                   & $-$       & $-$               & $-$       & $-$           \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$       & No            \\ [.3em]
+                \texttt{ROB3} & Yes         & \texttt{In+3}         & No        & \texttt{F6}       & $-$       & Yes           \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is still at \texttt{ROB2}. Tail is still at \texttt{ROB1}.}
+        \end{center}
+        \texttt{ROB0} and \texttt{ROB3} still contain \textbf{speculative instructions} waiting for execution. \texttt{ROB2} contains non-speculative instruction but not ready yet.
+
+        At some point, \textbf{misprediction detected}! The branch speculation fails and all speculative instructions must be \textbf{flushed} (discarded).
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}           & \texttt{F8}           \\
+                \midrule
+                Pointer     & 10            & 20            & \texttt{ROB2}         & \texttt{ROB3}         & \texttt{ROB0}         \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+
+        \newpage
+
+
+        \setcounter{enumi}{\theenumi - 1}
+        \item \textbf{Cycle \theenumi}, after misprediction flush.
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c | c | c @{}}
+                \toprule
+                \texttt{ROB\#} & \texttt{BUSY} & \texttt{INSTR. TYPE} & \texttt{READY} & \texttt{DEST} & \texttt{VALUE} & \texttt{SPEC} \\
+                \midrule
+                \texttt{ROB0} & \hl{No}     & $-$                   & $-$       & $-$               & $-$       & $-$           \\ [.3em]
+                \texttt{ROB1} & No          & $-$                   & $-$       & $-$               & $-$       & $-$           \\ [.3em]
+                \texttt{ROB2} & Yes         & \texttt{In+2}         & No        & \texttt{F4}       & $-$       & No            \\ [.3em]
+                \texttt{ROB3} & \hl{No}     & $-$                   & $-$       & $-$               & $-$       & $-$           \\
+                \bottomrule
+            \end{tabular}
+            \captionof*{table}{Head is still at \texttt{ROB2}. Tail is moved to \texttt{ROB3} because after a misprediction, the \textbf{tail must move to the next free ROB entry \emph{after} the last non-speculative instruction}, maintaining strict program order.}
+        \end{center}
+        \texttt{ROB0} (\texttt{In+4}) and \texttt{ROB3} (\texttt{In+3}) were speculative $\rightarrow$ flushed immediately. Only \texttt{ROB2} remains:
+        \begin{itemize}
+            \item It is non-speculative (safe);
+            \item Still waiting to execute or ready.
+        \end{itemize}
+        \begin{center}
+            \begin{tabular}{@{} l | c c c c c @{}}
+                \toprule
+                Register    & \texttt{F0}   & \texttt{F2}   & \texttt{F4}           & \texttt{F6}                           & \texttt{F8}                           \\
+                \midrule
+                Pointer     & 10            & 20            & \texttt{ROB2}         & \hl{\texttt{ROB3} (\emph{obsolete})}  & \hl{\texttt{ROB0} (\emph{obsolete})}  \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+    \end{enumerate}
+\end{examplebox}

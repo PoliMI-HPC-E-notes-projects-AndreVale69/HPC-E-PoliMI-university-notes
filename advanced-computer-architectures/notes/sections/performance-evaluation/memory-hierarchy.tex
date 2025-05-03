@@ -1,0 +1,387 @@
+\subsection{Memory Hierarchy}
+
+In modern processors we organize memories as a \textbf{hierarchy}.
+\begin{itemize}
+    \item At the \textbf{top}, \textbf{smallest} but \textbf{fastest} memories (e.g., L1 cache, CPU registers).
+    \item At the \textbf{bottom}, \textbf{largest} but \textbf{slowest} memories (e.g., DRAM, disk storage).
+\end{itemize}
+The idea is to keep most data in fast memories for efficiency.
+\begin{itemize}
+    \item \definition{Hit}. The data we want is \textbf{found} in the upper (faster) memory level.
+
+    \item \definitionWithSpecificIndex{Hit Rate}{Formula Memory Hierarchy: Hit Rate}{}. Probability (fraction) of memory accesses that result in a hit.
+    \begin{equation}
+        \text{Hit Rate} = \dfrac{\#\,\text{hits}}{\#\,\text{memory accesses}}
+    \end{equation}
+
+    \item \definition{Hit Time}. Time to \textbf{access} the upper memory level and check whether it's a hit.
+
+    \item \definition{Miss}. The data is \textbf{not found} in the upper memory, we must access the slower lower level.
+
+    \item \definitionWithSpecificIndex{Miss Rate}{Formula Memory Hierarchy: Miss Rate}{}. Probability (fraction) of accesses that result in a miss.
+    \begin{equation}
+        \text{Miss Rate} = \frac{\#\,\text{misses}}{\#\,\text{memory accesses}}
+    \end{equation}
+    Important property:
+    \begin{equation}
+        \text{Hit Rate} + \text{Miss Rate} = 1
+    \end{equation}
+
+    \item \definitionWithSpecificIndex{Miss Time}{Formula Memory Hierarchy: Miss Time}{}. Total time when there is a miss:
+    \begin{equation}\label{eq: Miss Time}
+        \text{Miss Time} = \text{Hit Time} + \text{Miss Penalty}
+    \end{equation}
+    Where \definition{Miss Penalty} is extra \textbf{time needed to fetch data from the lower level and update upper cache}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{AMAT (Average Memory Access Time)}}
+\end{flushleft}
+\definition{AMAT (Average Memory Access Time)} measures the \textbf{average time the processor needs to access memory} (whether there's a hit or a miss).
+\begin{equation*}
+    \text{AMAT} = \text{Hit Rate} \times \text{Hit Time} + \text{Miss Rate} \times \text{Miss Time}
+\end{equation*}
+It combines both: the fast accesses (hits) and the slow accesses (misses). Since equation \ref{eq: Miss Time}, we can substitute into the AMAT formula:
+\begin{equation*}
+    \text{AMAT} = \text{Hit Rate} \times \text{Hit Time} + \text{Miss Rate} \times (\text{Hit Time} + \text{Miss Penalty})
+\end{equation*}
+But by definition:
+\begin{equation*}
+    \text{Hit Rate} + \text{Miss Rate} = 1
+\end{equation*}
+Thus:
+\begin{equation}\index{Formula Memory Hierarchy: AMAT}
+    \text{AMAT} = \text{Hit Time} + \text{Miss Rate} \times \text{Miss Penalty}
+\end{equation}
+This is the most important and most used AMAT formula!
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{How to improve cache performance?}}
+\end{flushleft}
+To reduce AMAT (and improve system speed), we can:
+\begin{enumerate}
+    \item \important{Reduce Hit Time}: Make the \textbf{cache smaller}, \textbf{simpler}, or \textbf{closer to the CPU}.
+
+    \item \important{Reduce Miss Rate}: Improve \textbf{cache organization} (better replacement, associativity, prefetching).
+
+    \item \important{Reduce Miss Penalty}: Use \textbf{faster lower levels} (e.g., add an L2 or L3 cache).
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Unified Cache vs Separate Instruction}}
+\end{flushleft}
+There are two major architectures for L1 cache:
+\begin{itemize}
+    \item \important{Unified Cache}: Same L1 cache for both instructions and data.
+    \item \important{Separate I\$ and D\$ (Harvard Architecture)}: Different L1 caches for instructions (I\$) and data (D\$).
+\end{itemize}
+For \textbf{separate caches} (Harvard Architecture):
+\begin{itemize}
+    \item Instruction cache and Data cache have \textbf{different miss rates}.
+    \item \textbf{Accesses are divided} between instruction and data operations.
+\end{itemize}
+This is the AMAT (Average Memory Access Time) for Harvard architectures:
+\begin{equation}\index{Formula Memory Hierarchy: AMAT Harvard}\label{eq: AMAT Harvard}
+    \begin{array}{rl}
+        \text{AMAT}_{\text{Harvard}} =& (\%\text{Instr})\, \times \\ [.5em]
+        & (\text{Hit Time} + \text{Miss Rate}_{\text{I}\$} \times \text{Miss Penalty})\, + \\ [.5em]
+        & (\%\text{Data})\, \times \\ [.5em]
+        & (\text{Hit Time} + \text{Miss Rate}_{\text{D}\$} \times \text{Miss Penalty})
+    \end{array}
+\end{equation}
+
+\begin{examplebox}[: Harvard Architecture]
+    Assumptions:
+    \begin{itemize}
+        \item 16 KB I\$ with Miss Rate $= 0.64\%$
+        \item 16 KB D\$ with Miss Rate $= 6.47\%$
+        \item 32 KB Unified Cache with Aggregate Miss Rate $= 1.99\%$
+        \item $33\%$ of accesses are loads/stores, so:
+        \begin{itemize}
+            \item $75\%$ accesses are instructions
+            \item $25\%$ accesses are data
+        \end{itemize}
+        \item Hit Time $=$ 1 cycle, Miss Penalty $=$ 50 cycles
+        \item \hl{Data hit has 1 more stall for Unified cache (only one port)}
+    \end{itemize}
+    \emph{Which cache is better?}
+
+    Calculate Harvard AMAT (equation \ref{eq: AMAT Harvard}):
+    \begin{equation*}
+        \begin{array}{rl}
+            \text{AMAT}_{\text{Harvard}} =& 0.75 \times (1 + 0.0064 \times 50) + 0.25 \times (1 + 0.0647 \times 50) \\ [.5em]
+            =& 0.75 \times (1 + 0.32) + 0.25 \times (1 + 3.235) \\ [.5em]
+            =& 0.75 \times 1.32 + 0.25 \times 4.235 \\ [.5em]
+            =& 0.99 + 1.05875 \\ [.5em]
+            =& 2.04875 \approx 2.05 \, \text{cycles}
+        \end{array}
+    \end{equation*}
+    Calculate AMAT (Unified cache):
+    \begin{equation*}
+        \begin{array}{rl}
+            \text{AMAT} =& 0.75 \times (1 + 0.0199 \times 50) + 0.25 \times (1 + 1 + 0.0199 \times 50) \\ [.5em]
+            =& 0.75 \times (1 + 0.995) + 0.25 \times (2 + 0.995) \\ [.5em]
+            =& 0.75 \times 1.995 + 0.25 \times 2.995 \\ [.5em]
+            =& 1.49625 + 0.74875 \\ [.5em]
+            =& 2.245 \approx 2.24 \, \text{cycles}
+        \end{array}
+    \end{equation*}
+    So \textbf{Harvard (separate I\$ and D\$)} gives \textbf{better performance} than Unified Cache, because AMAT (Average Memory Access Time) is less.
+\end{examplebox}
+
+\newpage
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{layer-group} \textbf{Miss Penalty Reduction: Second Level Cache (L2)}}
+\end{flushleft}
+\textbf{L1 cache} must be \textbf{very small and fast} (to match the fast CPU cycle time). But small cache, relatively \textbf{high miss rate}. Every miss in L1 would normally mean \textbf{access to slow main memory} (very expensive!).
+
+\highspace
+The solution is to \textbf{insert a larger, slower} \definition{L2 cache} between L1 and main memory. Thus:
+\begin{itemize}
+    \item If L1 misses, we first \textbf{try to find the data in L2}.
+    \item Only if L2 also misses, we go to \textbf{main memory}.
+\end{itemize}
+This \textbf{reduces the effective miss penalty} seen by the CPU.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[node distance=1cm, every node/.style={draw, align=center, minimum width=3cm, minimum height=1cm}]
+        \node (processor) {Processor};
+        \node (l1) [below=of processor] {L1 cache};
+        \node (l2) [below=of l1, minimum width=5cm] {L2 cache};
+        \node (memory) [below=of l2, minimum width=7cm] {Main Memory};
+    \end{tikzpicture}
+\end{figure}
+
+\noindent
+When using both L1 and L2 caches, first:
+\begin{equation*}
+    \text{AMAT} = \text{Hit Time}_{L1} + \text{Miss Rate}_{L1} \cdot \text{Miss Penalty}_{L1}    
+\end{equation*}
+where:
+\begin{equation*}
+    \text{Miss Penalty}_{L1} = \text{Hit Time}_{L2} + \text{Miss Rate}_{L2} \cdot \text{Miss Penalty}_{L2}
+\end{equation*}
+Thus, expanding:
+\begin{equation*}
+    \begin{array}{rl}
+        \text{AMAT} =& \text{Hit Time}_{L1} + \text{Miss Rate}_{L1}\, \cdot \\ [.5em]
+        & (\text{Hit Time}_{L2} + \text{Miss Rate}_{L2} \cdot \text{Miss Penalty}_{L2})
+    \end{array}
+\end{equation*}
+or simplified the \definitionWithSpecificIndex{AMAT}{Formula Memory Hierarchy: AMAT (L1, L2)}{} is:
+\begin{equation}
+    \begin{array}{rl}
+        \text{AMAT} =& \text{Hit Time}_{L1}\, + \\ [.5em]
+        & \text{Miss Rate}_{L1} \cdot \text{Hit Time}_{L2}\, + \\ [.5em]
+        & \text{Miss Rate}_{L1} \cdot \text{Miss Rate}_{L2} \cdot \text{Miss Penalty}_{L2}
+    \end{array}
+\end{equation}
+Each term captures: immediate L1 access, possible L2 access, and final access to main memory if L2 also misses.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Local vs Global Miss Rates}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Local Miss Rate}: misses divided accesses at that specific cache level. For example:
+    \begin{itemize}
+        \item L1 Local Miss Rate $=$ Misses at L1 $\div$ Accesses to L1
+        \item L2 Local Miss Rate $=$ Misses at L2 $\div$ Accesses to L2
+    \end{itemize}
+
+    \item \definition{Global Miss Rate}: misses at a level relative to \textbf{total CPU accesses}.
+    \begin{itemize}
+        \item For L1:
+        \begin{equation}
+            \text{Global Miss Rate}_{L1} = \text{Miss Rate}_{L1}
+        \end{equation}
+        \item For L2:
+        \begin{equation}
+            \text{Global Miss Rate}_{L2} = \text{Miss Rate}_{L1} \cdot \text{Miss Rate}_{L2}
+        \end{equation}
+    \end{itemize}
+    Global miss rate is what really matters, because it tells us \textbf{what percentage of memory accesses are so unlucky} that they: miss in L1 (fast small cache), miss in L2 (bigger slower cache), go down to main memory (very slow).
+\end{itemize}
+
+\begin{examplebox}[: Local vs Global Miss Rates]
+    Let us consider a computer with a L1 cache and L2 cache memory hierarchy. Suppose that in 1000 memory references there are 40 misses in L1 and 20 misses in L2. \emph{What are the various miss rates?}
+    \begin{itemize}
+        \item L1 Miss Rate:
+        \begin{equation*}
+            \frac{40}{1000} = 4\%
+        \end{equation*}
+        \item L2 Local Miss Rate:
+        \begin{equation*}
+            \frac{20}{40} = 50\%
+        \end{equation*}
+        \item L2 Global Miss Rate:
+        \begin{equation*}
+            \text{Miss Rate}_{L1} \cdot \text{Miss Rate}_{L2} = 4\% \cdot 50\% = 2\%
+        \end{equation*}
+    \end{itemize}
+    Thus, only 2\% of all CPU memory accesses end up reaching main memory.
+\end{examplebox}
+
+\noindent
+Adding an L2 cache:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textbf{Increases hit rate} (fewer accesses to slow main memory),
+    \item \textbf{Reduces effective miss penalty},
+    \item \textbf{Improves CPU performance} by reducing memory stall cycles.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{sitemap} \textbf{Impact of Memory Hierarchy on CPU Execution Time}}
+\end{flushleft}
+Without cache every memory access would go directly to main memory (very slow). With cache:
+\begin{itemize}
+    \item Most accesses are \textbf{fast} (cache hits),
+    \item Only a few accesses are \textbf{slow} (cache misses).
+\end{itemize}
+Thus, \textbf{memory stalls} (waiting for memory) become part of the CPU execution time. Therefore, the CPU total execution time depends on:
+\begin{itemize}
+    \item \textbf{CPU execution cycles} (doing normal instruction work),
+    \item \textbf{Memory stall cycles} (waiting for slow memory).
+\end{itemize}
+The formal formula for CPU time is:
+\begin{equation*}
+    \text{CPU Time} = (\text{CPUexec Cycles} + \text{Memory Stall Cycles}) \times T_{\text{CLK}}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $T_{CLK}$: clock cycle time.
+    \item \textbf{CPUexec Cycles}: cycles needed for normal instruction execution (ALU operations, Load/Store assuming all hits).
+    \begin{equation}
+        \text{CPUexec Cycles} = \text{IC} \times \text{CPI}_{\text{exec}}
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item IC: Instruction Count.
+        \item $\text{CPI}_{\text{exec}}$: ideal CPI \textbf{without considering cache misses}.
+    \end{itemize}
+
+    \item \textbf{Memory Stall Cycles}: extra cycles lost because of memory misses. Memory stall cycles are caused by misses times penalty per miss. Specifically:
+    \begin{equation}
+        \text{Memory Stall Cycles} = \text{IC} \times \text{Misses per Instruction} \times \text{Miss Penalty}
+    \end{equation}
+    And:
+    \begin{equation}\index{Memory Accesses per Instruction (MAPI)}
+        \begin{array}{rl}
+            \text{Misses per Instruction} =& \dfrac{\text{\# misses}}{\text{IC}} \times \dfrac{\text{\# mem. accesses}}{\text{IC}} \times \text{Miss Rate} \\ [1.5em]
+            =& \text{MAPI} \times \text{Miss Rate}
+        \end{array}
+    \end{equation}
+    (where MAPI is Memory Accesses per Instruction); Therefore:
+    \begin{equation}
+        \text{Memory Stall Cycles} = \text{IC} \times \text{MAPI} \times \text{Miss Rate} \times \text{Miss Penalty}
+    \end{equation}
+\end{itemize}
+Putting it all together, we get the \definitionWithSpecificIndex{Full CPU Time formula}{Formula Memory Hierarchy: Full CPU Time}{}:
+\begin{equation}
+    \text{CPU Time} = \text{IC} \cdot (\text{CPI}_{\text{exec}} + \text{MAPI} \cdot \text{Miss Rate} \cdot \text{Miss Penalty}) \cdot T_{CLK}
+\end{equation}
+\newpage
+\noindent
+This formula shows \textbf{both}: the ``normal'' CPU work, and the ``extra time'' lost due to cache misses. These are also \textbf{(ideal) special cases}:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Ideal cache (100\% hits)}}:
+    \begin{equation*}
+        \text{CPU Time} = \text{IC} \times \text{CPI}_{\text{exec}} \times T_{CLK}
+    \end{equation*}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{No cache (100\% misses)}}:
+    \begin{equation*}
+        \text{CPU Time} = \text{IC} \times (\text{CPI}_{\text{exec}} + \text{MAPI} \times \text{Miss Penalty}) \times T_{CLK}
+    \end{equation*}
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Including Pipeline Stalls}}. If we also want to consider \textbf{pipeline stalls} (caused by hazards like data dependencies), the full CPU Time becomes:
+\begin{equation}
+    \begin{array}{rl}
+        \text{CPU Time} =& \text{IC} \times (\text{CPI}_{\text{exec}} + \text{Stalls per Instruction}\, + \\ [.5em]
+                         & \phantom{\text{IC} \times (} \text{MAPI} \times \text{Miss Rate} \times \text{Miss Penalty})\, \times \\ [.5em]
+                         & T_{CLK}
+    \end{array}
+\end{equation}
+Where \textbf{Stalls per Instruction} is the \hl{average extra cycles lost per instruction due to pipeline hazards}. So we can see that \textbf{pipeline hazards} and \textbf{memory ``misses''} both \textbf{contribute to processor slowdowns}.
+
+\highspace
+This is important because even if we build the fastest CPU core in the world, if our memory system is slow, our real performance will be bad! Memory system design (good caches, good pipelines) is \textbf{essential} for real CPU performance.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Memory Stalls in L1 and L2 Caches}}
+\end{flushleft}
+In a \textbf{hierarchical cache system}:
+\begin{itemize}
+    \item A memory access \textbf{first} tries L1,
+    \item If \textbf{L1 misses}, tries \textbf{L2},
+    \item If \textbf{L2 also misses}, goes to \textbf{main memory} (very slow).
+\end{itemize}
+Each \textbf{level of cache} can \textbf{introduce extra stall cycles}:
+\begin{itemize}
+    \item Stall cycles after an L1 miss $\rightarrow$ time to access L2.
+    \item Stall cycles after an L2 miss $\rightarrow$ time to access main memory.
+\end{itemize}
+Average \definitionWithSpecificIndex{memory stall cycles per instruction}{Formula Memory Hierarchy: Memory stall cycles per instruction}{} (considering both L1 and L2) is:
+\begin{equation}
+    \begin{array}{rl}
+        \text{Memory stall cycles per instruction} =& (\text{Misses}_{L1} \cdot \text{Hit Time}_{L2})\, + \\ [.5em]
+        & (\text{Misses}_{L2} \cdot \text{Miss Penalty}_{L2})
+    \end{array}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\text{Misses}_{L1} =$ Misses per instruction at L1.
+    \item $\text{Misses}_{L2} =$ Misses per instruction at L2.
+    \item $\text{Hit Time}_{L2} =$ Time to access L2 cache (after L1 miss).
+    \item $\text{Miss Penalty}_{L2} =$ Time to access main memory (after L2 miss).
+    \item $(\text{Misses}_{L1} \cdot \text{Hit Time}_{L2}) =$ The \textbf{first term} is for accesses that hit in L2 (still slower than L1 but faster than main memory).
+    \item $(\text{Misses}_{L2} \cdot \text{Miss Penalty}_{L2}) =$ The \textbf{second term} is for accesses that miss in both L1 and L2 (very slow).
+\end{itemize}
+If we want to \textbf{find misses per instruction}, they depend on MAPI (Memory Accesses Per Instruction) and miss rates:
+\begin{itemize}
+    \item \textbf{Misses at L1 per instruction}
+    \begin{equation*}
+        \text{Misses}_{L1} = \text{MAPI} \times \text{Miss Rate}_{L1}
+    \end{equation*}
+    \item \textbf{Misses at L2 per instruction}
+    \begin{equation*}
+        \text{Misses}_{L2} = \text{MAPI} \times \text{Global Miss Rate}_{L2}
+    \end{equation*}
+    Where:
+    \begin{equation*}
+        \text{Global Miss Rate}_{L2} = \text{Miss Rate}_{L1} \times \text{Miss Rate}_{L2}
+    \end{equation*}
+\end{itemize}
+Considering everything, the \definitionWithSpecificIndex{Final Full CPU Time Formula}{Formula Memory Hierarchy: Final Full CPU Time Formula}{} is:
+\begin{equation}
+    \text{CPU Time} = \text{IC} \times (\text{CPI}_{\text{exec}} + \text{Memory stall cycles per instruction}) \times T_{\text{CLK}}    
+\end{equation}
+Where:
+\begin{equation}
+    \begin{array}{rl}
+        \text{Memory stall cycles per instruction} =& (\text{MAPI}\, \times \\ [.3em]
+        & \phantom{(} \text{Miss Rate}_{L1}\, \times \\ [.3em]
+        & \phantom{(} \text{Hit Time}_{L2})\, + \\ [.3em]
+        & (\text{MAPI}\, \times \\
+        & \phantom{(} \text{Miss Rate}_{L1}\, \times \\
+        & \phantom{(} \text{Miss Rate}_{L2}\, \times \\
+        & \phantom{(} \text{Miss Penalty}_{L2})
+    \end{array}
+\end{equation}
+Putting it all together, the CPU Time is:
+\begin{equation}
+    \text{IC} \cdot \left( \text{CPI}_{\text{exec}} + \text{MAPI} \cdot (\text{MR}_{L1} \cdot \text{HT}_{L2} + \text{MR}_{L1} \cdot \text{MR}_{L2} \cdot \text{MP}_{L2}) \right) \cdot T_{\text{CLK}}
+\end{equation}
+This is the most complete formula that accounts for:
+\begin{itemize}
+    \item L1 and L2 cache effects,
+    \item Main memory access,
+    \item How memory stalls degrade CPU performance.
+\end{itemize}

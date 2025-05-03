@@ -19,6 +19,7 @@
 - add `Performance Evaluation`
   - add `Basic Concepts and Performance Metrics`
   - add `Amdahl's Law`
+  - add `Pipelined Processors`
 
 --------------------
 

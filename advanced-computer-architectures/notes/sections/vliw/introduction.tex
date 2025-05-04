@@ -1,0 +1,106 @@
+\section{VLIW (Very Long Instruction Word)}
+
+\subsection{Introduction}
+
+Traditional \textbf{compilers} use \textbf{static code scheduling} to exploit Instruction-Level Parallelism (ILP). Key tasks of the compiler:
+\begin{itemize}
+    \item  Detect \textbf{parallelizable} instructions considering: Hardware resource constraints and Data dependencies.
+    \item \textbf{Schedule} instructions to execute \textbf{in parallel} when possible.
+    \item Otherwise, \textbf{insert \texttt{NOP}s} (No Operations) if no safe parallel execution is possible.
+\end{itemize}
+Statically scheduled processors trust the compiler to ``fill the pipeline'' and avoid hazards at compile time.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{VLIW Processors: Alternative Way to Extract ILP}}
+\end{flushleft}
+\definition{VLIW (Very Long Instruction Word)} \textbf{processors} are a class of architectures designed to \textbf{execute multiple operations in parallel during a single clock cycle}, but unlike superscalar processors, they \textbf{rely on the compiler} rather than on dynamic hardware mechanisms \textbf{to detect and schedule parallelism}.
+
+\highspace
+The fundamental idea behind VLIW is to \textbf{group several independent operations together into a single long instruction word}, called a \hl{bundle}. This bundle is \textbf{composed of several fixed slots}, each one \textbf{corresponding to a different functional unit in the processor}, such as an integer ALU, a floating-point unit, a load/store unit, or a branch unit.
+
+\highspace
+For example, in a 5-issue VLIW processor, a single bundle would typically carry up to five operations: integer, floating-point, load/store, branch, etc.
+
+\highspace
+The \textbf{key difference} compared \textbf{to traditional superscalar} processors lies in who decides what can run in parallel. In superscalar designs, the hardware dynamically analyzes dependencies between instructions at runtime, which requires complex circuitry for hazard detection and scheduling. In VLIW architectures, this \hl{analysis is performed entirely at compile time}. The \textbf{compiler is responsible for}:
+\begin{itemize}
+    \item \textbf{Statically identify} independent operations.
+    \item \textbf{Solve structural hazards} (e.g., two operations trying to use the same hardware unit).
+    \item \textbf{Solve data hazards} (dependencies between instructions).
+    \item Insert \textbf{NOPs} when necessary.
+\end{itemize}
+When no useful instruction is available for a particular slot, the compiler inserts a \texttt{NOP} (no-operation). In cases where conflicts cannot be avoided, NOPs are inserted into the bundle to fill empty slots.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why move to Compiler?}}
+\end{flushleft}
+The problem with Superscalar is that the hardware requires complex dynamic scheduling and dependency checking, which \textbf{costs area and power}.
+
+\highspace
+\textbf{VLIW Idea} is:
+\begin{itemize}
+    \item Push \textbf{complexity} to the \textbf{compiler}.
+    \item \textbf{Compiler groups parallel operations} into a \textbf{single bundle}.
+    \item No need for runtime dependency checking anymore.
+\end{itemize}
+The VLIW paradigm is characterized by the use of \textbf{very wide instruction words}, \textbf{each containing multiple independent operations} (``syllables''). A multiple-issue VLIW processor typically features specialized units for integer, floating-point, memory access, and branch instructions. For example, a 4-issue VLIW processor will have four operation slots per bundle, each connected to a different unit.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{list-ul} \textbf{Multiple-issue VLIW: Operation Latencies}}
+\end{flushleft}
+An important aspect in VLIW scheduling is the \textbf{management of operation latencies}. Each operation type may require a \textbf{different number of clock cycles to complete}. Integer operations, memory accesses, and floating-point computations may all have varying latencies, and these differences must be carefully considered during scheduling. The \textbf{compiler must plan the execution} so that operations complete in the correct order and without causing unnecessary stalls in the pipeline.
+
+\highspace
+In summary, \hl{VLIW architectures represent a shift of complexity from the hardware to the compiler}, aiming for more efficient and simpler processor designs while demanding sophisticated compiler techniques to fully exploit available parallelism.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Single Program Counter and Branch Management}}
+\end{flushleft}
+In a VLIW processor, even though multiple operations are issued simultaneously, the architecture still uses a \textbf{single program counter} to fetch instructions. Each instruction fetched corresponds to a \textbf{bundle}, which can contain multiple parallel operations.
+
+\highspace
+Importantly, within each bundle, there can be \textbf{at most one branch instruction} that affects control flow. This constraint simplifies the handling of branches, making it easier for the processor to predict and manage the program's execution path.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Shared Multi-Ported Register File}}
+\end{flushleft}
+Since a VLIW processor issues multiple operations in parallel, the \textbf{register file must support multiple simultaneous reads and writes}. In a typical 4-issue VLIW machine, the register file needs to have enough ports to read \textbf{eight source operands} and write \textbf{four destination results} every clock cycle.
+
+\highspace
+This requirement implies a \textbf{shared, multi-ported register file}, which is one of the non-trivial aspects of the hardware design. It ensures that all functional units can access their operands without creating bottlenecks.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Importance of Parallelism and the Use of NOPs}}
+\end{flushleft}
+To achieve high performance, the \textbf{compiler must ensure that the source code has enough parallelism} to fill all the available operation slots in each bundle. When \textbf{sufficient independent instructions are not available}, \textbf{NOPs are inserted} into the empty slots. This insertion preserves the fixed structure of the bundle but can lead to inefficiencies if the application does not expose enough ILP.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Pipeline Organization}}
+\end{flushleft}
+VLIW processors often use a \textbf{pipelined execution model} similar to traditional RISC architectures. A standard pipeline might include stages like \textbf{Instruction Fetch (IF)}, \textbf{Instruction Decode (ID)}, \textbf{Register Read (RR)}, \textbf{Execution (EX)}, and \textbf{Write Back (WB)}.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/vliw-arch.pdf}
+\end{figure}
+
+\highspace
+In the previous figure, a \textbf{5-stage pipeline} is used, with each bundle passing through these stages. Each operation within a bundle proceeds independently through the functional units connected to the pipeline.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Operation Dispatch and Decode}}
+\end{flushleft}
+If the architecture dedicates \textbf{one functional unit per slot}, the decode stage becomes relatively simple. Each operation is directed straight to its corresponding functional unit for execution without the need for complex arbitration.
+
+\highspace
+However, if there are \textbf{more functional units than slots}, meaning there is a surplus of parallel hardware resources, the architecture must include a \textbf{dispatch network}. This network is responsible for forwarding each operation, along with its operands, to the appropriate available functional unit. In this way, the design of the dispatch system depends heavily on the organization of functional units relative to the number of issue slots defined by the instruction bundle format.

@@ -6,6 +6,8 @@ The notes are taken from the books required for the course:
 
 You can view/download the PDF [here](notes/advanced-computer-architectures.pdf). In the [notes folder](notes/), you can also see the source code.
 
+I also made a [simple formulary](notes/formulary.pdf) to take to the exam.
+
 For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
 ## Course Syllabus

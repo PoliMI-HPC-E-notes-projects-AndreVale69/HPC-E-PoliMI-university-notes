@@ -33,6 +33,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="advanced-computer-architectures">Course Details</a></li>
             <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF</a></li>
+            <li><a href="advanced-computer-architectures/notes/formulary.pdf">Formulary</li>
         </ul></td>
     </tr>
     <tr>

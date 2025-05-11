@@ -1,0 +1,83 @@
+\subsection{Data dependencies}
+
+In VLIW architectures, \textbf{data dependencies}:
+\begin{itemize}
+    \item True dependencies (RAW: Read After Write)
+    \item Anti-dependencies (WAR: Write After Read)
+    \item Output dependencies (WAW: Write After Write)
+\end{itemize}
+Are \textbf{handled entirely by the compiler}. During the compilation process, the \textbf{compiler analyzes the functional unit latencies and rearranges the instruction sequence to eliminate conflicts}. When dependencies cannot be resolved by reordering, the compiler inserts \texttt{NOP}s to delay operations and maintain correct execution order.
+
+\highspace
+This static management of hazards is \textbf{crucial} because the hardware in VLIW processors does not dynamically detect or resolve data hazards during execution.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Operation Latency Management}}
+\end{flushleft}
+In order to correctly schedule instructions, the compiler must also consider \textbf{operation latencies}.
+
+\highspace
+If an \textbf{operation}, such as a multiplication, \textbf{requires multiple cycles} to complete, the \textbf{compiler must account for this delay explicitly}. It can either rearrange independent instructions to fill the delay or insert \texttt{NOP}s to stall dependent instructions until the result is ready.
+
+\highspace
+For instance, if an instruction \texttt{C = A * B} has a latency of two cycles, the compiler may schedule a \texttt{NOP} after it, before allowing an instruction that depends on \texttt{C} to execute. This \textbf{careful latency management ensures that data hazards are avoided} and that results are available when needed, even when using pipelined functional units.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{WAR, WAW, and Structural Hazards}}
+\end{flushleft}
+Besides true dependencies, \textbf{anti-dependencies (WAR)} and \textbf{output dependencies (WAW)} are also statically resolved at compile time. The compiler can manage these by:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Appropriately \textbf{choosing the timing of operations}.
+    \item Using \textbf{register renaming} techniques to avoid conflicts.
+\end{itemize}
+
+\highspace
+\textbf{Structural hazards}, such as two operations trying to use the same hardware resource simultaneously, are similarly \textbf{resolved} by the compiler, either \textbf{through scheduling decisions} or \textbf{resource management strategies}.
+
+\newpage
+
+\noindent
+In addition to data and structural hazards, the compiler may provide \textbf{static branch prediction hints}. However, if the \textbf{prediction is wrong}, it is the \textbf{hardware's responsibility} to detect the misprediction and flush the pipeline, just as in \emph{traditional architectures}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Maintaining In-Order Write-Back}}
+\end{flushleft}
+An \important{important constraint} in VLIW processors is that \textbf{all operations in a bundle should complete their write-back stage at the same clock cycle}. This \hl{synchronization prevents structural hazards in accessing the register file} and \hl{avoids WAR and WAW hazards during register writes}.
+
+\highspace
+If operations within a bundle have \textbf{different latencies}, they are \textbf{all forced to align to the longest latency operation} among them. \textbf{Otherwise}, if operations were allowed to complete independently, \textbf{out-of-order write-backs} would occur, and the \textbf{processor would require additional hardware to track and resolve register file conflicts}, precisely the kind of complexity VLIW designs try to avoid.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Register Pressure}}
+\end{flushleft}
+One important issue in VLIW architectures is the problem of \textbf{register pressure}. Because VLIW bundles can issue multiple operations simultaneously, and because many \textbf{operations have multicycle latencies}, a \textbf{large number of registers may be occupied at the same time by intermediate results waiting to complete}.
+
+\highspace
+For instance, if a bundle contains two floating-point operations, each requiring five clock cycles to complete, their destination registers remain occupied for the entire duration of those five cycles. Since a VLIW processor continues issuing new bundles each cycle, this quickly accumulates a large number of active registers. In the given example, five bundles are issued while the first two results are still pending, resulting in up to twenty operations competing for register resources.
+
+\highspace
+The situation is further exacerbated by \textbf{register renaming}, a technique used by the compiler to solve WAR (Write After Read) and WAW (Write After Write) hazards statically. Register renaming:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Avoids conflicts}}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Increases the number of physical register needed}}, thereby amplifying register pressure.
+\end{itemize}
+
+\highspace
+Managing register pressure is therefore a \textbf{crucial task} for the compiler, often requiring careful allocation strategies or even \textbf{spilling values temporarily to memory} when the \textbf{register file becomes saturated}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Dynamic Events in VLIW}}
+\end{flushleft}
+Although VLIW processors rely heavily on static compilation, \textbf{some dynamic events cannot be fully predicted or controlled at compile time}.
+\begin{itemize}
+    \item A common example is the \important{data cache miss}. While the latency of a cache miss is known in general terms (e.g., memory access delay), whether a particular memory access will cause \textbf{a miss depends on runtime conditions}. If a cache miss occurs, the \textbf{processor experiences a stall}, \textbf{which was not anticipated during static scheduling}.
+    \item Another dynamic event is the \important{branch misprediction}. Although the compiler may provide static branch hints, actual program execution might differ. When a \textbf{branch is mispredicted}, the \textbf{processor must dynamically flush the pipeline} to discard speculative instructions that were fetched and partially executed under the wrong control flow assumption.
+\end{itemize}
+In both cases, while VLIW simplifies hardware by eliminating dynamic scheduling for regular instruction flow, it still requires mechanisms to handle these unpredictable runtime events.
+

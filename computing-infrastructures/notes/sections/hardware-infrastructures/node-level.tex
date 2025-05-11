@@ -744,32 +744,102 @@ Common disk scheduling algorithms are:
 
 \paragraph{SSD}\label{paragraph: SSD}
 
-The \definition{solid-state drive (SSD)} does not have mechanical or moving parts like an HDD. It is built out of transistors (like memory and processors). It has higher performance than HDD.
+A \definition{Solid-State Drive (SSD)} is a \textbf{non-volatile storage device} that retains data without power. Unlike traditional Hard Disk Drives (HDDs), an SSD has \textbf{no mechanical parts}, \emph{no spinning platters}, \emph{no moving heads}. Internally, it's made of \textbf{transistors}, similar to those found in CPUs and RAM. It includes a \textbf{controller}, which \hl{manages read/write operations}, wear leveling, garbage collection, and interface emulation. SSDs often adopt HDD-compatible interfaces (e.g., SATA, PCIe/NVMe) and form factors (2.5", M.2) for backward compatibility. Offers \textbf{higher performance} than HDDs, especially in \textbf{random access latency} and IOPS.
 
 \highspace
-It stores bits in cells. Each cell can have:
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Flash Cell Technologies: Storing Bits in NAND}}
+\end{flushleft}
+Modern SSDs use \textbf{NAND Flash Memory}, where data is stored in memory \textbf{cells}. Each cell can store one or more bits:
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c | c | l @{}}
+            \toprule
+            Cell Type & Bits per Cell & Characteristics \\
+            \midrule
+            \textbf{SLC} & 1 & Fastest, most durable (up to 100k cycles), expensive \\ [.3em]
+            \textbf{MLC} & 2 & Slower than SLC, less durable, more dense            \\ [.3em]
+            \textbf{TLC} & 3 & Used in most consumer SSDs; cheaper                  \\ [.3em]
+            \textbf{QLC} & 4 & High density, lower endurance                        \\ [.3em]
+            \textbf{PLC} & 5 & Experimental/extremely high density, low endurance   \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
+
+\noindent
+\hl{Increasing} the number of \hl{bits per cell} improves \textbf{capacity and cost-efficiency}, but \textbf{reduces endurance} and \textbf{performance}. Each cell type requires more precise voltage thresholds and incurs \textbf{more error correction and wear}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Internal Organization}}
+\end{flushleft}
+Solid-State Drives are built on NAND flash memory, which is \textbf{internally structured in a hierarchical manner} to optimize storage density and access efficiency.
 \begin{itemize}
-    \item Single-Level Cell (SLC), a single bit per cell.
-    \item Multi-Level Cell (MLC), two bits per cell.
-    \item Triple-Level Cell (TLC), three bits per cell.
-    \item And so on... QLC, PLC, etcetera.
-\end{itemize}
-Internally, the SSD has a lot of NAND flashes, which are organized into Pages and Blocks. Some terminology:
-\begin{itemize}
-    \item A \definition{Page} contains \textbf{multiple logical block} (e.g. 512 B - 4 KB) \textbf{addresses} (LBAs). It is the \textbf{smallest unit that can be read/written}. It is a sub-unit of an erase block and consists of the number of bytes which can be read/written in a single operation. The states of each page are:
+    \item \definition{Cell}: Basic storage unit (SLC, MLC, TLC, etc.) storing bits via trapped electrons.
+
+
+    \item \definition{Page}: The \textbf{smallest unit that can be read or written}. Typically 4-16 KB.
+
+    \textbf{Pages} can be:
     \begin{itemize}
-        \item \index{Erased Page}\index{Empty Page} \textbf{Empty} (\texttt{ERASED}): it does not contain data.
-        \item \index{Invalid Page}\index{Dirty Page} \textbf{Dirty} (\texttt{INVALID}): it contains data, but this data is no longer in use (or never used).
-        \item \index{In Use Page}\index{Valid Page} \textbf{In use} (\texttt{VALID}): the page contains data that can be read.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Valid (In-use)}}, contain active, readable data.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Dirty (Invalid)}}, hold obsolete or overwritten data.
+        \item \textbf{Empty (Erased)}, ready to be programmed (written).
     \end{itemize}
 
-    \item A Block (or \definition{Erase Block}) typically consists of \textbf{multiple pages} (e.g. 64) with a total capacity of around 128-256 KB. It is the \textbf{smallest unit that can be erased}.
+
+    \item \definition{Block}: The \textbf{smallest unit that can be erased}. Usually contains 64-256 pages.
 \end{itemize}
+A block might have a capacity of 128-256 KB, composed of many smaller pages. Each \textbf{page} maps to a \definition{Logical Block Address (LBA)} visible to the OS.
 
 \highspace
-When passing from the HDD to SDD, there is a problem known as Write Amplification (WA). \definition{Write amplification (WA)}\label{Write amplification (WA)} is an \textbf{undesirable phenomenon associated with flash memory and solid-state drives (SSDs)} where the actual amount of information physically written to the storage media is a multiple of the logical amount intended to be written.
+\begin{deepeningbox}[: Logical Block Address (LBA)]
+    The \definition{Logical Block Address (LBA)} is a key abstraction used by operating systems and file systems to \textbf{refer to storage locations} on a disk (HDD or SSD) in a simple, sequential manner.
 
-\begin{examplebox}
+    \highspace
+    \textbf{LBA is an index number} that uniquely identifies a fixed-size block of data (typically 512 bytes or 4 KB) on a storage device. It \textbf{hides the physical layout} of the drive (cylinders, heads, sectors) and presents a \textbf{flat address space} to the OS.
+
+    \highspace
+    \emph{How does it work with SSDs?} The OS issues read/write commands to specific LBA addresses. Internally, the SSD controller translates each LBA to a \textbf{physical location} in flash memory using a structured called the \textbf{Flash Translation Layer (FTL)}. This mapping is \textbf{dynamic} due to wear leveling, garbage collection, and bad block management.
+
+    \highspace
+    In summary, the LBA is how the operating system sees the disk. Instead, the physical address is where the data actually resides inside the SSD.
+\end{deepeningbox}
+
+\noindent
+Key operations are:
+\begin{itemize}
+    \item \texttt{READ}: reads data from a \textbf{page}.
+    \item \texttt{PROGRAM}: writes to a \textbf{page} (only if it's empty).
+    \item \texttt{ERASE}: wipes an entire \textbf{block} (required before rewriting any page in that block).
+\end{itemize}
+The \textbf{important limitation} is that flash memory \textbf{cannot overwrite data in place}, we have to erase the whole block before reusing it. This lead to a \textbf{read-modify-erase-write cycle} even for simple updates.
+
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Write Amplification Phenomenon}}
+\end{flushleft}\label{Write amplification (WA)}
+\definition{Write Amplification} refers to the phenomenon where \textbf{the amount of actual data written to the NAND flash is greater than what the host system requested to write}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{\emph{Why does Write Amplification happen in SSDs?}}} It stems from the \textbf{erase-before-write constraint} of NAND flash memory:
+\begin{enumerate}
+    \item \textbf{(Flash) Pages can only be written once}, and to change them, we must erase the \textbf{entire block} (which may contain many pages).
+
+    \item If we modify even a \textbf{small piece of data}, the SSD:
+    \begin{itemize}
+        \item Allocates a new page for the updated data.
+        \item Marks the old page as invalid (dirty).
+        \item Eventually, \textbf{copies all valid pages} from a block, \textbf{erases the block}, and \textbf{rewrites it} (this is called \textbf{garbage collection}).
+    \end{itemize}
+\end{enumerate}
+So a 4KB write might cause \textbf{hundreds of KBs} to be written internally!
+
+\begin{examplebox}[: Write Amplification]
     Given a hypothetical SSD:
     \begin{itemize}
         \item Page Size: 4 KB
@@ -778,51 +848,101 @@ When passing from the HDD to SDD, there is a problem known as Write Amplificatio
         \item Read Speed: 2 KB/s
         \item Write Speed: 1 KB/s
     \end{itemize}
-    Let us write a 4 KB text file to the brand-new SSD. The overall writing time is 4 seconds (write speed $\times$ file dimension, 1 KB/s $\times$ 4 KB).
-
-    \newpage
-
-    Now, let us write an 8 KB picture file for the almost brand-new SSD; thankfully, there is space. The overall Writing time is 8 seconds, and the calculation is the same as above.
-
-    \begin{center}
-        \includegraphics[width=.7\textwidth]{img/SSD-1.pdf}
-    \end{center}
-    Now, consider that the first file inserted on the first page is unnecessary.
-
-    \highspace
-    Finally, let's write a 12 KB pic to the SSD. Theoretically, the image should take 12 seconds. However, it is wrong! The SSD has only two empty pages and one dirty page (invalid). Then, the operations are:
     \begin{enumerate}
-        \item Read block into cache.
-        \item Delete page from cache (set dirty page).
-        \item Write a new picture into the cache.
-        \item Erase the old block on the SSD.
-        \item Write cache to SSD.
+        \item Write a 4 KB \texttt{.txt} file.
+        \begin{itemize}
+            \item One page used (page size $\div$ file dimension);
+            \item Time: 4 seconds (write speed $\times$ file dimension, 1 KB/s $\times$ 4 KB).
+        \end{itemize}
+
+        \item Write an 8 KB \texttt{.png}
+        \begin{itemize}
+            \item Takes 2 pages;
+            \item There are 3 pages used in total;
+            \item Time: 8 seconds.
+        \end{itemize}
+        \begin{center}
+            \includegraphics[width=.7\textwidth]{img/SSD-1.pdf}
+        \end{center}
+
+        \item Delete the 4 KB \texttt{.txt} file
+        \begin{itemize}
+            \item The first page is now \textbf{invalid} (dirty), but still \textbf{physically used};
+            \item The SSD cannot reuse it until the whole block is erased.
+        \end{itemize}
+
+        \item Write a 12 KB image
+        \begin{itemize}
+            \item OS sees ``3 free pages'', but \textbf{only 2 are truly empty};
+            \item Can't fit 12 KB in 2 empty pages.
+        \end{itemize}
+
+        \newpage
+
+        \emph{What happens internally?}
+        \begin{enumerate}
+            \item SSD reads the 8 KB of still-valid pages from NAND into a temporary cache.
+
+            This step takes 4 seconds (size to read $\div$ read speed).
+            \item Marks the 1st page (old \texttt{.txt}, step 1) as discarded.
+            \item Places the new 12 KB into the cache.
+            \item \textbf{Erases the entire 20 KB block} (this is mandatory before rewriting any page)
+            \item \textbf{Rewrites}:
+            \begin{itemize}
+                \item 8 KB old data
+                \item 12 KB new data
+            \end{itemize}
+            This step takes 20 seconds to write to the NAND.
+        \end{enumerate}
     \end{enumerate}
-    The OS only thought it was writing 12 KBs of data when the SSD had to read 8 KBs (2 KB/s) and then write 20 KBs (1 KB/s), the entire block. The writing should have taken 12 seconds but took 4 + 20 = 24 seconds, resulting in a write speed of 0.5 KB/s, not 1 KB/s.
+    The OS thought it was just a 12 KB write and expected only 12 seconds. But the SSD actually wrote 20 KB and read 8 KB (24 seconds total).
+
+    This is a case of write amplification caused by limited empty pages, erase-before-write constraint, and the need to preserve valid data.
 \end{examplebox}
 
 \noindent
 A direct mapping between Logical and Physical pages is not feasible inside the SSD. Therefore, each SSD has an FTL component that makes the SSD \emph{look like an HDD}.
 
 \highspace
-The \definition{Flash Translation Layer (FTL)} is placed in the hierarchy between the \textbf{File System} and \textbf{Flash Memory}. It aims to do \textbf{three main actions}:
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{brain} \textbf{Flash Translation Layer (FTL)}}
+\end{flushleft}
+The \definition{Flash Translation Layer (FTL)} is the hidden ``brain'' of an SSD, it \textbf{makes NAND flash usable in the same way as a traditional hard disk}, despite its very different constraints.
+
+\highspace
+\textbf{Translates Logical Block Addresses (LBA)} (see page \pageref{Write amplification (WA)}) from the operating system into actual \textbf{physical locations} in the NAND flash. Also, it makes the SSD behave like an HDD to the OS (abstracts away erase-before-write and wear issues).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{\emph{Why We Need Translation?}}} Direct LBA to physical mapping isn't feasible because:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item Flash memory \textbf{can't overwrite in-place} (must erase first)
+    \item Pages are grouped into blocks and must be programmed \textbf{in order}.
+    \item Flash memory blocks \textbf{wear out over time}, requiring wear balancing.
+\end{itemize}
+The FTL responsibilities are:
 \begin{enumerate}
-    \item \textbf{Data Allocation} and \textbf{Address Translation}: It efficiently reduces Write Amplification effects (see page~\pageref{Write amplification (WA)}); the program pages within an erased block in order (from low to high pages), called \definition{Log-Structured FTL}.
-
-    \item \textbf{Garbage collection}: reuse of pages with old data (Dirty/Invalid).
-
-    \item \textbf{Wear levelling}: FTL should spread across the blocks of the flash, ensuring that all of the blocks of the device wear out roughly simultaneously.
+    \item \important{Address Mapping}. Maintains a \textbf{mapping table}, logical to physical page. Supports dynamic remapping when data is updated (e.g., a page becomes dirty and is relocated).
+    \item \important{Log-Structured Writes}. Uses log-structured techniques: \textbf{writes go to the next available page} in an erased block. It ensures writes are sequential (within a block), reducing write amplification and improving performance.
+    \item \important{Garbage Collection}. Identifies blocks full of \textbf{invalid/dirty pages}. Reads out remaining valid pages, erases the block, and rewrites valid data $+$ new data elsewhere. Necessary to free up space for future writes.
+    \item \important{Wear Leveling}. Flash cells can only endure a limited number of erases. FTL spreads out writes across all blocks to \textbf{prevent early death} of heavily used regions.
 \end{enumerate}
 
 \begin{examplebox}[: Log-Structured FTL]
+    Setup:
+    \begin{itemize}
+        \item \textbf{Page size}: 4 KB
+        \item \textbf{Block size}: 4 pages (total 16 KB per block)
+        \item \textbf{Initial condition}: all pages are marked \textbf{INVALID}
+        \item \textbf{Action}: perform a series of logical writes
+    \end{itemize}
     Assume that a page size is $4$ KB and a block consists of four pages. The write list is (\texttt{Write(pageNumber, value)}):
     \begin{itemize}
-        \item \texttt{Write(100, a1)}
-        \item \texttt{Write(101, a2)}
-        \item \texttt{Write(2000, b1)}
-        \item \texttt{Write(2001, b2)}
-        \item \texttt{Write(100, c1)}
-        \item \texttt{Write(101, c2)}
+        \item \texttt{Write(100, a1)}   $\rightarrow$ write value \texttt{a1} to logical page \texttt{100}
+        \item \texttt{Write(101, a2)}   $\rightarrow$ write value \texttt{a2} to logical page \texttt{101}
+        \item \texttt{Write(2000, b1)}  $\rightarrow$ write value \texttt{b1} to logical page \texttt{2000}
+        \item \texttt{Write(2001, b2)}  $\rightarrow$ write value \texttt{b2} to logical page \texttt{2001}
+        \item \texttt{Write(100, c1)}   $\rightarrow$ overwrite logical page \texttt{100} with value \texttt{c1}
+        \item \texttt{Write(101, c2)}   $\rightarrow$ overwrite logical page \texttt{101} with value \texttt{c2}
     \end{itemize}
     The steps are:
     \begin{enumerate}
@@ -836,7 +956,7 @@ The \definition{Flash Translation Layer (FTL)} is placed in the hierarchy betwee
             \includegraphics[width=.7\textwidth]{img/log-structured-ftl-2.png}
         \end{center}
 
-        \item Program pages in order and update mapping information (\texttt{Write(100, a1)}):
+        \item Program pages in order and update mapping information (first \texttt{Write(100, a1)}):
         \begin{center}
             \includegraphics[width=.8\textwidth]{img/log-structured-ftl-3.png}
         \end{center}
@@ -853,169 +973,262 @@ The \definition{Flash Translation Layer (FTL)} is placed in the hierarchy betwee
     \end{enumerate}
 \end{examplebox}
 
-\noindent
-When an existing page is updated, then the old data becomes obsolete. The \textbf{old versions of data are called garbage}, and (sooner or later) garbage pages must be reclaimed for new writes to take place.
-
 \highspace
-The \definition{Garbage Collection} is the \textbf{process of finding garbage blocks and reclaiming them}. It is a simple process for fully garbage blocks but more complex for partial cases.
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Garbage Collection Exists}}
+\end{flushleft}
+In SSDs, data cannot be updated in place, when a page is modified:
+\begin{itemize}
+    \item The \textbf{old version becomes obsolete} (marked \emph{invalid}).
+    \item The \textbf{new version} is written to a \textbf{fresh page}.
+    \item Over time, blocks fill with \textbf{invalid pages}, this is called \emph{garbage}.
+\end{itemize}
+\definition{Garbage Collection (GC)} is the process of \textbf{reclaiming space} by \textbf{erasing blocks that contain invalid pages}. It works like this:
+\begin{enumerate}
+    \item \important{Identify a block} that has invalid (dirty) pages.
+    \item \important{Copy} any \textbf{still-valid pages} into a new block.
+    \item \important{Erase} the \textbf{original block} completely (erasing works only at block granularity).
+    \item \important{Update} the \textbf{mapping table} to reflect new page locations.
+\end{enumerate}
 
 \begin{examplebox}[: how garbage collection works]
     The steps are:
     \begin{enumerate}
         \item Update request for existing data:
         \begin{center}
-            \includegraphics[width=.24\textwidth]{img/garbage-collection-1.pdf}
+            \includegraphics[width=.2\textwidth]{img/garbage-collection-1.pdf}
         \end{center}
 
         \item Find a free page, and save the new data:
         \begin{center}
-            \includegraphics[width=.15\textwidth]{img/garbage-collection-2.pdf}
+            \includegraphics[width=.13\textwidth]{img/garbage-collection-2.pdf}
         \end{center}
 
         \item This scenario may continue until there are not enough free blocks:
         \begin{center}
-            \includegraphics[width=.5\textwidth]{img/garbage-collection-3.pdf}
+            \includegraphics[width=.4\textwidth]{img/garbage-collection-3.pdf}
         \end{center}
 
         \item Collect valid pages into a free block:
         \begin{center}
-            \includegraphics[width=.5\textwidth]{img/garbage-collection-4.pdf}
+            \includegraphics[width=.4\textwidth]{img/garbage-collection-4.pdf}
         \end{center}
 
         \item Update the map table and erase invalid (obsolete) blocks:
         \begin{center}
-            \includegraphics[width=.5\textwidth]{img/garbage-collection-5.pdf}
+            \includegraphics[width=.4\textwidth]{img/garbage-collection-5.pdf}
         \end{center}
     \end{enumerate}
 \end{examplebox}
 
 \begin{flushleft}
-    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem 1: the Garbage Collection is too expensive!}}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Three Major Problems of SSD Architecture}}
 \end{flushleft}
-The Garbage Collection is \textbf{expensive}. It requires reading and rewriting of live data. Ideal garbage collection is a reclamation of a block that consists of only dead pages.
-
-\highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{check} \textbf{Partial solution}}
-\end{flushleft}
-Garbage Collection \textbf{costs depend on the amount of data blocks that must be migrated}. The \underline{\textbf{solution}} to alleviate the problem is to overprovision the device by \textbf{adding extra flash capacity} (cleaning can be delayed) and \textbf{running the garbage collection in the background} using less busy periods for the disk.
-
-\highspace
-\begin{flushleft}
-    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem 2: the Ambiguity of Delete}}
-\end{flushleft}
-When performing background Garbage Collection, the SSD assumes to know which pages are invalid. However, most file systems do not truly delete data. For example, on Linux, the \dquotes{delete} function is \texttt{unlink()}, removing the file meta-data but not the file itself.
 \begin{enumerate}
-    \item File is written on SSD
-    \item File is deleted
-    \item The Garbage Collection executes:
+    \item \important{Garbage Collection Is Expensive}. Garbage collection (GC) in SSDs is \textbf{unavoidable} due to the nature of NAND flash memory: flash \textbf{cannot overwrite pages}, only erase entire blocks.
+
+    It is so expensive because it requires reading valid data (read cost), rewriting that data (write cost), and erasing entire blocks. If blocks are \textbf{partially valid}, even small updates can trigger \textbf{large internal data movement}. This leads to write amplification, effective write speed and wear on NAND cells.
+
+    The \textbf{more valid data} in a block, the \textbf{higher the cost} of GC.
     \begin{itemize}
-        \item 9 pages look valid to the SSD;
-        \item BUT the OS knows only 2 pages are valid.
+        \item \textbf{Ideal case}: reclaim blocks with only invalid pages (no migration needed).
+        \item \textbf{Realistic case}: migrate live data, high overhead.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Mitigation Techniques}}
+    \begin{itemize}
+        \item \textbf{Overprovisioning}. Reserve extra flash capacity that the user can't see. More space, then delayed GC.
+        \item \textbf{Background GC}. Perform GC during \textbf{idle periods} to avoid disrupting foreground writes.
+        \item \textbf{Write buffering}. Use DRAM/SRAM to accumulate small writes and reduce fragmentation.
+        \item \textbf{Hot/Cold Separation}. Store frequently updated data (hot) separately from rarely updated data (cold).
+    \end{itemize}
+    
+    \item \important{The Ambiguity of Delete}. In traditional file systems (especially on HDDs), \textbf{deleting a file} simply:
+    \begin{itemize}
+        \item Removes the file's metadata (e.g., from the file system's directory tree).
+        \item Does \textbf{not erase or inform the disk that the data blocks are invalid}.
+    \end{itemize}
+    This behavior is fine for HDDs, which can overwrite sectors anytime. But for SSDs, this \textbf{creates a serious mismatch}.
+
+    SSDs rely on Garbage Collection (GC) to free space. GC assumes that \textbf{only invalid pages} can be discarded. However:
+    \begin{itemize}
+        \item The SSD sees no distinction between ``old'' and ``deleted'' data unless explicitly told.
+        \item So even \textbf{deleted files look valid} to the SSD.
+        \item When GC runs, it \textbf{copies all pages} it believes to be valid, including junk!
+    \end{itemize}
+    This causes SSDs to waste time and NAND endurance \textbf{preserving deleted data}.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How to Fix it: TRIM / UNMAP}}. Modern OSs and SSD interfaces support special commands: TRIM (SATA) and UNMAP (SCSI/NVMe). These commands allow the \textbf{OS to explicitly tell the SSD}: these Logical Block Addresses (LBAs) are no longer valid, feel free to erase them.
+
+
+    \item \important{Mapping Table Size and FTL Scalability}. In an SSD, the \definition{Flash Translation Layer (FTL)} maps: \textbf{Logical Block Addresses (LBAs) from the OS to physical flash pages}. This mapping is essential because:
+    \begin{itemize}
+        \item Flash memory can't overwrite in place
+        \item Pages must be written sequentially
+        \item Blocks must be erased before reuse
+    \end{itemize}
+    So the SSD keeps an \textbf{internal mapping table} to know \textbf{where every logical page actually resides}.
+
+    The mapping table \textbf{grows} proportionally with: \textbf{drive capacity}, and \textbf{granularity of mapping}.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{FTL Strategies to Cope}}
+    \begin{itemize}
+        \item \definition{Block-Level Mapping}. The FTL maps \textbf{each logical block number (LBN)} to a \textbf{physical block number (PBN)}. All pages within that block are \textbf{assumed to map 1:1}.
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}
+                \item \textbf{Very small mapping table}
+                \item Efficient in \textbf{sequential-write} workloads (e.g. logging, archiving).
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}
+                \item \textbf{Terrible for random writes}: to update just 1 page, the entire block must be read, modified, erased, rewritten.
+                \item Results in very \textbf{high write amplification}.
+            \end{itemize}
+        \end{itemize}
+        \begin{examplebox}[: Block Mapping]
+            The first four writes:
+            \begin{multicols}{2}
+                \begin{itemize}
+                    \item \texttt{Write(2000, a)}
+                    \item \texttt{Write(2001, b)}
+                    \item \texttt{Write(2002, c)}
+                    \item \texttt{Write(2003, d)}
+                \end{itemize}
+            \end{multicols}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/block-mapping-1.png}
+            \end{center}
+    
+            \noindent
+            And finally the last one:
+            \begin{itemize}
+                \item \texttt{Write(2002, c')}
+            \end{itemize}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/block-mapping-2.png}
+            \end{center}
+        \end{examplebox}
+        \item \definition{Hybrid FTL}. Combine the best of Block-Level Mapping for most pages and use \definition{Page-Level Mapping} (FTL maps each logical page number to a physical page number) for small updates. Often implemented using a \textbf{log block buffer}.
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}
+                \item Lower memory usage than pure page-level
+                \item Lower write amplification than pure block-level
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}
+                \item More complex logic (copy-back handling, log merging)
+                \item Still suffers from some write amplification during \textbf{log cleaning}
+            \end{itemize}
+        \end{itemize}
+        \begin{examplebox}[: Hybrid Mapping]
+            Let's suppose the following sequence:
+            \begin{multicols}{2}
+                \begin{itemize}
+                    \item \texttt{Write(1000, a)}
+                    \item \texttt{Write(1001, b)}
+                    \item \texttt{Write(1002, c)}
+                    \item \texttt{Write(1003, d)}
+                \end{itemize}
+            \end{multicols}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/hybrid-mapping-1.png}
+            \end{center}
+            Let's update some pages:
+            \begin{itemize}
+                \item \texttt{Write(1000, a')}
+                \item \texttt{Write(1001, b')}
+                \item \texttt{Write(1002, c')}
+                \item FTL updates only the page mapping information
+            \end{itemize}
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/hybrid-mapping-2.png}
+            \end{center}
+            When needed, FTL can perform MERGE operations:
+            \begin{center}
+                \includegraphics[width=\textwidth]{img/hybrid-mapping-3.png}
+            \end{center}
+        \end{examplebox}
+        \item \definition{Page mapping plus caching} (a.k.a. \definition{Demand-based FTL (DFTL)}). Keep \textbf{only a portion} of the page-level mapping table in DRAM (a cache). \textbf{Store} the full mapping table in \textbf{flash itself}. On cache miss, \textbf{read the mapping} from flash into RAM (like a page table swap-in).
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}
+                \item \textbf{Scales to very large SSDs} with \textbf{low DRAM footprint}
+                \item Maintains page-level flexibility without storing entire table in RAM
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}
+                \item Mapping lookup incurs \textbf{read latency} on cache misses
+                \item More complex metadata management (must protect flash-stored tables)
+            \end{itemize}
+        \end{itemize}
     \end{itemize}
 \end{enumerate}
-
-\highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{check} \textbf{Partial solution}}
-\end{flushleft}
-New SSD SATA command TRIM (SCSI - UNMAP). The \textbf{OS tells the SSD that specific LBAs} (page \pageref{LBA (Logical Block Address)}) \textbf{are invalid and may be garbaged by the Garbage Collection}.
-
-\highspace
-\begin{flushleft}
-    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem 3: Mapping Table Size}}
-\end{flushleft}
-The \textbf{size of the page-level mapping table is too large}. In fact, with a 1 TB SSD with a 4-byte entry per 4 KB page, 1 GB of DRAM is needed for mapping!
-
-\highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{check} \textbf{Partial solution}}
-\end{flushleft}
-Exists some approaches to reduce the costs of mapping:
-\begin{itemize}
-    \item \definition{Block Mapping} (block-based mapping). Mapping at block granularity to reduce the size of a mapping table. With this technique, there is a small writing problem: the FTL must read a large amount of live data from the old block and copy it into a new one.
-    \begin{examplebox}[: Block Mapping]
-        The first four writes:
-        \begin{multicols}{2}
-            \begin{itemize}
-                \item \texttt{Write(2000, a)}
-                \item \texttt{Write(2001, b)}
-                \item \texttt{Write(2002, c)}
-                \item \texttt{Write(2003, d)}
-            \end{itemize}
-        \end{multicols}
-        \begin{center}
-            \includegraphics[width=\textwidth]{img/block-mapping-1.png}
-        \end{center}
-
-        \noindent
-        And finally the last one:
-        \begin{itemize}
-            \item \texttt{Write(2002, c')}
-        \end{itemize}
-        \begin{center}
-            \includegraphics[width=\textwidth]{img/block-mapping-2.png}
-        \end{center}
-    \end{examplebox}
-    
-    \item \definition{Hybrid Mapping}. FTL maintains two tables: \textbf{log blocks} (page mapped) and \textbf{data blocks} (block mapped). The FTL will consult the page mapping table and block mapping table when looking for a particular logical block.
-    \begin{examplebox}[: Hybrid Mapping]
-        Let's suppose the following sequence:
-        \begin{multicols}{2}
-            \begin{itemize}
-                \item \texttt{Write(1000, a)}
-                \item \texttt{Write(1001, b)}
-                \item \texttt{Write(1002, c)}
-                \item \texttt{Write(1003, d)}
-            \end{itemize}
-        \end{multicols}
-        \begin{center}
-            \includegraphics[width=\textwidth]{img/hybrid-mapping-1.png}
-        \end{center}
-        Let's update some pages:
-        \begin{itemize}
-            \item \texttt{Write(1000, a')}
-            \item \texttt{Write(1001, b')}
-            \item \texttt{Write(1002, c')}
-            \item FTL updates only the page mapping information
-        \end{itemize}
-        \begin{center}
-            \includegraphics[width=\textwidth]{img/hybrid-mapping-2.png}
-        \end{center}
-        When needed, FTL can perform MERGE operations:
-        \begin{center}
-            \includegraphics[width=\textwidth]{img/hybrid-mapping-3.png}
-        \end{center}
-    \end{examplebox}
-    
-    \item \definition{Page Mapping plus Caching}. The basic idea is to \textbf{cache the active part of the page-mapped FTL}. If a given workload only accesses a small set of pages, the translations of those pages will be stored in the FTL memory. It will perform well without high memory cost if the cache can contain the necessary working set. Cache miss overhead exists; we need to accept it.
-\end{itemize}
 
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{check} \textbf{The importance of Wear Leveling}}
 \end{flushleft}
-As we have mentioned, the wear leveling is essential. The erase/write cycle is limited in Flash Memory. All blocks should wear out roughly at the same time.
+Flash memory has a \textbf{limited number of erase/write (EW) cycles}:
+\begin{itemize}
+    \item Each block can only sustain $\approx$3,000 to 100,000 cycles (depending on type: SLC, MLC, TLC, QLC).
+    \item If some blocks are used more than others (write \textbf{skew}), they \textbf{wear out faster}.
+\end{itemize}
+Without intervention, the SSD's lifespan would be determined by its \textbf{most heavily used block}. Ensure that \textbf{all blocks} in the SSD \textbf{wear out evenly} to: maximize \textbf{overall drive lifetime}, avoid \textbf{early failure} due to localized hot spots.
 
 \highspace
-The log-structured approach and garbage collection help spread writing. However, a block may contain cold data: the FTL must periodically read all the live data from such blocks and re-write it elsewhere.
-A \textbf{disadvantage} is that the wear levelling \textbf{increases the write amplification} of the SSD and consequently decreases performance. However, to \textbf{partially fix} this, a simple policy to apply is that each flash block has an \definition{Erase/Write Cycle Counter} and maintains the value of:
-\begin{equation}
-    \left| \mathrm{Max}\left(\text{EW cycle}\right) - \mathrm{Min}\left(\text{EW cycle}\right) \right| < e
-\end{equation}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How Wear Leveling works?}} The \textbf{Flash Translation Layer (FTL)}:
+\begin{enumerate}
+    \item Monitors \textbf{erase/write cycles} per block.
+    \item Identifies \textbf{cold blocks} (rarely updated, long-lived data).
+    \item Periodically:
+    \begin{itemize}
+        \item \textbf{Reads} valid data from cold blocks
+        \item \textbf{Moves} it to fresher blocks
+        \item \textbf{Erases} and \textbf{reuses} the original blocks
+    \end{itemize}
+    Even clod blocks are ``rotated'' to ensure wear balance.
+\end{enumerate}
 
-\begin{flushleft}
-    \textcolor{Red2}{\textbf{HDD vs SSD}}
-\end{flushleft}
-Exists two metrics:
+\newpage
+
+\noindent
+There are three types of Wear Leveling:
 \begin{itemize}
-    \item \definition{Unrecoverable Bit Error Ratio (UBER)}. A metric for the rate of occurrence of data errors, equal to the \textbf{number of data errors per bits read}.
-    
-    \item \definition{Endurance rating: Terabytes Written (TBW)}. It is the total amount of data that can be written into an SSD before it is likely to fail. \textbf{The number of terabytes that may be written to the SSD while still meeting the requirements}.
+    \item \textbf{Dynamic}: Spread writes among blocks not currently holding static data
+    \item \textbf{Static}: Occasionally move long-lived (cold) data to give its block a rest
+    \item \textbf{Hybrid}: Combine both (used in most SSDs)
 \end{itemize}
-\begin{figure}[!htp]
-    \centering
-    \includegraphics[width=.7\textwidth]{img/hdd-vs-ssd.png}
-\end{figure}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Wear Leveling Disadvantages}}
+\begin{itemize}
+    \item \important{Increases Write Amplification}: moving cold data incurs extra writes.
+    \item \important{Consumes bandwidth}: periodic copying reduces performance.
+    \item \important{Complexity}: requires tracking per-block wear counts and scheduling background operations.
+\end{itemize}
+However, to \textbf{partially fix} this, a simple policy to apply is that each flash block has an \definition{Erase/Write Cycle Counter} and maintains the value of:
+\begin{equation}
+    \left| \mathrm{Max}\left(\text{EW cycle}\right) - \mathrm{Min}\left(\text{EW cycle}\right) \right| < \varepsilon
+\end{equation}
+Where $\varepsilon$ is a system-defined Wear Leveling threshold.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{balance-scale} \textbf{HDD vs SSD}}
+\end{flushleft}
+UBER and TBW are two metrics help quantify how \textbf{reliable and durable a storage device is over time and under heavy use}.
+\begin{itemize}
+    \item \definition{Unrecoverable Bit Error Ratio (UBER)}. The probability that a bit cannot be recovered correctly by the device, even after error correction.
+    \begin{equation}
+        \text{UBER} = \dfrac{\text{Number of unrecoverable bit errors}}{\text{Total bits read}}
+    \end{equation}
+    A \textbf{lower} UBER means \textbf{better data reliability}.
+    
+    \item \definition{Endurance rating: Terabytes Written (TBW)}. The total amount of data we can write to the SSD over its warrantied lifetime before cells are expected to wear out.
+    \begin{equation}
+        \text{TBW} = \text{Endurance rating of the SSD (from manufacturer)}
+    \end{equation}
+    For example, a 250 GB SSD with TBW $= 70$ TB, we can write: $70 \div 365 = 190$ GB/day.
+\end{itemize}
 
 \newpage
 

@@ -1234,56 +1234,130 @@ UBER and TBW are two metrics help quantify how \textbf{reliable and durable a st
 
 \paragraph{RAID}\label{paragraph: RAID}
 
-\definition{RAID (Redundant Array of Independent Disks)} is a \textbf{data storage virtualization technology}\footnote{I/O virtualization: data are distributed transparently over the disks, then no action is required of the users.} that \textbf{combines multiple physical disk drive components into one or more logical units for the purposes of data redundancy}, \textbf{performance improvement}, or both. This contrasts the previous concept of highly reliable mainframe disk drives, which were referred to as  \definition{Single Large Expensive Disks (SLED)}, also called \definition{Just a Bunch of Disks (JBOD)} method where each disk is a separate device with a different mount point.
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{history} \textbf{How is RAID born?}}
+\end{flushleft}
+Before 1980, \definition{JBOD (Just a Bunch Of Disks)} was a common setup before the advent of disk arrays and RAID. JBOD simply \textbf{connects multiple physical disks to a system}, but each disk operates \textbf{independently}. There's \textbf{no striping} and \textbf{no redundancy}. Each disk has its \textbf{own mount point}, and the operating system or user decides where to store data. If one disk fails, \textbf{only the data on that disk is lost}, no protection or recovery is provided. \textbf{Performance bottlenecks} also occurred as CPUs became faster than disk I/O.
 
 \highspace
-The data are striped across several disks accessed in parallel:
+Researchers at UC Berkeley (notably Patterson, Gibson and Katz) proposed using \textbf{multiple cheaper disks} together: treat \textbf{many small, inexpensive disks} as \textbf{one large logical disk}. These were called \definition{Disk Arrays}. The main idea was to achieve higher performance and more memory through parallelism.
 \begin{itemize}
-    \item \textbf{High data transfer rate}: large data accesses (heavy I/O operations).
-    \item \textbf{High I/O rate}: small but frequent data accesses (light I/O operations).
-    \item \textbf{Load Balancing} across the disks.
-\end{itemize}
-Two techniques exist to guarantee these features: \textbf{data striping} (improve performance) and \textbf{redundancy} (improve reliability).
-
-\highspace
-\definition{Data Striping} is the technique of \textbf{segmenting logically sequential data}, such as a file, so that \textbf{consecutive segments are stored on different physical storage devices}. A small quantity of terminology:
-\begin{itemize}
-    \item \definition{Striping}: \textbf{data are written sequentially} (a vector, a file, a table, etc) in units (stripe units such as bit, byte, and blocks) \textbf{on multiple disks} according to a cyclic algorithm (round robin).
-
-    \item \definition{Stripe unit}: the \textbf{dimension of the data unit written on a single disk}.
-
-    \item \definition{Stripe width}: number of \textbf{disks considered by the striping algorithm}:
-    \begin{enumerate}
-        \item \textbf{Multiple independent I/O requests} will be executed in parallel by several disks, decreasing the disks' queue length (and time).
-
-        \item Multiple disks will execute \textbf{single Multiple-Block I/O requests} in parallel, increasing the transfer rate of a single request.
-    \end{enumerate}
-\end{itemize}
-
-\highspace
-The \textbf{redundancy technique is introduced because} the more physical disks in the array, the more significant the size and performance gains, but the \textbf{larger the probability of failure of a disk}.
-
-In fact, the \emph{probability of a failure} (assuming independent failures) in an array of 100 disks is 100 higher than the probability of a failure of a single disk! For \textcolor{Green4}{\textbf{example}}, if a disk has a \definition{Mean Time To Failure (MTTF)} of 200.000 hours (23 years), an array of 100 disks will show an MTTF of 2000 hours (3 months).
-
-\highspace
-The \definition{Redundancy} is the \textbf{technique of data duplication or error correcting codes} (stored on disks different from the ones with the data) \textbf{that are computed to tolerate loss due to disk failures}. Since write operations must also update the redundant information, their \textbf{performance is worse than traditional writing}.
-
-\highspace
-Data is distributed across the drives in one of several ways, referred to as \definition{RAID levels}, depending on the required level of redundancy and performance. The different schemes, or data distribution layouts, are named by the word \emph{RAID} followed by a number, for example RAID 0 or RAID 1. Each scheme, or RAID level, provides a different balance among the key goals: reliability, availability, performance, and capacity. The RAID levels are:
-\begin{itemize}
-    \item \texttt{RAID 0} striping only
-    \item \texttt{RAID 1} mirroring only
-    \begin{itemize}
-        \item \texttt{RAID 0+1} nested levels
-        \item \texttt{RAID 1+0} nested levels
+    \item Disk Arrays appear as a \textbf{single logical high-performance disk}.
+    \item Use \textbf{data striping} and \textbf{parallel access}, but these \textbf{weren't formalized or optimized} in the early implementation. This is because the core idea was to spread data across multiple disks to improve throughput (multiple disks serving different I/Os) and latency (multiple I/Os in parallel reduce queue wait time). But the \textbf{parallelism was often implicit}, not exposed to the software or the user. Some arrays allowed \textbf{concurrent I/O by accident}, not design. \textbf{I/O scheduling} was hardware-specific, \textbf{not standardized}.
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Key improvements}}:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item \textcolor{Green3}{\textbf{Parallel Access}}: Multiple disks could serve I/O requests simultaneously.
+        \item \textcolor{Green3}{\textbf{Performance Boost}}: Higher bandwidth and lower latency via concurrent disk activity.
+        \item \textcolor{Green3}{\textbf{Scalability}}: Easy to increase capacity by adding disks.
+        \item \textcolor{Green3}{\textbf{Lower Cost per GB}}: Used \textbf{multiple small, cheap disks} instead of one large expensive disk.
+        \item \textcolor{Green3}{\textbf{Modular Architecture}}: Allowed easier maintenance, replacement, and upgrades.
     \end{itemize}
-    \item \texttt{RAID 2} bit interleaving (not used)
-    \item \texttt{RAID 3} byte interleaving - redundancy (parity disk)
-    \item \texttt{RAID 4} block interleaving - redundancy (parity disk)
-    \item \texttt{RAID 5} block interleaving - redundancy (parity block distributed)
-    \item \texttt{RAID 6} greater redundancy (2 failed disks are tolerated)
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Limitations}}:
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item \textcolor{Red2}{\textbf{No Standard Striping}}: Striping (if present) was non-standard and not guaranteed.
+        \item \textcolor{Red2}{\textbf{No Redundancy}}: If a disk failed, \textbf{data was lost}, arrays were vulnerable.
+        \item \textcolor{Red2}{\textbf{No RAID Levels}}: No formal trade-offs between performance/reliability (e.g. RAID 0-6).
+        \item \textcolor{Red2}{\textbf{No Fault Tolerance Mechanism}}: No automatic reconstruction, hot spares, or parity.
+        \item \textcolor{Red2}{\textbf{Limited Write Optimization}}: RAID improved performance (esp. for writes) using smart parity layouts.
+    \end{itemize}
 \end{itemize}
-Note: these notes do \underline{not} study the levels \texttt{RAID 2} and \texttt{RAID 3}.
+
+\highspace
+In 1988, the same researchers published the seminal paper: ``A Case for Redundant Arrays of Inexpensive Disks (RAID)''\cite{Patterson:CSD-87-391}. They made two key contributions:
+\begin{itemize}
+    \item They \textbf{formally introduced RAID}: not just disk arrays, but structured ones that also \textbf{handle reliability} via redundancy.
+    \item They \textbf{defined RAID levels} (RAID 0 to RAID 5 in the original paper), each with different trade-offs between: \emph{performance}, \emph{reliability} and \emph{storage efficiency}.
+\end{itemize}
+RAID was important because it \textbf{solved the reliability problem introduced by disk arrays}. Disk Arrays solved performance and capacity, but RAID solved reliability too, combining \textbf{Data Striping} (performance) and \textbf{Redundancy} (reliability).
+
+\begin{definitionbox}[: RAID]
+    \definition{RAID (Redundant Array of Independent Disks)} is a \textbf{storage technology} that \textbf{combines multiple physical disks into a single logical unit} to improve performance, reliability, or both, by using data striping, redundancy, or both.
+
+    \highspace
+    RAID is based on two core techniques: \textbf{Data Striping} (for performance, splits data across disks), and \textbf{Redundancy} (for reliability, adds fault tolerance via mirroring or parity).
+
+    \highspace
+    Exists different RAID levels. Each level defines a strategy for:
+    \begin{itemize}
+        \item \emph{How data is striped}
+        \item \emph{How redundancy is added}
+        \item \emph{What failure modes are tolerated}
+        \item \emph{How performance and capacity are affected}
+    \end{itemize}
+\end{definitionbox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Data Striping}}
+\end{flushleft}
+\definition{Data Striping} is the technique of \textbf{splitting data into small chunks} (called \textbf{stripe units}) and distributing them \textbf{across multiple disks in a round-robin manner}. Used primarily to \textbf{improve performance} by \hl{enabling parallel disk access}. It does \textbf{not add redundancy} by itself.
+\begin{itemize}
+    \item \definition{Stripe Unit}: The amount of \textbf{data written to a single disk} before moving to the next one. Can be in \textbf{bits}, \textbf{bytes}, \textbf{blocks} or \textbf{KBs}. Small stripe unit, better parallelism for large files. Large stripe unit, fewer disk operations for small reads.
+
+    \item \definition{Stripe Width}: The \textbf{number of disks} over which the data is stripped. If we have 4 disks participating in stripping, stripe width is 4. \textbf{Determines how many disks work in parallel} for a given I/O.
+    
+    \item How are \definition{Multiple Independent I/O Requests} processed? \textbf{Small}, random I/O \textbf{requests} from \textbf{different applications or users}. RAID can \textbf{process them in parallel} on different disks. As result: \textbf{lower disk queue lengths and faster response times}.
+    
+    \item How is a \definition{Single Multiple-Block I/O Request} processed? A \textbf{large read or write operation} on a big file (e.g., a video or a database query). Striping lets \textbf{multiple disks work together} to serve this one big request. As result, \textbf{much faster data transfer} compared to using one disk.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Redundancy}}
+\end{flushleft}
+\definition{Redundancy} is the method of \textbf{adding extra information to protect data from disk failures}. If a disk fails, the system can \hl{reconstruct the missing data using the redundant information}. Redundancy is \emph{essential} because:
+\begin{itemize}
+    \item Disk arrays use many disk, and \textbf{more disk}, \textbf{higher risk of failure}.
+    \item RAID introduces redundancy to \textbf{tolerate and recover from failures}.
+\end{itemize}
+There are two types of redundancy:
+\begin{enumerate}
+    \item \definition{Data Duplication (Mirroring)}. Every block of data is \textbf{copied exactly} to another disk. Used in RAID 1 and RAID 10.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Can survive \textbf{complete disk failures}.
+        \item[\textcolor{Green3}{\faIcon{check}}] Fast reads (can load-balance between mirrors).
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Wastes 50\%} of storage (one disk stores only a copy).
+    \end{itemize}
+    
+    \item \definition{Parity-Based Redundancy}. Adds a \textbf{calculated parity block} (usually XOR) that allows \textbf{rebuilding lost data}. Used in RAID 5 and RAID 6.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] More \textbf{storage-efficient} than mirroring.
+        \item[\textcolor{Green3}{\faIcon{check}}] Can tolerate 1 (RAID 5) or 2 (RAID 6) disk failures.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Writes are slower} (need to read/update parity on each write).
+    \end{itemize}
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called ``Redundant Array''?}} Because RAID \textbf{stores more than just our data}, it stores the \textbf{redundant data necessary to protect it}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{RAID levels}}
+\end{flushleft}
+A \definition{RAID level} defines a specific way to organize \textbf{striping} and \textbf{redundancy} across multiple disks. Each level balances \textbf{three key trade-offs}:
+\begin{itemize}
+    \item[\faIcon{\speedIcon}] \textbf{Performance}: \emph{How fast are reads/writes?}
+    \item[\faIcon{shield-alt}] \textbf{Fault Tolerance}: \emph{Can it survive disk failure?}
+    \item[\faIcon{boxes}] \textbf{Storage Efficiency}: \emph{How much usable space is left?}
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c | c | c | c | c @{}}
+            \toprule
+            RAID & Striping & Redundancy & Tolerates Failure? & Main Benefit \\
+            \midrule
+            0   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}} None                 & \textcolor{Red2}{\faIcon{times}} No           & Max speed, no protection  \\ [.3em]
+            1   & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Green3}{\faIcon{check}} Mirroring          & \textcolor{Green3}{\faIcon{check}} 1 disk     & Reliability via copies    \\ [.3em]
+            5   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}} Parity (rotated)   & \textcolor{Green3}{\faIcon{check}} 1 disk     & Balance of perf $+$ space \\ [.3em]
+            6   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}} Dual Parity        & \textcolor{Green3}{\faIcon{check}} 2 disks    & Extra protection          \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Standard RAID Levels: RAID 4 is not shown because it is rarely used; RAID 5 has the same concept but eliminates RAID 4's limitations. RAID 2 and 3 are also not shown because they are not covered in this course.}
+\end{table}
+
+\noindent
+Each RAID level is a \textbf{design pattern} that answer: ``\emph{How can I spread and protect data across multiple disks to meet my performance, capacity, and reliability goals?}''.
 
 \begin{table}[!htp]
     \centering
@@ -1308,16 +1382,44 @@ Note: these notes do \underline{not} study the levels \texttt{RAID 2} and \textt
 
 \begin{center}\label{RAID 0}
     \large
-    \hypertarget{RAID 0}{\textcolor{Red2}{\textbf{RAID 0}}}
+    \hypertarget{RAID 0}{\textcolor{Red2}{\textbf{RAID 0 - Striping Without Redundancy}}}
 \end{center}
+\definition{RAID 0} \textbf{splits (stripes) data across multiple disks} to increase performance. It \textbf{does not provide redundancy}: if one disk fails, \textbf{all data is lost}.
 
-\noindent
-In RAID 0, the data are \textbf{written on a single logical disk and split into several blocks distributed across the disks} according to a striping algorithm.
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{toolbox} \textbf{Structure}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Data Striping}: Yes (block-level)
+    \item \important{Redundancy}: \textcolor{Red2}{\faIcon{times}} None
+    \item \important{Minimum disks}: 2
+    \item \important{Fault Tolerance}: \textcolor{Red2}{\faIcon{times}} 0 disks, a single failure is fatal
+    \item \important{Storage Efficiency}: \textcolor{Green3}{\faIcon{check}} 100\% (all capacity is usable)
+\end{itemize}
 
+\highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{When is it used?}}
 \end{flushleft}
-It is used where \textbf{performance} and \textbf{capacity} are the primary concerns. These mean that a minimum of two drives is required.
+\textbf{High performance environments} where \textbf{data loss is acceptable}, such as temporary data storage, video editing, gaming, scratch disks or caches.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        Operation & Result \\
+        \midrule
+        \textbf{Reads}      & \textcolor{Green3}{\faIcon{check}} Much faster (parallel access)  \\ [.3em]
+        \textbf{Writes}     & \textcolor{Green3}{\faIcon{check}} Much faster (split writes)     \\ [.3em]
+        \textbf{Failure}    & \textcolor{Red2}{\faIcon{times}} One disk dies, \textbf{all lost} \\ 
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \highspace
 \begin{flushleft}
@@ -1325,87 +1427,114 @@ It is used where \textbf{performance} and \textbf{capacity} are the primary conc
 \end{flushleft}
 \begin{itemize}
     \item \textbf{Lower cost} because it does not employ redundancy (no error-correcting codes are computed and stored).
-    \item \textbf{Best write performance} (it does not need to update redundant data and is parallelized).
+    \item \textbf{Best read/write performance} (it does not need to update redundant data and is parallelized).
 \end{itemize}
 
 \highspace
 \begin{flushleft}
     \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Disadvantages}}
 \end{flushleft}
-\textbf{Single disk failure} will result in data loss.
+\begin{itemize}
+    \item \textbf{Zero fault tolerance}.
+    \item High risk: the failure rate is equal to the sum of all disk failure probabilities.
+\end{itemize}
 
 \highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
 \end{flushleft}
-The key idea is to present an \textbf{array of disks as a single large disk} and maximize parallelism by striping data across all $N$ disks.
-
-\highspace
-Now, we will give some metrics to understand how it is possible to \textbf{calculate access to a specific data block} and compare the \textbf{performance} of different RAID technologies.
-
-\highspace
-To \textbf{access to a specific data blocks}, the formulas are:
+The main idea of RAID 0 is to use several physical disks as \textbf{a single logical disk} by \textbf{striping} data across them (splitting data into small blocks and writing them in \textbf{round-robin fashion} across all $N$ disks). This approach improves performance:
+\begin{itemize}
+    \item \textbf{Sequential access} is distributed across all disks, increased transfer rate.
+    \item \textbf{Random access} naturally spreads I/O load across disks, lower latency and better throughput.
+\end{itemize}
+The system uses the following formulas to \textbf{determine which disk and offset holds a given logical block}:
 \begin{equation}
     \begin{array}{rcl}
-        \texttt{Disk}    &=& \texttt{logical\_block\_number} \: \% \: \texttt{number\_of\_disks} \\ [.5em]
-        \texttt{Offset}  &=& \dfrac{\texttt{logical\_block\_number}}{\texttt{number\_of\_disks}}
+        \texttt{Disk index}     &=& \texttt{logical\_block\_number} \: \% \: \texttt{number\_of\_disks} \\ [.5em]
+        \texttt{Block Offset}   &=& \dfrac{\texttt{logical\_block\_number}}{\texttt{number\_of\_disks}}
     \end{array}
 \end{equation}
-For example, given the following schema:
+For example, the command \texttt{read block 11} in a 4-disk array gives disk 3 as the index and block 2 as the offset on that disk.
+
 \begin{figure}[!htp]
     \centering
     \includegraphics[width=.5\textwidth]{img/raid-1.pdf}
 \end{figure}
 
 \noindent
-If it is requested, the logical block is 11, and the disks are 4:
-\begin{equation*}
-    \begin{array}{rcl}
-        \texttt{Disk}    &=& 11 \% 4 = 3 \\ [.5em]
-        \texttt{Offset}  &=& 11 \div 4 = 2.75 \approx 3, \text{ then physical block 2 starting from 0}
-    \end{array}
-\end{equation*}
-Note that the \textbf{chunk size is critical} because it impacts disk array performance. With \textbf{smaller chunks}, there is \textbf{greater parallelism} than with \textbf{big chunks}, which have \textbf{reduced seek times}. The typical arrays use 64 KB chunks.
+This formula \textbf{allows the RAID controller to locate any block \hl{without metadata}}, just with arithmetic.
 
 \highspace
-To measure RAID \textbf{performance}, we focus on sequential and random workloads. Assume disks in the array have sequential transfer rate S, and the info about the disk is:
+The choice of chunk size is critical because it affects performance at this level. The \definition{Chunk Size} (also called \definition{Stripe Unit} size) is the amount of \textbf{data written to each disk before moving to the next one}.
+
+\highspace
+The impact of chunk size is evident:
 \begin{itemize}
-    \item Average seek time: 7 ms
-    \item Average rotational delay: 3 ms
-    \item Transfer rate: 50 MB/s
+    \item \textbf{Small} chunks $\rightarrow$ better \textbf{parallelism} (each access touches more disks).
+    \item \textbf{Large} chunks $\rightarrow$ lower \textbf{seek overhead} (each file uses fewer disks).
 \end{itemize}
-For a single large transfer (10 MB):
-\begin{equation*}
-    \begin{array}{rcl}
-        S &=& \dfrac{\texttt{transfer\_size}}{\texttt{time\_to\_access}} \\ [1.2em]
-        S &=& 10 \text{ MB} \div \left(7 \text{ ms} + 3 \text{ ms} + 10 \text{ MB} \div 50 \text{ MB/s}\right) = 47.62 \text{ MB/s}
-    \end{array}
-\end{equation*}
-If the disks in the array have a random transfer rate R, and for a set of small files (10 KB):
-\begin{equation*}
-    \begin{array}{rcl}
-        R &=& \dfrac{\texttt{transfer\_size}}{\texttt{time\_to\_access}} \\ [1.2em]
-        R &=& 10 \text{ KB} \div \left(7 \text{ ms} + 3 \text{ ms} + 10 \text{ KB} \div 50 \text{ MB/s}\right) = 0.98 \text{ MB/s}
-    \end{array}
-\end{equation*}
+In practice, typical RAID arrays use 64 KB chunks as a \textbf{balanced} (tradeoff) default.
 
-\highspace
+\newpage
+
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Analysis}}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Measuring Performance}}
 \end{flushleft}
 \begin{itemize}
-    \item \textbf{Capacity}: $N$, where $N$ is the number of disks. Then, everything can be filled with data.
-
-    \item \textbf{Reliability}: non-existent. If any drive fails, data is permanently lost. Then, the Mean Time To Failure (MTTF) equals the \definition{Mean Time To Data Loss (MTTDL)}:
+    \item \important{Measuring \emph{Sequential} Transfer Rate}. For \textbf{large sequential I/O}, the transfer time includes:
+    \begin{enumerate}
+        \item \textbf{Seek time} (page \pageref{def: Seek Time})
+        \item \textbf{Rotational latency}
+        \item \definition{Actual Data Transfer Time}:
+        \begin{equation}
+            S = \dfrac{\texttt{transfer\_size}}{\texttt{time\_to\_access}} = \dfrac{\texttt{data\_size}}{\texttt{disk\_rate}}
+        \end{equation}
+    \end{enumerate}
+    For example, suppose there is 7 ms of \emph{seek time}, 3 ms of \emph{rotational latency}, and 10 MB of \emph{data to transfer} at a \emph{disk rate} of 50 MB/s. The total time is given by the seek time, rotational latency, and the time taken to transfer the data:
     \begin{equation*}
-        \texttt{MTTF} = \texttt{MTTDL}
+        \text{Time} = 7\,\text{ms} + 3\,\text{ms} + \left( 10\,\text{MB} \div 50\,\text{MB/s} \right) = 210\,\text{ms}
     \end{equation*}
+    Thus, the sequential throughput is:
+    \begin{equation*}
+        S = 10\,\text{MB} \div 0.21\,\text{s} = 47.62\,\text{MB/s}
+    \end{equation*}
+    In RAID 0 with $N$ disks, the \definitionWithSpecificIndex{Total Sequential Throughput}{RAID 0 - Total Sequential Throughput}{} is:
+    \begin{equation}
+        \text{Total Sequential Throughput} = N \times S
+    \end{equation}
+    $S$ is the sequential throughput for a single disk in the system.
 
-    \item \textbf{Sequential read and write}: $N \times S$
 
-    \item \textbf{Random read and write}: $N \times R$
+    \item \important{Measuring \emph{Random} Transfer Rate}. For \textbf{small random accesses}, latency dominates over transfer. Using the same example as before, but changing the file size to 10 KB, the time is as follows:
+    \begin{equation*}
+        \text{Time} = 7\,\text{ms} + 3\,\text{ms} + \left( 10\,\text{KB} \div 50\,\text{MB/s} \right) = 0.98\,\text{MB/s}
+    \end{equation*}
+    Resulting random throughput:
+    \begin{equation*}
+        R = 10\,\text{KB} \div 10.2\,\text{ms} = 0.98\,\text{MB/s}
+    \end{equation*}
+    In RAID 0 with $N$ disks, the \definitionWithSpecificIndex{Total Random Throughput}{RAID 0 - Total Random Throughput}{} is:
+    \begin{equation}
+        \text{Total Random Throughput} = N \times R
+    \end{equation}
+    $R$ is the random throughput for a single disk in the system.
 \end{itemize}
-Where $N$ is the number of disks, $S$ the sequential transfer rate and $R$ the random transfer rate.
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={0.9\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | p{27em} @{}}
+            \toprule
+            Feature & Description \\
+            \midrule
+            \textbf{Capacity}       & $N$, all disk space is usable (no redundancy) \\ [.3em]
+            \textbf{Reliability}    & 0, MTTDL (Mean Time To Data Loss) = MTTF (Mean Time To Failure) \\ [.3em]
+            \textbf{Performance}    & It provides full parallelization for both random and sequential throughput \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
 
 \newpage
 

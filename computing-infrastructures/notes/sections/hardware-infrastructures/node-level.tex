@@ -1710,37 +1710,13 @@ This ensures that mirrored copies stay \textbf{synchronized}, even after failure
     \large
     \hypertarget{RAID 4}{\textcolor{Red2}{\textbf{RAID 4}}}
 \end{center}
-
-\noindent
-RAID 4 consists of \textbf{block-level striping with a dedicated parity disk}.
-
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{When is it used?}}
-\end{flushleft}
-RAID 1 offers highly reliable data storage, but it uses half the space of the array capacity. To achieve the \textbf{same level of reliability without wasting capacity}, it is possible to use RAID 4, which uses \textbf{information coding techniques to build lightweight error recovery mechanisms}.
+\definition{RAID 4} uses \textbf{block-level striping} (like RAID 0), but adds a \textbf{dedicated parity disk} to provide \textbf{fault tolerance}.
 
 \highspace
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Parity Calculation}}
 \end{flushleft}
-\begin{itemize}
-    \item \textbf{Good performance} of random reads.
-\end{itemize}
-
-\highspace
-\begin{flushleft}
-    \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Disadvantages}}
-\end{flushleft}
-\begin{itemize}
-    \item \textbf{Random Write performance is terrible} due to being \emph{bottlenecked} by the parity drive.
-\end{itemize}
-
-\highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
-\end{flushleft}
-Disk $N$ only stores parity information for the other $N-1$ disks. The parity is calculated using the \texttt{XOR} operation\footnote{\dquotes{A or B, but not A and B}}.
-
+Parity is computed using the \textbf{XOR (exclusive OR)} operation. For example, 4 blocks per stripe:
 \begin{figure}[!htp]
     \centering
     \includegraphics[width=\textwidth]{img/raid-6.pdf}
@@ -1748,62 +1724,139 @@ Disk $N$ only stores parity information for the other $N-1$ disks. The parity is
 \end{figure}
 
 \noindent
-The \textbf{\underline{serial}} or \textbf{\underline{random read}} is not a problem in RAID 4 because there is a \textbf{parallelization across all non-parity blocks} in the stripe despite a tiny performance reduction due to the parity disk.
-
-\newpage
-
-\noindent
-During the parity writing, the blocks are updated. The \textbf{\underline{random write}} performance is affected by the approach used:
-\begin{itemize}
-    \item \definition{Additive parity} (as known as reconstruct-writes):\index{reconstruct-writes}
-    \begin{enumerate}
-        \item Read all other blocks in a stripe in parallel;
-        \item \texttt{XOR} those with the new block to form a new parity block;
-        \item Write the new data block and new parity block to disks.
-    \end{enumerate}
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=.8\textwidth]{img/raid-7.pdf}
-    \end{figure}
-
-    \item \definition{Subtractive parity} (as known as read-modify-writes):\index{read-modify-writes}
-    \begin{enumerate}
-        \item Read only the old data block to be updated and the old parity block;
-        \item Compute the new parity block using:
-        \begin{equation*}
-            P_{new} = \left(D_{new} \:\veebar\: D_{old}\right) \:\veebar\: P_{old}
-        \end{equation*}
-        Where $\veebar$ is the logical \texttt{XOR}.
-        \item Write the new data block and new parity block to disks.
-    \end{enumerate}
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=.8\textwidth]{img/raid-8.pdf}
-    \end{figure}
-\end{itemize}
-Despite the \textbf{\underline{sequential write}} does \textbf{not suffer any performance effect} from the parity disk. Because it uses full-stripe write:
-\begin{enumerate}
-    \item Buffer all data blocks of a stripe
-    \item Compute the parity block
-    \item Write all data and parity blocks in parallel\cite{raid-and-data-integrity-slides}
-\end{enumerate}
+It is used XOR because it has a special property: if we know all but one value, we can \textbf{reconstruct the missing one}. For example, if Disk 2 is lost, it can be reconstructed using an XOR operation with Disks 0, 1, and 3 and the Parity unit.
 
 \highspace
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Analysis}}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} and \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
 \end{flushleft}
 \begin{itemize}
-    \item \textbf{Capacity}: $N - 1$, where $N$ is the number of disks, and the $-1$ is because one is dedicated to the parity disk.
-
-    \item \textbf{Reliability}: $1$ drive can fail. Massive performance degradation during partial outage.
-
-    \item \textbf{Sequential read/write}: $\left(N - 1\right) \times S$; parallelization across all non-parity blocks in the stripe (parity disk has no effect).
-
-    \item \textbf{Random read}: $\left(N - 1\right) \times R$; reads parallelize over all but the parity drive (parity disk has no effect).
-
-    \item \textbf{Random write}: $R \div 2$; writes serialize due to the parity drive, and each write requires one read and one write of the parity drive.
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] Fault tolerance: can survive \textbf{1 disk failure}.
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] More \textbf{space-efficient} than RAID 1 (only 1 disk used for redundancy).
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textbf{Parity disk is a bottleneck}. Every write must update parity, then a single disk becomes overloaded.
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] Write performance is poor compared to RAID 0 or RAID 10.
 \end{itemize}
-Where $N$ is the number of disks, $S$ is the sequential transfer rate, and $R$ is the random transfer rate.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Updating Parity on Write in RAID 4}. When we \textbf{modify a block} in RAID 4, we must also update the \textbf{parity block} in that stripe. There are two ways to do it:
+    \begin{enumerate}
+        \item \definitionWithSpecificIndex{Additive Parity}{RAID 4 - Additive Parity}{}. Recalculate parity using all the blocks in the stripe. Steps:
+        \begin{enumerate}
+            \item \textbf{Read all other data blocks} in the stripe.
+            \item XOR them together to get the \textbf{new parity}.
+        \end{enumerate}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Simple and correct}}, but \textcolor{Red2}{\faIcon{times-circle} \textbf{expensive}} because must \textbf{read all blocks} to recompute.
+        \item \definitionWithSpecificIndex{Subtractive Parity}{RAID 4 - Subtractive Parity}{} (Efficient: modify incrementally). Update the parity by using a \textbf{mathematical trick}:
+        \begin{equation}
+            \text{New Parity} = \text{Old Parity} \oplus \text{Old Data} \oplus \text{New Data}
+        \end{equation}
+        This works thanks to the \textbf{reversible} XOR property:
+        \begin{equation*}
+            A \oplus A = 0,\quad  A \oplus 0 = A
+        \end{equation*}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Very efficient}} because only need to read the block being written (\textbf{old value}) and the \textbf{old parity block}.
+    \end{enumerate}
+
+
+    \item \important{Reads in RAID 4}. Reads in RAID 4 are \textbf{fast and efficient}, especially compared to writes. Data is \textbf{striped across all data disks}, and the \textbf{parity disk is \underline{not involved}} in normal reads. There are two possible read scenarios:
+    \begin{enumerate}
+        \item \important{Sequential Read}. Large, continuous read (e.g., loading big file). Data is read in \textbf{parallel} from all data disks. It is \textbf{fast}, each disk reads part of the file simultaneously.
+
+        \item \important{Random Read}. Small, scattered reads (e.g., database lookups). Still efficient because:
+        \begin{itemize}
+            \item Each disk can handle \textbf{its own read} in parallel.
+            \item Parity disk is \textbf{not touched} during a normal read.
+        \end{itemize}
+    \end{enumerate}
+    As we saw at the beginning, if a data \textbf{disk fails}, the missing block is \textbf{reconstructed using XOR}:
+    \begin{equation*}
+        D_{\text{missing}} = P \oplus D_{1} \oplus D_{2} \oplus D_{3} \oplus \dots
+    \end{equation*}
+    Read recovery is still possible, it is just slower.
+
+
+    \item \important{Serial Writes in RAID 4}. Serial writes mean writing \textbf{a sequence of blocks} that all belong to the \textbf{same stripe}, typically during large, contiguous writes (e.g., streaming, backups).
+    
+    In RAID 4, data is \textbf{striped} across all data disks. The \textbf{parity for each stripe} is stored in a \textbf{dedicated parity disk}.
+
+    During serial writes, each data disk receives \textbf{one block} from the stripe. The \textbf{parity disk} is updated \textbf{once per stripe}. Since all writes hit the same stripe, the \textbf{parity disk becomes a bottleneck}.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | l @{}}
+            \toprule
+            Operation & Description \\
+            \midrule
+            Data writes     & \textcolor{Green3}{\faIcon{check}} Parallel across data disks \\ [.3em]
+            Parity update   & \textcolor{Red2}{\faIcon{times}} Centralized \\ [.3em]
+            Bottleneck      & Parity disk handles \textbf{every stripe's write} \\ [.3em]
+            Comparison      & Same structure as read, then but \textbf{parity slows it} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    Even though data writes are parallel, all serial writes in the same stripe \textbf{converge on the parity disk}, making it the \textbf{main point of contention}.
+
+
+    \item \important{Random Writes in RAID 4}. A \textbf{random write} updates \textbf{one block} somewhere on disk, not the entire stripe. This is common in databases, file systems, and OS workloads.
+
+    The writing process for each block is as follows:
+    \begin{enumerate}
+        \item \important{Read} the \textbf{old data block} and the \textbf{old parity block}.
+        \item \important{Compute} the parity block:
+        \begin{equation*}
+            P_{\text{new}} = D_{\text{old}} \oplus D_{\text{new}} \oplus P_{\text{old}}
+        \end{equation*}
+        This efficiently updates parity using subtraction (XOR).
+        \item \important{Write} the \textbf{new data block} and the \textbf{updated parity block}
+    \end{enumerate}
+    \textcolor{Red2}{\faIcon{exclamation-triangle}} The main problem here is the \textbf{bottleneck} caused by the parity disk. Even though the data block may change on \textbf{any disk}, the \textbf{parity block is always on the same disk}. \hl{Each write operation} must \textbf{read from} and \textbf{write to} that disk. This creates \textbf{serialization}, only one parity update can occur at a time. Even with multiple writes to different data disks, they all \textbf{wait for the parity disk}.
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | l @{}}
+            \toprule
+            Operation & Behavior \\
+            \midrule
+            Data writes     & \textcolor{Green3}{\faIcon{check}} Fast (per disk) \\ [.3em]
+            Parity update   & \textcolor{Red2}{\faIcon{times}} Always goes to the \textbf{same disk} \\ [.3em]
+            Bottleneck      & \textcolor{Red2}{\faIcon{exclamation-triangle}} Parity disk handles \textbf{every write} \\ [.3em]
+            Overall         & \textcolor{Red2}{\faIcon{times-circle}} \textbf{Terrible performance} on random writes \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Measuring Performance}}
+\end{flushleft}
+\begin{itemize}
+    \item \definitionWithSpecificIndex{Capacity}{RAID 4 - Capacity}{}: $N - 1$. One disk is used exclusively for parity, so it is \textbf{not usable for data}.
+    \item \definitionWithSpecificIndex{Reliability}{RAID 4 - Reliability}{}: can tolerate \textbf{1 disk failure} (any one of the data or parity disks). But if a disk fails, the system can still serve data using parity reconstruction. However, write and read performance becomes \textbf{massively degraded} (especially if parity disk is affected).
+    \item \textbf{Read/Write Performance}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c | p{18em} @{}}
+            \toprule
+            Operation & Performance & Notes \\
+            \midrule
+            \definitionWithSpecificIndex{Sequential Read}{RAID 4 - Sequential Read}{}   & $(N - 1) \times S$ & Full parallelism across all data disks \\ [.3em]
+            \definitionWithSpecificIndex{Sequential Write}{RAID 4 - Sequential Write}{} & $(N - 1) \times S$ & Parallel as long as writes hit different stripes \\ [.3em]
+            \definitionWithSpecificIndex{Random Read}{RAID 4 - Random Read}{}           & $(N - 1) \times R$ & Reads avoid parity disk, then high parallel performance \\ [.3em]
+            \definitionWithSpecificIndex{Random Write}{RAID 4 - Random Write}{}         & $R \div 2$         & \textcolor{Red2}{\faIcon{times}} Terrible, every write must access parity disk twice \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    Parity disk becomes a \textbf{point of contention for every write}. Causes \textbf{serialization of random writes}, reducing overall throughput drastically.
+\end{itemize}
 
 \newpage
 

@@ -1354,6 +1354,7 @@ A \definition{RAID level} defines a specific way to organize \textbf{striping} a
         \end{tabular}
     \end{adjustbox}
     \caption{Standard RAID Levels: RAID 4 is not shown because it is rarely used; RAID 5 has the same concept but eliminates RAID 4's limitations. RAID 2 and 3 are also not shown because they are not covered in this course.}
+    \label{table: standard RAID levels comparison}
 \end{table}
 
 \noindent
@@ -1540,7 +1541,7 @@ In practice, typical RAID arrays use 64 KB chunks as a \textbf{balanced} (tradeo
 
 \begin{center}\label{RAID 1}
     \large
-    \hypertarget{RAID 1}{\textcolor{Red2}{\textbf{RAID 1}}}
+    \hypertarget{RAID 1}{\textcolor{Red2}{\textbf{RAID 1 - Mirroring}}}
 \end{center}
 RAID 0 offers performance, but \textbf{no protection} against failures. \textbf{\definition{RAID 1} solves this} by maintaining \textbf{two identical copies of all data} (mirroring).
 \begin{itemize}
@@ -1681,7 +1682,7 @@ RAID 1 provides \textbf{excellent reliability} and \textbf{great random read per
 
 \highspace
 \begin{flushleft}
-    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Consistent Update Problem}}
+    \hqlabel{def: The Consistent Update Problem}{\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Consistent Update Problem}}}
 \end{flushleft}
 In RAID 1, every write must be done \textbf{twice} (once per mirror). This raises a \textbf{consistency issue}: \emph{what if the system crashes or loses power after writing to one disk, but before writing to the other?}
 \begin{itemize}
@@ -1708,7 +1709,7 @@ This ensures that mirrored copies stay \textbf{synchronized}, even after failure
 
 \begin{center}\label{RAID 4}
     \large
-    \hypertarget{RAID 4}{\textcolor{Red2}{\textbf{RAID 4}}}
+    \hypertarget{RAID 4}{\textcolor{Red2}{\textbf{RAID 4 - Parity Drive}}}
 \end{center}
 \definition{RAID 4} uses \textbf{block-level striping} (like RAID 0), but adds a \textbf{dedicated parity disk} to provide \textbf{fault tolerance}.
 
@@ -1863,7 +1864,7 @@ In conclusion, RAID 4 provides ample capacity and quick sequential input/output 
 
 \begin{center}\label{RAID 5}
     \large
-    \hypertarget{RAID 5}{\textcolor{Red2}{\textbf{RAID 5}}}
+    \hypertarget{RAID 5}{\textcolor{Red2}{\textbf{RAID 5 - Rotating Parity}}}
 \end{center}
 
 \noindent
@@ -1950,24 +1951,56 @@ In conclusion, RAID 5 provides a good \textbf{trade-off between capacity}, \text
 
 \begin{center}\label{RAID 6}
     \large
-    \hypertarget{RAID 6}{\textcolor{Red2}{\textbf{RAID 6}}}
+    \hypertarget{RAID 6}{\textcolor{Red2}{\textbf{RAID 6 - Dual Parity}}}
 \end{center}
-RAID 6 can tolerate multiple disk faults (\textbf{more fault tolerance}) concerning RAID 5. It tolerates two concurrent failures.
+\definition{RAID 6} is an extension of RAID 5 that adds \textbf{a second independent parity block} per stripe. This allows it to \textbf{tolerate two simultaneous disk failures}, a major reliability upgrade over RAID 5.
 
 \highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{tools} \textbf{How does it work?}}
 \end{flushleft}
-It uses Solomon-Reeds codes with two redundancy schemes and requires $N + 2$ disks (where $N$ is the number of disks). Note that the \textbf{minimum set is 4 data disks}.
+It can tolerate \textbf{up to 2 concurrent disk failures}. Uses \textbf{two different types of parity}:
+\begin{itemize}
+    \item \textbf{P parity}: is the same as in RAID 5, a ``\emph{simple}'' XOR (exclusive-or) of the data blocks in a stripe.
+    \item \textbf{Q parity}: is more complex. It is generated using \definition{Reed-Solomon} coding, a mathematical technique over \definition{Galois Fields (GF)}, which enables the correction of multiple simultaneous failures.
+\end{itemize}
+Each parity serves a different purpose:
+\begin{itemize}
+    \item \textbf{P (XOR parity)} handles \textbf{one disk failure}.
+    \item \textbf{Q (Reed-Solomon parity)} can handle a second failure that isn't linearly dependent on the first one.
+\end{itemize}
+This combination allows RAID 6 to recover from \textbf{two simultaneous disk failures}. In simple terms:
+\begin{itemize}
+    \item If we lose $1$ disk, we can \textbf{recover using XOR} (as in RAID 5).
+    \item If we lose $2$ disks, the system \textbf{solves a set of linear equations} (using $P$ and $Q$) \textbf{to recover the missing data}.
+\end{itemize}
+This requires the two parities to be \textbf{independent}, so their information isn't redundant.
 
-Unfortunately, it has a \textbf{high overhead for writes} (computation of parities) because each write requires six disk accesses due to the need to update both the P and Q parity blocks (slow writes).
+\highspace
+The \textbf{disk configuration requires $N+2$ disks}. $N$ are data disks, and $2$ are distributed parity blocks ($P$ and $Q$) per stripe. The \textbf{minimum configuration} requires at least \textbf{4 data disks}, for a total of \textbf{6 disks minimum}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Write Performance}}
+\end{flushleft}
+Write performance is \textbf{slower than with RAID 5}. Each write requires updating both parity blocks, necessitating at least \textbf{6 disk accesses}.
+\begin{enumerate}
+    \item Read \emph{old data}, read \emph{parity block P}, and read \emph{parity block Q}
+    \item Write \emph{new data}, write \emph{new parity block P}, and write \emph{new parity block Q}
+\end{enumerate}
+High overhead makes RAID 6 \textcolor{Red2}{\textbf{slower on random writes}}, but \textcolor{Green3}{\textbf{safer}}.
+
+\highspace
+In summary, \textbf{RAID 6} adds a \textbf{second}, \textbf{independent parity block} ($P + Q$) per stripe, enabling \textbf{recovery from two simultaneous disk failures}. RAID 6 uses Reed-Solomon coding for the $Q$ parity and distributes both parity blocks across all disks. Although \textbf{RAID 6 is more fault-tolerant than RAID 5}, it suffers from \hl{higher write overhead}, requiring at least \hl{6 I/O operations per write}.
+
+\newpage
 
 \begin{figure}[!htp]
     \centering
     \includegraphics[width=\textwidth]{img/raid-010.pdf}
 \end{figure}
 
-\newpage
+\longline
 
 \begin{center}\label{Comparison and characteristics of RAID levels}
     \large
@@ -1984,20 +2017,20 @@ The following table shows eight fundamental properties of the RAID levels.
 \end{itemize}
 \begin{table}[!htp]
     \centering
-    \begin{tabular}{@{} l l l l l @{}}
+    \begin{tabular}{@{} l | c | c | c | c @{}}
         \toprule
         & \texttt{RAID 0} & \texttt{RAID 1} & \texttt{RAID 4} & \texttt{RAID 5} \\
         \midrule
-        Capacity & $N$ & $N \div 2$ & $N - 1$ & $N - 1$ \\
-        Reliability & $0$ & $1 \: \lor : N \div 2$ & $1$ & $1$ \\
+        \textbf{Capacity} & $N$ & $N \div 2$ & $N - 1$ & $N - 1$ \\
+        \textbf{Reliability} & $0$ & $1 \: \lor : N \div 2$ & $1$ & $1$ \\
         \cmidrule{1-5}
-        Sequential Read & $N \times S$ & $\left(N \div 2\right) \times S$ & $\left(N - 1\right) \times S$ & $\left(N - 1\right) \times S$ \\
-        Sequential Write & $N \times S$ & $\left(N \div 2\right) \times S$ & $\left(N - 1\right) \times S$ & $\left(N - 1\right) \times S$ \\
-        Random Read & $N \times R$ & $N \times R$ & $\left(N - 1\right) \times R$ & $N \times R$ \\
-        Random Write & $N \times R$ & $\left(N \div 2\right) \times R$ & $R \div 2$ & $\left(N \div 4\right) \times R$ \\
+        \textbf{Sequential Read} & $N \times S$ & $\left(N \div 2\right) \times S$ & $\left(N - 1\right) \times S$ & $\left(N - 1\right) \times S$ \\
+        \textbf{Sequential Write} & $N \times S$ & $\left(N \div 2\right) \times S$ & $\left(N - 1\right) \times S$ & $\left(N - 1\right) \times S$ \\
+        \textbf{Random Read} & $N \times R$ & $N \times R$ & $\left(N - 1\right) \times R$ & $N \times R$ \\
+        \textbf{Random Write} & $N \times R$ & $\left(N \div 2\right) \times R$ & $R \div 2$ & $\left(N \div 4\right) \times R$ \\
         \cmidrule{1-5}
-        Read & $D$ & $D$ & $D$ & $D$ \\
-        Write & $D$ & $D$ & $2 \times D$ & $2 \times D$ \\
+        \textbf{Read} & $D$ & $D$ & $D$ & $D$ \\
+        \textbf{Write} & $D$ & $D$ & $2 \times D$ & $2 \times D$ \\
         \bottomrule
     \end{tabular}
     \caption{Comparison of RAID levels.}
@@ -2005,34 +2038,111 @@ The following table shows eight fundamental properties of the RAID levels.
 
 \noindent
 Where the throughput is:
-\begin{itemize}
-    \item Sequential Read
-    \item Sequential Write
-    \item Random Read
-    \item Random Write
-\end{itemize}
+\begin{multicols}{2}
+    \begin{itemize}
+        \item Sequential Read
+        \item Sequential Write
+        \item Random Read
+        \item Random Write
+    \end{itemize}
+\end{multicols}
+
+\noindent
 And the latency is:
-\begin{itemize}
-    \item Read
-    \item Write
-\end{itemize}
+\begin{multicols}{2}
+    \begin{itemize}
+        \item Read
+        \item Write
+    \end{itemize}
+\end{multicols}
 
 \newpage
 
-\begin{figure}[!htp]
+\begin{table}[!htp]
     \centering
-    \includegraphics[width=\textwidth]{img/raid-011.pdf}
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c | c | c | c | c | c @{}}
+            \toprule
+            \textbf{RAID}   & \textbf{Capacity}             & \textbf{Reliability}                                      & \textbf{Read Perf.}                                   & \textbf{Write Perf.}                                  & \textbf{Rebuild Performance}                      \\
+            \midrule
+            $0$             & 100\%                         & N/A                                                       & \textcolor{Green3}{\faIcon{check} \textbf{Very good}} & \textcolor{Green3}{\faIcon{check} \textbf{Very good}} & \textcolor{Green3}{\faIcon{check} \textbf{Good}}  \\ [.3em]
+            $1$             & 50\%                          & \textcolor{Green3}{\faIcon{check} \textbf{Excellent}}     & \textcolor{Green3}{\faIcon{check} \textbf{Very good}} & \textcolor{Green3}{\faIcon{check} \textbf{Good}}      & \textcolor{Green3}{\faIcon{check} \textbf{Good}}  \\ [.8em]
+            $5$             & $\dfrac{(n-1)}{n}$            & \faIcon{check} Good                                       & \faIcon{check} Good                                   & \textcolor{Red2}{\faIcon{times} \textbf{Fair}}        & \textcolor{Red2}{\faIcon{times} \textbf{Poor}}    \\ [.8em]
+            $6$             & $\dfrac{(n-2)}{n}$            & \textcolor{Green3}{\faIcon{check} \textbf{Excellent}}     & \textcolor{Green3}{\faIcon{check} \textbf{Very good}} & \textcolor{Red2}{\faIcon{times} \textbf{Poor}}        & \textcolor{Red2}{\faIcon{times} \textbf{Poor}}    \\ [.8em]
+            $1+0$           & 50\%                          & \textcolor{Green3}{\faIcon{check} \textbf{Excellent}}     & \textcolor{Green3}{\faIcon{check} \textbf{Very good}} & \textcolor{Green3}{\faIcon{check} \textbf{Good}}      & \textcolor{Green3}{\faIcon{check} \textbf{Good}}  \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
     \caption{Characteristics of RAID levels.}
-\end{figure}
+\end{table}
+
+\begin{itemize}
+    \item Best \textbf{Performance and Capacity}: \texttt{RAID 0}.
+    \item \textbf{Maximum Fault Tolerance}: \texttt{RAID 1} or \texttt{RAID 6}, with RAID $1 + 0$ \textbf{often preferred} over $0 + 1$.
+    \item \textbf{Balanced Solution} (Space, Performance, Recoverability): \texttt{RAID 5}.
+\end{itemize}
+We report the RAID level comparison here. This is for utility reasons. It is on page \pageref{table: standard RAID levels comparison}.
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c | c | c | c | c @{}}
+            \toprule
+            RAID & Striping & Redundancy & Tolerates Failure? & Main Benefit \\
+            \midrule
+            0   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}} None                 & \textcolor{Red2}{\faIcon{times}} No           & Max speed, no protection  \\ [.3em]
+            1   & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Green3}{\faIcon{check}} Mirroring          & \textcolor{Green3}{\faIcon{check}} 1 disk     & Reliability via copies    \\ [.3em]
+            5   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}} Parity (rotated)   & \textcolor{Green3}{\faIcon{check}} 1 disk     & Balance of perf $+$ space \\ [.3em]
+            6   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}} Dual Parity        & \textcolor{Green3}{\faIcon{check}} 2 disks    & Extra protection          \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
 
 \noindent
-\textbf{RAID 0} has the \underline{best performance} and \underline{most capacity}.
+Final Considerations and Adopted Techniques:
+\begin{itemize}
+    \item \definition{Hot Spare Disk}. A \emph{hot spare} is a \textbf{physical disk} already installed and powered in the system but \textbf{not actively used} to store data or parity. It's \textbf{just waiting}.
+    
+    This is important because when \textbf{a disk} in a RAID array \textbf{fails}, \textbf{rebuilding} the array, i.e., reconstructing lost data using parity, can \textbf{take hours or days}, depending on the disk size and load. However, \hl{with a hot spare}:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item The controller \textbf{immediately} starts rebuilding the lost data onto the spare.
+        \item No need for human intervention to replace the disk.
+        \item It reduces downtime and risk of further data loss during the rebuild period.
+    \end{itemize}
+    The mechanics of a Formula 1 team are a \textbf{great analogy}. The pit crew remains inactive for most of the race. However, the moment the car enters the pit lane, the crew acts immediately and precisely, replacing tires or making adjustments in a matter of seconds. Similarly, the hot spare disk is not part of the active array during normal operations. However, as soon as a failure occurs, the hot spare disk begins the rebuild process, helping to quickly restore full redundancy. 
 
-\highspace
-\textbf{RAID 1} (10 better than 01) or \textbf{RAID 6} have the \underline{greatest error recovery}.
-
-\highspace
-\textbf{RAID 5} has the better \textbf{\emph{balance}} between \underline{space}, \underline{performance}, and \underline{recoverability}.
+    \item \textbf{Hardware vs Software RAID}
+    \begin{itemize}
+        \item \definition{Hardware RAID}. Implemented via a \textbf{dedicated RAID controller card} or built into the motherboard.
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+                \item \textbf{High performance}: RAID logic is offloaded from the CPU.
+                \item Usually includes a battery-backend \textbf{cache to improve\break write speed} and \textbf{protect against power loss}.
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+                \item \textbf{Portability issue}: if the controller fails and we move the disks to another machine with a different controller, the array might not be recognized.
+                \item \textbf{Expensive}.
+            \end{itemize}
+        \end{itemize}
+        
+        \item \definition{Software RAID}. Managed by the \textbf{operating system} (e.g., Linux \texttt{mdadm}, Windows Storage Spaces).
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+            \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+                \item \textbf{Cheap} and \textbf{flexible}.
+                \item \textbf{Easy to migrate}: disks can often be moved to a different machine and reassembled.
+            \end{itemize}
+            \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+            \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+                \item \textbf{Slower performance} because the host CPU handles parity and I/O operations.
+                \item \textbf{Less reliable} under high load or system crashes.
+                \item Vulnerable to the \textbf{consistent update problem} (page \hqpageref{def: The Consistent Update Problem}).
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
 
 \newpage
 

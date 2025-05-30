@@ -37,13 +37,13 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         </ul></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2024/2025</td>
         <td>Advanced Methods for Scientific Computing</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=5386&aa=2024&n_docente=Formaggia%20Luca&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Formaggia Luca</a></td>
         <td><ul>
             <li><a href="advanced-methods-for-scientific-computing">Course Details</a></li>
-            <li><a href="advanced-methods-for-scientific-computing/notes/advanced-methods-for-scientific-computing.pdf">PDF</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AMSC-parallel-FFT">Project</a></li>
         </ul></td>
     </tr>
     <tr>

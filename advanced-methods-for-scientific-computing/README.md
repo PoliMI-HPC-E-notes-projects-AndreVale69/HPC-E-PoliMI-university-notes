@@ -1,18 +1,10 @@
 # (2024/2025) Advanced Methods for Scientific Computing
 
-These notes are an unofficial resource and shouldn't replace the course material or any other book on _advanced methods for scientific computing_. It is not made for commercial purposes. I've made the following notes to help me improve my knowledge and maybe it can be helpful for everyone.
+Unlike the other courses, I haven't taken any notes for this one because it's essentially a deep dive into the C++ language and its libraries, such as MPI and OpenMP. It is also a very practical course in which you will have to write code to solve mathematical and scientific problems.
 
-As I have highlighted, a student should choose the teacher's material or a book on the topic. These notes can only be a helpful material.
+For the final exam, however, I collaborated with my colleagues to create an _educational_ "library" (note the quotation marks), which contains an $N$-dimensional [Fast Fourier Transform (FFT)](https://en.wikipedia.org/wiki/Fast_Fourier_transform) implementation of the [Cooley-Tukey algorithm](https://en.wikipedia.org/wiki/Fast_Fourier_transform#Cooley%E2%80%93Tukey_algorithm) in C++ using OpenMP. It also includes [Discrete Cosine Transform (DCT)](https://en.wikipedia.org/wiki/Discrete_cosine_transform) and [Haar Wavelet Transform (HWT)](https://en.wikipedia.org/wiki/Wavelet_transform) implementations, which are applied to image and signal compression.
 
-The notes are taken from the books required for the course: 
-
-- Course slides.
-
-You can view/download the PDF [here](notes/advanced-methods-for-scientific-computing.pdf). In the [notes folder](notes/), you can also see the source code.
-
-In the [CHANGELOG](CHANGELOG.md) file you can see the changes made to each version of the PDF file. The versioning can be helpful if you want to understand if there are any new features/fixes in the file.
-
-For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
+You can find the project and its examples here: [Signal Processing Library](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AMSC-parallel-FFT)
 
 ## Course Syllabus
 

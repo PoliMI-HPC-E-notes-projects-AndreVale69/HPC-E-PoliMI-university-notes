@@ -104,6 +104,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="numerical-linear-algebra">Course Details</a></li>
             <li><a href="numerical-linear-algebra/notes/numerical-linear-algebra.pdf">PDF</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NLA-challenges">Challenges</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -124,6 +125,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="parallel-computing">Course Details</a></li>
             <li><a href="parallel-computing/notes/parallel-computing.pdf">PDF</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/Parallel-Computing-Challenges">Challenges</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -154,6 +156,9 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="software-engineering-for-hpc">Course Details</a></li>
             <li><a href="software-engineering-for-hpc/notes/software-engineering-for-hpc.pdf">PDF</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_RD">Project 1</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part1">Project 2A</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part2">Project 2B</a></li>
         </ul></td>
     </tr>
 </table>

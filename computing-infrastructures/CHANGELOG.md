@@ -27,6 +27,7 @@ Each version follows the Conventional Commits structure. For more information on
 ### v1.7.0
 
 - refactor `2.2.2.4 RAID`
+- refactor `4.2.2 RAID`
 
 --------------------
 

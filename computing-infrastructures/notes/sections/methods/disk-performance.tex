@@ -194,151 +194,162 @@ Thanks to the Data Locality, it is possible to calculate the \definition{Average
 
 We can calculate some performance metrics related to the RAID technology (page \pageref{paragraph: RAID}).
 \begin{itemize}
-    \item Let's assume:
-    \begin{itemize}
-        \item A constant Failure Rate;
-        \item An exponentially distributed time to failure;
-        \item The case of independent failures.
-    \end{itemize}
-    (conditions usually used to determine the disk MTTF). 
+    \item \definition{MTTF (Mean Time To Failure)} is the \textbf{expected time before a disk fails}. It is usually provided by the manufacturer, based on statistical modeling (often assuming exponential failure distribution).
     
-    The \definition{Mean Time To Failure of a disk array $\texttt{MTTF}_{\text{diskArray}}$} is equal to the relationship between the \texttt{MTTF} of a single disk and the number of disks:
-    \begin{equation}\label{eq: Mean Time To Failure of a disk array}
-        \texttt{MTTF}_{\text{diskArray}} = \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{\# \: \texttt{Disks}}
-    \end{equation}
-    Large disk arrays are \textbf{too unstable to be used without any fault tolerance approach}. Disks do not have huge \texttt{MTTF} since it is highly probable they will be replaced in a "short time". Note that the \textbf{RAID 0 has no redundancy}!
-    \begin{equation}
-        \texttt{MTTF}_{\texttt{RAID 0}} = \texttt{MTTF}_{\text{diskArray}} = \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{\# \: \texttt{Disks}}
-    \end{equation}
-
-
-    \item RAID levels greater than level zero use redundancy to improve reliability. Then, when a disk fails, it should be replaced, and the information should be reconstructed on the new disk using the redundant information. The \texttt{MTTR} is the \textbf{time needed for this action}! As always, the $N$ value is the number of disks in the array. The \definition{Mean Time To Failure of a RAID $\texttt{MTTF}_{\texttt{RAID}}$} (except the level zero!) is:
-    \begin{equation}\label{eq: Mean Time To Failure of a RAID}
-        \texttt{MTTF}_{\texttt{RAID}} = \left(\dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}\right) \times \left(\dfrac{1}{\text{Probability}_{\text{additionalCriticalFailuresInMTTR}}}\right)
-    \end{equation}
-    Where:
+    To calculate the MTTF for a Disk Array without redundancy, we must make the following assumptions:
     \begin{itemize}
-        \item $\dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}$ is the \textbf{MTTF for the array of $N$ disks}.
-        
-        \item $\dfrac{1}{\text{Probability}_{\text{additionalCriticalFailuresInMTTR}}}$ is the \textbf{probability of other critical failures in the array before repairing the failed disk}. The RAID level and type of redundancy determine it.
+        \item Constant Failure Rate;
+        \item Exponentially distributed time to failure;
+        \item Independent disk failures.
     \end{itemize}
-    In detail, the \textbf{Mean Time To Failure of each RAID level} (except the zero) is:
+    Then the formula is:
+    \begin{equation}
+        \texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}
+    \end{equation}
+    This is because the array fails if \textbf{any one} of its disks fails; so the \textbf{failure rate of the system increases linearly with the number of disks}.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{RAID 0 and MTTF}}. RAID 0 offers \textbf{no redundancy}, so it behaves like a pure array:
+    \begin{equation}
+        \texttt{MTTF}_{\text{RAID 0}} = \texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}
+    \end{equation}
+    this is why RAID 0 is \textbf{high-risk} despite its performance: one disk failure means total data loss.
+
+    \begin{examplebox}[: MTTF]
+        If:
+        \begin{itemize}
+            \item Each disk has an MTTF of $1,000,000$ hours.
+            \item We have an array of 100 disks.
+        \end{itemize}
+        Then:
+        \begin{equation*}
+            \texttt{MTTF}_{\text{array}} = \dfrac{1,000,000}{100} = 10,000 \text{ hours}
+        \end{equation*}
+        Without fault tolerance, our system is $100\times$ more likely to fail than a single disk.
+    \end{examplebox}
+
+    With RAID 5 or 6, the system can still work if one disk fails. However, \textbf{if another disk fails during the rebuild} process, \textbf{data is lost} in RAID 5 or \textbf{further degraded} in RAID 6. Therefore, the probability of data loss is approximately equal to the probability of a second failure occurring within the mean time to recovery (MTTR) window.
+    \begin{equation}\label{eq: Mean Time To Failure of a RAID}
+        \texttt{MTTF}_{\text{RAID}} = \texttt{MTTF}_{\text{array}} \cdot \left( \frac{1}{\text{\% of additional critical failures during MTTR}} \right)
+    \end{equation}
+    The first part $\texttt{MTTF}_{\text{array}}$ captures the \textbf{rate of first failures}. The second part \textbf{increases the effective \texttt{MTTF} depending} on \textbf{how} likely we are to \textbf{survive the rebuild window} (i.e., how unlikely a second failure is during \texttt{MTTR}). In other words, the \textbf{probability term} models the likelihood of \textbf{another failure occurring during a vulnerable period when the system is degraded} (e.g., during the process of rebuilding a RAID 5 array with one failed disk).
+
+    \item The \textbf{Mean Time To Failure of each RAID level} (except the zero) is:
     \begin{itemize}
-        \item \texttt{\underline{RAID 1}} - With a single copy of each disk, one drive can fail, and if we are lucky, $N \div 2$ drives can fail without data loss. Then the \definition{MTTF of \texttt{RAID 1} $\texttt{MTTF}_{\text{RAID 1}}$} is:
-        \begin{equation}
-            \texttt{MTTF}_{\text{RAID 1}} = \left(
-                \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}
-            \right) \times \left(
-                \dfrac{1}{\text{Probability}_{\text{2ndCriticalFailureInMTTR}}}
-            \right)
-        \end{equation}
-        \begin{equation}
-            \text{Probability}_{\text{2ndCriticalFailureInMTTR}} = \left(\dfrac{1}{\texttt{MTTF}_{\text{singleDisk}}}\right) \times \texttt{MTTR}
-        \end{equation}
-        Where:
+        \item \definitionWithSpecificIndex{\texttt{\underline{RAID 1}}}{MTTF of \texttt{RAID 1} $\texttt{MTTF}_{\text{RAID 1}}$}{} (page \hqpageref{RAID 1}) employs \textbf{mirroring}: every disk has an exact\break replica. This means each piece of data is stored \textbf{twice}, on two separate drives. The system can tolerate \textbf{one drive failure per mirrored pair} without data loss. In theory:
         \begin{itemize}
-            \item $\dfrac{1}{\texttt{MTTF}_{\text{singleDisk}}}$ is the \textbf{failure rate for the copy of the failed disk}.
-            
-            \item $\texttt{MTTR}$ is the \textbf{period of interest before replacement}.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Best case}}: up to $\frac{N}{2}$ drives can fail without affecting data (if each failed drive is from a different mirror).
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Worst case}}: system fails if both disks in any mirror pair fail before the array is rebuilt.
         \end{itemize}
-
-
-        \item \texttt{\underline{RAID 0 + 1}} - When one disk in a stripe group fails, the entire group goes off. Then the \definition{MTTF of \texttt{RAID 01} $\texttt{MTTF}_{\text{RAID 0 + 1}}$} is:
+        The formula used is:
         \begin{equation}
-            \texttt{MTTF}_{\text{RAID 01}} = \left(
-                \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}
-            \right) \times \left(
-                \dfrac{1}{\text{Probability}_{\text{2ndCriticalFailureInMTTR}}}
+            \texttt{MTTF}_{\texttt{RAID 1}} = \texttt{MTTF}_{\text{array}} \cdot \left(
+                \dfrac{1}{\text{\% of 2nd critical failure during MTTR}}
             \right)
-        \end{equation}
-        It is not the same as RAID 1 because the probability is:
-        \begin{equation}
-            \text{Probability}_{\text{2ndCriticalFailureInMTTR}} = \left(\dfrac{G}{\texttt{MTTF}_{\text{singleDisk}}}\right) \times \texttt{MTTR}
         \end{equation}
         Where:
         \begin{itemize}
-            \item $G$ is the \textbf{number of disks in a stripe group}.
-
-            \item $\dfrac{G}{\texttt{MTTF}_{\text{singleDisk}}}$ is the \textbf{failure rate for one of the disks in the other group}.
-            
-            \item $\texttt{MTTR}$ is the \textbf{period of interest before replacement}.
-        \end{itemize}
-
-
-        \item \texttt{\underline{RAID 1 + 0}} - To fail, the same copy in both groups has to fail, but multiple failure can be tolerated. Then the \definition{MTTF of \texttt{RAID 10} $\texttt{MTTF}_{\text{RAID 1 + 0}}$} is:
-        \begin{equation}
-            \texttt{MTTF}_{\text{RAID 10}} = \left(
-                \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}
-            \right) \times \left(
-                \dfrac{1}{\text{Probability}_{\text{2ndCriticalFailureInMTTR}}}
-            \right)
-        \end{equation}
-        It is not the same as RAID 1 because the probability is:
-        \begin{equation}
-            \text{Probability}_{\text{2ndCriticalFailureInMTTR}} = \left(\dfrac{1}{\texttt{MTTF}_{\text{singleDisk}}}\right) \times \texttt{MTTR}
-        \end{equation}
-        Where:
-        \begin{itemize}
-            \item $\dfrac{1}{\texttt{MTTF}_{\text{singleDisk}}}$ is the \textbf{failure rate for the copy of the failed disk}.
-
-            \item $\texttt{MTTR}$ is the \textbf{period of interest before replacement}.
-        \end{itemize}
-
-
-        \item \texttt{\underline{RAID 4}} and \texttt{\underline{RAID 5}} - To fail, two disks have to fail before replacement. Then the \definition{MTTF of \texttt{RAID 4} $\texttt{MTTF}_{\text{RAID 4}}$} and the \definition{MTTF of \texttt{RAID 5} $\texttt{MTTF}_{\text{RAID 5}}$} is:
-        \begin{equation}
-            \texttt{MTTF}_{\text{RAID 4}} = \texttt{MTTF}_{\text{RAID 5}} = \left(
-                \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}
-            \right) \times \left(
-                \dfrac{1}{\text{Probability}_{\text{2ndFailureInMTTR}}}
-            \right)
-        \end{equation}
-        And the probability is:
-        \begin{equation}
-            \text{Probability}_{\text{2ndFailureInMTTR}} = \left(\dfrac{\left(N-1\right)}{\texttt{MTTF}_{\text{singleDisk}}}\right) \times \texttt{MTTR}
-        \end{equation}
-        Where:
-        \begin{itemize}
-            \item $\dfrac{\left(N-1\right)}{\texttt{MTTF}_{\text{singleDisk}}}$ is the \textbf{failure rate for one of the other disks}.
-
-            \item $\texttt{MTTR}$ is the \textbf{period of interest before replacement}.
-        \end{itemize}
-
-
-        \item \texttt{\underline{RAID 6}} - Two disks failures at the same time are tolerated. Then the \definition{MTTF of \texttt{RAID 6} $\texttt{MTTF}_{\text{RAID 6}}$} is:
-        \begin{equation}
-            \texttt{MTTF}_{\text{RAID 6}} = \left(
-                \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}
-            \right) \times \left(
-                \dfrac{1}{\text{Probability}_{\text{2ndAnd3rdFailureInMTTR}}}
-            \right)
-        \end{equation}
-        And the probability is:
-        \begin{equation}
-            \text{Probability}_{\text{2ndAnd3rdFailureInMTTR}} = \text{Probability}_{\text{2ndFailure}} \times \text{Probability}_{\text{3ndFailure}}
-        \end{equation}
-        Where:
-        \begin{itemize}
-            \item $\text{Probability}_{\text{2ndFailure}}$:
-            \begin{equation}
-                \text{Probability}_{\text{2ndFailure}} = \left(\dfrac{\left(N-1\right)}{\texttt{MTTF}_{\text{singleDisk}}}\right) \times \texttt{MTTR}
+            \item $\texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}$
+            \item $\text{MTTR}$: Mean Time To Repair.
+            \item $\text{\% of 2nd critical failure during MTTR}$:
+            \begin{equation}\label{eq: RAID 1 - probability of 2nd critical failure during MTTR}
+                \text{\% of 2nd critical failure during MTTR} = \frac{1}{\texttt{MTTF}_{\text{disk}}} \cdot \texttt{MTTR}
             \end{equation}
+            Where:
             \begin{itemize}
-                \item $\dfrac{\left(N-1\right)}{\texttt{MTTF}_{\text{singleDisk}}}$ is the \textbf{failure rate for one of the other disks}.
-
-                \item \texttt{MTTR} is the \textbf{period of interest before the replacement}.
-            \end{itemize}
-
-            \item $\text{Probability}_{\text{3ndFailure}}$:
-            \begin{equation}
-                \text{Probability}_{\text{3ndFailure}} = \left(\dfrac{\left(N-2\right)}{\texttt{MTTF}_{\text{singleDisk}}}\right) \times \dfrac{\texttt{MTTR}}{2}
-            \end{equation}
-            \begin{itemize}
-                \item $\dfrac{\left(N-2\right)}{\texttt{MTTF}_{\text{singleDisk}}}$ is the \textbf{failure rate for one of the remaining disks}.\vspace{.5em}
-
-                \item $\dfrac{\texttt{MTTR}}{2}$ is the \textbf{average overlapping period between first and second disk replacement} (both disk not yet replaced).
+                \item $\dfrac{1}{\texttt{MTTF}_{\text{single disk}}}$ is the \textbf{failure rate} of a single disk.
+                
+                \item $\texttt{MTTR}$ is the the \textbf{duration in which the system is in a degraded state}, i.e., vulnerable to a second failure.
             \end{itemize}
         \end{itemize}
+        This probability models the \textbf{chance that the mirror of a failed disk also fails during the rebuild window}.
+
+
+        \item \definitionWithSpecificIndex{\texttt{\underline{RAID 0 + 1}}}{MTTF of \texttt{RAID 01} $\texttt{MTTF}_{\text{RAID 0 + 1}}$}{} (page \hqpageref{RAID 0 + 1}) means \textbf{first striping} (RAID 0), then \textbf{mirroring} (RAID 1). The disks are divided into \textbf{stripe groups}, and then each group is mirrored. If any disk in a stripe group fails, \textbf{that whole group is lost}. The array can survive \textbf{a single group failure}, but not a second.
+        \begin{equation}
+            \texttt{MTTF}_{\texttt{RAID 0+1}} = \texttt{MTTF}_{\text{array}} \cdot \left(
+                \dfrac{1}{\text{\% of 2nd critical failure during MTTR}}
+            \right)
+        \end{equation}
+        Where:
+        \begin{itemize}
+            \item $\texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}$
+            \item $\texttt{MTTR}$ is the mean time to repair (the vulnerable window).
+            \item Despite the RAID 1, the \textbf{probability of a second critical failure during the mean time to repair} (MTTR) is:
+            \begin{equation}
+                \text{\% of 2nd critical failure during MTTR} = \left(\dfrac{G}{\texttt{MTTF}_{\text{disk}}}\right) \cdot \texttt{MTTR}
+            \end{equation}
+            Where $G$ is the number of \textbf{disks in each stripe group}, and $\dfrac{G}{\texttt{MTTF}_{\text{disk}}}$ is the \textbf{combined failure rate} of the $G$ disks in the remaining group. Multiplying this by the MTTR gives the probability that the second group will fail during the rebuild.
+            
+            Once a \textbf{disk} in one stripe group \textbf{fails}, the \textbf{entire group becomes inoperative}. To avoid total data loss, the \textbf{mirrored stripe group must not fail before rebuild completes}. 
+        \end{itemize}
+
+        
+        \item \definitionWithSpecificIndex{\texttt{\underline{RAID 1 + 0}}}{MTTF of \texttt{RAID 10} $\texttt{MTTF}_{\text{RAID 1 + 0}}$}{} (page \hqpageref{RAID 1 + 0}) combines \textbf{mirroring first} (RAID 1) then \textbf{striping} (RAID 0). Disks are organized into mirrored pairs. Then data is striped across the pairs. A disk can fail in any mirrored pair, the system remains operational. To cause data loss, \textbf{both disks in a mirrored pair must fail}. Thus, it \textbf{tolerates multiple disk failures} as long as no pair is entirely lost.
+        
+        \begin{equation}
+            \texttt{MTTF}_{\texttt{RAID 1+0}} = \texttt{MTTF}_{\text{array}} \cdot \left(
+                \dfrac{1}{\text{\% of 2nd critical failure during MTTR}}
+            \right)
+        \end{equation}
+        Where:
+        \begin{itemize}
+            \item $\texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}$
+            \item $\texttt{MTTR}$ is the mean time to repair (the vulnerable window).
+            \item The probability of a second critical failure during the Mean Time To Repair (MTTR) is the same as for RAID 1 (see formula \ref{eq: RAID 1 - probability of 2nd critical failure during MTTR}):
+            \begin{equation}
+                \text{\% of 2nd critical failure during MTTR} = \dfrac{1}{\texttt{MTTF}_{\text{disk}}} \cdot \texttt{MTTR}
+            \end{equation}
+            The system is only at risk if the \textbf{exact mirror} of the failed disk also fails during the rebuild. So, unlike \texttt{RAID 0+1}, the failure risk localized, not dependent on an entire group.
+        \end{itemize}
+
+
+        \item \definitionWithSpecificIndex{\texttt{\underline{RAID 4}}}{MTTF of \texttt{RAID 4} $\texttt{MTTF}_{\text{RAID 4}}$}{} (page \hqpageref{RAID 4}) is a block-level striping with a \textbf{dedicated parity disk}. All parity information is stored on \textbf{one disk}, creating a bottleneck on writes.
+        
+        \definitionWithSpecificIndex{\texttt{\underline{RAID 5}}}{MTTF of \texttt{RAID 5} $\texttt{MTTF}_{\text{RAID 5}}$}{} (page \hqpageref{RAID 5}) is a block-level striping with \textbf{distributed parity}. Parity is \textbf{spread across all disks}, improving write performance and eliminating the RAID 4 bottleneck.
+
+        Both RAID 4 and RAID 5 can \textbf{tolerate a single disk failure}. Data is reconstructed using parity. Failure occurs only if \textbf{a second disk} fails \textbf{before} the first one is rebuilt.
+        
+        \begin{equation}
+            \texttt{MTTF}_{\texttt{RAID 4, 5}} = \texttt{MTTF}_{\text{array}} \cdot \left(
+                \dfrac{1}{\text{\% of 2nd failure during MTTR}}
+            \right)
+        \end{equation}
+        Where:
+        \begin{itemize}
+            \item $\texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}$
+            \item $\texttt{MTTR}$ is the mean time to repair (the vulnerable window).
+            \item The probability of a second critical failure during the Mean Time To Repair (MTTR) is:
+            \begin{equation}
+                \text{\% of 2nd failure during MTTR} = \dfrac{N - 1}{\texttt{MTTF}_{\text{disk}}} \cdot \texttt{MTTR}
+            \end{equation}
+            Where $N$ is the number of disks in the array. The \textbf{first failure} does not cause data loss (covered by parity). The \textbf{second failure} is only dangerous \textbf{if it occurs during rebuild}. The probability considers all $N - 1$ remaining disks and their individual failure rates.
+        \end{itemize}
+        They have the same formula because they both rely on \textbf{single-parity protection}. The \textbf{main difference} between them is their \textbf{performance} and \textbf{load balancing capabilities}, not their reliability!
+
+
+        \item \definitionWithSpecificIndex{\texttt{\underline{RAID 6}}}{MTTF of \texttt{RAID 6} $\texttt{MTTF}_{\text{RAID 6}}$}{} (page \hqpageref{RAID 6}) is an extension of RAID 5 with \textbf{double parity}. It uses two independent parity blocks per stripe (commonly $P$ and $Q$). These allow the array to tolerate \textbf{two simultaneous disk failures}. The system only fails if \textbf{a third disk fails} during the time in which the two failed disks are being rebuilt.
+
+        \begin{equation}
+            \texttt{MTTF}_{\texttt{RAID 6}} = \texttt{MTTF}_{\text{array}} \cdot \dfrac{1}{
+                \text{\% 2nd failure} \cdot \text{\% 3rd failure}
+            }
+        \end{equation}
+        Where:
+        \begin{itemize}
+            \item $\texttt{MTTF}_{\text{array}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{\texttt{Number of Disks}}$
+            \item $\texttt{MTTR}$ is the mean time to repair (the vulnerable window).
+            \item The probability of the second failure during MTTR:
+            \begin{equation}
+                \text{\% 2nd failure} = \dfrac{N-1}{\texttt{MTTF}_{\text{single disk}}} \cdot \texttt{MTTR}
+            \end{equation}
+            It is the risk of a second failure while the first is being repaired.
+            \item The probability of the third failure during MTTR:
+            \begin{equation}
+                \text{\% 3nd failure} = \dfrac{N-2}{\texttt{MTTF}_{\text{single disk}}} \cdot \dfrac{\texttt{MTTR}}{2}
+            \end{equation}
+            It is the risk of a third failure during the overlapping time when \textbf{both first and second disks} are being rebuilt. The \texttt{MTTR} is divided by two because it \textbf{assumes} that both \textbf{disks are under recovery simultaneously} (\textbf{average time}).
+        \end{itemize}
+        Unlike RAID 5, RAID 6 can still recover after a second disk fails. But during this dual-failure state, the system becomes vulnerable to a \textbf{third-failure}. That third failure is what RAID 6 models as catastrophic.
     \end{itemize}
 \end{itemize}
 
@@ -348,15 +359,29 @@ We can calculate some performance metrics related to the RAID technology (page \
     \centering
     \begin{tabular}{@{} l l @{}}
         \toprule
-        \textbf{RAID level} & \textbf{Metric} \\
+        \textbf{Metric}                                                                                                                                                         & \textbf{Tolerates} \\
         \midrule
-        \texttt{RAID 0}     & $\texttt{MTTF}_{\texttt{RAID 0}} = \dfrac{\texttt{MTTF}_{\text{singleDisk}}}{N}$ \\ \\
-        \texttt{RAID 1 + 0} & $\texttt{MTTF}_{\texttt{RAID 10}} = \dfrac{\left(\texttt{MTTF}_{\text{singleDisk}}\right)^{2}}{\left(N \times \texttt{MTTR}\right)}$ \\ \\
-        \texttt{RAID 0 + 1} & $\texttt{MTTF}_{\texttt{RAID 01}} = \dfrac{\left(\texttt{MTTF}_{\text{singleDisk}}\right)^{2}}{\left(N \times G \times \texttt{MTTR}\right)}$ \\ \\
-        \texttt{RAID 4}     & $\texttt{MTTF}_{\texttt{RAID 4}} = \dfrac{\left(\texttt{MTTF}_{\text{singleDisk}}\right)^{2}}{\left(N \times N-1 \times \texttt{MTTR}\right)}$ \\ \\
-        \texttt{RAID 5}     & $\texttt{MTTF}_{\texttt{RAID 5}} = \dfrac{\left(\texttt{MTTF}_{\text{singleDisk}}\right)^{2}}{\left(N \times N-1 \times \texttt{MTTR}\right)}$ \\ \\
-        \texttt{RAID 6}     & $\texttt{MTTF}_{\texttt{RAID 6}} = \dfrac{2 \times \left(\texttt{MTTF}_{\text{singleDisk}}\right)^{3}}{\left(N \times N-1 \times N-2 \times \texttt{MTTR}^{2}\right)}$ \\
+        $\texttt{MTTF}_{\texttt{RAID 0}} = \dfrac{\texttt{MTTF}_{\text{single disk}}}{N}$                                                                                        & 0 disk failures \\ \\
+        $\texttt{MTTF}_{\texttt{RAID 1+0}} = \dfrac{\left(\texttt{MTTF}_{\text{single disk}}\right)^{2}}{\left(N \times \texttt{MTTR}\right)}$                                   & Multiple failures (1 per mirror) \\ \\
+        $\texttt{MTTF}_{\texttt{RAID 0+1}} = \dfrac{\left(\texttt{MTTF}_{\text{single disk}}\right)^{2}}{\left(N \times G \times \texttt{MTTR}\right)}$                          & 1 full group \\ \\
+        $\texttt{MTTF}_{\texttt{RAID 4}} = \dfrac{\left(\texttt{MTTF}_{\text{single disk}}\right)^{2}}{\left(N \times N-1 \times \texttt{MTTR}\right)}$                          & 1 disk \\ \\
+        $\texttt{MTTF}_{\texttt{RAID 5}} = \dfrac{\left(\texttt{MTTF}_{\text{single disk}}\right)^{2}}{\left(N \times N-1 \times \texttt{MTTR}\right)}$                          & 1 disk \\ \\
+        $\texttt{MTTF}_{\texttt{RAID 6}} = \dfrac{2 \times \left(\texttt{MTTF}_{\text{single disk}}\right)^{3}}{\left(N \times N-1 \times N-2 \times \texttt{MTTR}^{2}\right)}$  & 2 disks \\
         \bottomrule
     \end{tabular}
     \caption{MTTF summary RAID levels.}
 \end{table}
+
+\begin{itemize}
+    \item \texttt{RAID 0}: No redundancy. Failure of any disk leads to total data loss.
+    \item \texttt{RAID 1+0}: High reliability; localized failure risk; faster rebuilds.
+    \item \texttt{RAID 0+1}: Less reliable than \texttt{1+0}; entire group fails if any disk in it fails.
+    \item \texttt{RAID 4/5}: Identical \texttt{MTTF}; \texttt{RAID 5} distributes parity to avoid bottlenecks of \texttt{RAID 4}.
+    \item \texttt{RAID 6}: Extremely high reliability; more complex failure modeling.
+\end{itemize}
+Last remarks:
+\begin{itemize}
+    \item The increase in \textbf{exponential of} $\texttt{MTTF}_{\text{disk}}$ reflects higher redundancy\break (\texttt{RAID 6} uses $\texttt{MTTF}^{3}$).
+    \item More complex RAID levels (\texttt{1+0} or \texttt{6}) handle multiple simultaneous failures much more gracefully.
+    \item \textbf{Mean Time To Repair (MTTR)} plays a critical role: the long the rebuild takes, the more likely a second or third failure occurs.
+\end{itemize}

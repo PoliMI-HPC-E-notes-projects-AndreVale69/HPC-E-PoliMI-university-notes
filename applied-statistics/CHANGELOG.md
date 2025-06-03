@@ -15,6 +15,7 @@
     - add `Introduction`
     - add `Definition`
     - add `Initialization Issues in K-Means`
+    - add `K-Means as an Optimization Problem`
 
 --------------------
 

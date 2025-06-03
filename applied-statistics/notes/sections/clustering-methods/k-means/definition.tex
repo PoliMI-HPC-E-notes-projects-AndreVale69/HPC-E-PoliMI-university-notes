@@ -9,16 +9,101 @@
 The goal of K-Means is to find a partition of the data that \textbf{minimizes the total within-cluster variation}, usually measured as the \textbf{sum of squared Euclidean distances} between each point and the centroid of its assigned cluster.
 
 \highspace
+In other words, the K-means algorithm aims to \textbf{partition a dataset of $n$ observations into $K$ distinct clusters}:
+\begin{itemize}
+    \item Each observation belongs to \textbf{one and only one} cluster.
+    \item Each cluster has a \textbf{centroid}, i.e., a central point.
+    \item Each point is assigned to the cluster with the \textbf{nearest centroid}.
+    \item The goal is to \textbf{minimize the total distance} (squared Euclidean distance) from each point to its cluster's centroid.
+\end{itemize}
+
+\highspace
 We can express the previous goals in raw mathematical terms as follows:
 \begin{equation}
     \min_{C_{1}, ..., C_{K}} \:\: \displaystyle\sum_{k=1}^{K} \:\: \sum_{\mathbf{x}_i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^{2}
 \end{equation}
 Where:
 \begin{itemize}
-    \item $C_{k}$ is the \textbf{set of points} in the $k$-th cluster.
+    \item $C_{k}$ is the \textbf{set of points} in the $k$-th cluster. Let $C_{1}, C_{2}, \dots, C_{K}$ be the \textbf{index sets} of the clusters; these must form a \textbf{partition} of the dataset:
+    \begin{itemize}
+        \item $C_{1} \cup C_{2} \cup \dots \cup C_{K} = \left\{ 1, 2, \dots, n \right\}$, every observation is included in some cluster.
+        \item $C_{i} \cap C_{j} = \emptyset$ for $i \neq j$, no observation can belong to two clusters at once.
+    \end{itemize}
+    So, if the index $i \in C_{k}$, that means the $i$-th observation is assigned to the $k$-th cluster.
     \item $\boldsymbol{\mu}_{k}$ is the \textbf{centroid} (mean vector) of cluster $C_{k}$.
     \item $\|\mathbf{x}_i - \boldsymbol{\mu}_k\| = \| \cdot \|$ denotes \textbf{Euclidean distance}. It is the quantity that K-Means tries to minimize over all clusters.
 \end{itemize}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | p{20em} @{}}
+        \toprule
+        Concept & Meaning \\
+        \midrule
+        \textbf{Clustering type}            & Partitional (flat). \\ [.5em]
+        \textbf{Centroid}                   & Mean of points in a cluster. \\ [.5em]
+        \textbf{Assignment rule}            & Assign each point to the \textbf{closest centroid}. \\ [.5em]
+        \textbf{$K$ (number of clusters)}   & Must be \textbf{chosen in advance}. \\ [.5em]
+        \textbf{Objective function}         & Minimize total within-cluster distance (e.g., sum of squared distances). \\ [.5em]
+        \textbf{Partition conditions}       & Clusters are \textbf{disjoint and exhaustive} (no overlap, no omission). \\
+        \bottomrule
+    \end{tabular}
+    \caption{K-Means summary}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How Many Clusters? (choosing $K$)}}
+\end{flushleft}
+One of the main limitations of K-Means is that the number of clusters $K$ must be \textbf{specified in advance}. However, in real-world data, the true number of natural groupings is \textbf{usually unknown}. Choosing the wrong $K$ can lead to:
+\begin{itemize}
+    \item \definitionWithSpecificIndex{Underfitting}{K-Means Underfitting}{}: too \hl{few} clusters $\Rightarrow$ \hl{merging} different groups
+    \item \definitionWithSpecificIndex{Overfitting}{K-Means Overfitting}{} too \hl{many} clusters $\Rightarrow$ \hl{splitting} coherent groups
+\end{itemize}
+The common methods to choose $K$ are:
+\begin{itemize}
+    \item \definition{Elbow Method} looks at the \textbf{total within-cluster variation} (also called inertia or distortion), defined as:
+    \begin{equation}
+        W(K) = \displaystyle\sum_{k=1}^{K} \:\: \sum_{\mathbf{x}_{i} \in C_{K}} \| \mathbf{x}_{i} - \mathbf{\mu}_{k} \|^{2}
+    \end{equation}
+    \begin{itemize}
+        \item $W(K)$ is the total within-cluster variability. It measures \textbf{how compact the clusters are}, the smaller $W(K)$, the tighter the points are around their centroids.
+        \item When $K = 1$, all points are in a single cluster, so $W(1)$ is very high. As $K$ increases, \textbf{clusters} become \textbf{smaller and tighter}, then $W(K)$ \textbf{decreases}. In the extreme case $K = n$, each point is its own cluster, then $W(n) = 0$.
+        
+        So, $W(K)$ \textbf{always decreases as} $K$ \textbf{increases}, but \underline{not} linearly.
+    \end{itemize}
+    We compute Elbow Method for different values of $K$, and plot $W(K)$ vs $K$. The reason we plot the \textbf{within-cluster sum of squares} $W(K)$ against the \textbf{number of clusters} $K$ is to \textbf{visualize how the clustering quality improves} as we increase the number of clusters.
+
+    Plotting $W(K)$ against $K$ helps us \textbf{identify the point where adding more clusters gives diminishing returns}. It is called the ``\emph{elbow method}'' because of the shape of the plot. When plotting $W(K)$ versus $K$, the curve usually drops sharply at first because adding more clusters quickly improves clustering. After a certain point, however, adding more clusters only yields small improvements. The resulting plot often resembles a bent arm. The ``\emph{elbow}'' is the point of maximum curvature, where the curve begins to flatten out. This point is important because \textbf{before the elbow}, we see \textbf{significant gains in reducing} within-cluster variance. \textbf{After the elbow}, however, the \textbf{gains are minimal}, indicating that increasing model complexity is not worthwhile.
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.9\textwidth]{img/elbow-method.pdf}
+        \captionsetup{singlelinecheck=off}
+        \caption[]{This is an example of the \emph{elbow method} applied to K-means clustering. In the plot, we can see how the within-cluster sum of squares ($W(K)$) changes as the number of clusters $K$ increases from 1 to 10.
+        \begin{itemize}
+            \item When $K = 1$: $W(K)$ is very large (around 2500), since all points belong to a single, poorly-fitting cluster.
+            \item From $K = 1$ to $K = 3$: $W(K)$ decreases rapidly, showing tat adding clusters significantly improves the clustering.
+            \item From $K = 4$ onward: the curve starts to flatten, meaning adding more clusters gives only small improvements.
+        \end{itemize}
+        The elbow is visible at $K = 4$. This is where the rate slows down sharply. Adding more clusters doesn't significantly reduce $W(K)$. It balances clustering quality with model simplicity.}
+    \end{figure}
+
+
+    \item \definition{Silhouette Score} (or \definition{Silhouette Coefficient}) evaluates \textbf{how well each point fits within its cluster} versus others. The Silhouette Coefficient for a point is:
+    \begin{equation}
+        s = \dfrac{b - a}{\max\left(a, b\right)}
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $a$ is the average distance to points in the same cluster
+        \item $b$ is the average distance to points in the nearest other cluster
+    \end{itemize}
+    Values close to $1$ mean well-clustered points. We compute the average Silhouette score for all points and pick the $K$ that maximizes it.
+    \item \definition{Gap Statistics} (too advanced) compares the total within-cluster variation for the real data to that for randomly generated data with no structure. A large ``gap'' means the real data forms more distinct clusters. Choose the smallest $K$ for which the gap is maximal or within 1 standard deviation of the maximum.
+\end{itemize}
+
 
 \begin{examplebox}[: K-Means]
     Below is a simple run of the K-means algorithm on a random dataset.

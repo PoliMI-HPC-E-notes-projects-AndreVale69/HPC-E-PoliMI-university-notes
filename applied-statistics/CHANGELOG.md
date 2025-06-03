@@ -14,6 +14,7 @@
   - add `K-Means`
     - add `Introduction`
     - add `Definition`
+    - add `Initialization Issues in K-Means`
 
 --------------------
 

@@ -1,0 +1,258 @@
+\subsection{Gaussian Mixture Models (GMMs)}
+
+\subsubsection{Introduction}
+
+A \definition{Gaussian Mixture Model (GMM)} is a \textbf{probabilistic model} that assumes the data is generated from a \textbf{mixture of several Gaussian distributions} (also called normal distributions), each representing a different \textbf{latent group or cluster}.
+
+\highspace
+\textbf{Each data point} is not assigned to one specific cluster (as we have seen in the K-means algorithm), but is instead modeled as \textbf{having a probability of belonging to each cluster}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called a ``\emph{mixture}''?}}
+\end{flushleft}
+Because the model represents the \textbf{overall data distribution} as a \textbf{weighted sum of several Gaussian components}. Mathematically, the probability density function is:
+\begin{equation}
+    f\left(x\right) = \displaystyle\sum_{k=1}^{K} \pi_{k} \cdot \mathcal{N}\left(x \mid \mu_{k}, \Sigma_{k}\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $K$ is the number of \textbf{Gaussian components} (clusters)
+    \item $\pi_{k}$ is the \textbf{mixing coefficient} of component $k$ (like a \emph{weight}), with $\displaystyle\sum \pi_{k} = 1$
+    \item $\mathcal{N}\left(x \mid \mu_{k}, \Sigma_{k}\right)$ is the \textbf{multivariate Gaussian distribution} with:
+    \begin{itemize}
+        \item Mean $\mu_{k}$
+        \item Covariance matrix $\Sigma_{k}$
+    \end{itemize}
+\end{itemize}
+
+\begin{remarkbox}[: What is the Multivariate Gaussian Distribution?]
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a 1D Gaussian (Normal) Distribution?}}
+    \end{flushleft}
+    The \definition{1D Gaussian} (also called \definition{Normal Distribution}) is the classic bell curve and it tells us how likely we are to get values near the \textbf{mean} $\mu$, and how unlikely values far from the mean are. The spread is controlled by the \textbf{standard deviation} $\sigma$.
+
+    \highspace
+    In other words, it describes a \textbf{continuous} variable whose values are \textbf{most likely to occur near a central point}, and \textbf{less likely the farther we move away}.
+
+    \highspace
+    The \textbf{Probability Density Function (PDF)} of a 1D Gaussian is:
+    \begin{equation}
+        f(x) = \dfrac{1}{\sqrt{2\pi \sigma^2}} \cdot \exp\left(-\dfrac{(x - \mu)^2}{2\sigma^2}\right)
+    \end{equation}
+    \begin{itemize}
+        \item $x$ is the value of the random variable.
+        \item $\mu$ is the \textbf{mean}, the center of the distribution.
+        \item $\sigma$ is the \textbf{standard deviation}, it controls the ``spread'' of the curve.
+    \end{itemize}
+    The bell-shaped curve is symmetric around the mean $\mu$. Most values fall within:
+    \begin{itemize}
+        \item $\mu \pm \sigma$:  $\approx 68 \%$
+        \item $\mu \pm 2\sigma$: $\approx 95 \%$
+        \item $\mu \pm 3\sigma$: $\approx 99.7 \%$
+    \end{itemize}
+    For example, if we have a 1D Gaussian with $\mu = 0$, $\sigma = 1$, it is called the \textbf{standard normal distribution}, where the curve peaks at 0 and spreads out smoothly in both directions.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a 2D Gaussian Distribution?}}
+    \end{flushleft}
+    The \definition{2D Gaussian} (or \definition{Bivariate Normal Distribution}) is the natural extension of the 1D Gaussian to \textbf{two dimensions}. It tells us how likely a point $(x, y)$ is to appear in a \textbf{2D space}, just like how the 1D Gaussian tells us about single values on a line.
+
+    \highspace
+    A \textbf{2D Gaussian distribution} is completely defined by:
+    \begin{enumerate}
+        \item \important{Mean Vector} $\boldsymbol{\mu} \in \mathbb{R}^2$
+
+        This is the \textbf{center} (or peak) of the distribution.
+        \begin{equation}
+            \boldsymbol{\mu} = \begin{bmatrix}
+                \mu_{x} \\
+                \mu_{y}
+            \end{bmatrix}
+        \end{equation}
+        It tells us the \textbf{average position} of the points, the location where the distribution is highest.
+
+
+        \item \important{Covariance Matrix} $\Sigma \in \mathbb{R}^{2 \times 2}$
+        
+        This tells us how the data is \textbf{spread out and oriented} in 2D space.
+        \begin{equation}
+            \Sigma =
+            \begin{bmatrix}
+                \sigma_{x}^{2}              & \rho \sigma_{x} \sigma_{y} \\
+                \rho \sigma_{x} \sigma_{y}  & \sigma_{y}^{2}
+            \end{bmatrix}
+        \end{equation}
+        The diagonal values control the \textbf{spread} along each axis, and the off-diagonal values ($\rho$) represent \textbf{correlation} between $x$ and $y$.
+        \begin{itemize}
+            \item $\sigma_x^2$, $\sigma_y^2$ is the variances along the X and Y axes.
+            \item $\rho$ is the correlation between $x$ and $y$.
+            \begin{itemize}
+                \item If $\rho = 0$: the axes are independent.
+                \item If $\rho > 0$: the ellipse tilts upward (positive correlation).
+                \item If $\rho < 0$: the ellipse tilts downward (negative correlation).
+            \end{itemize}
+        \end{itemize}
+    \end{enumerate}
+    In short, a 2D Gaussian is a ``bell-shaped hill'' in 3D space, centered at $\boldsymbol{\mu}$, with shape and tilt determined by $\Sigma$.
+
+    \begin{center}
+        \captionsetup{type=figure}
+        \includegraphics[width=\textwidth]{img/gaussian/gaussian-1d-2d.pdf}
+        \captionsetup{singlelinecheck=off}
+        \caption[]{1D Gaussian and 2D Gaussian (as Contours). In the \textbf{1D plot} (left), we see the classic \textbf{bell-shaped curve}. This shows the probability density of a variable $x$ under a Gaussian distribution centered at $\mu = 0$ with standard deviation $\sigma = 1$.
+        \begin{itemize}
+            \item The peak occurs at the mean.
+            \item The density decreases symmetrically as we move away from the mean.
+            \item Most of the probability mass lies within $\pm 1$ or $\pm 2$ standard deviations.
+        \end{itemize}
+        This curve describes how \textbf{likely} different values of $x$ are under the distribution. The second plot (right) shows a \textbf{2D Gaussian distribution using contour lines}. This represents a Gaussian defined over two variables, $x$ and $y$.
+        \begin{itemize}
+            \item The \textbf{concentric ellipses} indicate regions of equal probability density (like topographic maps).
+            \item The ellipses are \textbf{tiled}, showing that the variables $x$ and $y$ are \textbf{positively correlated}.
+            \item The closer to the center, the higher the density.
+            \item A 2D Gaussian distribution models probabilities over two variables $\mathbf{x} = (x, y)$. At each point $(x, y)$, the distribution gives a \textbf{density value}, that is, how likely it is that a data point would occur at that location. This means the 2D Gaussian is actually a function from 2D to 1D:
+            \begin{equation*}
+                f(x, y) = \text{density}
+            \end{equation*}
+            So even though it's defined in 2D, it \textbf{outputs a single number} (the density).
+        \end{itemize}
+        This view helps visualize the \textbf{shape and orientation} of the distribution in 2D space.}
+    \end{center}
+
+    \begin{center}
+        \captionsetup{type=figure}
+        \includegraphics[width=.8\textwidth]{img/gaussian/gaussian-2d-as-3d.pdf}
+        \captionsetup{singlelinecheck=off}
+        \caption[]{A 3D plot showing the same 2D Gaussian as a surface in three dimensions.
+        \begin{itemize}
+            \item The horizontal plane is the $x$-$y$ space.
+            \item The vertical axis shows the \textbf{density} at each point.
+            \item The result is a \textbf{bell-shaped hill}, centered at the mean.
+            \item The ridge direction and slope reflect the \textbf{correlation and spread} between the two variables.
+        \end{itemize}
+        We use $x$ and $y$ as the horizontal plane (input space), and $z$-axis as \textbf{density value} $f(x, y)$. Now, we are plotting the \textbf{full shape of the probability surface}: a bell-shaped hill where the height indicates the likelihood of a given point. We add a \textbf{third axis to represent the function output}, the density. While \textbf{2D contours} are useful for seeing \textbf{direction}, \textbf{correlation}, and \textbf{structure}, a \textbf{3D surface} provides a \textbf{better sense of the bell shape}.}
+    \end{center}
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{What is the Multivariate Gaussian Distribution?}}
+    \end{flushleft}
+    The \definition{Multivariate Gaussian Distribution} is simply a \textbf{generalization of the 1D and 2D Gaussian} to \textbf{any number of dimensions}. If we have a random vector $\mathbf{x} \in \mathbb{R}^{d}$, then: a \textbf{multivariate Gaussian} models the probability of observing different values of that vector, assuming that all components jointly follow a Gaussian distribution.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Formal Definition}}
+    \end{flushleft}
+    A random vector $\mathbf{x} = \left(x_{1}, x_{2}, \dots, x_{d}\right) \in \mathbb{R}^{d}$ follows a multivariate normal distribution with:
+    \begin{itemize}
+        \item \textbf{Mean vector}: $\boldsymbol{\mu} \in \mathbb{R}^{d}$
+        \item \textbf{Covariance matrix}: $\Sigma \in \mathbb{R}^{d \times d}$
+    \end{itemize}
+    We write this as:
+    \begin{equation}
+        \mathbf{x} \sim \mathcal{N}\left(\boldsymbol{\mu}, \Sigma\right)
+    \end{equation}
+    Its \textbf{probability density function} is:
+    \begin{equation}
+        f(\mathbf{x}) = \frac{1}{\left(2\pi\right)^{d/2} \left|\Sigma\right|^{1/2}} \cdot \exp\left( -\frac{1}{2} \left(\mathbf{x} - \boldsymbol{\mu}\right)^{T} \Sigma^{-1} \left(\mathbf{x} - \boldsymbol{\mu}\right) \right)
+    \end{equation}
+    \begin{itemize}
+        \item $\boldsymbol{\mu}$ is the \textbf{center} (expected value) of the cloud of points.
+        \item $\Sigma$ is the \textbf{shape and orientation} of that cloud
+        \begin{itemize}
+            \item The diagonal entries $\sigma_{ii}$ control how spread out the data is in each direction.
+            \item The off-diagonal entries $\sigma_{ij}$ represent \textbf{correlation} between different variables.
+        \end{itemize}
+    \end{itemize}
+    So a multivariate Gaussian forms an \textbf{ellipsoidal distribution} in high-dimensional space.
+\end{remarkbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why GMM uses Multivariate Gaussian Distribution?}}
+\end{flushleft}
+In Gaussian Mixture Models, each component is a \textbf{multivariate Gaussian}:
+\begin{itemize}
+    \item It models a cluster in \textbf{multidimensional space}.
+    \item The full GMM is a \textbf{weighted sum} of these multivariate Gaussians.
+\end{itemize}
+This allows GMM to \textbf{model complex, overlapping, and anisotropic (non-spherical) clusters} much better than K-Means.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Relation to K-Means}}
+\end{flushleft}
+K-Means is a \textbf{special case of GMM}:
+\begin{itemize}
+    \item K-Means assigns each point to \textbf{only one cluster}, called \definition{Hard Clustering}.
+    \item GMM assigns each point a \textbf{probability of belonging} to each cluster, called \definition{Soft Clustering}.
+\end{itemize}
+In fact, \textbf{\underline{if we assume} that}:
+\begin{itemize}
+    \item All clusters have \textbf{equal, spherical} covariance.
+    \item Each point is assigned to the \textbf{closes cluster center}.
+\end{itemize}
+Then \emph{GMM reduces to K-Means}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{But why should we use GMM instead of K-means?}}
+\end{flushleft}
+Four reasons:
+\begin{enumerate}
+    \item \textcolor{Green3}{\textbf{Soft Clustering vs Hard Clustering}}
+    \begin{itemize}
+        \item \textbf{Hard Assignment}: K-Means assigns each point to \textbf{only one cluster}.
+        \item \textbf{Soft Assignment}: GMM assign each point a probability of belonging to each cluster.
+    \end{itemize}
+    GMM is useful when clusters overlap, we're uncertain or want probabilistic interpretation, or we want to model real-world uncertainty (e.g., ``60\% likely to be in Cluster 1'').
+    
+    \item \textcolor{Green3}{\textbf{Flexible Cluster Shapes}}
+
+    K-Means assumes clusters are \textbf{spherical and equally sized}. Instead, GMM allows:
+    \begin{itemize}
+        \item Elliptical shapes;
+        \item Different sizes and orientations;
+        \item Correlations between features.
+    \end{itemize}
+    This is because GMM uses \textbf{covariance matrices}, whereas K-Means just uses Euclidean distance.
+
+
+    \item \textcolor{Green3}{\textbf{Statistical Foundation}}
+    
+    K-Means is an algorithm that minimizes distance. Instead, GMM is a \textbf{probabilistic model} with a well-defined likelihood function. Then, we can estimate the uncertainty and use model selection to determine the number of clusters.
+
+
+    \item \textcolor{Green3}{\textbf{K-Means is a Special Case of GMM}}
+    
+    If we assume:
+    \begin{enumerate}
+        \item All clusters have \textbf{equal and diagonal covariance matrices} (no correlation);
+        \item Use hard assignments.
+    \end{enumerate}
+    Then GMM becomes K-Means. So GMM is a \textbf{more general, more powerful model}.
+\end{enumerate}
+However, GMM is not always the best method to consider. It depends on the data and the final goal:
+\begin{itemize}
+    \item Use \textbf{K-Means} when \textbf{clusters} are clearly \textbf{separated}, \textbf{round}, and \textbf{fast results} are needed.
+    \item Use \textbf{GMM} when we want a \textbf{flexible}, \textbf{probabilistic}, and \textbf{realistic model} of how our data is generated.
+\end{itemize}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l l @{}}
+        \toprule
+        Feature          & K-Means          & GMM \\
+        \midrule
+        Assignment       & Hard             & Soft (probabilistic)       \\ [.3em]
+        Cluster shape    & Spherical        & Elliptical, flexible       \\ [.3em]
+        Model type       & Geometric        & Probabilistic (generative) \\ [.3em]
+        Speed            & Fast             & Slower (EM algorithm)      \\ [.3em]
+        Interpretability & Simple centroids & Full statistical model     \\
+        \bottomrule
+    \end{tabular}
+    \caption{Trade-offs between K-Means and GMM.}
+\end{table}

@@ -16,6 +16,14 @@
     - add `Definition`
     - add `Initialization Issues in K-Means`
     - add `K-Means as an Optimization Problem`
+    - add `Algorithm`
+    - add `Limitations`
+  - add `Gaussian Mixture Models (GMMs)`
+    - add `Introduction`
+    - add `Mathematical Foundation`
+    - add `Responsibilities`
+    - add `Expectation-Maximization (EM) Algorithm`
+    - add `Comparison between GMM and K-Means`
 
 --------------------
 

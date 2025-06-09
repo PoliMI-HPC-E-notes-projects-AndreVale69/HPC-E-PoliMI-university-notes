@@ -1,0 +1,205 @@
+\subsection{Linear Discriminant Analysis (LDA)}
+
+\definition{Linear Discriminant Analysis (LDA)} is a \textbf{supervised classification\break method} that models the probability distribution of each class as a multivariate \textbf{Gaussian with the same covariance matrix}, and uses \textbf{Bayes' rule} to assign a new observation to the class with the \textbf{highest posterior probability}.
+
+\highspace
+Because it assumes equal covariances across classes, the resulting \textbf{decision boundaries are linear}, hence the name \emph{Linear} Discriminant Analysis.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What LDA Tries to Do}}
+\end{flushleft}
+We're given data from multiple classes (say $K = 2$ or more), and we want to \textbf{assign a new point $\mathbf{x}$ to the most likely class}. LDA does this by:
+\begin{enumerate}
+    \item Modelling \hl{how each class generates data} (generative model).
+    \item Using \hl{Bayes' rule} to compute $\mathbb{P}\left(y = k \mid \mathbf{x}\right)$.
+    \item Assigning $\mathbf{x}$ to the \hl{class with the highest probability}.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: LDA]
+    Suppose we want to classify fruit by weight and color:
+    \begin{itemize}
+        \item Oranges: heavy, orange.
+        \item Lemons: light, yellow.
+    \end{itemize}
+    LDA will:
+    \begin{itemize}
+        \item Estimate the \textbf{mean} and \textbf{spread} (covariance) of orange and lemon data.
+        \item Find a \textbf{line} that best separates the two, that's the linear discriminant.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Assumptions Behind LDA}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{The data in each class looks like a cloud of points shaped like a Gaussian}. Imagine we have two groups of data:
+    \begin{itemize}
+        \item Group A, orange points
+        \item Group B, blue points
+    \end{itemize}
+    Each group is made of points in 2D (like height and weight). We \textbf{assume} that in each group, the points:
+    \begin{enumerate}
+        \item Are \textbf{spread out in a bell-shaped way}.
+        \item Cluster around a mean (center).
+        \item Are more dense in the middle, less dense on the sides.
+    \end{enumerate}
+    That's called a \textbf{multivariate normal distribution} (like a 2D Gaussian blob).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} Because this makes the math nice. We can use formulas to describe where the data is most likely to appear in each class.
+
+
+    \item \important{All the groups are spread out in the same way}. This means:
+    \begin{itemize}
+        \item Even though Group A and Group B may be \textbf{centered in different places} (\hl{different means}),
+        \item They are \textbf{equally wide, equally tilted, and equally stretched} (\hl{same covariance}).
+    \end{itemize}
+    Two round clouds of points, one at the left, one at the right, then same shape, just different centers.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} Because this gives us \textbf{linear boundaries}. Meaning, the separator between groups will be a \textbf{straight line} (or a plane in higher dimensions). That's why it's called \emph{Linear} Discriminant Analysis.
+
+
+    \item \important{We roughly know how frequent each class is}. This is called the \textbf{prior probability}: if we know that 70\% of our training data is oranges and 30\% lemons, we should take that into account when classifying.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} Because we don't want to treat all classes as equally likely if they aren't. Priors help us adjust for that.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Derivation via Bayes Rule}}
+\end{flushleft}
+To really understand how LDA works, not just \emph{what it does} but \emph{why it works}, we need to know that LDA classifies a point $\mathbf{x}$ by computing ``\emph{which class is most likely to have generated this point?}''. And the way to compute that is:
+\begin{itemize}
+    \item Estimate how likely $\mathbf{x}$ is \emph{under each class} (the likelihood).
+    \item Multiply it by how common that class is (the prior).
+    \item Then use Bayes' Rule to get the final answer: the \textbf{posterior probability}.
+\end{itemize}
+
+\highspace
+\textcolor{Red2}{\faIcon{check-circle} \textbf{Goal.}} Specifically, we want to \textbf{assign a new observation}, $\mathbf{x}$, to one of $K$ classes by computing the following:
+\begin{equation}
+    \mathbb{P}(y = k \mid \mathbf{x}) \quad \text{(posterior probability)}
+\end{equation}
+It is the \definition{Posterior Probability}, which answers the question, ``\emph{given an observation $\mathbf{x}$, what is the probability that it belongs to class $k$?}'' It's called the \textbf{posterior} probability because it's what we know \textbf{after} seeing the data $\mathbf{x}$. In other words, this is the \textbf{probability that $\mathbf{x}$ belongs to class $k$}, given the observed features.
+\begin{enumerate}
+    \item \important{Use Bayes' Rule}. Bayes' Rule helps us to \textbf{compute the posterior}:
+    \begin{equation*}
+        \mathbb{P}\left(y = k \mid \mathbf{x}\right) = \frac{\mathbb{P}\left(\mathbf{x} \mid y = k\right) \cdot \mathbb{P}\left(y = k\right)}{\mathbb{P}(\mathbf{x})}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $P\left(y = k \mid \mathbf{x}\right)$ is the posterior, what we want to compute.
+        \item $P\left(\mathbf{x} \mid y = k\right)$ is the \hl{likelihood}, how likely $\mathbf{x}$ is if it comes from class $k$.
+        \item $P\left(y = k\right)$ is the \hl{prior}, how likely class $k$ is overall.
+        \item $P\left(\mathbf{x}\right)$ is the \hl{evidence}, same for all classes, just a normalizing constant.
+    \end{itemize}
+
+
+    \item \important{What LDA Assumes}. LDA \textbf{assumes} that:
+    \begin{enumerate}
+        \item Each class $k$ generates data using a \textbf{Gaussian distribution}:
+        \begin{equation*}
+            \mathbf{x} \mid y = k \sim \mathcal{N}(\mu_{k}, \Sigma)
+        \end{equation*}
+        
+        \item All classes share the same covariance $\Sigma$.
+
+        \item The prior $P\left(y = k\right) = \pi_{k}$ is known or estimated from the data.
+    \end{enumerate}
+
+
+    \item \important{Simplify the Formula}. Because $\mathbb{P}\left(\mathbf{x}\right)$ is the same for every class (it doesn't depend on $k$), we can \textbf{ignore it when choosing the best class}. So the posterior is \textbf{proportional} to:
+    \begin{equation*}
+        \mathbb{P}\left(y = k \mid \mathbf{x}\right) \propto \pi_k \cdot \phi\left(\mathbf{x} \mid \mu_k, \Sigma\right)
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $P\left(y = k \mid \mathbf{x}\right)$ is the posterior, what we want to compute.
+        \item $\propto$ is the proportional symbol.
+        \item $\phi(\mathbf{x} \mid \mu_k, \Sigma)$ is the Gaussian probability density for class $k$.
+    \end{itemize}
+    To make this easier to work with, we \textbf{take the logarithm} of this expression (log doesn't change which class is biggest). This gives the \definition{Discriminant Function}:
+    \begin{equation}
+        \delta_{k}\left(\mathbf{x}\right) = \log\left(\pi_{k}\right) - \frac{1}{2} \: \mu_{k}^{T} \: \Sigma^{-1} \: \mu_{k} + \mathbf{x}^{T} \: \Sigma^{-1} \: \mu_{k}
+    \end{equation}
+    Then we classify $\mathbf{x}$ to the class $k$ with the \textbf{highest} $\delta_{k}\left(\mathbf{x}\right)$.
+\end{enumerate}
+The final rule is that we need to \textbf{assign} $\mathbf{x}$ \textbf{to the class} $k$ \textbf{for which} $\delta_{k}\left(\mathbf{x}\right)$ \textbf{is the largest}. This is the \hl{LDA decision rule}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the Decision Rule?}}
+\end{flushleft}
+The \definition{LDA Decision Rule} assigns a new observation $\mathbf{x}$ to the class $k$ with the \textbf{highest posterior probability}:
+\begin{equation}
+    \hat{y} = \arg\max_{k} \, \mathbb{P}\left(y = k \mid \mathbf{x}\right)
+\end{equation}
+But since \textbf{computing} that posterior \textbf{directly is messy}, we used \textbf{Bayes' Rule to rewrite it} as:
+\begin{equation*}
+    \mathbb{P}\left(y = k \mid \mathbf{x}\right) \propto \pi_{k} \cdot \phi\left(\mathbf{x}; \mu_k, \Sigma\right)
+\end{equation*}
+So instead, we define a \textbf{discriminant function}:
+\begin{equation*}
+    \delta_{k}\left(\mathbf{x}\right) = \log\left(\pi_{k}\right) - \frac{1}{2} \: \mu_{k}^{T} \: \Sigma^{-1} \: \mu_{k} + \mathbf{x}^{T} \: \Sigma^{-1} \: \mu_{k}
+\end{equation*}
+Then the decision rule becomes:
+\begin{equation}
+    \hat{y} = \arg\max_{k} \, \delta_{k}\left(\mathbf{x}\right)
+\end{equation}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Geometry: Why It's Called Linear}}
+\end{flushleft}
+LDA is called Linear Discriminant Analysis because the decision boundary it creates between classes is a \textbf{straight line} (in 2D), or a \textbf{hyperplane} (in higher dimensions).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What's a decision boundary?}} It's the set of points $\mathbf{x}$ where:
+\begin{equation*}
+    \delta_{k}\left(\mathbf{x}\right) = \delta_{l}\left(\mathbf{x}\right)
+\end{equation*}
+i.e., where the classifier is \textbf{undecided} between class $k$ and class $l$. This boundary tells us: ``\emph{here, both classes are equally likely, it's the tipping point between them.}''.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Remark: LDA Discriminant Function.}} The discriminant function:
+\begin{equation*}
+    \delta_{k}\left(\mathbf{x}\right) = \log\left(\pi_{k}\right) - \frac{1}{2} \: \mu_{k}^{T} \: \Sigma^{-1} \: \mu_{k} + \mathbf{x}^{T} \: \Sigma^{-1} \: \mu_{k}
+\end{equation*}
+It's \textbf{linear in} $\mathbf{x}$, there's no square, no exponent, just a dot product of $\mathbf{x}$ with some vector. So if we compare two classes $k$ and $l$, their difference:
+\begin{equation*}
+    \delta_{k}\left(\mathbf{x}\right) - \delta_{l}\left(\mathbf{x}\right)
+\end{equation*}
+Is also \textbf{linear in} $\mathbf{x}$.
+
+\newpage
+
+\begin{examplebox}[: Plot of a 2D LDA]
+    Let's say we have 2 features: height (cm), weight (kg). Then the LDA boundary between class A and class B will look like a straight line in the 2D plane:
+
+    \begin{center}
+        \captionsetup{type=figure}
+        \includegraphics[width=\textwidth]{img/lda/lda-2d.pdf}
+    \end{center}
+
+    All the points on the blue side belong to class A, and all the points on the other side belong to class B.
+
+    \highspace
+    However, LDA support any number of classes $K \ge 2$. With 2 classes, the decision boundary is a single line; with 3 or more classes, LDA creates multiple regions, each with its own boundary between class pairs.
+
+    \begin{center}
+        \captionsetup{type=figure}
+        \includegraphics[width=\textwidth]{img/lda/lda-2d-3-classes.pdf}
+    \end{center}
+
+    \begin{center}
+        \captionsetup{type=figure}
+        \includegraphics[width=\textwidth]{img/lda/lda-2d-4-classes.pdf}
+    \end{center}
+
+    \begin{center}
+        \captionsetup{type=figure}
+        \includegraphics[width=\textwidth]{img/lda/lda-3d.pdf}
+    \end{center}
+\end{examplebox}

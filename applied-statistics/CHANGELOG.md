@@ -14,6 +14,7 @@
 - add `Discriminant Analysis`
   - add `From Unsupervised to Supervised`
   - add `Introduction to Supervised Learning`
+  - add `Linear Discriminant Analysis (LDA)`
 
 --------------------
 

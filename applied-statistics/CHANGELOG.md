@@ -20,6 +20,7 @@
   - add `Bayes Classifier`
     - add `What is the Bayes Classifier?`
     - add `Bayes Error Rate`
+    - add `Bayes vs LDA/QDA`
 
 --------------------
 

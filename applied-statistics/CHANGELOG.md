@@ -16,6 +16,7 @@
   - add `Introduction to Supervised Learning`
   - add `Linear Discriminant Analysis (LDA)`
   - add `Quadratic Discriminant Analysis (QDA)`
+  - add `Comparison LDA vs QDA`
 
 --------------------
 

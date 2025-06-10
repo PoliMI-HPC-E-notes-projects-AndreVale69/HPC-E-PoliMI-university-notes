@@ -17,6 +17,8 @@
   - add `Linear Discriminant Analysis (LDA)`
   - add `Quadratic Discriminant Analysis (QDA)`
   - add `Comparison LDA vs QDA`
+  - add `Bayes Classifier`
+    - add `What is the Bayes Classifier?`
 
 --------------------
 

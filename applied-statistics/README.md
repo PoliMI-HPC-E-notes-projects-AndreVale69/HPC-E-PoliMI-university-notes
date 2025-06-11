@@ -19,7 +19,7 @@ According to the [official course syllabus](https://www11.ceda.polimi.it/schedai
 2. Curse of dimensionality and dimension reduction. Principal Component Analysis and its probabilistic counterpart. PCA by singular value decomposition.
 3. Unsupervised classification. Hierarchical clustering, K-means clustering, Gaussian mixture models and the EM algorithm.
 4. Supervised classification. Linear and Quadratic discriminant analysis.
-5. Linear Models. Simple and multiple linear regression. Fitting the model via ordinary least squares , assessing the accuracy of the coefficient estimates, assessing the accuracy of the model, prediction intervals. Qualitative predictors and interactions.
+5. Linear Models. Simple and multiple linear regression. Fitting the model via ordinary least squares, assessing the accuracy of the coefficient estimates, assessing the accuracy of the model, prediction intervals. Qualitative predictors and interactions.
 6. Logistic regression
 7. Model selection and regularization: subset selection, shrinkage methods (ridge regression and lasso), dimension reduction methods
 8. Resampling methods. Cross-validation. The bootstrap.

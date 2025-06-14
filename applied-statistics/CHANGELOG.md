@@ -14,6 +14,9 @@
 
 - add `Linear Regression`
   - add `Regression vs Classification`
+  - add `Simple Linear Regression (SLR)`
+    - add `Model Formulation and OLS Estimation`
+    - add `Geometric Interpretation of Linear Regression`
 
 --------------------
 

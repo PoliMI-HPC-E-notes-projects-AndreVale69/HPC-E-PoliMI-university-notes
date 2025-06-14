@@ -17,6 +17,7 @@
   - add `Simple Linear Regression (SLR)`
     - add `Model Formulation and OLS Estimation`
     - add `Geometric Interpretation of Linear Regression`
+  - add `Model Evaluation`
 
 --------------------
 

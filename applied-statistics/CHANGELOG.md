@@ -23,6 +23,9 @@
     - add `t-Test for Individual Coefficients`
     - add `Global F-Test`
     - add `Summary`
+  - add `Uncertainty Intervals`
+    - add `Confidence Interval (CI) for the Mean Response`
+    - add `Prediction Interval (PI) for a New Observation`
 
 --------------------
 

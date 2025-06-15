@@ -18,6 +18,11 @@
     - add `Model Formulation and OLS Estimation`
     - add `Geometric Interpretation of Linear Regression`
   - add `Model Evaluation`
+  - add `Statistical Inference`
+    - add `Sampling Distributions & Central Limit Theorem (CLT)`
+    - add `t-Test for Individual Coefficients`
+    - add `Global F-Test`
+    - add `Summary`
 
 --------------------
 

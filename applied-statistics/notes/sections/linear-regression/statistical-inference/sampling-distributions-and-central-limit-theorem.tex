@@ -1,0 +1,111 @@
+\subsection{Statistical Inference}
+
+\definition{Statistical Inference} is the process of using data from a sample to learn something about the \textbf{true population parameters}, and to \textbf{quantify uncertainty}.
+
+\highspace
+In linear regression, it means: we've estimated $\hat{\beta}_0$, $\hat{\beta}_1$ from a sample, but the true values $\beta_0$, $\beta_1$ are unknown. So we ask:
+\begin{itemize}
+    \item \emph{Are these estimates reliable?}
+    \item \emph{Are they statistically significant?}
+    \item \emph{How much could they vary if we repeated the data collection?}
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{So what do we do in regression inference?}} We perform tests and intervals on the model coefficients:
+\begin{itemize}
+    \item \important{Sampling Distributions \& CLT} (page \pageref{subsubsection: Sampling Distributions and Central Limit Theorem (CLT)}). Under the hood, regression estimates come from random samples. The \textbf{Central Limit Theorem} (CLT) tells us these \textbf{estimates} follow an \textbf{approximate normal distribution}. This gives us the \textbf{foundation} to build confidence intervals and test hypotheses.
+
+    \item \important{t-Test for Individual Coefficients} (page \pageref{subsubsection: t-Test for Individual Coefficients}). We test each $\hat{\beta}_j$ (like slope or intercept) against 0: \emph{is this variable useful?} If $\hat{\beta}_j$ is far from 0 (statistically), we say it's \textbf{significant}.
+
+    \item \important{Global F-Test} (page \pageref{subsubsection: Global F-Test}). This is a test on the \textbf{entire model}: \emph{does any variable in the regression help explain the response?} It compares the model with predictors vs. a model with just the intercept.
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Question} & \textbf{Answered by} \\
+        \midrule
+        Is this predictor significant?      & t-test \\
+        Is the model better than nothing?   & F-test \\
+        How much do my estimates vary?      & CLT and confidence intervals \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\newpage
+
+\subsubsection{Sampling Distributions \& Central Limit Theorem (CLT)}\label{subsubsection: Sampling Distributions and Central Limit Theorem (CLT)}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we care?}}
+\end{flushleft}
+In the real world we don't know the true coefficients $\beta_0, \beta_1$. We \textbf{estimate them} from a sample data. But if we collected \textbf{a different sample}, we'd get \textbf{different estimates}.
+
+\highspace
+So the question is: \emph{How variable are the estimates $\hat{\beta}_0$ and $\hat{\beta}_1$?} In other words: ``\emph{if we repeated the data collection and regression \textbf{many times}, how much would $\hat{\beta}_1$ change from sample to sample?}''. This is where \textbf{sampling distributions} and the \textbf{Central Limit Theorem (CLT)} come in.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a Sampling Distribution?}}
+\end{flushleft}
+A \definition{Sampling Distribution} is the \textbf{distribution of a statistic} (like $\hat{\beta}_1$) that we get when we \textbf{repeat the sampling process many times}.
+
+\highspace
+Imagine we have a population where:
+\begin{equation*}
+    Y = 3 + 2X + \varepsilon
+\end{equation*}
+We randomly collect 50 data points from this population, and we get $\hat{\beta}_1 = 1.96$. We collect another 50 data points from the same process, and now we get $\hat{\beta}_1 = 2.15$.
+
+\highspace
+Each time we get a different dataset (due to random noise), so we get a different estimate of $\hat{\beta}_1$. Now image we plot a histogram of all those $\hat{\beta}_1$ values. That histogram is the \textbf{sampling distribution} of $\hat{\beta}_1$.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/linear-regression/sampling-distribution.pdf}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{What is the Central Limit Theorem (CLT)?}}
+\end{flushleft}
+If we take \textbf{many random samples} from any population (no matter its shape), and compute the \textbf{mean} (or other statistics) for each sample, then the \textbf{sampling distribution} of that statistic will be \textbf{approximately normal}, as long as the sample size is large enough.
+
+\highspace
+\begin{theorem}[\definition{Central Limit Theorem}]
+    Let $X_1$, $X_2$, $\dots$, $X_n$ be independent random variables with:
+    \begin{itemize}
+        \item Any distribution (not necessarily normal)
+        \item Mean $\mu$ and finite variance $\sigma^{2}$
+    \end{itemize}
+    Then the sample mean:
+    \begin{equation*}
+        \bar{X}_n = \dfrac{1}{n} \displaystyle\sum_{i=1}^{n} X_i
+    \end{equation*}
+    Has a sampling distribution that \textbf{converges} to:
+    \begin{equation*}
+        \bar{X}_n \sim \mathcal{N}\left( \mu, \frac{\sigma^2}{n} \right) \quad \text{as } n \to \infty
+    \end{equation*}
+    In short, \textbf{means behave like normals}, even if the data itself doesn't!
+\end{theorem}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why does CLT matter in Regression?}}
+\end{flushleft}
+Because it allows us to:
+\begin{enumerate}
+    \item \textcolor{Green3}{\textbf{Quantify Uncertainty}}. When we run regression, we get estimates like $\hat{\beta}_1 = 2.1$. But it's just from one sample, \emph{what if the true slope is different?} The CLT says: ``if we took many samples, the estimates $\hat{\beta}_1$ would follow a normal distribution around the true value $\beta_1$''. So now we know \textbf{how much those estimates vary}.
+
+    \item \textcolor{Green3}{\textbf{Build Confidence Intervals}}. CLT tells us we can say: ``with 95\% confidence, the true slope lies between 1.85 and 2.35''. Without the CLT, we couldn't say that. We'd have no way to define what ``95\% confidence'' even means.
+    
+    \item \textcolor{Green3}{\textbf{Perform Hypothesis Tests}}. The CLT lets us test:
+    \begin{itemize}
+        \item \emph{Is the slope really different from zero?}
+        \item \emph{Is this variable important in predicting the outcome?}
+    \end{itemize}
+    That's done using the fact that $\hat{\beta}_1$ is \textbf{approximately normal}, thanks to the CLT.
+    
+    \item \textcolor{Green3}{\textbf{Trust the Shape of Our Estimators}}. Even if our data isn't perfect (e.g., not normally distributed), CLT tells us: ``\emph{it's okay, our estimated slope is still behaving normally if our sample is large enough}''.
+\end{enumerate}
+The CLT gives us the theoretical foundation to measure uncertainty, build intervals, and test if our model is meaningful, even when we only have one dataset.

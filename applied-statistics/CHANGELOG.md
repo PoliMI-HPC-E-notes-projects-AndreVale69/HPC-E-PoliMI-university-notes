@@ -26,6 +26,9 @@
   - add `Uncertainty Intervals`
     - add `Confidence Interval (CI) for the Mean Response`
     - add `Prediction Interval (PI) for a New Observation`
+  - add `Multiple Linear Regression (MLR)`
+    - add `Model Expansion`
+    - add `Matrix Formulation`
 
 --------------------
 

@@ -4,80 +4,252 @@
 
 \subsubsection{Introduction}\label{subsubsection: introduction - dependability}
 
-\definition{Dependability} \textbf{measures how much we trust a system}. More technically, it is the \textbf{ability of a system to perform its functionality while exposing}:
+\definition{Dependability} is a \textbf{comprehensive measure} of how much we can \textbf{trust a system} to perform its expected function correctly and consistently over time.
+
+\highspace
+Dependability is not a single property but a \textbf{composite of multiple interrelated concerns}, some more related to system correctness (reliability, availability), others more to protection (safety, security). In large-scale systems like datacenters, \textbf{dependability is not optimal}, it is integral to Service Level Agreement (SLAs)\footnote{%
+    A \definition{Service Level Agreement (SLA)} is a contract between a service provider and a customer that defines the expected level of service. It typically includes metrics like availability, performance, and response times, along with remedies if the provider fails to meet those standards.
+}, customer trust, and legal compliance (e.g., data protection laws)\footnote{%
+    \textbf{Legal compliance} in data protection laws ensures that organizations handle personal data responsibly and in accordance with regulations. In the EU, the \emph{General Data Protection Regulation (GDPR)} is the primary framework, setting strict rules on data collection, processing, and storage. Globally, different countries have their own laws, such as the \emph{California Consumer Privacy Act (CCPA)} in the U.S., and similar regulations emerging worldwide.
+}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Core Attributes of Dependability}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l p{13em} p{17em} @{}}
+            \toprule
+            \textbf{Attribute} & \textbf{Meaning} & \textbf{Analogy / Data Center View} \\
+            \midrule
+            \textbf{Reliability}        & Continuity of correct service         & A web server not crashing or corrupting data for long periods. \\ [.5em]
+            \textbf{Availability}       & Readiness for correct service         & Can the system serve requests \emph{right now}? \\ [.5em]
+            \textbf{Maintainability}    & Ability for easy maintenance          & Hot-swappable disks, modular servers. \\ [.5em]
+            \textbf{Safety}             & Absence of catastrophic consequences  & E.g., fail-safes in a power system to avoid fire/electrical hazard. \\ [.5em]
+            \textbf{Security}           & Confidentiality and integrity of data & Access control, data encryption, intrusion prevention. \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
+
+\begin{examplebox}[: Cloud Service Provider]
+    Image Google Cloud or AWS:
+    \begin{itemize}
+        \item \textbf{Reliability}: Our VMs shouldn't crash without reason.
+        \item \textbf{Availability}: We must access our cloud database anytime.
+        \item \textbf{Maintainability}: They update the hypervisor with zero downtime.
+        \item \textbf{Safety}: If a cooling system fails, automatic shutdown prevents hardware fire.
+        \item \textbf{Security}: Data encryption at rest and in transit, isolation across tenants.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Do we really need to care about Dependability?}}
+\end{flushleft}
+First, we'll explore intuition. Even when a system is \emph{well-designed}, passes \emph{functional verification}, meets \emph{performance and energy constraints}, it can still \textbf{fail}! Why? Because real-world conditions and \textbf{non-functional factors} can break even perfectly specified systems.
+
+\highspace
+So dependability is \underline{necessary} because \hl{\textbf{failures are inevitable}}. They stem from \textbf{multiple layers of system stack}, including:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l @{}}
+        \toprule
+        \textbf{Source} & \textbf{Example} \\
+        \midrule
+        \textbf{Hardware aging}             & Transistor degradation, wear-out mechanisms.  \\ [.5em]
+        \textbf{Manufacturing defects}      & Process variation, cosmic rays.               \\ [.5em]
+        \textbf{Design flaws}               & Logic errors, incorrect specifications.       \\ [.5em]
+        \textbf{Software bugs}              & Memory leaks, race conditions, kernel panics. \\ [.5em]
+        \textbf{System misconfiguration}    & Wrong firewall rule, VM setting.              \\ [.5em]
+        \textbf{External disturbances}      & Electromagnetic interference, overheating.    \\ [.5em]
+        \textbf{Human errors}               & Mistakes by admins, developers.               \\ [.5em]
+        \textbf{Malicious attacks}          & DoS, ransomware, data exfiltration.           \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Even a tiny misbehavior in one layer can cascade through the entire system.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Consequences of Undependability}}
+\end{flushleft}
+Let's categorize \textbf{why lack of dependability is dangerous}, especially in data centers:
+\begin{enumerate}
+    \item \important{High Economic Cost}: Downtime may cause lost transactions, SLA violations, brand damage.
+    \item \important{Information Loss}: Permanent deletion or corruption of critical data (e.g., backups overwritten, logs lost).
+    \item \important{Cascade Failures}: One component failure affects dependent services (e.g., cloud outages).
+    \item \important{User Distrust}: If users don't trust the service, they abandon it.
+    \item \important{Security \& Safety Hazards}: leaked credentials, incorrect data processing and in physical systems, risk to human life (think healthcare or industrial systems).
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When to Think About Dependability?}}
+\end{flushleft}
+Short answer: \textbf{Always}. Dependability is \textbf{not an optional}, it must be \textbf{considered} throughout the \textbf{entire system lifecycle}: \emph{design-time}, \emph{deployment}, \emph{run-time}, and even \emph{decommissioning}. We think about dependability:
 \begin{itemize}
-    \item \textbf{Reliability}. Continuity of correct service.
-    \item \textbf{Availability}. Readiness for correct service.
-    \item \textbf{Maintainability}. Ability for easy maintenance.
-    \item \textbf{Safety}. Absence of catastrophic consequences.
-    \item \textbf{Security}. Confidentiality and integrity of data.
+    \item At \important{Design-Time}, the main goal is to \textbf{prevent as many failures as possible before the system is deployed}. This is when we:
+    \begin{itemize}
+        \item \textbf{Analyze}: Model the system and predict how it behaves under faults.
+        \item \textbf{Measure}: Evaluate expected MTTF, availability, error rates.
+        \item \textbf{Optimize}: Adjust design to improve weak points (e.g., redundancy, replication).
+        \item \textbf{Verify}: Perform fault-injection, static analysis, formal verification.
+    \end{itemize}
+    \item At \important{Run-Time}, no matter how good our design is, \hl{failures will still happen} in the field. So \textbf{we must}:
+    \begin{itemize}
+        \item \hl{Detect}: \textbf{Monitor system} state to spot abnormal behavior.
+        \item \hl{Diagnose}: \textbf{Understand} root \textbf{causes} (e.g., logs, telemetry).
+        \item \hl{React}: \textbf{Automatically correct} or \textbf{isolate} the problem.
+    \end{itemize}
+    For example rebooting a crashed VM, replacing a failed disk in a RAID array or routing traffic away from an unhealthy load balancer.
 \end{itemize}
 
 \highspace
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{Ok, but why should we be interested in dependability?}}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Why Distinguish Development-Time vs Operation-Time Failures?}}
 \end{flushleft}
-During the implementation of a product, there is much effort to make sure that the implementation:
+These two types of failures have completely different roots, so we must use different strategies to handle them. 
 \begin{itemize}
-    \item matches specifications,
-    \item fulfils requirements,
-    \item meets constraints,
-    \item optimizes selected parameters (such as performance, energy, etc.).
-\end{itemize}
-Nevertheless, even if all the above aspects are satisfied, the systems fail because something broke! The causes can be multiple: defects, process variation, degraded transistors, radiation, noise, design errors, software bugs, OS bugs, malicious attacks, and human errors.
+    \item \definition{Development-Time Failures}. These are \textbf{errors that are introduced during system creation}, in the design, coding or configuration phase.
 
-\highspace
-Then, \textbf{dependability is essential} to check how much we can trust a system despite the effects of failure. If we are not convinced, consider that \textbf{a failure may have high costs if it impacts economic losses or physical damage}. Not only that, a single system failure may affect a large number of people and may cause information loss with a high consequent recovery cost. For the previous reasons, the systems that are not dependable are likely \emph{not to be used or adopted}.
-
-\highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{It seems very important, so when should we think about dependability?}}
-\end{flushleft}
-Consistently, both at \emph{design-time} to:
-\begin{itemize}
-    \item Analyze the system under design;
-    \item Measure dependability properties;
-    \item Modify the design if required;
-\end{itemize}
-And \emph{runtime} to:
-\begin{itemize}
-    \item Detect malfunctions;
-    \item Understand causes;
-    \item React.
-\end{itemize}
-Furthermore, the failures in development should be avoided, and the design should take failures into account and guarantee that control and safety are achieved when failures occur. The effects of such failures should be predictable and deterministic, not catastrophic!
-
-\highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{Always think about dependability, but where should it be applied?}}
-\end{flushleft}
-In the past, dependability was relevant only for \emph{safety-critical} and \emph{mission-critical} application environments: space, nuclear, and avionics. Note that:
-\begin{itemize}
-    \item \definition{Mission-critical systems} are architectures where a \textbf{failure} during operation \textbf{can have severe or irreversible effects on the mission the system is carrying out} (for example, satellites, surveillance drones, unmanned vehicles, etc.).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Examples}}
+        \begin{itemize}
+            \item A bug in the file system code that causes data corruption.
+            \item A wrong assumption in system specifications.
+            \item An incorrect server configuration (e.g., firewall blocking valid ports).
+            \item A logic error in redundancy management (e.g., mirrored disk not syncing).
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Solutions}}
+        \begin{itemize}
+            \item These \textbf{should be avoided} before deployment.
+            \item They're addressed using:
+            \begin{itemize}
+                \item \textbf{Testing} (unit, integration, fault-injection)
+                \item \textbf{Verification} (formal methods, code reviews)
+                \item \textbf{Validation} (does it meet real-world expectations?)
+            \end{itemize}
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \hl{If a system fails} due to a development-time error, it means there was something \textbf{wrong in how it was built}.
+    \end{itemize}
     
-    \item \definition{Safety-critical systems} are architectures where a \textbf{failure} during operation can \textbf{directly threaten human life} (for example, aircraft control systems, medical instrumentation, railway signaling, nuclear reactor control systems).
+
+    \newpage
+
+
+    \item \definition{Operation-Time Failures}. These are \textbf{failures that happen while the system is running}, even if the system was perfectly designed.
+    
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Examples}}
+        \begin{itemize}
+            \item A hard disk physically fails after 3 years.
+            \item A memory bit flips due to cosmic radiation (soft error).
+            \item The power supply overheats due to dust.
+            \item A data center operator accidentally disconnects a cable.
+            \item A hacker exploits an unknown vulnerability.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Solutions}}
+        \begin{itemize}
+            \item These \textbf{cannot be entirely avoided}, because hardware ages, users make mistakes, environments are unpredictable.
+            \item They \textbf{must be handled at runtime} with:
+            \begin{itemize}
+                \item \textbf{Monitoring}
+                \item \textbf{Redundancy / Fault tolerance}
+                \item \textbf{Error correction \& self-repair}
+            \end{itemize}
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \hl{If a system fails} at runtime, it's not necessarily badly designed, \textbf{reality is imperfect}, and we need to plan for that.
+    \end{itemize}
 \end{itemize}
-However, in the computing infrastructures, the \textbf{downtime is the enemy of every data center}! So it is important to consider the dependability in each scenario in order to guarantee that everything works properly.
 
 \highspace
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{Finally, how to provide dependability?}}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Where to Apply Dependability?}}
 \end{flushleft}
-It depends on the paradigm adopted:
+Originally, dependability was essential only in a few extreme environments, systems where a failure could endanger lives, waste millions or billions, be unacceptable by definition (space, nuclear, aviation). The \hl{types of Critical Systems}:
 \begin{itemize}
-    \item The \definition{Avoidance} paradigm is a \textbf{conservative design}; it implements a design validation, has some detailed hardware and software tests, and is an error avoidance-driven approach.
+    \item \definition{Mission-Critical Systems}. The \textbf{mission} is \textbf{not completed if a failure occurs}. Some examples are satellites (loss $=$ mission failure), unmanned vehicles (e.g., drones, crash $=$ loss of platform and data). \textbf{Dependability ensures the system fulfills its intended goal}.
 
-    \item The \definition{Tolerance} paradigm is an \textbf{error detection during system operation}; it implements online monitoring; if there is an error, it gives diagnostic solutions and has a self-recovery and self-repair.
+    \item \definition{Safety-Critical Systems}. If a failure occurs, human life is at risk. Some examples are aircraft control (system crash $=$ airplane crash), nuclear plant controls (meltdown). Here, the \textbf{cost of failure is catastrophic}.
 \end{itemize}
-To apply these paradigms, it is necessary to work at the:
+\textbf{Dependability today is no longer limited} to space and nuclear systems. Now it's \textbf{central to computing infrastructures}, including data centers, cloud platforms, edge devices, etc. Why? Because a failure today in these systems can disrupt global services (e.g., Gmail outage), leak personal data, etc.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to Provide Dependability?}}
+\end{flushleft}
+Provide Dependability means designing our system (hardware and software) in a way that it \textbf{keeps working}, even when \textbf{things go wrong}, or at least, it fails in a \textbf{safe and recoverable way}. There are \textbf{two main strategies} to achieve this:
+\begin{enumerate}
+    \item \definition{Failure Avoidance} (try not to fail). This approach is like saying: ``\emph{let me build the system so well that it doesn't break}''. For example, use very reliable hardware, run a lot of testing before deploying our software, do quality control in factories to catch early hardware faults, and use formally verified algorithms in critical parts.
+
+    This approach is \textbf{good}, \textbf{but expensive}, and we \textbf{can't predict everything}.
+
+    \begin{examplebox}[: Failure Avoidance Analogy]
+        Like buying a car and checking \emph{everything} before leaving the factory: brakes, oil, tires, engine. So it's unlikely to break.
+    \end{examplebox}
+
+
+    \item \definition{Failure Tolerance} (prepare for when it does fail). This approach accepts the fact that something \textbf{will} go wrong. So let us prepare the system to \textbf{detect}, \textbf{contain}, and \textbf{recover} from the problem.
+
+    For example, use RAID for disks, use ECC memory (it can correct small memory errors automatically), monitor servers, and in the cloud, if one data center goes down, reroute to another.
+
+    This is \textbf{essential in data centers}, because with thousands of machines, failures are guaranteed.
+
+    \begin{examplebox}[: Failure Tolerance Analogy]
+        Like having a spare tire in our car, a seatbelt, and road assistance. We're ready when things go wrong.
+    \end{examplebox}
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Where Can We Add Dependability?}} We can ``\emph{add dependability}'' at \textbf{different layers}:
 \begin{itemize}
-    \item \textbf{Technological level} to design and manufacture by employing reliable/robust components.
+    \item \important{Hardware Level}. Make components themselves very reliable.
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Use robust materials.
+        \item Use parts that are known to last a long time.
+        \item[\textcolor{Red2}{\faIcon{times}}] Expensive, and maybe slow (old, stable tech).
+    \end{itemize}
 
-    \item \textbf{Architectural level} to integrate standard components using solutions that allow to manage the occurrence of failures.
+    \item \important{Architecture/System Design Level}. Make the \textbf{structure of the system} fault-tolerant.
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Duplicate components (e.g., 2 power supplies, RAID).
+        \item Create \textbf{clusters}: if one server fails, others can take over
+        \item[\textcolor{Red2}{\faIcon{times}}] More machines, more space, higher cost.
+    \end{itemize}
 
-    \item \textbf{Software/Application level} to develop solutions in the algorithms or in the operating systems that mask and recover from the occurrence of failures. This guarantees high dependability, high cost, and reduced performance.
+    \item \important{Software Level}. Add dependability using \textbf{code}.
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Detect problems: logs, alerts, health checks.
+        \item Retry or restart automatically.
+        \item Recover from failures (e.g., checkpoint/restart in HPC).
+        \item Cheaper and flexible.
+        \item[\textcolor{Red2}{\faIcon{times}}] Needs smart design and might slow down performance.
+    \end{itemize}
 \end{itemize}
-Finally, all of these solutions have a common \textbf{cost and reduced performance}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{There ain't no such thing as a free lunch (TANSTAAFL)}}
+\end{flushleft}
+It is impossible to get something for nothing. We always \textbf{pay} for dependability:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        We Pay In... & Why? \\
+        \midrule
+        \textbf{Money}          & Redundant servers, better hardware. \\ [.3em]
+        \textbf{Time}           & Development of testing and recovery logic. \\ [.3em]
+        \textbf{Performance}    & Extra steps for safety and monitoring. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \newpage
 

@@ -450,65 +450,109 @@ This is useful for \textbf{empirical validation} of theoretical models (like exp
     We repeat this for multiple $t$-values to plot the empirical reliability curve.
 \end{examplebox}
 
-\newpage\newpage\newpage\newpage\newpage\newpage
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What to do with $R(t)$? And why compute $R(t)$?}}
+\end{flushleft}
+The \textbf{goal} is to determine the \textbf{expected reliability} (or failure behavior) of \textbf{complex systems}, such as a data center or a warehouse-scale machine, \textbf{over time}. This includes:
+\begin{enumerate}
+    \item \important{Computing MTTF (Mean Time To Failure)}. Once we know the reliability function $R(t)$, we can compute:
+    \begin{equation*}
+        \text{MTTF} = \displaystyle\int_{0}^{\infty} R(t) \, \mathrm{d}t
+    \end{equation*}
+    This gives the \textbf{expected lifetime} of a component or system before it fails. It is essential for predictive maintenance, capacity planning and warranty.
+
+    \item \important{Composing System Reliability from Components}. Computation of the overall reliability starting from the components' one. Systems are usually composed of multiple \textbf{subsystems} (e.g. disks, servers, switches). Each component has its own reliability $R_{i}(t)$. Using \definition{Reliability Block Diagrams} or other composition models, we derive:
+    \begin{equation*}
+        R_{\text{system}}(t) = f\left(R_{1}(t), R_{2}(t), \dots, R_{n}(t)\right)
+    \end{equation*}
+
+    \item \important{Exponential Reliability Assumption}. We consider only a reliability with an exponential distribution: constant failure rate. This simplifies all analysis:
+    \begin{equation*}
+        R(t) = e^{-\lambda t}
+    \end{equation*}
+    Constant failure rate $\lambda$, then memoryless behavior.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What does ``memoryless'' mean?}} In probability theory, a \textbf{memoryless distribution} is one where: \emph{the probability that a system \textbf{survives an additional time $s$} does \textbf{not depend} on how long it has already survived}. Mathematically, for the \textbf{exponential distribution}:
+        \begin{equation*}
+            \mathbb{P}\left(T > t + s \mid T > t\right) = \mathbb{P}\left(T > s\right)
+        \end{equation*}
+        This is what makes it \emph{memoryless}: \textbf{the past does not matter}.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why does constant $\lambda$ imply memorylessness?}} If $R(t) = e^{-\lambda t}$, then:
+        \begin{itemize}
+            \item The \textbf{failure rate} $\lambda$ is constant.
+            \item The distribution of time-to-failure $T$ is exponential.
+        \end{itemize}
+        This means that a component that has been running for 1000 hours is \textbf{just as likely to fail in the next 100 hours} as a brand-new one.
+        \item[\textcolor{Green3}{\faIcon{book}}] \textcolor{Green3}{\textbf{Analogy}} Image a light bulb modeled with exponential failure. We don't get closer to failure as time passes. Whether it's 10 hours old or 1000 hours old, its probability of lasting the next hour is always the same.
+    \end{itemize}
+    Common for modeling random failure phase (middle or bathtub curve). Makes MTTF easy to compute:
+    \begin{equation}
+        \text{MTTF} = \dfrac{1}{\lambda}
+    \end{equation}
+\end{enumerate}
+
+\newpage
 
 \begin{flushleft}
-    \textcolor{Red2}{\faIcon{bookmark} \textbf{Reliability terminology}}
+    \textcolor{Red2}{\faIcon{book} \textbf{Reliability Terminology}}
 \end{flushleft}
-The \textbf{Constant Failure rate of the reliability} is:
-\begin{equation}
-    \begin{array}{rcl}
-        R\left(t\right) &=& e^{-\lambda \: t} \\ [.5em]
-        \texttt{MTTF} &=& \displaystyle\int_{0}^{\infty} R\left(t\right) \:\mathrm{d}t = \dfrac{1}{\lambda}
-    \end{array}
-\end{equation}
-\begin{figure}[!htp]
-    \centering
-    \includegraphics[width=.5\textwidth]{img/reliability-and-availability-4.png}
-\end{figure}
+\begin{enumerate}
+    \item \definitionWithSpecificIndex{Fault}{Reliability Terminology - Fault}{}: a detect of flaw in te system, either in hardware or software. It is \textbf{passive} and may or may not lead to an error. For example, a fault occurs when an electromagnetic disturbance corrupts a radar signal of a drone.
+    \item \definitionWithSpecificIndex{Error}{Reliability Terminology - Error}{}: a deviation from the correct internal state of the system caused by a fault. An \textbf{error is active}, it is manifestation of the fault. For example, an error occurs when the wrong trajectory is computed for a drone based on faulty sensor input.
+    \item \definitionWithSpecificIndex{Failure}{Reliability Terminology - Failure}{}: the \textbf{external deviation} from the expected service or behavior. It is \textbf{observable} by the user or system and may cause damage or interruption. A failure occurs, for example, when a drone crashes to the ground.
+\end{enumerate}
+These stages form a chain:
+\begin{equation*}
+    \text{Fault} \rightarrow \text{Error} \rightarrow \text{Failure}
+\end{equation*}
+But the chain doesn't \textbf{always complete}. There are \textbf{two special cases}:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \definitionWithSpecificIndex{Non-Activated Fault}{Reliability Terminology - Non-Activated Fault}{}: a \textbf{fault exists} but never triggers an error.
+    
+    \begin{examplebox}[: Non-Activated Fault]
+        A server in a cloud data center has a memory module with a \textbf{latent hardware fault}: a single DRAM cell is defective due to a manufacturing imperfection.
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textbf{Fault}: A memory cell in a non-critical area of RAM has a physical defect (e.g., stuck-at-1).
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Error}: No error occurs because that specific memory address has \textbf{never been written or read}. Or, the OS allocates memory dynamically and that region is \textbf{never touched}.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Failure}: No incorrect behavior is ever observed by any application or user. The system continues operating normally, and the fault remains \textbf{inactive}, never triggered.
+        \end{itemize}
+        The \textbf{fault exists physically}, but it \textbf{never becomes active}, and thus causes \textbf{no error} or \textbf{failure}. This is a classic non-activated fault: it's a dormant effect that could lead to problems only under specific usage or workloads, but never does in the observed execution.
+    \end{examplebox}
 
-\noindent
-Then, to refer to it, we use the correct terminology.
-\begin{itemize}
-    \item The \underline{\textbf{Fault}} is a \textbf{defect within the system}.
-    \item The \underline{\textbf{Error}} is a \textbf{deviation from the required operation of the system} or subsystem.
-    \item \underline{\textbf{Failure}} is when the \textbf{system fails to perform its required function}.
+    \item \definitionWithSpecificIndex{Non-Propagated (Absorbed) Error}{Reliability Terminology - Non-Propagated (Absorbed) Error}{}: an error occurs but is \textbf{detected or corrected} before causing a failure. For example, if a drone calculates the wrong trajectory, but this is later corrected using radar data, this constitutes a safe landing\footnote{
+        A \textbf{safe landing} is the \textbf{correct expected behavior} of the drone, the absence of failure, despite a temporary internal error.
+    } behavior and an instance of absorbed error.
 \end{itemize}
-\begin{figure}[!htp]
-    \centering
-    \includegraphics[width=.8\textwidth]{img/reliability-and-availability-3.png}
-\end{figure}
 
-\begin{examplebox}
-    A flying drone with an automatic radar-guided landing system. An example of:
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Fault Hierarchy}}
+\end{flushleft}
+The \textbf{Fault-Error-Failure} chain is \textbf{not flat or isolated}, it can cascade across components and abstraction levels, and grow into \textbf{critical or life-threatening failures}.
+
+\highspace
+A \definition{Fault Hierarchy} is a conceptual model that captures how \textbf{faults can propagate} and \textbf{escalate} through layers of a system, for example:
+\begin{itemize}
+    \item \textbf{Low-level hardware fault}: a transistor in a CPU flips and causes a memory bitflip.
+    \item \textbf{Mid-level software error}: the corrupted value leads to an incorrect instruction.
+    \item \textbf{High-level system failure}: the OS kernel crashes and the entire system reboot.
+    \item \textbf{Service-level failure}: web service becomes unavailable to users.
+    \item \textbf{Mission-level hazard}: in critical systems, loss of control, safety violations, or even physical harm.
+\end{itemize}
+
+\highspace
+\begin{examplebox}[: Fault Hierarchy]
+    Let's say we're dealing with an autonomous surgical robot:
     \begin{itemize}
-        \item Fault: the electromagnetic disturbances interfere with a radar measurement.
-        \item Error: the radar-guided landing system calculates a wrong trajectory.
-        \item Failure: the drone crashes to the ground.
+        \item \textbf{Fault}: a memory bitflip due to cosmic radiation (hardware).
+        \item \textbf{Error}: the control software computes the wrong joint angle (software logic).
+        \item \textbf{Failure}: the robot arm moves incorrectly (physical layer).
+        \item \textbf{Hazard}: causes injury to the patient (mission/life-threatening).
     \end{itemize}
 \end{examplebox}
 
-\begin{examplebox}[: not always the fault-error-failure chain closes]
-    A tele-surgery system. An example of:
-    \begin{itemize}
-        \item Fault: the radioactive ions change some memory cells' value (bitflip).
-        \item Error: some frames of the video stream are corrupted.
-        \item Failure: the surgeon kills the patient.
-    \end{itemize}
-    However, not always the fault-error-failure chain closes:
-    \begin{itemize}
-        \item Fault: the radioactive ions make some memory cells change value (bitflip), but the corrupted memory does not involve the video stream.
-        \item Error: no frames are corrupted.
-        \item Failure: the surgeon carries out the procedure.
-    \end{itemize}
-    As we can see, there is no activated fault! With the same logic, a flying drone with automatic radar-guided landing:
-    \begin{itemize}
-        \item Fault: electromagnetic disturbances interfere with a radar measurement.
-        \item Error: the radar-guided landing system calculates a wrong trajectory, but then, based on subsequent correct radar measurements, it can recover the right trajectory.
-        \item Failure: the drone safely lands.
-    \end{itemize}
-    Here, there is no propagated (or absorbed error).
-\end{examplebox}
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why it matters?}} \textbf{Critical systems} (aviation, medical, autonomous driving) \underline{must} \textbf{block this chain early}, ideally at the fault or error stage. This is the basis for fault tolerance, error detection and correction, and failure containment and recovery.
 
 \newpage
 

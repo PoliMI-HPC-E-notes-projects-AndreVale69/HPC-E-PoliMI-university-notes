@@ -28,6 +28,7 @@ Each version follows the Conventional Commits structure. For more information on
 ### v1.8.0
 
 - refactor `4.1.1 Introduction`
+- refactor `4.1.2 Reliability and Availability`
 
 --------------------
 

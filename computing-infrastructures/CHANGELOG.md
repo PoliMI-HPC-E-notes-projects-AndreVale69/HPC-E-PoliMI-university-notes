@@ -29,6 +29,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 - refactor `4.1.1 Introduction`
 - refactor `4.1.2 Reliability and Availability`
+- refactor `4.1.3 Reliability Block Diagrams (RBDs)`
 
 --------------------
 

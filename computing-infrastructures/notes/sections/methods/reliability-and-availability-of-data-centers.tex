@@ -556,108 +556,337 @@ A \definition{Fault Hierarchy} is a conceptual model that captures how \textbf{f
 
 \newpage
 
-\subsubsection{Reliability Block Diagrams}
+\subsubsection{Reliability Block Diagrams (RBDs)}
 
-The \definition{Reliability Block Diagram (RBD)}\footnote{The RBD argument was already treated in the \href{https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/tree/main/software-engineering-for-hpc}{Software Engineering for HPC notes}.} is an \textbf{inductive model in which a system is divided into blocks representing distinct elements}, such as components or subsystems. \textbf{Each element in the RBD has its reliability} (previously calculated or modelled). All blocks are then combined to model all the possible success paths.
+As we saw in the \href{https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/tree/main/software-engineering-for-hpc}{Software Engineering for HPC course}, a \definition{Reliability Block Diagram (RBD)} is a \emph{graphical and mathematical model} used to analyze the \textbf{reliability of a system} by \hl{representing how the success or failure of each component affects the overall system operation}.
+\begin{itemize}
+    \item \important{Inductive Model}: Starts from the reliability of individual components and builds up to the system.
+    \item \important{Blocks}: Each block represents a \textbf{component or subsystem}, each with its own reliability function $R_i(t)$.
+    \item \important{Connections}
+    \begin{itemize}
+        \item \important{Series}: All components must function for the system to work.
+        \begin{center}
+            \begin{tikzpicture}[node distance=2cm]
+                \node[coordinate, name=input] {};
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    right of=input
+                ] (c1) {C1};
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    node distance=3cm,
+                    right of=c1
+                ] (c2) {C2};
+                \node[coordinate, name=output, right of=c2] {};
+                \draw[-] (input) -- (c1);
+                \draw[-] (c1) -- (c2);
+                \draw[-] (c2) -- (output);
+            \end{tikzpicture}
+        \end{center}
+        \item \important{Parallel}: The system can work as long as at least one component works.
+        \begin{center}
+            \begin{tikzpicture}[node distance=2cm]
+                \draw (0,0) -- (1,0);
+
+                \draw (1,0) -- (1,1);
+                \draw (1,0) -- (1,-1);
+
+                \draw (1,1) -- (2,1);
+                \draw (1,-1) -- (2,-1);
+
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    name=c1
+                ] at (3,1) {C1};
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    name=c2
+                ] at (3,-1) {C2};
+
+                \draw (c1) -- (5,1);
+                \draw (c2) -- (5,-1);
+
+                \draw (5,1) -- (5,0);
+                \draw (5,-1) -- (5,0);
+
+                \draw (5,0) -- (6,0);
+            \end{tikzpicture}
+        \end{center}
+    \end{itemize}
+    \item \important{Model Topology}: The RBD structure \textbf{may not match the physical system layout}, as it's focused on \emph{functional success paths} rather than actual wiring or data flow.
+\end{itemize}
+Every element in the RBD has its \textbf{own reliability}. Blocks are combined together to model all possible success paths.
 
 \highspace
-The diagram follows strict rules. To represent:
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Mathematical Concepts}}
+\end{flushleft}
 \begin{itemize}
-    \item \definition{Components in series}: the \textbf{system failure} is \textbf{determined by the failure of the \emph{first} component}.
-    \begin{equation}
-        R_{s}\left(t\right) = \prod_{i=1}^{n} R_{i}\left(t\right)
-    \end{equation}
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=.8\textwidth]{img/RBD-1.pdf}
-    \end{figure}
+    \item \important{Series Configuration}. In a \textbf{series system}, \textbf{all components must work} for the system to function. If \textbf{any single component fails}, the \textbf{whole system fails}. In other words, the system failure is determined by the failure of the \emph{first} component.
 
-    For example, in the previous illustration, reliability is calculated as:
-    \begin{equation*}
-        R_{s}\left(t\right) = R_{C1}\left(t\right) \times R_{C2}\left(t\right)
-    \end{equation*}
+    The formula is:
+    \begin{equation}
+        R_S(t) = R_{C1}(t) \cdot R_{C2}(t) \cdot \dots \cdot R_{Cn}(t) = \prod_{i=1}^{n} R_i(t)
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $R_S(t)$: system reliability at time $t$.
+        \item $R_i(t)$: reliability of the $i^\text{th}$ component.
+        \item This assumes \textbf{independent} component failures.
+    \end{itemize}
+    If each component has a \textbf{probability} $R_i(t)$ of working, then the \textbf{joint probability} that \textbf{all work} is the \textbf{product}.
 
-    In general, if the system $S$ consists of \textbf{components with a reliability with an exponential distribution} (the only case considered in this course), the reliability can be calculated as:
-    \begin{equation}
-        R_{s}\left(t\right) = e^{-\lambda_{s} \: t}
-    \end{equation}
-    Where $t$ is the time and $\lambda_{s}$ is the \definition{Failure in time}:
-    \begin{equation}
-        \lambda_{s} = \displaystyle\sum_{i=1}^{n}\lambda_{i}
-    \end{equation}
-    Note that the $\lambda_{i}$ value is explained on page \pageref{eq: failure rate lambda} (eq. \ref{eq: failure rate lambda}). The Mean Time To Failure of a system is $S$:
-    \begin{equation}
-        \texttt{MTTF}_{s} = \dfrac{1}{\lambda_{s}} = \dfrac{1}{\displaystyle\sum_{i=1}^{n}\lambda_{i}} = \dfrac{1}{
-            \displaystyle\sum_{i=1}^{n} \dfrac{1}{\texttt{MTTF}_{i}}
-        }
-    \end{equation}
-
-    If \textbf{all components are identical}:
-    \begin{equation}
-        R_{s}\left(t\right) = e^{- n \lambda t} = \exp\left(- \dfrac{n t}{\texttt{MTTF}_{1}}\right)
-    \end{equation}
-    \begin{equation}
-        \texttt{MTTF}_{s} = \dfrac{\texttt{MTTF}_{1}}{n}
-    \end{equation}
-
-    Finally, the \textbf{availability} is:
-    \begin{equation}
-        A_{s} = \prod_{i=1}^{n} \dfrac{\texttt{MTTF}_{i}}{\texttt{MTTF}_{i} + \texttt{MTTR}_{i}}
-    \end{equation}
-    Where \texttt{MTTR} is the \definition{Mean Time To Repair (MTTR)}.
-
-    If \textbf{all components are identical}:
-    \begin{equation}
-        A_{s}\left(t\right) = A_{1}\left(t\right)^{n}
-    \end{equation}
-    \begin{equation}
-        A = \left(\dfrac{
-            \texttt{MTTF}_{1}
-        }{
-            \texttt{MTTF}_{1} + \texttt{MTTR}_{1}
-        }\right)^{n}
-    \end{equation}
+    \begin{examplebox}[: Series Configuration]
+        Consider, for example, the following model:
+        \begin{center}
+            \begin{tikzpicture}[node distance=2cm]
+                \node[coordinate, name=input] {};
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    right of=input
+                ] (c1) {C1};
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    node distance=3cm,
+                    right of=c1
+                ] (c2) {C2};
+                \node[coordinate, name=output, right of=c2] {};
+                \draw[-] (input) -- (c1);
+                \draw[-] (c1) -- (c2);
+                \draw[-] (c2) -- (output);
+            \end{tikzpicture}
+        \end{center}
+        The reliability is: $R_{S}(t) = R_{C1}(t) \cdot R_{C2}(t)$.
+    \end{examplebox}
 
 
-    \item \definition{Components in parallel}: the \textbf{system fails when the \emph{last} component fails}.
-    \begin{equation}
-        R_{s}\left(t\right) = 1 - \prod_{i=1}^{n} \left(1 - R_{i}\left(t\right)\right)
-    \end{equation}
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=.8\textwidth]{img/RBD-2.pdf}
-    \end{figure}
+    \item \important{Parallel Configuration}. In a \textbf{parallel system}, the system functions as long as \textbf{at least one component works}. This configuration is used for \textbf{redundancy}. In other words, the system fails when the \emph{last} component fails.
 
-    For example, in the previous illustration, reliability is calculated as:
-    \begin{equation*}
-        R_{s}\left(t\right) = 1 - \left[\left(1-R_{C1}\left(t\right)\right) \times \left(1-R_{C2}\left(t\right)\right)\right]
-    \end{equation*}
+    The formula is:
+    \begin{equation}
+        R_S(t) = 1 - \displaystyle\prod_{i=1}^{n} \left[1 - R_i(t)\right]
+    \end{equation}
+    Where:
+    \begin{itemize}[label=*]
+        \item $1 - R_i(t)$: failure probability of component $i$.
+        \item $\displaystyle\prod_{i=1}^{n} \left[1 - R_i(t)\right]$: probability that \textbf{all fail}.
+        \item $1 - \text{(all fail)}$: probability that \textbf{at least one works}.
+    \end{itemize}
+    In summary, the system works in a parallel configuration \textbf{as long as at least one component is functioning}. This \textbf{design increases fault tolerance and improves reliability}.
 
-    Consider a system $P$ composed of $n$ components, the \textbf{reliability} is:
-    \begin{equation}
-        R_{p}\left(t\right) = 1 - \prod_{i=1}^{n} \left(1 - R_{i}\left(t\right)\right)
-    \end{equation}
-    And the \textbf{availability} is:
-    \begin{equation}
-        \begin{array}{rcl}
-            A_{p}\left(t\right) &=& 1 - \displaystyle\prod_{i=1}^{n} \left(1 - A_{i}\left(t\right)\right) \\ [1em]
-            &=& 1 - \displaystyle\prod_{i=1}^{n} \dfrac{\texttt{MTTR}_{i}}{\texttt{MTTF}_{i} + \texttt{MTTR}_{i}}
-        \end{array}
-    \end{equation}
+    \begin{examplebox}[: Parallel Configuration]
+        Consider, for example, the following model:
+        \begin{center}
+            \begin{tikzpicture}[node distance=2cm]
+                \draw (0,0) -- (1,0);
+
+                \draw (1,0) -- (1,1);
+                \draw (1,0) -- (1,-1);
+
+                \draw (1,1) -- (2,1);
+                \draw (1,-1) -- (2,-1);
+
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    name=c1
+                ] at (3,1) {C1};
+                \node[
+                    draw,
+                    minimum width=2cm,
+                    minimum height=1cm,
+                    name=c2
+                ] at (3,-1) {C2};
+
+                \draw (c1) -- (5,1);
+                \draw (c2) -- (5,-1);
+
+                \draw (5,1) -- (5,0);
+                \draw (5,-1) -- (5,0);
+
+                \draw (5,0) -- (6,0);
+            \end{tikzpicture}
+        \end{center}
+        The reliability is: $R_S(t) = R_{C1}(t) + R_{C2}(t) - R_{C1}(t) \cdot R_{C2}(t)$.
+    \end{examplebox}
 \end{itemize}
-The difference between these two representations is that if a \textbf{component in the series is unhealthy}, \textbf{the whole system is unhealthy}. Instead, in the \textbf{parallel architecture}, the \textbf{system can work properly if a component is unhealthy}.
 
 \newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Other Series Formulas Related to Reliability}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Reliability Function of Series Systems as one Exponential Component $\lambda_{S}$}. In a \textbf{series system}, all components must function for the system to work. If one fails, the system fails. For $n$ components with exponential reliability:
+    \begin{equation}
+        R_S(t) = \displaystyle\prod_{i=1}^{n} R_i(t) = \displaystyle\prod_{i=1}^{n} e^{-\lambda_i t} = \exp\left(-t \displaystyle \sum_{i=1}^n \lambda_i\right)
+    \end{equation}
+    We define:
+    \begin{equation}
+        \lambda_S = \sum_{i=1}^n \lambda_i \quad \Longrightarrow \quad R_S(t) = e^{-\lambda_S t}
+    \end{equation}
+    This models the \textbf{system as one exponential component} with rate $\lambda_S$.
+
+
+    \item \definition{Failure in Time (FIT)}. The \textbf{failure rate} of the whole system in series is:
+    \begin{equation}
+        \lambda_S = \displaystyle\sum_{i=1}^{n} \lambda_i
+    \end{equation}
+    This tells us that \textbf{each new component added in series increases the failure rate}, reducing overall reliability.
+
+
+    \item \definition{Mean Time To Failure (MTTF)}. For an exponential distribution:
+    \begin{equation}
+        \text{MTTF}_{S} = \dfrac{1}{\lambda_{S}} = \dfrac{1}{\displaystyle\sum_{i=1}^{n} \lambda_{i}} = \dfrac{1}{\displaystyle\sum_{i=1}^{n} \dfrac{1}{\text{MTTF}_{i}}}
+    \end{equation}
+    Thus, the more components in series, the lower the systems's MTTF. If even one component is fragile, it significantly impacts the whole system.
+
+
+    \item \important{Special Case: Identical Components}. Assume $n$ components and \textbf{same failure rate} $\lambda$, then:
+    \begin{equation}
+        \lambda_{S} = n \cdot \lambda \quad \Longrightarrow \quad R_{S}(t) = e^{-n \lambda t}
+    \end{equation}
+    And:
+    \begin{equation}
+        \text{MTTF}_{S} = \dfrac{1}{n \cdot \lambda}
+    \end{equation}
+    System becomes $n$ \textbf{time less reliable} than a single component.
+
+    \item \definition{Availability of Series System}. Let $A_i = \frac{\text{MTTF}_i}{\text{MTTF}_i + \text{MTTR}_i}$ as the availability of component $i$, then:
+    \begin{equation}
+        A_S = \displaystyle\prod_{i=1}^{n} A_i
+    \end{equation}
+    And \hl{if all components are identical}:
+    \begin{equation*}
+        A_S = A^{n}
+    \end{equation*}
+    Where:
+    \begin{equation*}
+        A = \left(\dfrac{\text{MTTF}}{\text{MTTF} + \text{MTTR}}\right)^{n}
+    \end{equation*}
+    As with reliability, \textbf{availability degrades multiplicatively} in series configurations.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Other Parallel Formulas Related to Reliability}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Reliability Function of Parallel Systems}. Let $R_{i}(t)$ be the reliability of component $i$. Then the system reliability is:
+    \begin{equation*}
+        R_S(t) = 1 - \displaystyle\prod_{i=1}^{n} \left[1 - R_i(t)\right]
+    \end{equation*}
+    \begin{itemize}
+        \item $1 - R_i(t)$: probability that component $i$ has failed by time $t$.
+        \item $\prod (1 - R_i(t))$: probability that \textbf{all components} have failed.
+        \item So, $1 - \text{(all failed)}$: probability that \textbf{at least one} is working.
+    \end{itemize}
+
+
+    \item \important{Special Case: Identical Components}. If all $n$ components have the \textbf{same reliability} $R(t)$, then:
+    \begin{equation}
+        R_S(t) = 1 - \left(1 - R\left(t\right)\right)^{n}
+    \end{equation}
+    As $n$ increases, $R_S(t) \to 1$: very high system reliability.
+
+
+    \item \definition{Mean Time To Failure (MTTF)}. For parallel systems with exponential reliabilities $R_i(t) = e^{-\lambda_{i} t}$, there is \textbf{no simple closed-form MTTF} in the general case, but for identical components, if $R(t) = e^{-\lambda t}$, then:
+    \begin{equation}
+        R_S(t) = 1 - \left(1 - e^{-\lambda t}\right)^{n}
+    \end{equation}
+    MTTF can be found via integration:
+    \begin{equation}
+        \text{MTTF}_S = \displaystyle\int_{0}^{\infty} R_S(t) \, \mathrm{d}t
+    \end{equation}
+    This yields increasingly large values as $n$ increases (more redundancy, then more robust).
+
+
+    \item \definition{Availability of Parallel System}. Let $A_i$ be the availability of component $i$, then:
+    \begin{equation}
+        A_{S} = 1 - \displaystyle\prod_{i=1}^n \left(1 - A_{i}\right)
+    \end{equation}
+    \hl{If all components are the same}:
+    \begin{equation}
+        A_{S} = 1 - \left(1 - A\right)^{n}
+    \end{equation}
+    Where:
+    \begin{equation}
+        A = \frac{\text{MTTF}}{\text{MTTF} + \text{MTTR}}
+    \end{equation}
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/reliability.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{The \textbf{left plot} shows the series system reliability:
+    \begin{itemize}
+        \item Each line corresponds to a system composed of $n = 1, 2, 3, 4$ components in \textbf{series}.
+        \item The $x$-axis is time (0 to 1000 hours).
+        \item The $y$-axis is the system reliability $R_{S}(t)$, which \textbf{decreases over time}.
+    \end{itemize}
+    For $n=1$, the system is just a single component, standard exponential decay. As $n$ increases, reliability drops \textbf{faster} because the \textbf{probability of at least one failure increases}. Mathematically:
+    \begin{equation*}
+        R_S(t) = e^{-n \lambda t}
+    \end{equation*}
+    For example, with $n=4$, the system becomes much less reliable in shorter timeframes. This means that series systems are fragile; the more components there are, the greater the chance of failure. It's like a chain: the system is only as strong as its weakest link.
+    
+    The \textbf{right plot} shows the parallel system reliability:
+    \begin{itemize}
+        \item Each curve is a system with $n = 1$ to $n = 4$ components in \textbf{parallel}.
+        \item The \textbf{system works as long as at least one component works}.
+    \end{itemize}
+    For $n=1$, it's the same as the single-component series case. As $n$ increases, reliability increases and curves stay higher for longer. Formula used:
+    \begin{equation*}
+        R_S(t) = 1 - \left(1 - e^{-\lambda t}\right)^{n}
+    \end{equation*}
+    The system becomes more fault-tolerant because it tolerates some component failures. This means that parallelism boosts reliability. With just 3 or 4 redundant units, reliability stays close to 1 for long durations.}
+\end{figure}
+
+
+\newpage\newpage\newpage\newpage\newpage\newpage\newpage\newpage
 
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{bookmark} \textbf{A quick recap}}
 \end{flushleft}
 \begin{itemize}
-    \item \underline{\textbf{Series}}.
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=.6\textwidth]{img/RBD-1.pdf}
-    \end{figure}
+    \item \important{Series}
+    \begin{center}
+        \begin{tikzpicture}[node distance=2cm]
+            \node[coordinate, name=input] {};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                right of=input
+            ] (c1) {C1};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                node distance=3cm,
+                right of=c1
+            ] (c2) {C2};
+            \node[coordinate, name=output, right of=c2] {};
+            \draw[-] (input) -- (c1);
+            \draw[-] (c1) -- (c2);
+            \draw[-] (c2) -- (output);
+        \end{tikzpicture}
+    \end{center}
 
     Reliability:
     \begin{equation*}
@@ -665,35 +894,162 @@ The difference between these two representations is that if a \textbf{component 
     \end{equation*}
     
 
-    \item \underline{\textbf{Parallel}}.
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=.6\textwidth]{img/RBD-2.pdf}
-    \end{figure}
+    \item \important{Parallel}
+    \begin{center}
+        \begin{tikzpicture}[node distance=2cm]
+            \draw (0,0) -- (1,0);
+
+            \draw (1,0) -- (1,1);
+            \draw (1,0) -- (1,-1);
+
+            \draw (1,1) -- (2,1);
+            \draw (1,-1) -- (2,-1);
+
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c1
+            ] at (3,1) {C1};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c2
+            ] at (3,-1) {C2};
+
+            \draw (c1) -- (5,1);
+            \draw (c2) -- (5,-1);
+
+            \draw (5,1) -- (5,0);
+            \draw (5,-1) -- (5,0);
+
+            \draw (5,0) -- (6,0);
+        \end{tikzpicture}
+    \end{center}
 
     Reliability:
     \begin{equation*}
-        R_{s} = 1 - \displaystyle\prod_{i}^{n} \left(1 - R_{i}\right) \Longrightarrow R_{s} = 1 - \left[\left(1 - R_{C1}\right) \cdot \left(1 - R_{C2}\right)\right]
+        R_S(t) = R_{C1}(t) + R_{C2}(t) - R_{C1}(t) \cdot R_{C2}(t)
     \end{equation*}
 
 
-    \item \underline{\textbf{Series-Parallel}} (component redundancy).
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=\textwidth]{img/RBD-3.pdf}
-    \end{figure}
+    \item \important{Series-Parallel} (\textbf{Component Redundancy})
+    \begin{center}
+        \begin{tikzpicture}[node distance=2cm]
+            \draw (0,0) -- (1,0);
+
+            \draw (1,0) -- (1,1);
+            \draw (1,0) -- (1,-1);
+
+            \draw (1,1) -- (2,1);
+            \draw (1,-1) -- (2,-1);
+
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c1
+            ] at (3,1) {C1};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c2
+            ] at (3,-1) {C2};
+
+            \draw (c1) -- (5,1);
+            \draw (c2) -- (5,-1);
+
+            \draw (5,1) -- (5,0);
+            \draw (5,-1) -- (5,0);
+
+            \draw (5,0) -- (6,0);
+
+            \draw (6,0) -- (6,1);
+            \draw (6,0) -- (6,-1);
+
+            \draw (6,1) -- (7,1);
+            \draw (6,-1) -- (7,-1);
+
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c3
+            ] at (8,1) {C3};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c4
+            ] at (8,-1) {C4};
+
+            \draw (c3) -- (10,1);
+            \draw (c4) -- (10,-1);
+
+            \draw (10,1) -- (10,0);
+            \draw (10,-1) -- (10,0);
+
+            \draw (10,0) -- (11,0);
+        \end{tikzpicture}
+    \end{center}
 
     Reliability:
     \begin{equation*}
-        R_{s} = \left\{1 - \left[\left(1 - R_{C1}\right) \cdot \left(1 - R_{C2}\right)\right]\right\} \cdot \left\{1 - \left[\left(1 - R_{C3}\right) \cdot \left(1 - R_{C4}\right)\right]\right\}
+        R_{S}(t) = \left(R_{C1} + R_{C2} - R_{C1} \cdot R_{C2}\right) \cdot \left(R_{C3} + R_{C4} - R_{C3} \cdot R_{C4}\right)
     \end{equation*}
 
 
-    \item \underline{\textbf{Parallel-Series}} (system redundancy).
-    \begin{figure}[!htp]
-        \centering
-        \includegraphics[width=\textwidth]{img/RBD-4.pdf}
-    \end{figure}
+    \item \important{Parallel-Series} (\textbf{System Redundancy})
+    \begin{center}
+        \begin{tikzpicture}[node distance=2cm]
+            \draw (0,0) -- (1,0);
+
+            \draw (1,0) -- (1,1);
+            \draw (1,0) -- (1,-1);
+
+            \draw (1,1) -- (2,1);
+            \draw (1,-1) -- (2,-1);
+
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c1
+            ] at (3,1) {C1};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c2
+            ] at (3,-1) {C2};
+
+            \draw (c1) -- (6,1);
+            \draw (c2) -- (6,-1);
+
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c3
+            ] at (7,1) {C3};
+            \node[
+                draw,
+                minimum width=2cm,
+                minimum height=1cm,
+                name=c4
+            ] at (7,-1) {C4};
+
+            \draw (c3) -- (9,1);
+            \draw (c4) -- (9,-1);
+
+            \draw (9,1) -- (9,0);
+            \draw (9,-1) -- (9,0);
+
+            \draw (9,0) -- (10,0);
+        \end{tikzpicture}
+    \end{center}
 
     Reliability:
     \begin{equation*}
@@ -709,7 +1065,81 @@ The difference between these two representations is that if a \textbf{component 
     \end{flushleft}
     What is the Reliability of the entire system knowing the reliability of each component?
     \begin{center}
-        \includegraphics[width=\textwidth]{img/RBD-5.pdf}
+        \begin{tikzpicture}[node distance=1cm]
+            \draw (0,0) -- (0.5,0);
+
+            \node[
+                draw,
+                minimum width=1cm,
+                minimum height=.8cm,
+                name=c1
+            ] at (1,0) {C1};
+
+            \draw (1.5,0) -- (2,0);
+
+            \node[
+                draw,
+                minimum width=1cm,
+                minimum height=.8cm,
+                name=c2
+            ] at (2.5,0) {C2};
+
+            \draw (3,0) -- (3.5,0);
+
+            \draw (3.5,0) -- (3.5,1);
+            \draw (3.5,0) -- (3.5,-1);
+
+            \draw (3.5,1) -- (4,1);
+            \draw (3.5,-1) -- (4,-1);
+
+            \node[
+                draw,
+                minimum width=1cm,
+                minimum height=.8cm,
+                name=c3
+            ] at (4.5,1) {C3};
+            \node[
+                draw,
+                minimum width=1cm,
+                minimum height=.8cm,
+                name=c4
+            ] at (4.5,-1) {C4};
+
+            \draw (5,1) -- (5.5,1);
+            \draw (5,-1) -- (5.5,-1);
+
+            \draw (5.5,1) -- (5.5,0);
+            \draw (5.5,-1) -- (5.5,0);
+
+            \draw (5.5,0) -- (6,0);
+
+            \draw (6,0) -- (6,1);
+            \draw (6,0) -- (6,-1);
+
+            \draw (6,1) -- (6.5, 1);
+            \draw (6,-1) -- (6.5, -1);
+
+            \node[
+                draw,
+                minimum width=1cm,
+                minimum height=.8cm,
+                name=c5
+            ] at (7,1) {C5};
+            \node[
+                draw,
+                minimum width=1cm,
+                minimum height=.8cm,
+                name=c6
+            ] at (7,-1) {C6};
+
+            \draw (7.5,1) -- (8, 1);
+            \draw (7.5,-1) -- (8, -1);
+
+            \draw (8,1) -- (8,0);
+            \draw (8,-1) -- (8,0);
+
+            \draw (8,0) -- (8.5,0);
+        \end{tikzpicture}
     \end{center}
     \begin{multicols}{3}
         \begin{itemize}

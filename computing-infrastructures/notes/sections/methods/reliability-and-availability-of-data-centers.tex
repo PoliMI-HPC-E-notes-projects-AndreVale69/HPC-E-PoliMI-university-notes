@@ -1477,35 +1477,125 @@ Hence, we commonly approximate:
 
 \paragraph{Standby redundancy}
 
-\definition{Standby redundancy} is a system consisting of two parallel replicas:
-\begin{itemize}
-	\item The \emph{primary} replica, which \textbf{operates all the time}.
-	\item The \emph{redundant} replica (generally disabled) is \textbf{activated when the primary replica fails}.
-\end{itemize}
+\definition{Standby redundancy} is a fault-tolerance strategy where \textbf{redundant components are kept inactive} (in ``standby mode'') until the \textbf{primary component fails}, at which point a \textbf{backup} is activated.
+
+\highspace
+Unlike parallel redundancy, where all components run simultaneously, standby redundancy has \textbf{only one active component at a time}. It has two main roles:
+\begin{enumerate}
+    \item \important{Primary replica}: operates under normal conditions.
+    \item \important{Standby (backup) replica(s)}: activated \textbf{only upon failure} of the primary.
+\end{enumerate}
 \begin{figure}[!htp]
 	\centering
-	\includegraphics[width=.6\textwidth]{img/standby-redundancy-1.pdf}
+	\begin{tikzpicture}[node distance=2cm]
+        \node[rectangle, name=input] at (-0.5,0) {Input};
+
+        \draw (0,0) -- (1,0);
+
+        \draw (1,0) -- (1,2);
+        \draw (1,0) -- (1,1);
+        \draw (1,0) -- (1,-1);
+        \draw (1,0) -- (1,-2);
+
+
+        \draw[->] (1,0) -- (2,0);
+
+        \draw[->] (1,2) -- (2,2);
+        \draw[->] (1,1) -- (2,1);
+        \draw[->] (1,-1) -- (2,-1);
+        \draw[->] (1,-2) -- (2,-2);
+
+        \node[
+            draw,
+            minimum width=2cm,
+            minimum height=0.6cm,
+            name=primary
+        ] at (3,2) {$\text{Primary}$};
+        \node[
+            draw,
+            minimum width=2cm,
+            minimum height=0.6cm,
+            name=replica1
+        ] at (3,1) {$\text{Replica}_{1}$};
+        \node[
+            rectangle,
+            minimum width=2cm,
+            minimum height=0.6cm,
+            name=replicaDots
+        ] at (3,0) {$\vdots$};
+        \node[
+            draw,
+            minimum width=2cm,
+            minimum height=0.6cm,
+            name=replicaN-1
+        ] at (3,-1) {$\text{Replica}_{n-1}$};
+        \node[
+            draw,
+            minimum width=2cm,
+            minimum height=0.6cm,
+            name=replicaN
+        ] at (3,-2) {$\text{Replica}_{n}$};
+
+        \draw (primary) -- (6,2);
+        \draw (replica1) -- (6,1);
+        \draw (replicaN-1) -- (6,-1);
+        \draw (replicaN) -- (6,-2);
+
+        \node[
+            draw,
+            minimum width=2cm,
+            minimum height=0.6cm,
+            name=switch
+        ] at (6,0) {Switch};
+
+        \draw[->] (replicaDots) -- (switch);
+        \draw[->] (6,2) -- (switch);
+        \draw[->] (6,-2) -- (switch);
+
+        \node[rectangle, name=output] at (8.5,0) {Output};
+
+        \draw[->] (switch) -- (output);
+    \end{tikzpicture}
+	\caption{General standby redundancy strategy.}
 \end{figure}
 
-\noindent
-\textbf{To be operational}, the standby system requires two mechanisms:
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works?}}
+\end{flushleft}
+It works as follows:
 \begin{enumerate}
-	\item A mechanism to \textbf{determine whether or not the primary replica is functioning properly} (on-line self check);
-	\item A dynamic switching mechanism to \textbf{deactivate the primary replica and activate the redundant replica}.
+    \item The \textbf{primary} performs all tasks.
+    \item A \textbf{monitoring mechanism} detects failure.
+    \item A \textbf{switching mechanism} disables the primary and \textbf{activates the\break standby}.
 \end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Requirements for operation}}
+\end{flushleft}
+Standby redundancy only works if the system includes:
+\begin{itemize}
+    \item \important{Self-check mechanism}: Detects when the primary has failed.
+    \item \important{Switch mechanism}: Transfers operation to the standby.
+\end{itemize}
+
+\newpage
 
 \begin{table}[!htp]
 	\centering
-	\begin{tabular}{@{} p{13em} | p{18em} @{}}
-		\toprule
-		\textbf{Standby Parallel Model} & \textbf{System Reliability} \\
-		\midrule
-		Equal failure rates, perfect switching & $R_{s} = e^{-\lambda t}\left(1 + \lambda t\right)$ \\
-		Unequal failure rates, perfect switching & $R_{s} = e^{-\lambda_{1} t} + \lambda_{1} \dfrac{\left(e^{-\lambda_{1} t} - e^{-\lambda_{2} t}\right)}{\lambda_{2}-\lambda_{1}}$ \\
-		Equal failure rates, imperfect switching & $R_{s} = e^{-\lambda t} \left(1 + R_{\text{switch}} \lambda t\right)$ \\
-		Unequal failure rates, imperfect switching & $R_{s} = e^{-\lambda_{1} t} + R_{\text{switch}}\lambda_{1} \dfrac{\left(e^{-\lambda_{1} t} - e^{-\lambda_{2} t}\right)}{\lambda_{2} - \lambda_{1}}$ \\
-		\bottomrule
-	\end{tabular}
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} p{18em} | p{17em} @{}}
+            \toprule
+            \textbf{Standby Parallel Model} & \textbf{System Reliability} \\
+            \midrule
+            Equal failure rates, perfect switching & $R_{s} = e^{-\lambda t}\left(1 + \lambda t\right)$ \\ [1em]
+            Unequal failure rates, perfect switching & $R_{s} = e^{-\lambda_{1} t} + \lambda_{1} \dfrac{\left(e^{-\lambda_{1} t} - e^{-\lambda_{2} t}\right)}{\lambda_{2}-\lambda_{1}}$ \\ [1.5em]
+            Equal failure rates, imperfect switching & $R_{s} = e^{-\lambda t} \left(1 + R_{\text{switch}} \lambda t\right)$ \\ [1em]
+            Unequal failure rates, imperfect switching & $R_{s} = e^{-\lambda_{1} t} + R_{\text{switch}}\lambda_{1} \dfrac{\left(e^{-\lambda_{1} t} - e^{-\lambda_{2} t}\right)}{\lambda_{2} - \lambda_{1}}$ \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
 	\caption{Standby redundancy - Quick Formulas.}
 \end{table}
 

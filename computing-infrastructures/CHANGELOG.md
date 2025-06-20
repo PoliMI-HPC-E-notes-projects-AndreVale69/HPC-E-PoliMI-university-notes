@@ -32,6 +32,7 @@ Each version follows the Conventional Commits structure. For more information on
 - refactor `4.1.3 Reliability Block Diagrams (RBDs)`
 - refactor `4.1.3.1 R out of N redundancy (RooN)`
 - refactor `4.1.3.2 Triple Modular Redundancy (TMR)`
+- refactor `4.1.3.3 Standby redundancy`
 
 --------------------
 

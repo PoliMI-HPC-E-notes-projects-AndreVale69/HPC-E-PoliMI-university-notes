@@ -2,11 +2,19 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.6.0](#v060)
 - [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.6.0
+
+- add `Model Selection and Regularization`
+  - add `Motivation & Problem Setup`
 
 --------------------
 

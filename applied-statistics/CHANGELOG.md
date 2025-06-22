@@ -15,6 +15,8 @@
 
 - add `Model Selection and Regularization`
   - add `Motivation & Problem Setup`
+  - add `Collinearity`
+    - add `Definition`
 
 --------------------
 

@@ -1,0 +1,106 @@
+\subsection{Collinearity}
+
+\subsubsection{Definition}
+
+\definition{Collinearity} means that one predictor variable is \textbf{highly correlated with one or more} of the other predictors.
+\begin{itemize}
+    \item The \definition{Perfect Collinearity} is when one \textbf{variable is an exact linear combination of others}:
+    \begin{equation}
+        X_{j} = \alpha_{0} + \displaystyle\sum_{k \ne j} \alpha_{k} X_{k}
+    \end{equation}
+
+    \item The \definition{High Collinearity} (but not perfect), is when variables are almost linearly related (like $X_1 \approx X_2$).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is this a problem?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{OLS becomes unstable}: The matrix $X^TX$ becomes \textbf{ill-conditioned}\footnote{An \definition{Ill-Conditioned matrix} is a matrix that has a high condition number, indicating that small changes in the input can cause large changes in the output. This makes the matrix sensitive to errors and can lead to significant inaccuracies in numerical computations.} or \textbf{non-invertible}. The variance of $\hat{\beta}_j$ becomes \textbf{very large}.
+    \item \important{Interpretation breaks down}: It's unclear which variable is responsible for the effect on $Y$. We might see strange signs or inflated coefficients.
+    \item \important{Poor prediction}: Even if our training error is low, generalization on new data suffers.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Impact on Variance of $\hat{\beta}$}}
+\end{flushleft}
+Collinearity \textbf{doesn't hurt prediction} much (model can still fit $Y$ well). But it makes our $\hat{\beta}_j$ estimates:
+\begin{itemize}
+    \item \textbf{Unstable}: they swing wildly if we change data a little.
+    \item \textbf{Hard to interpret}: the model is unsure whether to assign effect to $X_1$ or $X_2$.
+\end{itemize}
+It happens because the \textbf{variance of} $\hat{\beta}$ \hl{becomes large} (\emph{effect}) \hl{when predictors are collinear} (\emph{cause}). This is \textbf{not just a side effect}, it \textbf{is} the mechanism by which collinearity causes damage.
+
+\highspace
+The variance of $\hat{\beta}$ is:
+\begin{equation*}
+    \hat{\beta} \sim \mathcal{N}_p\left(\beta, \sigma^2 \left(X^{T} X\right)^{-1} \right)
+\end{equation*}
+
+\newpage
+
+\noindent
+This formula means that the \textbf{distribution} of our OLS coefficients $\hat{\beta}$ is a \textbf{multivariate normal} with:
+\begin{itemize}
+    \item Mean $=$ true coefficients $\beta$
+    \item Covariance (variance) $= \sigma^2 (X^{T} X)^{-1}$
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Okay, so what's the point of this variance?}} The interesting part is $\left(X^{T} X\right)^{-1}$ because is the inverse of a \textbf{matrix that summarizes how our predictors relate to each other}:
+\begin{itemize}
+    \item If predictors are \textbf{independent}, this matrix is \emph{nice}, so inverse is stable and the \textbf{variance} is \textbf{small}.
+    \item If predictors are \textbf{collinear}, this matrix is \emph{close to singular}, so inverse is huge and the \textbf{variance explodes}.
+\end{itemize}
+
+\highspace
+\begin{examplebox}[: Analogy 1D]
+    In 1D:
+    \begin{equation*}
+        \text{Var}(\hat{\beta}) = \dfrac{\sigma^2}{\displaystyle\sum x_i^2}
+    \end{equation*}
+    \begin{itemize}
+        \item If all $x_{i}$ values are \textbf{spread out}, then the \textbf{denominator} is \textbf{large}, and the \textbf{variance} is \textbf{small}.
+        \item If all $x_{i}$ values are \textbf{clustered} (close together), then the \textbf{denominator} is \textbf{small}, and the \textbf{variance} is \textbf{large}.
+    \end{itemize}
+    In multivariable OLS that denominator becomes $X^{T} X$ and the variance becomes:
+    \begin{equation*}
+        \text{Var}(\hat{\beta}) = \sigma^2 \left(X^{T} X\right)^{-1}
+    \end{equation*}
+\end{examplebox}
+
+\highspace
+\textcolor{Red2}{\faIcon{biohazard} \textbf{Why Variance ``explodes'' with Collinearity?}} If $X_1 \approx X_2$, then the matrix $X^{T} X$ becomes almost \textbf{non-invertible}. Its inverse $\left(X^{T} X\right)^{-1}$ contains \textbf{huge numbers}. That means that even a small change in the data can cause a large change in $\hat{\beta}$. This is why our model is ``\emph{wiggly}'', it's jumping around because it's uncertain which variable to credit.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/model-selection-and-regularization/collinearity.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Coefficient Instability due to Increasing Collinearity.
+    \begin{itemize}
+        \item \textbf{X-Axis}: shows how strongly the two predictor variables $X_1$ and $X_2$ are related. We vary correlation from 0 (completely independent) to nearly 1 (almost identical).
+        
+        \item \textbf{Y-Axis}: these are the OLS estimates $\hat{\beta}_1$ and $\hat{\beta}_2$. The \textbf{true model} is:
+        \begin{equation*}
+            Y = 3X_1 + \text{noise}
+        \end{equation*}
+        So the ``\emph{truth}'' is $\beta_1 = 3$, $\beta_2 = 0$.
+        
+        \item \textbf{Blue line} ($X1$): Estimated $\hat{\beta}_1$ (should be near 3).
+        
+        \item \textbf{Orange line} ($X2$): Estimated $\hat{\beta}_2$ (should be near 0).
+
+        \item \textbf{Gray dashed line} ($3$): True value for $\beta_1$.
+
+        \item \textbf{Gray dotted line} ($0$): True value for $\beta_2$.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What Happens as Correlation Increases?}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Correlation near 0: \textcolor{Green3}{\textbf{Low}}. OLS correctly identifies $X_1$ as important, and $\hat{\beta}_1 \approx 3$, $\hat{\beta}_2 \approx 0$.
+
+        \item[\textcolor{Orange3}{\faIcon{balance-scale}}] Correlation: \textcolor{Orange3}{\textbf{Medium}}. The model gets slightly confused: some effect is ``shared'' between both.
+
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] Correlation near 1: \textcolor{Red2}{\textbf{High}}. The model becomes unstable: $\hat{\beta}_1$ and $\hat{\beta}_2$ swing wildly, but still together approximate 3.
+    \end{itemize}
+    This is the essence of \textbf{multicollinearity}. The model can't distinguish the true source of variation. It becomes \textbf{numerically unstable} even though prediction may still seem ``okay''.}
+\end{figure}

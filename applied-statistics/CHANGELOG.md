@@ -17,6 +17,7 @@
   - add `Motivation & Problem Setup`
   - add `Collinearity`
     - add `Definition`
+    - add `Variance Inflation Factor (VIF)`
 
 --------------------
 

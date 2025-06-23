@@ -18,6 +18,7 @@
   - add `Collinearity`
     - add `Definition`
     - add `Variance Inflation Factor (VIF)`
+  - add `Handling Categorical Variables`
 
 --------------------
 

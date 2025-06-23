@@ -1,0 +1,308 @@
+\subsection{Handling Categorical Variables}
+
+\definition{Categorical Variables} are \textbf{non-numeric variables} that represent categories or groups. For examples, ethnicity (Caucasian, Afroamerican, Middle-Eastern), degree program (CS, Math, Architecture). They are \textbf{qualitative}, not quantitative, so \hl{we can't just plug them into a linear model directly}.
+
+\highspace
+We often collect them directly from: questionnaire responses, database fields, CSV/Excel data with labeled columns.
+
+\begin{examplebox}[: Categorical Variables]
+    Our dataset is composed as follows:
+    \begin{center}
+        \begin{tabular}{@{} c | l | l | l @{}}
+            \toprule
+            Age & Gender & Ethnicity & Major \\
+            \midrule
+            21 & Male   & Caucasian         & CS \\ [.3em]
+            22 & Female & Afroamerican      & Architecture \\ [.3em]
+            23 & Male   & Middle-Eastern    & Math \\ [.3em]
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \begin{itemize}
+        \item Gender, Ethnicity, Major: categorical.
+        \item Age: numeric.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why should we include them in a model?}}
+\end{flushleft}
+Because they often explain \textbf{important, structured variation} in our outcome variable $Y$. For example, suppose we're modeling student GPA $Y$. The model with only numeric is:
+\begin{equation*}
+    Y = \beta_0 + \beta_1 \cdot \text{Hours Studied} + \varepsilon
+\end{equation*}
+But let's say \textbf{different majors} have different grading systems: CS has harder exams, and Architecture grades more leniently. Adding \emph{Major} as a categorical variable improves the model:
+\begin{equation*}
+    Y = \beta_0 + \beta_1 \cdot \text{Hours} + \beta_2 \cdot \text{Major}_1 + \beta_3 \cdot \text{Major}_2 + \cdots + \varepsilon
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we include them in Regression?}}
+\end{flushleft}
+We \textbf{convert each category into a dummy variable} (one-hot encoding). \definition{One-Hot Encoding} is the standard method to convert categorical variables into numeric form so that they can be used in regression or machine learning models.
+
+\begin{definitionbox}[: One-Hot Encoding]
+    \definition{One-Hot Encoding} transforms a categorical variable with $K$ distinct categories into $K$ binary (0 or 1) variables, \textbf{one for each category}. Each binary variable indicates \textbf{whether that observation belongs to that category or not}.
+\end{definitionbox}
+
+\begin{examplebox}[: One-Hot Encoding]
+    Suppose we have a categorical variable:
+    \begin{equation*}
+        \text{Education} = \left[\text{``High School''}, \text{``Bachelor''}, \text{``Master''}, \text{``PhD''}\right]
+    \end{equation*}
+    We cannot directly plug this string into a regression. So, we use one-hot encoding:
+
+    \begin{center}
+        \begin{tabular}{@{} l | c | c | c | c @{}}
+            \toprule
+            Education   & High School   & Bachelor  & Master    & PhD   \\
+            \midrule
+            High School & 1             & 0         & 0         & 0     \\ [.3em]
+            Bachelor    & 0             & 1         & 0         & 0     \\ [.3em]
+            Master      & 0             & 0         & 1         & 0     \\ [.3em]
+            PhD         & 0             & 0         & 0         & 1     \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    Each row has \textbf{exactly one 1}, all others are 0, hence the name ``one-hot''.
+\end{examplebox}
+
+\noindent
+But in Linear Regression, we \textbf{must drop one dummy column}. \textcolor{Green3}{\faIcon{question-circle} \textbf{Why drop a dummy column?}} To avoid perfect multicollinearity (page \pageref{def: perfect collinearity}), known as the \emph{dummy variable trap}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Dummy Variable Trap}}
+\end{flushleft}
+The \definition{Dummy Variable Trap} happens when we \hl{include} \textbf{all} \hl{categories} of a categorical variable in a regression model. This causes \textbf{perfect multicollinearity}.
+
+\highspace
+For example, let's say the variable Color has 3 categories:
+\begin{equation*}
+    \text{Color} \in \left\{\text{Red}, \text{Green}, \text{Blue}\right\}
+\end{equation*}
+We one-hot encode:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c c c c @{}}
+        \toprule
+        Observation & Red & Green & Blue \\
+        \midrule
+        A   & 1 & 0 & 0 \\ [.3em]
+        B   & 0 & 1 & 0 \\ [.3em]
+        C   & 0 & 0 & 1 \\ [.3em]
+        D   & 1 & 0 & 0 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Now look:
+\begin{equation*}
+    \text{Red} + \text{Green} + \text{Blue} = 1 \quad \text{(for every row)}
+\end{equation*}
+So these columns are \textbf{linearly dependent}. This makes $X^{T}X$ \textbf{non-invertible} and the OLS fails. That's the \textbf{dummy variable trap}: we make our matrix non-invertible by including all dummies.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solve the Dummy Variable Trap.}} We must drop one dummy to make the system full-rank:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c c c c @{}}
+        \toprule
+        Observation & Green & Blue & (Red is reference) \\
+        \midrule
+        A   & 0 & 0 & \\ [.3em]
+        B   & 1 & 0 & \\ [.3em]
+        C   & 0 & 1 & \\ [.3em]
+        D   & 0 & 0 & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Now the columns are \textbf{independent}, and regression works. \textcolor{Green3}{\faIcon{question-circle} \textbf{But what does this mean for the model?}} When we drop ``Red'':
+\begin{itemize}
+    \item The \textbf{intercept} $\beta_0$ is the predicted value for Red.
+    \item $\beta_{\text{Green}}$: how much higher/lower Green is compared to Red.
+    \item $\beta_{\text{Blue}}$: same, relative to Red.
+\end{itemize}
+So, \textbf{the dropped category becomes the reference group}, called \definition{Reference Category}. All other group effects (dummy coefficients) will be interpreted relative to this group.
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} p{15em} p{20em} @{}}
+            \toprule
+            Question & Answer \\
+            \midrule
+            \emph{What are categorical variables?} & Text/label features like gender, city, or major.          \\ [.5em]
+            \emph{Where do they come from?}        & Surveys, databases, user input, logs, real-world data.    \\ [.5em]
+            \emph{Why include them in regression?} & They capture \textbf{group-level effects} on the outcome. \\ [.5em]
+            \emph{How to include them?}            & Use dummy variables (one-hot encoding).                   \\ [.5em]
+            \emph{What is One-Hot Encoding?}       & Converts categorical variable into multiple 0/1 variables.\\ [.5em]
+            \emph{Why is One-Hot Encoding needed?} & Regression models require numerical input.                \\ [.5em]
+            \emph{Why drop one column?}            & To prevent multicollinearity (dummy variable trap).       \\ [.5em]
+            \emph{How should it be chosen?}        & It depends on the reference group we are looking at.      \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Summarize Categorical Variables.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Which column should we drop?}}
+\end{flushleft}
+We \textbf{don't randomly drop a column}, \textbf{nor} do we \textbf{base it on a strict mathematical heuristic}. Instead, the dropped column is \hl{chosen based on modeling intent} and sometimes default behavior of the software. For example, the StatsModels Python package usually drops the first level it encounters. However, the best practice is to decide which level makes the most sense based on our analysis.
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l p{22em} @{}}
+            \toprule
+            \textbf{Heuristic} & \textbf{When to use it} \\
+            \midrule
+            Most frequent category & Makes interpretation more stable and meaningful \\ [.5em]
+            Neutral or control condition & Good for experiments (e.g., placebo vs. treatment) \\ [.5em]
+            Lowest or baseline level & E.g., High School in Education, Intern in Job Type \\ [.5em]
+            Domain-specific standard & E.g., ``Male'' or ``White'' often used as baseline in social science \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{``Heuristics'' to choose the Reference Group.}
+\end{table}
+
+\begin{examplebox}[: ``Heuristics'' to choose the Reference Group]
+    Say we're studying income by education level:
+    \begin{itemize}
+        \item High School
+        \item Bachelor
+        \item Master
+        \item PhD
+    \end{itemize}
+    If we want to know: ``\emph{How much more do people earn \textbf{compared to High School} graduates?}''. Then we should \textbf{drop High School}. The coefficients will tell us how much Bachelor, Master, PhD differ from that baseline.
+\end{examplebox}
+
+\highspace
+Finally, we \textbf{must drop a category} to avoid the Dummy Variable Trap. \textbf{Which category we drop} affects how we interpret the model, not the predictions, and \textbf{is up to us}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Interaction Terms with Dummies}}
+\end{flushleft}
+\definition{Interaction Terms with Dummies} let us model situations where the effect of a numeric variable (like hours studied) \textbf{depends on the category} (like gender or major).
+
+\highspace
+Normally, we assume:
+\begin{equation*}
+    Y = \beta_0 + \beta_1 X_e + \varepsilon
+\end{equation*}
+Where $X_e$ is a numeric variable (like experience, hours of study). But maybe the \textbf{effect of} $X_e$ \textbf{depends on a categorical group} (e.g., gender). So we build a model like:
+\begin{equation*}
+    Y = \beta_0 + \beta_1 \cdot X_e + \beta_2 \cdot D + \beta_3 \cdot \left(X_e \cdot D\right) + \varepsilon
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $D = 1$ if the person is Male, 0 otherwise (e.g., Female is reference).
+    \item $X_e \cdot D$ is the \textbf{interaction term}.
+\end{itemize}
+
+\begin{examplebox}[: Interaction Terms with Dummies]
+    Say we believe:
+    \begin{equation*}
+        Y = \text{Score} = \beta_0 + \beta_1 \cdot \text{StudyHours}
+    \end{equation*}
+    We assume everyone benefits equally from study hours. That's our baseline.
+
+    \highspace
+    We would now like to upgrade our model to create more detailed results. So, we wonder: ``\emph{does \textbf{gender} affect score?}''. So we add a dummy (categorical variable):
+    \begin{equation*}
+        Y = \beta_0 + \beta_1 \cdot \text{StudyHours} + \beta_2 \cdot \text{Male}
+    \end{equation*}
+    Now we're saying:
+    \begin{itemize}
+        \item Everyone has the same slope ($\beta_1$). In a linear regression, the \definition{Slope} is the \textbf{coefficient that multiplies a numeric predictor}. Here, $\beta_1$ is the slope and $\text{StudyHours}$ is the numeric variable. In other words, it tells us how much $Y$ changes when $\text{StudyHours}$ increases by 1 unit (e.g., if $\beta_1 = 4.2$, then for every additional hour studied, the predicted exam score increases by 4.2 points).
+        \item But males get a bump in baseline score ($+ \beta_2$).
+    \end{itemize}
+
+    \highspace
+    Then we wonder: ``\emph{maybe \textbf{study hours work differently} for males than females}''. So we add:
+    \begin{equation*}
+        \beta_3 \cdot \left(\text{StudyHours} \times \text{Male}\right)
+    \end{equation*}
+    And now the model becomes:
+    \begin{equation*}
+        Y = \beta_0 + \beta_1 \cdot \text{StudyHours} + \beta_2 \cdot \text{Male} + \beta_3 \cdot \left(\text{StudyHours} \cdot \text{Male}\right)
+    \end{equation*}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{But what does this mean?}} Let's unfold it by case:
+    \begin{itemize}
+        \item Female ($\text{Male} = 0$):
+        \begin{equation*}
+            Y = \beta_0 + \beta_1 \cdot \text{StudyHours}
+        \end{equation*}
+        \item Male ($\text{Male} = 1$):
+        \begin{equation*}
+            Y = \left(\beta_0 + \beta_2\right) + \left(\beta_1 + \beta_3\right) \cdot \text{StudyHours}
+        \end{equation*}
+        Here $\beta_2$ is the extra baseline score for males, and $\beta_3$ is the extra slope for males (\emph{do they benefit more/less from studying?})
+    \end{itemize}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do I know how to add a categorical variable to my regression model?}}
+\end{flushleft}
+Let's say:
+\begin{itemize}
+    \item $X$ is a numeric predictor (e.g., study hours).
+    \item $C$ is a categorical variable with $K$ levels: $c_1, c_2, \dots, c_K$. In the final expanded formula, the categorical variable $C$ itself \textbf{does not appear explicitly} because categorical variables are not numeric, so we can't use them directly in regression formulas. That's why we \textbf{replace} $C$ with a set of \textbf{dummy variables}: $C \quad \longrightarrow \quad D_2, D_3, \dots, D_K$.
+    Each $D_j$ is a 0/1 dummy variable.
+    \item We choose one level (e.g., $c_1$) as the \textbf{reference group} (so to drop)
+\end{itemize}
+Then the model becomes:
+\begin{equation}
+    Y = \beta_0 
+        + \beta_1 X
+        + \displaystyle\sum_{j=2}^K \gamma_j D_j
+        + \displaystyle\sum_{j=2}^K \delta_j \left(X \cdot D_j\right)
+        + \varepsilon
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\beta_0$: intercept for the reference group.
+    \item $\beta_1$: slope for the reference group.
+    \item $\gamma_j$: intercept shift for group $j$.
+    \item $\delta_j$: slope shift for group $j$.
+    \item $D_j = 1$ if the observation belongs to category $c_j$, 0 otherwise.
+    \item $X \cdot D_j$ is the interaction between the numeric variable and the dummy for category $c_j$.
+\end{itemize}
+
+\begin{examplebox}[: Model with 4 categorical variables]
+    Let's say:
+    \begin{itemize}
+        \item $X =$ study hours.
+        \item $C = \text{Major} = \left\{\text{``CS''}, \text{``Math''}, \text{``Architecture''}, \text{``Economics''}\right\}$
+        \item We choose CS as reference group.
+    \end{itemize}
+    We create:
+    \begin{itemize}
+        \item $D_{\text{Math}} = 1$ if major is Math, else 0.
+        \item $D_{\text{Arch}} = 1$ if major is Architecture, else 0.
+        \item $D_{\text{Econ}} = 1$ if major is Economics, else 0.
+    \end{itemize}
+    Then the model becomes:
+    \begin{equation*}
+        \begin{array}{rl}
+            Y = & \beta_0 + \beta_1 X + \gamma_2 D_{\text{Math}} + \gamma_3 D_{\text{Arch}} + \gamma_4 D_{\text{Econ}} \\ [.5em]
+            & +\: \delta_2 (X \cdot D_{\text{Math}}) + \delta_3 (X \cdot D_{\text{Arch}}) + \delta_4 (X \cdot D_{\text{Econ}}) + \varepsilon
+        \end{array}
+    \end{equation*}
+\end{examplebox}

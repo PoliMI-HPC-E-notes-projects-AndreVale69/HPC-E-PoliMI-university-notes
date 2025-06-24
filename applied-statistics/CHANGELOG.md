@@ -19,6 +19,8 @@
     - add `Definition`
     - add `Variance Inflation Factor (VIF)`
   - add `Handling Categorical Variables`
+  - add `Variable Selection`
+    - add `Definition`
 
 --------------------
 

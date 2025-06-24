@@ -1,0 +1,110 @@
+\subsubsection{Model Assessment and Selection Criteria}
+
+In the process of building predictive models, selecting the right model is as crucial as fitting it. While more complex models can often fit training data more accurately, they are also more prone to \textbf{overfitting}, capturing noise rather than underlying patterns. Conversely, overly simple models may \textbf{underfit}, failing to capture important structure in the data.
+
+\highspace
+This chapter focuses on techniques used to \textbf{evaluate and compare models}, with the goal of identifying the one that best balances \textbf{predictive accuracy} and \textbf{model complexity}. These methods aim to estimate a model's \textbf{generalization error} (its expected performance on unseen data) using either \textbf{data resampling techniques} or \textbf{penalized evaluation metrics}.
+
+\highspace
+We will present both \textbf{empirical methods}, such as the \textbf{Validation Set} and \textbf{Cross Validation}, and \textbf{analytical criteria}, such as \textbf{Adjusted} $R^2$, \textbf{AIC}, \textbf{BIC}, and \textbf{Mallows'} $C_p$. Each method offers a different trade-off between \textbf{bias}, \textbf{variance}, and \textbf{computational cost}, and is suitable for different settings depending on data size and modeling goals.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Some terms to know before delving in}}
+\end{flushleft}
+\begin{itemize}
+    \item The \definition{Test Error} (also called \definition{Generalization Error}) is the \textbf{expected error the model makes when predicting new, unseen data}. It reflects how well the model performs \textbf{in practice}, not just on the training data.
+    
+    Formally, if the true relationship is:
+    \begin{equation*}
+        Y = f(X) + \varepsilon
+    \end{equation*}
+    And the model is $\hat{f}(X)$, then the \textbf{test error} is usually measured as:
+    \begin{equation}
+        \mathbb{E}_{(X, Y)} \left[ (Y - \hat{f}(X))^2 \right]
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $\mathbb{E}_{(X, Y)}\left[\: \dots\right]$: The \textbf{expected value} over the joint distribution of input $X$ and output $Y$. It is basically the \textbf{mean} or \textbf{average} of a random quantity, in other words, take the average of $(Y - \hat{f}(X))^2$ \textbf{over all possible values} of $X$ and $Y$.
+
+        In practice, we \textbf{draw many new data points}, $(X, Y)$, from the real world, not the training data, and compute the squared error for each one. Then, we take the \textbf{average} of all those errors.
+        \item $Y$: The \textbf{true output} of a new, unseen observation.
+        \item $\hat{f}(X)$: Our \textbf{model's prediction} for the input $X$.
+        \item $(Y - \hat{f}(X))^2$: The \textbf{squared error} between the true output and our model's prediction.
+    \end{itemize}
+    This expectation is over \textbf{new data points}, not the ones used for training.
+
+    
+    \item \label{def: Loss Function} A \definition{Loss Function} \textbf{quantifies how bad a model's prediction is compared to the true outcome}. It measures the ``cost'' of an incorrect prediction.
+
+    For example, if our model predicts:
+    \begin{itemize}
+        \item True value: $y = 5$.
+        \item Prediction: $\hat{y} = 3$.
+    \end{itemize}
+    Then the \textbf{loss} might be:
+    \begin{itemize}
+        \item $\left(5-3\right)^{2} = 4$ (squared error)
+        \item $\left|5-3\right| = 2$ (absolute error)
+    \end{itemize}
+    The smaller the loss, the better the model's prediction.
+\end{itemize}
+
+\newpage
+
+\paragraph{Validation Set}
+
+The \definition{Validation Set method} is a way to estimate a model's \textbf{test error} by splitting our data into:
+\begin{itemize}
+    \item A \textbf{training set} (used to fit the model);
+    \item And a \textbf{validation set} (to test how well the model performs on unseen data).
+\end{itemize}
+We then compute the \textbf{prediction error} (e.g., mean squared error) on the validation set. This serves as an \textbf{estimate of the test error}, i.e., how the model would perform in the real world on new data.
+
+\highspace
+However, we do not calculate the true test error, we \hl{approximate it}. The true test error is defined on future, unknown data. Since we don't have that, we simulate the situation by holding out part of our current data (the validation set) as a stand-in for future data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Split the data}. We divide the full dataset into two parts:
+    \begin{itemize}
+        \item \textbf{Training set} (e.g., 60-80\% of data): used to fit the model.
+        \item \textbf{Validation set} (e.g., the remaining 20-40\%): used to estimate test error.
+    \end{itemize}
+    This split should be \textbf{random} to avoid bias.
+
+    \item \important{Fit the model}. Using the \textbf{training set}, fit our model, for example, linear regression with a certain set of predictors or a decision tree with chosen parameters.
+    
+    \item \important{Make predictions on the validation set}. Use the fitted model to predict the \textbf{response values} in the \textbf{validation set} (not used in training!).
+    
+    \item \important{Compute the validation error}. Compare the predicted and actual values using a loss function (see page \pageref{def: Loss Function}), like:
+    \begin{equation*}
+        \text{MSE}_\text{val} = \frac{1}{n_\text{val}} \sum_{i \in \text{validation set}} (y_i - \hat{f}(x_i))^2
+    \end{equation*}
+    This is our \textbf{estimate of the test error}. We use the \definition{Mean Squared Error (MSE)} in the validation set because:
+    \begin{itemize}
+        \item It's \textbf{easy to compute and differentiate} for optimization reasons.
+        \item It heavily \textbf{penalizes large errors}, which can help detect unstable models.
+        \item It has \textbf{good theoretical properties} (like being the maximum likelihood estimator under Gaussian noise).
+    \end{itemize}
+    MSE is commonly used for regression because it's mathematically convenient and sensitive to large errors.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Purpose}}
+\end{flushleft}
+The goal is to \textbf{simulate performance on unseen data}, using the validation set as a stand-in for future observations. We use this error to \textbf{choose the best model}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{High variance}: the result can depend heavily on which data points end up in the validation set.
+    \item \textbf{Reduced training size}: we're not using the full data to train, which may affect model quality.
+\end{itemize}
+That's why more stable approaches like \emph{cross-validation} are often preferred.

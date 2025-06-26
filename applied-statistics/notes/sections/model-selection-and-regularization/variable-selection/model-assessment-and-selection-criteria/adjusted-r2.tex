@@ -1,0 +1,145 @@
+\paragraph{Adjusted $R^2$}\label{paragraph: Adjusted R2}
+
+\definition{Adjusted $R^2$} is a modification of the regular $R^2$ (coefficient of determination, page \pageref{eq: coefficient of determination}) that adjusts for the \textbf{number of predictors} in the model. It helps prevent choosing an overly complex model just because it has more variable.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem with regular $R^2$}}
+\end{flushleft}
+\emph{Remark}. The coefficient of determination is defined as follows:
+\begin{equation*}
+    R^2 = 1 - \frac{\text{RSS}}{\text{TSS}}
+\end{equation*}
+It tells us what \textbf{fraction of the variance in} $Y$ is explained by the model. For example, if $R^2 = 0.80$, that means $80\%$ of the variance in the output $Y$ is explained by the predictors. This sounds good! But there's a \textbf{catch}.
+
+\highspace
+$R^2$ \textbf{never goes down} when we add more predictors, even \textbf{if those predictors are useless}! Why? Because:
+\begin{itemize}
+    \item Every time we add a variable, our model becomes more \textbf{flexible}.
+    \item That means it can \textbf{fit the training data better}, even if the new variable is \textbf{pure noise}.
+    \item So \textbf{RSS goes down}, and $R^2$ goes \textbf{up}.
+\end{itemize}
+\underline{But} a better fit on training data \textbf{does not mean} better prediction on new data! This is called overfitting (remember page \pageref{def: Overfitting}?), the model learns noise instead of the signal.
+
+\highspace
+\textcolor{Green3}{\faIcon{thumbs-down} \textbf{We are still not convinced.}} Let's make an example. Let's say we have:
+\begin{itemize}
+    \item Model A with 2 predictors, and $R^2 = 0.82$.
+    \item Model B with 10 predictors, and $R^2 = 0.88$.
+\end{itemize}
+Looks like Model B is better, right? Not necessarily, that is the catch! If the 8 extra predictors are \textbf{just random noise}, Model B might look good on training data (amazing), perform \textbf{worse} on test data (not so good). So regular $R^2$ tricks us into favoring \textbf{more complex models} even when they \textbf{don't generalize well}.
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/model-selection-and-regularization/problem-with-r2.pdf}
+    \caption{Two models fitted to the same noisy data. The Model A (left) is a quadratic model (only 2 predictors). It fits the general shape of the data well without overreacting to noise. The Model B (right) is a 10th-degree polynomial (10 predictors). It fits the training data very closely, so the $R^2$ is \textbf{higher}, but it's clearly \textbf{overfitting}, capturing noise instead of underlying pattern.}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Adjusted $R^2$}}
+\end{flushleft}
+The Adjusted $R^2$ modification allows us to \textbf{penalize} the model for adding variables that \textbf{don't improve the fit enough}.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] If a new variable helps, Adjusted $R^2$ goes \textbf{up}.
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] If a new variable doesn't helps, Adjusted $R^2$ goes \textbf{down}.
+\end{itemize}
+\begin{equation}
+    \text{Adjusted } R^2 = 1 - \dfrac{\frac{\text{RSS}}{\left(n - d - 1\right)}}{\frac{\text{TSS}}{\left(n - 1\right)}} = 1 - \left(\dfrac{
+        \left(1 - R^2\right)\left(n - 1\right)
+    }{
+        n - p - 1
+    }\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\text{RSS}$: Residual Sum of Squares (the same value used in the normal $R^2$ formula).
+    \item $\text{TSS}$: Total Sum of Squares (the same value used in the normal $R^2$ formula).
+    \item $n$: number of \textbf{observations}.
+    \item $d$: number of \textbf{predictors used}.
+\end{itemize}
+So now, when comparing models with different numbers of variables, we prefer the model with the \textbf{highest Adjusted} $R^2$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Adjusted $R^2$ is not immune to overfitting; it can be fooled}}
+\end{flushleft}
+Adjusted $R^2$ \textbf{penalizes} adding too many variables. It makes overfitting \textbf{less likely}. It is \textbf{more reliable than $R^2$} when comparing models with different numbers of predictors. \textbf{So yes}, it helps \textbf{reduce the disk} of overfitting, but \textbf{it does not eliminate} the risk.
+
+\highspace
+Adjusted $R^2$ still uses \textbf{only training data}. So if a very complex model fits the training data \textbf{very well}, even by learning the \textbf{noise}, the RSS can drop \textbf{a lot}, and the penalty might not be enough to catch it. This is why Adjusted $R^2$ \textbf{helps control overfitting}, \textbf{but it can still be fooled}.
+
+\highspace
+In general, it's much safer than $R^2$, because $R^2$ \textbf{always increases} when we add variables, instead of \textbf{adjusted} $R^2$ \textbf{increasing only} when a variable \textbf{really helps}. But that doesn't mean it \textbf{always chooses the best model}. It just gives us a \textbf{better chance} of avoiding overfitting, \underline{\textbf{not a guarantee}}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{So how should we use this metric?}} \hl{Use Adjusted $R^2$ as a guide, but not as a judge.} Adjusted $R^2$ is a useful guide for comparing models of different complexity, but it should not be used as the sole decision criterion. It penalizes model complexity and helps detect overfitting, but since it is still based on training data, it can be misled when a more complex model fits noise. For more reliable model selection, especially when comparing models with similar adjusted $R^2$, it's essential to combine it with other tools such as cross-validation, residual analysis, or information criteria (like AIC/BIC).
+
+\begin{examplebox}[: Analogy]
+    Imagine we're packing a \textbf{toolbox} (our model) to fix problems in different houses (datasets).
+    \begin{itemize}
+        \item $R^2$ is like judging how many problems we \emph{can} fix, the more tools we add, the more it praises us. Even if we throw in \textbf{wrenches we'll never use}, it says ``Great! We're ready for anything!''.
+        \item Adjusted $R^2$ is like a smart supervisor who checks: ``Okay, our toolbox is more effective, \textbf{but is it worth the extra weight?}''. If our added tools actually help (reduce error), it says ``Good job.'', but if we just added unnecessary stuff, it \textbf{lowers our score}.
+    \end{itemize}
+    Adjusted $R^2$ rewards \textbf{useful tools}, but penalizes us if our box is bloated and heavy \textbf{for no reason}. But here's the \underline{limitation}:
+    \begin{itemize}
+        \item This supervisor \textbf{never leaves the garage} (training set).
+        \item They don't know if we'll actually be \textbf{faster or clumsier} when fixing real houses (test data).
+    \end{itemize}
+    For that, we need \textbf{cross-validation}, like sending us on test jobs to see how well we perform.
+
+    \highspace
+    Adjusted $R^2$ is like a smart intern: they try to carry only the essential tools for the job, avoiding extra clutter. They're efficient, careful, and don't overpack. But, they've never worked outside the office. They've only practiced inside the training environment. So while they make good guesses about what's useful, they might still carry tools that won't help (overfitting), or miss tools that are actually needed.
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{So what are $R^2$ and Adjusted $R^2$ really useful for?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textcolor{Green3}{\textbf{Descriptive insight}}. They tell us, in simple terms:
+    \begin{itemize}
+        \item How much of the variance in the response $Y$ is explained by our model.
+        \item Whether adding variables seems to improve our model's fit (Adjusted $R^2$).
+    \end{itemize}
+    In exploratory analysis\footnote{\definition{Exploratory Data Analysis (EDA)} is used by data scientists to analyze and investigate data sets and summarize their main characteristics, often employing data visualization methods.\cite{ibmEDA}}, they're \textbf{very helpful} to:
+    \begin{itemize}
+        \item Compare models \underline{\textbf{quickly}}.
+        \item Communicate results.
+        \item Spot \textbf{\underline{obvious} underfitting}.
+    \end{itemize}
+
+    \item \textcolor{Green3}{\textbf{Model comparison when CV is expensive}}. In large models or\break datasets, cross-validation can be:
+    \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+        \item Too slow.
+        \item Too expensive.
+    \end{itemize}
+    Adjusted $R^2$, AIC, and BIC offer \textbf{quick heuristics} for model selection without resampling.
+
+    \item \textcolor{Green3}{\textbf{Linear models with nested predictors}}. In linear regression, where models are \textbf{nested} (Model A $\subset$ Model B, A subset of B), adjusted $R^2$ can effectively:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Tell whether adding variables helps.
+        \item Give a quick ``cost-benefit'' of complexity vs fit.
+    \end{itemize}
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l l l @{}}
+            \toprule
+            Metric & Useful for... & Limitation \\
+            \midrule
+            $R^2$               & \textcolor{Green3}{\faIcon{\speedIcon}} Quick summary of fit              & \textcolor{Red2}{\faIcon{layer-group}} Always increases with complexity  \\ [.5em]
+            Adjusted $R^2$      & \textcolor{Green3}{\faIcon{\speedIcon}} Penalized model comparison        & \textcolor{Red2}{\faIcon{exclamation-circle}} Still based on training data only \\ [.5em]
+            Cross-Validation    & \textcolor{Green3}{\faIcon{lock}} Realistic test error estimate           & \textcolor{Red2}{\faIcon{hourglass-half}} Slower, more compute-intensive    \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+\end{table}
+
+\noindent
+In summary, use $R^2$ and Adjusted $R^2$ for \textbf{quick insight}. Use cross-validation when \textbf{accuracy} and \textbf{generalization are important}.

@@ -21,6 +21,19 @@
   - add `Handling Categorical Variables`
   - add `Variable Selection`
     - add `Definition`
+    - add `Model Assessment and Selection Criteria`
+      - add `Validation Set`
+      - add `Cross-Validation (CV)`
+      - add `Adjusted R^2`
+      - add `AIC and BIC`
+      - add `Mallows' C_p`
+    - add `Best Subset Selection`
+    - add `Forward Stepwise`
+    - add `Backward Stepwise`
+    - add `Shrinkage Methods`
+      - add `Ridge Regression`
+      - add `Lasso`
+      - add `Elastic Net`
 
 --------------------
 

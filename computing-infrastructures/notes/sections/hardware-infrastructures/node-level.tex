@@ -2170,7 +2170,7 @@ DAS is a \textbf{storage system directly attached to a server or workstation}. T
 	\item Limited scalability.
 	\item Complex manageability.
 	\item Limited performance.
-	\item To read files in other machines (the "file sharing" protocol of the OS must be used).
+	\item To read files in other machines (the ``file sharing'' protocol of the OS must be used).
 \end{itemize}
 Note that all the \textbf{external disks connected to a PC with a point-to-point protocol can be considered DAS}.
 \begin{figure}[!htp]
@@ -2232,23 +2232,47 @@ The \textbf{main difference between a NAS and a SAN} is that:
 In the data centre, servers' \emph{performance increases} over time, and the demand for inter-server \emph{bandwidth also increases}.
 
 \highspace
-A \example{solution} can be to double the aggregate compute capacity or the aggregate storage simply by \textbf{doubling the number of compute or storage elements}.
+One \example{initial solution} is to double the aggregate compute or storage capacity by \textbf{doubling the number of compute or storage elements}. The initial solution is horizontal scaling at the edge; we simply add more leaf switches with enough ports to handle the extra servers. However, \hl{this only works locally because the fundamental issue is deeper}.
 
 \highspace
-The \definition{doubling leaf bandwidth} is used since the networking has no straightforward horizontal scaling solution. Then, with \textbf{twice as many servers}, we will have \textbf{twice as many network ports and thus twice as much bandwidth}.
+Since servers first connect to leaf switches, \textbf{adding twice as many servers results in twice as many ports on the leaf switches}. Thus, our \textbf{total edge bandwidth doubles}. For instance, if each leaf switch supports 40 servers at 1 Gbps, adding 40 more servers requires either an additional leaf switch or an expansion of the existing switch, doubling our total edge capacity. Thus, the \definition{Leaf Bandwidth} is essentially the \textbf{sum of all connections between servers and their closest switches}.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{What is the problem with this \naive solution?}} The critical point is that doubling the leaf bandwidth \textbf{only handles server-to-leaf traffic}. However, if \textbf{all servers must be able to talk to all other servers}, traffic must cross the entire DCN (Data Center Network). This way, the middle of the network, the \textbf{bisection}, \textbf{is not scaled}. If every server wants to communicate with every other server, then there must be enough internal network capacity to support all of these connections simultaneously. In other words, doubling the bandwidth of the leaves is trivial (we just add ports), but \textbf{doubling the bisection bandwidth is not}.
 
 \highspace
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a bisection bandwidth?}}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the bisection bandwidth?}}
 \end{flushleft}
-\definition{Bisection bandwidth} is a \textbf{measure of network performance}, \textbf{defined as the bandwidth available between two equal-sized partitions when a network is bisected}. This measure accounts for the \emph{bottleneck bandwidth of the entire network}, providing a representation of the actual bandwidth available in the system. The bisection should be done to minimize the bandwidth between the two partitions. It is often used to evaluate and compare networks for parallel architectures, including point-to-point communication systems or on-chip micro-networks.
+\definition{Bisection Bandwidth} is the total \textbf{network bandwidth available} to carry \textbf{traffic between two halves} of a network if we split it down the middle.
 
 \highspace
-\textbf{Assuming that every server needs to talk to every other server, we need to double not just leaf bandwidth but bisection bandwidth}.
+Imagine our whole datacenter network is a grid of racks and switches. Draw an imaginary \textbf{line} that cuts it into two equal sides.
+\begin{itemize}
+    \item All the network links \textbf{crossing that line} are our \textbf{bisection}.
+    \item The \textbf{sum of the bandwidth of those links} is the \hl{bisection bandwidth}.
+\end{itemize}
+In practice, this means that if \textbf{half of our servers} try to send data to the \textbf{other half} \emph{simultaneously}, the \hl{bisection bandwidth} tells us the \textbf{maximum total amount of traffic} that can be pushed across the split \textbf{at once}.
+
+\newpage
+
+\begin{examplebox}[: Bisection Bandwidth]
+    Suppose:
+    \begin{itemize}
+        \item 100 servers in total, 50 on the left, 50 on the right.
+        \item Between left and right sides, there are 10 uplinks of 10 Gbps each.
+    \end{itemize}
+    So Bisection Bandwidth $= 10$ links $\times 10$ Gbps $=$ $100$ Gbps. So:
+    \begin{itemize}
+        \item Max total traffic left $\to$ right $= 100$ Gbps
+        \item Max total traffic right $\to$ left $= 100$ Gbps
+    \end{itemize}
+    If the servers try to send more than that across the split, packets get queued, then we get delays or packet drops.
+\end{examplebox}
 
 \highspace
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to design a data centre network?}}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to design a data center network? Design principles}}
 \end{flushleft}
 There are many design principles to follow:
 \begin{itemize}
@@ -2259,9 +2283,7 @@ There are many design principles to follow:
     \item It may exploit novel/proprietary technologies and protocols incompatible with legacy Internet.
 \end{itemize}
 
-\newpage
-
-\noindent
+\highspace
 The \definition{Data Center Network (DCN)} connects a data centre's computing and storage units to achieve optimum performance. It can be \textbf{classified} into \textbf{three main categories}:
 \begin{itemize}
     \item \definition{DCN Switch-centric architectures}. DCN uses \textbf{switches to perform packet forwarding}.\footnote{\definition{Packet forwarding} is the passing of packets from one network segment to another by nodes on a computer network.}
@@ -2273,7 +2295,7 @@ The \definition{Data Center Network (DCN)} connects a data centre's computing an
 
 \newpage
 
-\paragraph{Switch-centric: classical Three-Tier architecture}
+\paragraph{Switch-centric: classical Three-Tier architecture}\label{paragraph: classical Three-Tier architecture}
 
 The \definition{Three-Tier architecture}, also called \definition{Three Layer architecture}, \textbf{configures the network in three different layers}:
 \begin{figure}[!htp]
@@ -2302,31 +2324,46 @@ It is a simple Data Center Network topology.
     \item \textbf{Very expensive} in large data centers because the upper layers require faster network equipments.
     \item \textbf{Cost very high} in term of acquisition and energy consumption.
 \end{enumerate}
+
+\newpage
+
+\noindent
 In the \textbf{access layer}, there are two possible architectures:
 \begin{itemize}
-    \item \definition{ToR (Top-of-Rack) architecture}. All servers in a rack are connected to a ToR access switch within the same rack. The aggregation switches are in dedicated racks or shared racks with other ToR switches and servers.\label{ToR (Top-of-Rack) architecture}
+    \item \definition{ToR (Top-of-Rack) architecture}. It is a \textbf{switching architecture} for connecting servers \textbf{inside a rack} to the rest of the datacenter network. The idea is simple, we place a \textbf{network switch at the top of each rack}, this is the \definition{Top-of-Rack switch (ToR switch)}. All servers inside that rack connect \textbf{upwards} to that switch. The ToR switch then connects \textbf{upstream} to aggregation/core switches that connect the whole datacenter.
+    
+    In other words, it \textbf{aggregates} all the server links in that rack.\label{ToR (Top-of-Rack) architecture}
     
     \begin{flushleft}
         \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
     \end{flushleft}
     \begin{enumerate}
-        \item \textbf{Simpler cabling} because the number of cables is limited.
+        \item \textbf{Simpler cabling} because the number of cables is limited. Short cables run only from each server up to the rack's top.
         \item \textbf{Lower costs} because the number of ports per switch is limited.
     \end{enumerate}
 
     \begin{flushleft}
         \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Cons}}
     \end{flushleft}
-    \textbf{Higher complexity} for switch management.
+    \textbf{Higher complexity} for switch management. Because there are more devices to manage (for example, with 100 racks, there are 100 top-of-rack switches) the control is distributed rather than centralized. This requires a more careful design to prevent loops or misconfigurations.
 
     \begin{figure}[!htp]
         \centering
-        \includegraphics[width=.9\textwidth]{img/networking-2.pdf}
+        \includegraphics[width=\textwidth]{img/networking-2.pdf}
         \caption{ToR (Top-of-Rack) architecture.}
     \end{figure}
 
     
-    \item \definition{EoR (End-of-Row) architecture}. Aggregation switcher are positioned one per corridor, at the end of a line of rack. Servers in a racks are connected directly to the aggregation switch in another rack. Exists a patch panel to connect the servers to the aggregation switch.\label{EoR (End-of-Row) architecture}
+    \item \definition{EoR (End-of-Row) architecture}. It is a classic \textbf{datacenter network architecture} for connecting racks of servers.
+    
+    Instead of putting a small switch \textbf{inside each rack}, we put \textbf{one larger switch at the \emph{end} of each row} of racks. Servers in each rack connect \textbf{horizontally} to this shared switch.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does it work physically?}} Imagine a row of 10 racks. Each rack has no ToR switch, instead:
+    \begin{itemize}
+        \item Servers in the rack have \textbf{longer cables} that run \textbf{horizontally} to the big EoR switch.
+        \item That EoR switch aggregates all server connections from the whole row.
+        \item The EoR switch then uplinks to the aggregation/core layer.
+    \end{itemize}\label{EoR (End-of-Row) architecture}
     
     \begin{flushleft}
         \textcolor{Green3}{\faIcon{check} \textbf{Advantages}}
@@ -2338,12 +2375,13 @@ In the \textbf{access layer}, there are two possible architectures:
     \end{flushleft}
     The aggregation switches must have a larger number of ports, then:
     \begin{enumerate}
-        \item \textbf{Complex cabling}.
+        \item \textbf{Complex cabling}: Longer cables from every server to the end of the row.
+        \item \textbf{High risk with a fault}: If the EoR switch fails, then whole row loses network.
         \item \textbf{Longer cables} then \textbf{higher costs}.
     \end{enumerate}
     \begin{figure}[!htp]
         \centering
-        \includegraphics[width=.9\textwidth]{img/networking-3.pdf}
+        \includegraphics[width=\textwidth]{img/networking-3.pdf}
         \caption{EoR (End-of-Row) architecture.}
     \end{figure}
 \end{itemize}
@@ -2352,42 +2390,106 @@ In the \textbf{access layer}, there are two possible architectures:
 
 \paragraph{Switch-centric: Leaf-Spine architectures}
 
-In the following section we present two Leaf-Spine architectures: the Leaf-Spine model and the Pod-based model (Fat Tree Network).
+The \definition{Leaf-Spine Architecture} is a \textbf{two-tier network topology} used in modern data centers to \textbf{handle massive East-West traffic} and \hl{maximize bisection bandwidth}.
+\begin{itemize}
+    \item \definition{Leaf switches} are the ``\textbf{bottom layer}''. These are basically \textbf{ToR (Top-of-Rack)} switches, they connect directly to the servers in each rack.
+    \item \definition{Spine switches} are the ``\textbf{top layer}''. These are high-capacity core switches. They \textbf{interconnect all the Leaf switches with each other}.
+\end{itemize}
+So \textbf{every Leaf switch is connected to every Spine switch}.
 
-\highspace
-The \definition{Leaf-Spine architecture} consists of \textbf{two levels of interconnection}:
-\begin{enumerate}
-    \item The \textbf{leaf} (which is a ToR switch);
-    \item The \textbf{spine} (which has dedicated switches, aggregation switches).
-\end{enumerate}
-In practice, servers have two interfaces connected to two ToR switches to provide fault tolerance.
 \begin{figure}[!htp]
     \centering
     \includegraphics[width=.7\textwidth]{img/networking-4.png}
     \caption{Leaf-Spine architecture.}
 \end{figure}
 
-\noindent
-Now we will explain the Leaf-Spine architecture. If $m$ is the number of \textbf{mid-stage switches} and $n$ is the \textbf{number of inputs and outputs}, the Leaf-Spine topology is as follows:
-\begin{itemize}
-    \item Each switch module is bi-directional. 
-    \begin{itemize}
-        \item \emph{Leaf} has $2k$ bidirectional ports per module;
-        \item \emph{Spine} has $k$ bidirectional ports per module.
-    \end{itemize}
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What problem does it solve?}} The classic 3-tier DCN designs (page \pageref{paragraph: classical Three-Tier architecture}) \textbf{don't scale bisection bandwidth linearly}. They easily become bottlenecks if many servers talk to each other. Leaf-Spine fixes this by:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check-circle}}]
+    \item Providing multiple parallel paths between any two racks.
+    \item Ensuring that \textbf{bandwidth stays predictable} as we add more racks and more spines.
+    \item Using equal-cost multipath (ECMP) to load-balance flows across all available paths.
+\end{itemize}
 
-    \item Each path traverses either 1 or 3 modules.
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a Clos network, and how is it linked to leaf-spine architecture?}}
+\end{flushleft}
+Originally, the \definition{Clos network} was invented by Charles Clos (1952) for telephone switches. It's a \textbf{multi-stage switching fabric} that allows us to build a big non-blocking switch \textbf{out of many small cheap switches}. The core idea: instead of one giant switch, we \textbf{connect multiple small switches in stages} to get scalable bandwidth \textbf{with multiple paths}. In datacenter networking, the \textbf{Clos design} maps naturally to modern switch hardware.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Why is Clos good for datacenters?}} In huge datacenters:
+\begin{itemize}
+    \item We want \textbf{full bisection bandwidth}: any server can talk to any other at line rate.
+    \item We can't build a single giant switch with thousands of ports, that's impractical.
+    \item Instead, we interconnect many small switches in a \textbf{Clos-like fabric} to provide multiple paths and load balancing.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How does the Leaf-Spine topology come from Clos?}} \textbf{Leaf-Spine} is basically the \textbf{simplest practical version} of a 2-stage or 3-stage \textbf{Clos network}, tailored for Ethernet.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Formal Definition}}. A \textbf{Clos network} is a \textbf{multi-stage interconnection network} defined by three integers:
+\begin{itemize}
+    \item $n$: number of inputs per input module.
+    \item $m$: number of middle-stage switches.
+    \item $k$: number of output ports per output module.
+\end{itemize}
+\textbf{A classic 3-stage Clos} is defined as $C(n, m, k)$:
+\begin{itemize}
+    \item Stage 1: $k$ input modules, each with $n$ input ports.
+    \item Stage 2: $m$ middle-stage switches.
+    \item Stage 3: $k$ output modules, each with $n$ output ports.
 \end{itemize}
 \begin{figure}[!htp]
     \centering
-    \includegraphics[width=.3\textwidth]{img/networking-5.pdf}
-    \caption{Explanation of Leaf-Spine architecture.}
+    \includegraphics[width=\textwidth]{img/clos-network.png}
 \end{figure}
+\begin{itemize}
+    \item Each input module connects to every middle-stage switch.
+    \item Each middle-stage switch connects to every output module.
+    \item So every path crosses: 1 input module, 1 middle-stage switch, 1 output module.
+\end{itemize}
+This network has two main non-blocking conditions:
+\begin{itemize}
+    \item The Clos network is \definitionWithSpecificIndex{rearrangeably non-blocking}{Clos network rearrangeably non-blocking condition}{} if: $m \geq n$ (number of middle-stage switches is greater or equal than number of inputs per input module). So \hl{we can rearrange connections to always find a path}.
+    \item The Clos network is \definitionWithSpecificIndex{strictly non-blocking}{Clos network strictly non-blocking condition}{} if: $m \geq 2n - 1$ (the number of middle-stage switches is greater than or equal to twice the number of inputs per input module minus one).
+\end{itemize}
+We \textbf{mapped} the \textbf{Clos network} in data centers \textbf{to the leaf-spine} architecture:
+\begin{itemize}
+    \item The \textbf{input modules} become the \textbf{Leaf switches}.
+    \item The \textbf{middle-stage} switches become the \textbf{Spine switches}.
+    \item The \textbf{output modules} fold back to the same Leafs (because Ethernet is bidirectional).
+\end{itemize}
+They often simplify by setting: $n = m = k$. The Leaf-Spine architecture now has:
+\begin{itemize}
+    \item Each \textbf{Leaf} switch has $2k$ \textbf{bidirectional ports}:
+    \begin{itemize}
+        \item $k$ ports to servers (down).
+        \item $k$ ports up to the Spines.
+    \end{itemize}
+    \item Each \textbf{Spine} switch has $k$ \textbf{bidirectional ports}: one link to each Leaf.
+\end{itemize}
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.28\textwidth]{img/networking-5.pdf}
+\end{figure}
+In order to achieve \textbf{full bandwidth}, \hl{each Leaf must be connected to each Spine}. So the total number of \textbf{uplinks per Leaf} is equal to the number of Spines.
 
-\noindent
-The \textbf{advantages} are: use of homogeneous equipment, simple routing, the number of hops is the same for any pair of nodes, small blast radius.
+\highspace
+In summary:
+\begin{equation*}
+    \begin{cases}
+        \text{Leaves: $2k$ bidirectional ports} \\
+        \text{Spines: $k$ bidirectional ports} \\
+        \text{Every Leaf connects to every Spine} \\
+        \text{Full bisection if $m \ge k$.}
+    \end{cases}
+\end{equation*}
 
-\begin{examplebox}
+\newpage
+
+\begin{examplebox}[: DNC design]
     There are $3072$ servers and $3072$ ports available at 10 Gbit/s. Provides a leaf-spine design.
 
     There are \textbf{two possible designs}.
@@ -2404,7 +2506,7 @@ The \textbf{advantages} are: use of homogeneous equipment, simple routing, the n
     \end{enumerate}
 \end{examplebox}
 
-\begin{examplebox}
+\begin{examplebox}[: DNC design]
     There are $6144$ servers and $6144$ ports available at 10 Gbit/s. Provides a leaf-spine design.
 
     There are \textbf{two possible designs}.
@@ -2421,75 +2523,245 @@ The \textbf{advantages} are: use of homogeneous equipment, simple routing, the n
     \end{enumerate}
 \end{examplebox}
 
-\noindent
-The \textbf{Pod-based model}, also called \definition{Fat Tree Network}, is another network architecture used to \textbf{increase the scaling} feature respecting the leaf-spine.
-
 \highspace
-It transforms each group of spine-leaf into a \definition{PoD (Point of Delivery)}\footnote{A Point Of Delivery is a module or group of network, compute, storage and application components that work together to deliver a network service. The PoD is a repeatable pattern and its components increase the modularity, scalability and manageability of data.} and adds a super spine layer.
-
-\highspace
-It is a \textbf{highly scalable} and \textbf{cost-effective} DCN architecture designed to \textbf{maximise bisection bandwidth}. It can be built using standard Gigabit Ethernet switches with the same number of ports.
-
-\highspace
-It is composed by a \textbf{\emph{leaf}} of $2k^{2}$ bidirectional ports:
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we scale to a 3-tier Clos?}}
+\end{flushleft}
+When our datacenter gets \textbf{huge}, even a classic 2-tier Leaf-Spine hits limits:
 \begin{itemize}
-    \item $k^{2}$ ports to the servers;
-    \item $k^{2}$ ports to the data center network.
+    \item The number of \textbf{uplinks per Leaf} is fixed by switch port count.
+    \item The number of Spines we can connect to is also limited by the port count on the Spines.
 \end{itemize}
-In general, let $k^{2}P$ servers: there are $2kP$ switches with $2k$ ports and $k^{2}$ switches with $P$ ports. Using the Fat-Tree model, \textbf{the $\mathbf{P}$ value is $\mathbf{2k}$, so for $\mathbf{2k^{3}}$ servers, there are $\mathbf{5k^{2}}$ switches with $\mathbf{2k}$ ports} ($k^{2} + 2k \cdot 2k$).
+So to connect \emph{thousands} of racks at full bisection bandwidth, we need more stages. This is exactly what the \definition{Fat-Tree (or 3-stage Clos)} solves.
 
 \highspace
-At the \textbf{edge layer}, there are $2k$ pods (groups of servers), each with $k^{2}$ servers.
+A \definition{Fat-Tree (or 3-stage Clos)} is just a multi-level \textbf{Clos network} where link capacity \emph{increases} closer to the core, so the ``tree'' looks \textbf{fat} in the middle. The key idea is:
 \begin{itemize}
-    \item Each edge switch is directly connected to $k$ servers in a pod and $k$ aggregation switches. 
-    \item A Fat-Tree network with $2k$-port commodity switches can accomodate $2k^{3}$ servers in total.
-    \item $k^{2}$ core switches with $2k$-port each, each one connected to $2k$ pods.
-    \item Each aggregation switch is connected to $k$ core switches.
+    \item Small switches at the \textbf{edge}.
+    \item Bigger bandwidth links and more switches at the \textbf{aggregation and core layers}.
+    \item So the middle of the network doesn't become a bottleneck.
 \end{itemize}
+It is called ``fat'' because, in a normal tree, the higher up we go, the fewer branches there are, creating bottlenecks. In a Fat-Tree, we keep adding enough parallel links/switches so total bandwidth stays equal across any ``slice''. So every layer has enough capacity to preserve full bisection bandwidth.
 
-\newpage
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How it works? 3-tier.}} A classic Fat-Tree has:
+\begin{itemize}
+    \item \important{Edge (Leaf)}: ToR switches in racks, connect to servers and Aggregation.
+    \item \important{Aggregation (Middle)}: Aggregate Leafs, uplink to Core.
+    \item \important{Core (Spone/Superspine)}: Connect Aggregations together.
+\end{itemize}
+So it's basically a Clos $C(n,m,k)$:
+\begin{equation*}
+    \text{Edge stage} \rightarrow \text{Middle stage} \rightarrow \text{Core stage} \rightarrow \text{Middle stage} \rightarrow \text{Edge}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we call it Pod-based?}}
+\end{flushleft}
+When we have \emph{thousands} of racks, it's unmanageable to think \emph{of one giant switch fabric}. So we \textbf{divide} the whole fabric \textbf{into repeated building blocks} called Pods. A \definition{PoD (Point of Delivery)}, in datacenter design, is a \textbf{modular}, \textbf{repeatable unit} of:
+\begin{itemize}
+    \item \textbf{Racks} $+$ \textbf{Power} $+$ \textbf{Leaf} $+$ \textbf{Aggregation Switches}.
+    \item Often also cooling and structured cabling.
+\end{itemize}
+A POD is like a \textbf{mini-datacenter inside the datacenter}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{A Scalable, Commodity Data Center Network Architecture \cite{al2008scalable}}}
+\end{flushleft}
+The paper ``\emph{A Scalable, Commodity Data Center Network Architecture}''\cite{al2008scalable} explains a famous datacenter Clos design that shows how we can build a \textbf{non-blocking DCN} with commodity switches. The idea is:
+\begin{itemize}
+    \item We have a \textbf{fixed switch port count}: each switch has $k$ ports.
+    \item The goal is to \textbf{connect as many servers as possible} \hl{with full bisection bandwidth}, no oversubscription\footnote{Oversubscription is when the total potential demand for bandwidth exceeds the actual available capacity. It's like building a highway with fewer lanes than the number of cars that could be on it, because we're betting not everyone will drive at once.}.
+    \item The Fat-Tree does this by arranging switches in \textbf{pods} and a \textbf{core layer}.
+\end{itemize}
+In the classic Fat-Tree, we choose: $ P = 2k $, where $P$ is the number of \textbf{pods}, and $k$ is the \textbf{number of ports per switch}. All switches are assumed to be the same commodity switch.
+
+\highspace
+Each \textbf{pod} has:
+\begin{itemize}
+    \item $k$ Edge switches. Each edge switchL
+    \begin{itemize}
+        \item Connects \textbf{down} to servers: $\dfrac{k}{2}$ ports.
+        \item Connects \textbf{up} to Aggregations: $\dfrac{k}{2}$ ports.
+    \end{itemize}
+    \item $k$ Aggregation switches. Each Aggregation switch:
+    \begin{itemize}
+        \item Connects \textbf{down} to Edge: $\dfrac{k}{2}$ ports.
+        \item Connects \textbf{up} to Core: $\dfrac{k}{2}$ ports.
+    \end{itemize}
+\end{itemize}
+So each Edge switch connects to:
+\begin{equation*}
+    \dfrac{k}{2} \: \text{servers} + \dfrac{k}{2} \: \text{uplinks} = k \text{total ports}
+\end{equation*}
+\textbf{Total servers per pod}:
+\begin{equation*}
+    k \: \text{Edge switches} \times \dfrac{k}{2} \: \text{servers each} = \dfrac{k^2}{2}
+\end{equation*}
+But because there are $P$ \textbf{pods}, the total servers are:
+\begin{equation*}
+    \text{Total servers} = \underbrace{\dfrac{k^2}{2}}_{\text{per pod}} \times P
+\end{equation*}
+However, we adopted a generalized variant:
+\begin{equation}
+    \text{Total servers} = k^2 P
+\end{equation}
 
 \begin{figure}[!htp]
     \centering
-    \includegraphics[width=\textwidth]{img/networking-11.png}
-    \caption{Fat-Tree Network, with $k=2$, 4 pods, 16 servers, 20 switches.}
-\end{figure}
-
-\begin{figure}[!htp]
-    \centering
-    \includegraphics[width=.4\textwidth]{img/networking-10.pdf}
+    \includegraphics[width=.5\textwidth]{img/networking-10.pdf}
     \caption{Explanation of Fat-Tree Network.}
 \end{figure}
+
+\begin{examplebox}[: Fat-Tree with $2k$ pods and $k=2$]
+    Suppose a Fat-Tree has $2k$ pods: $P = 2k$. Each pod has its Edge and Aggregate layers. The core ties all pods together.
+
+    \begin{itemize}
+        \item If $P = 2k$, then the total servers are:
+        \begin{equation*}
+            \text{Total servers} = k^2 \times P = k^2 \times 2k = 2k^3
+        \end{equation*}
+        So the $k$-ary Fat-Tree connects $2k^3$ servers.
+
+        \item If each pod:
+        \begin{equation*}
+            k \text{Edge} + k \text{Aggregation} \Rightarrow 2k \text{switches}
+        \end{equation*}
+        With $P$ pods, we have $2k \cdot P$ switches in pods. Also, at the Core layer we have $k^2$ Core switches. So \textbf{total switches}:
+        \begin{equation*}
+            2k P + k^2 \quad \xRightarrow{P = 2k} \quad 2k \cdot \left(2k\right) + k^2 = 4k^2 + k^2 = 5k^2
+        \end{equation*}
+    \end{itemize}
+    For $k=2$, we have:
+    \begin{itemize}
+        \item $P = 4$ pods.
+        \item Core: $k^2 = 2^2 = 4$ switches.
+        \item Total servers: $2k^3 = 2 \times 2^3 = 16$.
+        \item Total switches: $5k^2 = 5 \times 4 = 20$.
+    \end{itemize}
+    \begin{center}
+        \phantomsection % creates a link target here
+        \includegraphics[width=\textwidth]{img/fat-tree-compressed.pdf}
+        \captionof{figure}{Simple fat-tree topology. Using the two-level routing tables, packets from source \texttt{10.0.1.2} to destination \texttt{10.2.0.3} would take the dashed path.\cite{al2008scalable}}
+        \label{fig:fat-tree}
+    \end{center}
+
+    Classic $k$-ary Fat-Tree:
+    \begin{equation*}
+        \begin{cases}
+            P = 2k, \\
+            \text{Total servers} = 2k^3, \\
+            \text{Total switches} = 5k^2, \\
+            \text{Core switches} = k^2, \\
+            \text{Pods} = 2k.
+        \end{cases}
+    \end{equation*}
+\end{examplebox}
 
 \newpage
 
 \paragraph{Server-centric and hybrid architectures}
 
-\definition{CamCube} is a \textbf{server-centric architecture} typically proposed for building container-sized data centres.
+In \textbf{server-centric architectures}:
+\begin{itemize}
+    \item The servers themselves \textbf{help do the routing} and \textbf{forward traffic}.
+    \item The network topology is built \textbf{partly in software}, with direct server-to-server links.
+    \item Switches are minimal or even absent, the servers form the fabric.
+\end{itemize}
+So the key idea is that servers are not passive endpoints, but they \textbf{actively forward packets} for each other.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{CamCube: a concrete example}}
+\end{flushleft}
+\definition{CamCube} was an experimental \textbf{server-centric datacenter network} developed at the University of Cambridge around 2010. The key features are:
+\begin{itemize}
+    \item Each server has multiple NICs.
+    \item Servers are connected in a \textbf{3D torus} or \textbf{cube-like mesh} (hence ``CamCube'').
+    \item There are \textbf{no traditional switches}, servers route packets directly to each other.
+\end{itemize}
+A CamCube server has \textbf{several network ports} (e.g., 6 in the 3D grid). Links go \textbf{directly to neighboring servers}. Packets hop from server to server, using custom routing software running \textbf{on the servers themselves}. Routing decisions are done in the OS or application layer.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do this?}}
+\begin{itemize}
+    \item Reduce or eliminate expensive switches.
+    \item Achieve high bisection bandwidth using cheap NICs and cables.
+    \item Expose the \textbf{topology directly to applications}, so apps can optimize data placement and routing.
+\end{itemize}
+For example, a key-value store could decide to place replicas on ``neighbor'' servers in the CamCube coordinate space to minimize hops.
 
 \highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
 \end{flushleft}
-It can \textbf{reduce implementation and maintenance costs} by using only servers to build the Data Center Network. It also exploits network locality to \textbf{increase communication efficiency}.
+\begin{itemize}
+    \item Cheap commodity hardware (just NICs and cables).
+    \item Flexible (easy to experiment with custom routing).
+    \item Tight integration between network and application logic.
+\end{itemize}
 
-\highspace
+\newpage
+
 \begin{flushleft}
     \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Disadvantages}}
 \end{flushleft}
-It \textbf{requires servers with Multiple Network Interface cards} to build a 3D tours network, \textbf{long paths} and \textbf{high routing complexity}.
+\begin{itemize}
+    \item Adds \textbf{routing overhead} on servers.
+    \item Makes the OS and application design more complex.
+    \item Harder to scale wiring neatly, 3D torus cabling is tricky in real racks.
+    \item Server failure impacts routing, so resilience needs extra software.
+\end{itemize}
 
 \highspace
 The hybrid architectures are \textbf{DCell}, \textbf{BCube} and \textbf{MDCube}.
 
 \highspace
-A \definition{DCell} is a \textbf{scalable and cost-effective hybrid architecture} that uses switches and servers for packet forwarding. It is a recursive architecture and uses a basic building block called $DCell_{0}$ to construct larger DCells.
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is DCell?}}
+\end{flushleft}
+\definition{DCell} is a \textbf{server-centric datacenter network} proposed by Microsoft Research (Guo et al., 2008). The key idea is build a large-scale datacenter network \textbf{without big switches}, using small commodity switches and \textbf{servers interconnecting themselves recursively}.
 
 \highspace
-$DCell_{k}$ ($k > 0$) denotes a level-$k$ DCell \textbf{constructed by combining} $n+1$ \textbf{servers} in $DCell_{0}$. A $DCell_{0}$ has $n$ ($n < 8$) \textbf{servers directly connected by a commodity switch}.
+In DCell each \textbf{server} is connected to:
+\begin{itemize}
+    \item A \textbf{mini switch} (commodity, dumb, small, no big core).
+    \item \textbf{Other servers directly}, in a clever recursive pattern.
+\end{itemize}
+The result is a \textbf{highly scalable, fault-tolerant topology} built by \textbf{recursively composing many small building blocks}. The core concept is \textbf{recursive construction}. We start with a $\text{DCell}_0$, the basic unit, then \textbf{combine multiple DCells into bigger DCells}.
+\begin{enumerate}
+    \item $\text{DCell}_0$, smallest unit. Contains $n$ servers and one mini switch. Inside:
+    \begin{itemize}
+        \item Each server has one port to the switch (for local communication).
+        \item Each server has \textbf{one more port} for direct links to other DCells.
+    \end{itemize}
+    \item $\text{DCell}_1$, we take $k = n+1$ $\text{DCell}_0$ units. Connect them \textbf{directly} using the extra server ports, and each server has direct links to other DCells.
+    \item $\text{DCell}_2$, we take $k = n + 1$ $\text{DCell}_1$ units. Connect them recursively in the same way.
+\end{enumerate}
+And so on. At each level, the network expands \textbf{exponentially}.
 
 \highspace
-\emph{Disadvantages}: \textbf{long communication paths}, many required Network Interface Cards and \textbf{increased cabling costs}.
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Scalability}: The recursive structure lets us scale to hundreds of thousands of servers using small switches and extra server NICs.
+    \item \textbf{Server-centric}: Servers handle routing logic, they decide how to forward packets to reach other servers.
+    \item \textbf{Fault tolerance}: Many redundant paths. If one server or link fails, routing can find alternate paths.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}
+    \item Needs extra NICs per server, then \textbf{more cabling complexity}.
+    \item Routing at server level adds \textbf{CPU overhead}.
+    \item Recursive \textbf{cabling} can be operationally \textbf{hard} at large physical scales.
+    \item \textbf{Performance can degrade if too many servers fail}, the fault tolerance is not free.
+\end{itemize}
 
 \begin{figure}[!htp]
     \centering
@@ -2497,35 +2769,80 @@ $DCell_{k}$ ($k > 0$) denotes a level-$k$ DCell \textbf{constructed by combining
     \caption{DCell hybrid architecture.}
 \end{figure}
 
-\newpage
-
-\noindent
-\definition{BCube} is a \textbf{hybrid and cost-effective architecture} that scales through recursion. It provides \textbf{high bisection bandwidth} and \textbf{graceful throughput degradation}.
-
-\highspace
-It uses BCube as a building block, consisting of $n$ servers connected to an $n$-port switch.
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is BCube?}}
+\end{flushleft}
+\definition{BCube} is a \textbf{server-centric datacenter network topology} proposed by Microsoft Research (Guo et al., 2009), same lab that proposed DCell. It was designed specifically for \textbf{modular datacenters}, think \textbf{container-based clusters} or shipping container datacenters.
 
 \highspace
-A $BCube_{k}$ ($k>0$) is constructed with $n$ $BCube_{k-1}s$ and $n^{k}$ $n$-port switches. In a $BCube_{k}$ there are $n^{\left(k+1\right)}$ $k+1$-port servers and $k+1$ layers of switches.
+Like DCell, BCube:
+\begin{itemize}
+    \item Uses \textbf{commodity mini-switches} (no big expensive core switches).
+    \item Gives each server \textbf{multiple NICs}.
+    \item Builds high bisection bandwidth \textbf{by using direct server-switch-server paths}.
+\end{itemize}
+But instead of recursive hierarchy (DCell), BCube uses a \textbf{layered, multi-level cube-like structure} with \textbf{structured direct links}.
 
 \highspace
-\emph{Disadvantages}: \textbf{limited scalability} and \textbf{high cabling costs} (NICs reason).
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Server-centric}: servers handle multi-path routing.
+    \item \textbf{High fault tolerance}: if one path fails, many alternative switch levels are available.
+    \item \textbf{Great for modular scale}: we can design BCube units as self-contained shipping containers.
+    \item \textbf{Full bisection bandwidth}: as we add levels, we add more disjoint paths.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Limited scalability}.
+    \item \textbf{High cabling costs}.
+\end{itemize}
 
 \begin{figure}[!htp]
     \centering
-    \includegraphics[width=.8\textwidth]{img/networking-13.png}
+    \includegraphics[width=.7\textwidth]{img/networking-13.png}
     \caption{BCube hybrid architecture.}
 \end{figure}
 
 \newpage
 
-\noindent
-\definition{MDCube} is designed to \textbf{reduce the number of cables used to connect containers}. 
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is MDCube?}}
+\end{flushleft}
+\textbf{MDCube} is a \textbf{modular datacenter network architecture} that \textbf{combines multiple BCubes} into a higher-level \emph{interconnected cube}. It's literally: \definition{Modular Datacenter Cube (MDCube)}. Proposed by the same researchers (Microsoft Research, 2011) to tackle the problem: ``\emph{BCube works well for modular, container-sized datacenters; but what if we need to scale to \textbf{mega-datacenters} built from many BCube containers?}''.
+
+\highspace
+Each \textbf{BCube} is treated as a \textbf{building block}. We interconnect multiple BCubes in a \textbf{higher-level topology} (like a hypercube or torus). The result is a \textbf{multi-level hybrid}:
 \begin{itemize}
-    \item Each container has an ID which is mapped to a multidimensional tuple.
-    \item Each container is connected to a neighbouring container with a different tuple in one dimension.
-    \item There are two types of connections: Intra-container links and high-speed inter-container links.
+    \item Inside: each module is a BCube.
+    \item Outside: the modules are linked by structured interconnects.
 \end{itemize}
+MDCube is \textbf{hybrid} because:
+\begin{itemize}
+    \item It combines \textbf{server-centric routing} inside the BCube.
+    \item It uses \textbf{structured interconnects} \emph{between} modules, like classic network topologies.
+    \item It blends \textbf{switch-centric} commodity switches (inside BCube) with \textbf{server centric} direct links (between BCubes).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item Keeps switch cost low.
+    \item Good for container-based datacenters.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{thumbs-down} \textbf{Disadvantages}}
+\end{flushleft}
+Still operationally tricky, then many NICs, custom routing software.
 
 \begin{figure}[!htp]
     \centering

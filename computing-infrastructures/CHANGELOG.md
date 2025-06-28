@@ -9,6 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v1.9.0](#v190)
 - [v1.8.0](#v180)
 - [v1.7.0](#v170)
 - [v1.6.0](#v160)
@@ -22,6 +23,16 @@ Each version follows the Conventional Commits structure. For more information on
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.9.0
+
+- refactor `2.2.3 Networking (architecture and technology)`
+- refactor `2.2.3.1 Fundamental concepts`
+- refactor `2.2.3.2 Switch-centric: classical Three-Tier architecture`
+- refactor `2.2.3.3 Switch-centric: Leaf-Spine architectures`
+- refactor `2.2.3.4 Server-centric and hybrid architectures`
 
 --------------------
 

@@ -9,6 +9,7 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v2.0.0](#v200)
 - [v1.9.0](#v190)
 - [v1.8.0](#v180)
 - [v1.7.0](#v170)
@@ -23,6 +24,14 @@ Each version follows the Conventional Commits structure. For more information on
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v2.0.0
+
+- add `Exams`
+  - add `2025`
+    - add `February 3`
 
 --------------------
 

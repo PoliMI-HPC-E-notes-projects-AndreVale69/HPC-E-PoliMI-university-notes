@@ -32,6 +32,7 @@ Each version follows the Conventional Commits structure. For more information on
 - add `Exams`
   - add `2025`
     - add `February 3`
+    - add `January 13`
 - add `RAID 5 - MTTF`
 
 --------------------

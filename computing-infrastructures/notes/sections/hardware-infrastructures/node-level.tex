@@ -700,7 +700,7 @@ Common disk scheduling algorithms are:
         \end{itemize}
     \end{itemize}
 
-    \item \definition{Circular SCAN (C-SCAN)} (fair, but less efficient than SCAN in some cases)
+    \item \label{def: C-SCAN - Elevator Algorithm} \definition{Circular SCAN (C-SCAN)} (fair, but less efficient than SCAN in some cases)
     \begin{itemize}
         \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{How it works?}} Like SCAN, but head \textbf{only moves in one direction}. When it reaches the end, it \textbf{jumps back} to the beginning (like a circular elevator).
         \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
@@ -1860,68 +1860,6 @@ It is used XOR because it has a special property: if we know all but one value, 
 \end{itemize}
 
 \highspace
-\begin{flushleft}
-    \textcolor{Green3}{\faIcon{shield-alt} \textbf{Mean Time To Failure (MTTF) of RAID 5}}
-\end{flushleft}
-When we have \textbf{one failed disk}, the array is running degraded, it's still working but \emph{vulnerable}. To lose data, we need a \textbf{second disk} to fail \emph{while} the first failed disk is being rebuilt or replaced. So the chance of losing data is: ``\emph{what's the chance that any other disk fails during the repair window?}''.
-
-\highspace
-Suppose the Mean Time To Failure for a \textbf{single disk} is MTTF. The \textbf{failure rate} for a single disk is calculated using the well-known formula: $\lambda = \dfrac{1}{\text{MTTF}}$.
-
-\highspace
-The \textbf{probability that a disk fails in a small time} $\Delta t$ is about $\lambda \cdot \Delta t$. So, if the repair time is MTTR, the chance that a disk fails during that window is about:
-\begin{equation}\label{eq: RAID 5 - probability that a disk fails in a small time}
-    P(\text{fail in MTTR}) = \dfrac{\text{MTTR}}{\text{MTTF}}
-\end{equation}
-In other words, it indicates that during the MTTF time window, we use an MTTR time for repairs, showing how much of the window is used. It also indicates the \textbf{likelihood of a second disk failing during the vulnerable window}.
-
-\newpage
-
-\noindent
-Now, the RAID 5 failure mechanism is combined by two parts:
-\begin{enumerate}
-    \item \important{Wait for the \emph{first} disk to fail}. We have $G$ disks. As we have seen before, the failure rate of each disk is:
-    \begin{equation*}
-        \lambda_{\text{disk}} = \dfrac{1}{\text{MTTF}_{\text{disk}}}
-    \end{equation*}
-    Since we have $G$ parallel disks working together, the \textbf{failure rate of the entire system} is equal to the failure rate of each disk multiplied by $G$:
-    \begin{equation*}
-        \lambda_{\text{system}} = G \times \lambda_{\text{disk}}
-    \end{equation*}
-    The mean time to the first failure is given by the ratio of one disk failure and the system's failure rate:
-    \begin{equation*}
-        \text{MTTF}_{\text{first fail}} = \dfrac{1}{\lambda_{\text{system}}} = \dfrac{1}{G \times \lambda_{\text{disk}}} = \dfrac{1}{G \times \dfrac{1}{\text{MTTF}_{\text{disk}}}} = \dfrac{\text{MTTF}_{\text{disk}}}{G}
-    \end{equation*}
-    \item \important{Risk of a second disk failing while you rebuild}. When one disk fails, we have $G-1$ disks left. During the \textbf{vulnerable window} (MTTR), each remaining disk could fail. As we saw on page \pageref{eq: RAID 5 - probability that a disk fails in a small time}, the chance that one disk will fail within that window is:
-    \begin{equation*}
-        P(\text{fail in MTTR}) = \dfrac{\text{MTTR}}{\text{MTTF}}
-    \end{equation*}
-    Since there are $(G-1)$ disks left, the risk multiplies:
-    \begin{equation*}
-        P\left(\text{2nd fail}\right) = \left(G-1\right) \times P(\text{fail in MTTR}) = \left(G-1\right) \times \dfrac{\text{MTTR}}{\text{MTTF}}
-    \end{equation*}
-\end{enumerate}
-We now have everything we need to calculate the \definitionWithSpecificIndex{MTTF of the RAID 5}{RAID 5 - MTTF}{}:
-\begin{equation}\label{eq: RAID 5 - MTTF}
-    \begin{array}{rcl}
-        \text{MTTF}_{\text{RAID5}} &=& \text{MTTF to 1st fail}
-        \times
-        \dfrac{1}{P(\text{2nd fail during rebuild})} \\ [1.8em]
-        %
-        &=& \dfrac{\text{MTTF}_{\text{disk}}}{G}
-        \cdot
-        \dfrac{1}{
-            \left(G-1\right) \cdot \dfrac{\text{MTTR}}{\text{MTTF}}
-        } \\ [2em]
-        &=& \dfrac{
-            \text{MTTF}_\text{disk}^{2}
-        }{
-            G \cdot \left(G-1\right) \cdot \text{MTTR}
-        }
-    \end{array}
-\end{equation}
-
-\highspace
 In conclusion, RAID 4 provides ample capacity and quick sequential input/output (I/O) thanks to block-level striping. It uses one dedicated parity disk for fault recovery. However, its \textbf{main weakness is its poor random write performance}, as all writes target the same parity disk. This is why RAID 4 is rarely used in practice and \textbf{led to the development of RAID 5, which solves this issue by distributing parity}.
 
 \newpage
@@ -2009,6 +1947,69 @@ In \textbf{RAID 4}, all parity writes go the \textbf{same disk}, and this create
         \text{Throughput} \approx \dfrac{N}{4} \times R
     \end{equation}
 \end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{shield-alt} \textbf{Mean Time To Failure (MTTF) of RAID 5}}
+\end{flushleft}
+When we have \textbf{one failed disk}, the array is running degraded, it's still working but \emph{vulnerable}. To lose data, we need a \textbf{second disk} to fail \emph{while} the first failed disk is being rebuilt or replaced. So the chance of losing data is: ``\emph{what's the chance that any other disk fails during the repair window?}''.
+
+\highspace
+Suppose the Mean Time To Failure for a \textbf{single disk} is MTTF. The \textbf{failure rate} for a single disk is calculated using the well-known formula: $\lambda = \dfrac{1}{\text{MTTF}}$.
+
+\highspace
+The \textbf{probability that a disk fails in a small time} $\Delta t$ is about $\lambda \cdot \Delta t$. So, if the repair time is MTTR, the chance that a disk fails during that window is about:
+\begin{equation}\label{eq: RAID 5 - probability that a disk fails in a small time}
+    P(\text{fail in MTTR}) = \dfrac{\text{MTTR}}{\text{MTTF}}
+\end{equation}
+In other words, it indicates that during the MTTF time window, we use an MTTR time for repairs, showing how much of the window is used. It also indicates the \textbf{likelihood of a second disk failing during the vulnerable window}.
+
+\noindent
+Now, the RAID 5 failure mechanism is combined by two parts:
+\begin{enumerate}
+    \item \important{Wait for the \emph{first} disk to fail}. We have $G$ disks. As we have seen before, the failure rate of each disk is:
+    \begin{equation*}
+        \lambda_{\text{disk}} = \dfrac{1}{\text{MTTF}_{\text{disk}}}
+    \end{equation*}
+    Since we have $G$ parallel disks working together, the \textbf{failure rate of the entire system} is equal to the failure rate of each disk multiplied by $G$:
+    \begin{equation*}
+        \lambda_{\text{system}} = G \times \lambda_{\text{disk}}
+    \end{equation*}
+    The mean time to the first failure is given by the ratio of one disk failure and the system's failure rate:
+    \begin{equation*}
+        \text{MTTF}_{\text{first fail}} = \dfrac{1}{\lambda_{\text{system}}} = \dfrac{1}{G \times \lambda_{\text{disk}}} = \dfrac{1}{G \times \dfrac{1}{\text{MTTF}_{\text{disk}}}} = \dfrac{\text{MTTF}_{\text{disk}}}{G}
+    \end{equation*}
+    \item \important{Risk of a second disk failing while you rebuild}. When one disk fails, we have $G-1$ disks left. During the \textbf{vulnerable window} (MTTR), each remaining disk could fail. As we saw on page \pageref{eq: RAID 5 - probability that a disk fails in a small time}, the chance that one disk will fail within that window is:
+    \begin{equation*}
+        P(\text{fail in MTTR}) = \dfrac{\text{MTTR}}{\text{MTTF}}
+    \end{equation*}
+    Since there are $(G-1)$ disks left, the risk multiplies:
+    \begin{equation*}
+        P\left(\text{2nd fail}\right) = \left(G-1\right) \times P(\text{fail in MTTR}) = \left(G-1\right) \times \dfrac{\text{MTTR}}{\text{MTTF}}
+    \end{equation*}
+\end{enumerate}
+We now have everything we need to calculate the \definitionWithSpecificIndex{MTTF of the RAID 5}{RAID 5 - MTTF}{}:
+\begin{equation}\label{eq: RAID 5 - MTTF}
+    \begin{array}{rcl}
+        \text{MTTF}_{\text{RAID5}} &=& \text{MTTF to 1st fail}
+        \times
+        \dfrac{1}{P(\text{2nd fail during rebuild})} \\ [1.8em]
+        %
+        &=& \dfrac{\text{MTTF}_{\text{disk}}}{G}
+        \cdot
+        \dfrac{1}{
+            \left(G-1\right) \cdot \dfrac{\text{MTTR}}{\text{MTTF}}
+        } \\ [2em]
+        &=& \dfrac{
+            \text{MTTF}_\text{disk}^{2}
+        }{
+            G \cdot \left(G-1\right) \cdot \text{MTTR}
+        }
+    \end{array}
+\end{equation}
+
+\highspace
 In conclusion, RAID 5 provides a good \textbf{trade-off between capacity}, \textbf{reliability}, and \textbf{performance}. It avoids RAID 4's parity bottleneck by using \textbf{rotating parity}, enabling better parallelism for \textbf{random writes}. However, in case of a disk failure, \textbf{performance degrades} significantly due to \textbf{on-the-fly parity reconstruction}.
 
 \newpage

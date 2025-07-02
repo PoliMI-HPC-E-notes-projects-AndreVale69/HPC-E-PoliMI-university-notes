@@ -34,6 +34,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `February 3`
     - add `January 13`
 - add `RAID 5 - MTTF`
+- add a better explanation for `N*`
 
 --------------------
 

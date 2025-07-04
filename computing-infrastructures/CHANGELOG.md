@@ -36,6 +36,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `2024`
     - add `September 5`
     - add `June 12`
+    - add `February 7`
   - add `2023`
     - add `July 7`
 - add `RAID 5 - MTTF`

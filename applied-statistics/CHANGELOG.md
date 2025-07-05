@@ -16,6 +16,12 @@
 
 - add `GLMs and Logistic Regression`
   - add `Introduction`
+  - add `Generalized Linear Model (GLM)`
+    - add `Link Functions`
+    - add `Inverse Link Functions`
+    - add `GLMs for Count Data - The Poisson Model`
+    - add `Fitting GLMs`
+    - add `Exponential Family`
 
 --------------------
 

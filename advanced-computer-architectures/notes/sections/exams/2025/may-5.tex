@@ -1,0 +1,2180 @@
+\section{Exams}
+
+\subsection{2025}
+
+\subsubsection{May 5}
+
+\subsubsection*{Exercise 1.A - Software Pipelining}
+
+\emph{Consider the following software pipelined loop \texttt{SP\_LOOP} and the corresponding start-up and finish-up code:}
+\begin{lstlisting}
+START_UP:   LD F0, 0 (R1)
+            LD F2, 0 (R2)
+            FADD F4, F0, F0
+            FADD F6, F2, F2
+            LD F0, 8 (R1)
+            LD F2, 8 (R2)
+
+SP_LOOP:    SD F4, 0 (R1)
+            SD F6, 0 (R2)
+            FADD F4, F0, F0
+            FADD F6, F2, F2
+            LD F0, 16 (R1)
+            LD F2, 16 (R2)
+            ADDUI R1, R1, 8
+            ADDUI R2, R2, 8
+            ADD R3, R2, R1
+            BNE R3, R4, SP_LOOP
+
+FINISH-UP:  SD F4, 8 (R1)
+            SD F6, 8 (R2)
+            FADD F4, F0, F0
+            FADD F6, F2, F2
+            SD F4, 16 (R1)
+            SD F6, 16 (R2)
+\end{lstlisting}
+\emph{Reconstruct the original (non-pipelined) version of the code.}
+
+\highspace
+\textcolor{Green3}{\textbf{\emph{Answer:}}} \definition{Software Pipelining} is a loop optimization technique. Instead of processing iterations strictly sequentially, it overlaps instructions from multiple iterations. So in the pipelined version:
+\begin{itemize}
+    \item The loop body does \emph{parts} of \hl{multiple iterations at the same time}.
+    \item Because of this, we need extra \textbf{start-up} code (to prime the pipeline) and \textbf{finish-up} code (to flush the remaining operations).
+\end{itemize}
+The original loop must do \textbf{one iteration at a time}. In the original \textbf{non-pipelined loop}, we:
+\begin{itemize}
+    \item Load the data for the current iteration.
+    \item Do the computation.
+    \item Store the results.
+    \item Update pointers.
+    \item Check whether you are done.
+    \item Repeat.
+\end{itemize}
+
+\highspace
+In software pipelining we always have:
+\begin{enumerate}
+    \item Start-up code
+    \item Steady-state loop
+    \item Finish-up code
+\end{enumerate}
+Because the pipeline overlaps \emph{parts of different iterations}. So we need:
+\begin{itemize}
+    \item Extra code at the \textbf{start} to \emph{prime} the pipeline with partial work.
+    \item The \textbf{main loop} which does the steady overlapping work for all \emph{middle} iterations.
+    \item Extra code at the \textbf{end} to \emph{drain} the pipeline, to finish the partial work left from the last overlapping iterations.
+\end{itemize}
+In other words, we need to reverse engineer the original code for this exercise.
+
+\highspace
+The software pipelined loop usually overlaps:
+\begin{itemize}
+    \item \emph{Load} for \textbf{next} iteration.
+    \item \emph{Compute} for \textbf{current} iteration.
+    \item \emph{Store} for \textbf{previous} iteration.
+\end{itemize}
+The goal is trace the dependency chain:
+\begin{itemize}
+    \item Which \texttt{LD} feeds which \texttt{FADD}.
+    \item Which \texttt{FADD} feeds which \texttt{SD}.
+\end{itemize}
+So the key is to identify the loop-carried data flow and align addresses to match.
+
+\highspace
+\hl{General 5-step method:}
+\begin{enumerate}
+    \item \textbf{Mark what the pipelined loop does}. In our case:
+    \begin{lstlisting}
+SP_LOOP:
+    SD F4, 0(R1)         # Store result of previous iteration?
+    SD F6, 0(R2)
+
+    FADD F4, F0, F0      # Compute for current iteration?
+    FADD F6, F2, F2
+
+    LD F0, 16(R1)        # Load for next iteration
+    LD F2, 16(R2)
+
+    ADDUI R1, R1, 8      # Increment base pointers
+    ADDUI R2, R2, 8\end{lstlisting}
+
+    \item \textbf{Figure out the purpose}
+    \begin{itemize}
+        \item \texttt{LD}: prefetch next input.
+        \item \texttt{FADD}: do the math for the loaded input.
+        \item \texttt{SD}: store the result \textbf{from previous iteration}.
+    \end{itemize}
+
+    \newpage
+
+    \item \textbf{Sketch the timeline}. Think conceptually:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            Pipeline Stage & Operation \\
+            \midrule
+            1. Load     & Loads new data for \texttt{i + 1} \\ [.5em]
+            2. Compute  & Uses old load for \texttt{i}      \\ [.5em]
+            3. Store    & Saves result for \texttt{i - 1}   \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \item \textbf{Match start-up and finish-up}
+    \begin{itemize}
+        \item \textbf{Start-up}: primes the pipeline, so gets first \texttt{F0}, \texttt{F2} ready.
+        \item \textbf{Loop}: repeats the middle chunk.
+        \item \textbf{Finish-up}: drains the leftover results.
+    \end{itemize}
+
+    \item \textbf{Write the original loop}. For each iteration:
+    \begin{itemize}
+        \item Load \texttt{F0, F2} $\leftarrow$ data for $i$
+        \item Compute \texttt{F4 = F0 + F0}, \texttt{F6 = F2 + F2} $\leftarrow$ process for $i$
+        \item Store \texttt{F4, F6} $\leftarrow$ save result for $i$
+        \item Increment pointers
+        \item Check loop condition
+    \end{itemize}
+\end{enumerate}
+So, here's the final solution:
+\begin{lstlisting}
+LOOP:   LD F0, 0 (R1)
+        LD F2, 0 (R2)
+        FADD F4, F0, F0
+        FADD F6, F2, F2
+        SD F4, 0 (R1)
+        SD F6, 0 (R2)
+        ADDUI R1, R1, 8
+        ADDUI R2, R2, 8
+        ADD R3, R2, R1
+        BNE R3, R4, LOOP
+\end{lstlisting}
+
+\newpage
+
+\subsubsection*{Exercise 1.B - Software Pipelining}
+
+\emph{Give the same software pipelined loop of \textbf{Exercise 1.A}:}
+\begin{lstlisting}
+SP_LOOP:    SD F4, 0 (R1)
+            SD F6, 0 (R2)
+            FADD F4, F0, F0
+            FADD F6, F2, F2
+            LD F0, 16 (R1)
+            LD F2, 16 (R2)
+            ADDUI R1, R1, 8
+            ADDUI R2, R2, 8
+            ADD R3, R2, R1
+            BNE R3, R4, SP_LOOP
+\end{lstlisting}
+Consider a \textbf{3-issue VLIW} machine with \textbf{fully pipelined functional units}:
+\begin{itemize}
+    \item \textbf{1 Memory Units with 3 cycles latency}
+    \item \textbf{1 FP ALUs with 3 cycles latency}
+    \item \textbf{1 Integer ALU with 1 cycle latency to next Int/FP \& 2 cycle latency to next Branch}
+\end{itemize}
+The branch is completed with 1 cycle delay slot (branch solved in ID stage). \textbf{No branch prediction}. In the Register File, it is possible to read and write at the same address at the same clock cycle.
+\begin{enumerate}
+    \item \emph{Considering one iteration of the \texttt{SP\_LOOP}, complete the following table by using the \textbf{list-based scheduling} (do NOT introduce any loop unrolling and modifications to loop indexes) on the 3-issue VLIW machine including the BRANCH DELAY SLOT. Please do not write in NOPs.}
+
+    \textcolor{Green3}{\textbf{\emph{Answer:}}} In a \textbf{VLIW architecture} (Very Long Instruction Word), a single instruction word encodes \textbf{multiple operations} that execute \emph{in parallel}. The compiler does the heavy lifting: it schedules independent instructions side by side in the same very long instruction word. The hardware just \emph{fires} all operations in parallel, it does \textbf{not} dynamically check for dependencies at runtime (unlike out-of-order superscalar).
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does \emph{3-issue} mean?}} It is the issue width and is the number of operations the processor \emph{fetches, decodes, and executes} in parallel \textbf{per cycle}. So, with 3-issue, the processor can execute up to \textbf{3 instructions per clock cycles}. They must be \textbf{independent} enough for the compiler to pack them together.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does \emph{fully pipelined functional units} mean?}} Each type of operation is done in its own \textbf{functional unit} (e.g., integer ALU, floating-point adder, load/store unit, etc.). \textbf{Fully pipelined} means multiple operations can be in \emph{different pipeline stages} of the same unit simultaneously. So, every clock cycle a new operation can start, even if a previous one isn't finished yet. For example, if an \texttt{FADD} unit is fully pipelined and the \texttt{FADD} takes 4 cycles to complete, it can accept \textbf{one new \texttt{FADD} per cycle}, the result pops our 4 cycles later.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is \emph{list-based scheduling}?}} \definition{List-based scheduling} is a classic \textbf{compiler scheduling algorithm} used to assign operations to \emph{time slots} (cycles) and \emph{resources} (e.g., functional units) \textbf{while respecting dependencies}.
+    \begin{itemize}
+        \item It tries to pack \textbf{as many independent instructions as possible} into each cycle.
+        \item It tries to \textbf{fill all slots} of a wide-issue machine (VLIW, superscalar).
+        \item It tries to respect resource limits (e.g., 1 integer ALU, 1 FP adder).
+    \end{itemize}
+    It is called list-based because the compiler first builds a \textbf{dependency graph} (where the nodes are the operations and the edges are the dependencies) and then creates a \textbf{list} of \textbf{ready operations}. These are instructions \textbf{whose inputs are ready} and \textbf{whose predecessors have been completed}. Each cycle:
+    \begin{itemize}
+        \item It picks operations from the list.
+        \item It assigns them to available slots/resources.
+        \item It marks successors ready when dependencies clear.
+    \end{itemize}    
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What does \emph{In the Register File, it is possible to read and write at the same address in the same clock cycle} mean?}} The \textbf{register file} supports \emph{simultaneous read and write} to the \textbf{same register}. So, in one cycle:
+    \begin{itemize}
+        \item We might \textbf{read register} \texttt{F0} to feed an \texttt{FADD}.
+        \item AND \textbf{write back a result} to \texttt{F0} in the same cycle.
+    \end{itemize}
+    The hardware guarantees the read gets the \textbf{old value}, the write updates it for \textbf{later cycles}.
+    
+    If the register file did not allow this, we'd have to schedule dependent instructions in separate cycles to avoid conflict (e.g., we couldn't read \texttt{F0} to feed \texttt{FADD} while overwriting \texttt{F0} with a new \texttt{LD}). Otherwise, if it is allowed, in same cycle we can:
+    \begin{itemize}
+        \item \texttt{LD F0, ...} (writes \texttt{F0})
+        \item \texttt{FADD F4, F0, F0} (reads old \texttt{F0})
+    \end{itemize}
+
+    \highspace
+    Here are some notes about the solution:
+    \begin{itemize}
+        \item We are using software pipelining, so the \texttt{SD} and \texttt{FADD} operators can start together because the \texttt{SD} operator stores the results of the previous iteration (or the initial loop, if it is the first iteration).
+
+        \item The \texttt{ADDUI} operator starts when the first \texttt{SD} store finishes, thanks to the register file. In the same cycle, the load operation begins, as it loads the operands for the next iteration.
+
+        \item Cycle 6 stalls because the \texttt{BNE} operator must wait for the result of the previous ADD and cannot start in cycle 6 because it reads old values.
+    \end{itemize}
+
+    \newpage
+
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | l | l | l @{}}
+            \toprule
+            & \textbf{Memory Unit} & \textbf{Floating Point Unit} & \textbf{Integer Unit} \\
+            \midrule
+            \textbf{C1}  & \texttt{SD F4, 0 (R1)} & \texttt{FADD F4, F0, F0} & \\ [.3em]
+            \textbf{C2}  & \texttt{SD F6, 0 (R2)} & \texttt{FADD F6, F2, F2} & \\ [.3em]
+            \textbf{C3}  & \texttt{LD F0, 16 (R1)} & & \texttt{ADDUI R1, R1, 8} \\ [.3em]
+            \textbf{C4}  & \texttt{LD F2, 16 (R2)} & & \texttt{ADDUI R2, R2, 8} \\ [.3em]
+            \textbf{C5}  & & & \texttt{ADD R3, R2, R1} \\ [.3em]
+            \textbf{C6}  & & & \\ [.3em]
+            \textbf{C7}  & & & \texttt{BNE R3, R4, SP\_LOOP} \\ [.3em]
+            \textbf{C8}  & & & (branch delay) \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+
+    \item \emph{How long is the critical path for a single iteration?}
+
+    \textcolor{Green3}{\textbf{\emph{Answer:}}} in \textbf{instruction scheduling}, the \textbf{critical path} is the longest chain of dependent operations that must be executed \emph{in sequence} because of true data dependencies (RAW). It determines the \textbf{minimum possible latency} to complete \emph{one full logical iteration}. The critical path length depends on the data dependencies and the assumed functional unit latencies, \textbf{not} the scheduling algorithm.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we calculate it for our loop?}}
+    \begin{enumerate}
+        \item Build the \textbf{DAG} for one iteration. A Data Dependency Graph (DAG) for scheduling has nodes, which are operations or instructions, and edges, which are directed and show true dependencies (RAW). For example, an edge from \texttt{A} to \texttt{B} means that \texttt{B} must wait for \texttt{A} to finish.
+        \item Assign a latency to each operation based on the pipeline assumptions. For example, assign one cycle for the load and one cycle for the add.
+        \item Find the \textbf{longest path} from any start node to an end node.
+    \end{enumerate}
+    In our case, the two \texttt{FADD} operations must wait for the corresponding stores. The \texttt{BNE} operator must also wait for the \texttt{ADD} operator because it writes to \texttt{R3}. However, the \texttt{ADD} operator must wait for the two \texttt{ADDUI} operations on the \texttt{R1} and \texttt{R2} registers. As we can see in the following DAG, the \hl{\textbf{critical path for a single iteration is 3}} (\texttt{ADDUI R1} or \texttt{ADDUI R2} $\rightarrow$ \texttt{ADD R3} $\rightarrow$ \texttt{BNE}).
+    \begin{center}
+        \begin{tikzpicture}[
+            node distance=1.5cm and 1cm,
+            box/.style={draw, rectangle, rounded corners, minimum size=6mm, align=center},
+            >=Stealth
+        ]
+            % FADD nodes
+            \node[box] (B1) {\texttt{FADD F4}};
+            \node[box, right=of B1] (B2) {\texttt{FADD F6}};
+
+            % SD nodes
+            \node[box, below=of B1] (A1) {\texttt{SD F4}};
+            \node[box, below=of B2] (A2) {\texttt{SD F6}};
+
+            % ADDUI nodes
+            \node[box, right=of B2] (D1) {\texttt{ADDUI R1}};
+            \node[box, right=of D1] (D2) {\texttt{ADDUI R2}};
+
+            % ADD and BNE
+            \node[box, below=of $(D1)!0.5!(D2)$] (E1) {\texttt{ADD R3}};
+            \node[box, below=of E1] (E2) {\texttt{BNE}};
+
+            % Edges
+            \draw[->] (B1) -- (A1);
+            \draw[->] (B2) -- (A2);
+
+            \draw[->] (D1) -- (E1);
+            \draw[->] (D2) -- (E1);
+            \draw[->] (E1) -- (E2);
+        \end{tikzpicture}
+    \end{center}
+
+    \newpage
+
+    \item \emph{What performance did you achieve in CPI?}
+
+    \textcolor{Green3}{\textbf{\emph{Answer:}}} The Clock Per Instruction (CPI) can be calculated using the following formula:
+    \begin{equation*}
+        \text{CPI} = \dfrac{\text{\# Clock Cycles}}{\text{IC}} = \dfrac{\text{\# Clock Cycles}}{\text{\# Instructions}} = \dfrac{8}{10} = 0.8
+    \end{equation*}
+
+
+    \item \emph{What performance did you achieve in FP ops per cycles?}
+    
+    \textcolor{Green3}{\textbf{\emph{Answer:}}} FP ops per cycle measures \textbf{how well we are utilizing the FP functional units}. Here, there are 2 floating-point additions (\texttt{FADD F4}, \texttt{FADD F6}):
+    \begin{equation*}
+        \text{FP ops / cycle} = \dfrac{\text{\# Floating-Point ops}}{\text{\# Instructions}} = \dfrac{2}{8} = 0.25
+    \end{equation*}
+
+
+    \item \emph{How much is the code efficiency?}
+    
+    \textcolor{Green3}{\textbf{\emph{Answer:}}} When asked for \textbf{code efficiency} in this VLIW/ILP context, they usually mean:
+    \begin{equation*}
+        \text{Efficiency} = \frac{\text{Achieved IPC}}{\text{Maximum Theoretical IPC}}
+    \end{equation*}
+    So we measure \textbf{how much of the machine's peak parallelism we actually use}. The achieved Instruction Per Cycle (IPC) is:
+    \begin{equation*}
+        \text{Achieved IPC} = \dfrac{\text{\# Instructions}}{\text{\# Clock Cycles}} \dfrac{10}{8} = 1.25
+    \end{equation*}
+    Here, VLIW is 3-issue, so it can execute up to \textbf{3 ops per cycle} if there's no data or resource limit ($\text{Peak IPC} = 3$). So, code efficiency is:
+    \begin{equation*}
+        \text{Efficiency} = \frac{1.25}{3} = 0.4167 \approx 41.67\% \approx 42\%
+    \end{equation*}
+    \hl{We're achieving about 41.67\%} ($\approx 42 \%$) of the maximum possible execution parallelism.
+\end{enumerate}
+
+\newpage
+
+\subsubsection*{Exercise 2.A - Dependency Analysis}
+
+\emph{Consider the same software pipelined loop of \textbf{Exercise 1.A} containing multiple types of intra-loop dependences. Complete the following table by inserting all types of true-data-dependences, anti-
+dependences and output dependences for each instruction:}
+
+\highspace
+\textcolor{Green3}{\textbf{\emph{Answer:}}}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | p{20em} @{}}
+        \toprule
+        \texttt{I\#} & \textbf{Type of instruction}   & \textbf{Analysis of dependences:} \begin{enumerate}
+            \item True data dependence with \texttt{I\#} for \texttt{\$Fx}
+            \item Anti-dependence with \texttt{I\#} for \texttt{\$Fy}
+            \item Output-dependence with \texttt{I\#} for \texttt{\$Fz}
+        \end{enumerate} \\
+        \midrule
+        I1  & \texttt{SD F4, 0 (R1)} & None \\ [.3em]
+        I2  & \texttt{SD F6, 0 (R2)} & None \\ [.3em]
+        I3  & \texttt{FADD F4, F0, F0} & Anti-dependence with \texttt{I1} for \texttt{F4} \\ [.3em]
+        I4  & \texttt{FADD F6, F2, F2} & Anti-dependence with \texttt{I2} for \texttt{F6} \\ [.3em]
+        I5  & \texttt{LD F0, 16 (R1)} & Anti-dependence with \texttt{I3} for \texttt{F0} \\ [.3em]
+        I6  & \texttt{LD F2, 16 (R2)} & Anti-dependence with \texttt{I4} for \texttt{F2} \\ [.3em]
+        I7  & \texttt{ADDUI R1, R1, 8} & Anti-dependence with \texttt{I1} for \texttt{R1} \newline Anti-dependence with \texttt{I5} for \texttt{R1} \\ [.3em]
+        I8  & \texttt{ADDUI R2, R2, 8} & Anti-dependence with \texttt{I2} for \texttt{R2} \newline Anti-dependence with \texttt{I6} for \texttt{R2} \\ [.3em]
+        I9  & \texttt{ADD R3, R2, R1} & True data dependence with \texttt{I7} for \texttt{R1} \newline True data dependence with \texttt{I8} for \texttt{R2} \\ [.3em]
+        I10 & \texttt{BNE R3, R4, SP\_LOOP} & True data dependence with \texttt{I9} for \texttt{R3} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\newpage
+
+\subsubsection*{Exercise 2.B - Tomasulo}
+
+\emph{Consider the same assembly code to be executed on a CPU with dynamic scheduling based on \textbf{Tomasulo algorithm} with all cache HITS, a single Common Data Bus and:}
+\begin{itemize}
+    \item \emph{2 RESERVATION STATIONS (\textbf{RS1}, \textbf{RS2}) with 2 LOAD/STORE units (\textbf{LDU1}, \textbf{LDU2}) with latency \textbf{4}}
+    \item \emph{2 RESERVATION STATIONS (\textbf{RS3}, \textbf{RS4}) with 1 FP unit (\textbf{FPU1}) with latency \textbf{4}}
+    \item \emph{2 RESERVATION STATIONS (\textbf{RS5}, \textbf{RS6}) with 2 INT\_ALU/BR units (\textbf{ALU1}, \textbf{ALU2}) with latency \textbf{2}}
+\end{itemize}
+\emph{Please complete the following table:}
+
+\highspace
+\textcolor{Green3}{\textbf{\emph{Answer:}}} Before solving the Tomasulo, we need to remember how it is composed (see page \pageref{fig: tomasulo fpu}).
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+        \midrule
+        \texttt{I1: SD F4, 0 (R1)}      & \hl{1} & 2 & 6 & None  & \hl{\texttt{RS1}}   & \texttt{LDU1}  \\ [.5em]
+        \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+        \texttt{I3: FADD F4, F0, F0}    &   &   &   &       &       &       \\ [.5em]
+        \texttt{I4: FADD F6, F2, F2}    &   &   &   &       &       &       \\ [.5em]
+        \texttt{I5: LD F0, 16 (R1)}     &   &   &   &       &       &       \\ [.5em]
+        \texttt{I6: LD F2, 16 (R2)}     &   &   &   &       &       &       \\ [.5em]
+        \texttt{I7: ADDUI R1, R1, 8}    &   &   &   &       &       &       \\ [.5em]
+        \texttt{I8: ADDUI R2, R2, 8}    &   &   &   &       &       &       \\ [.5em]
+        \texttt{I9: ADD R3, R2, R1}     &   &   &   &       &       &       \\ [.5em]
+        \texttt{I10: BNE R3, R4, LOOP}   &   &   &   &       &       &       \\
+        \bottomrule
+    \end{tabular}
+    \end{adjustbox}
+\end{table}
+
+% \begin{minipage}{0.45\textwidth}
+%     \centering
+%     \begin{tabular}{@{} l | l l l l @{}}
+%         \toprule
+%         & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+%         \midrule
+%         RS1 & & & \\ [.3em]
+%         RS2 & & & \\ [.3em]
+%         \cmidrule{1-5}
+%         LDU1 & & & \\ [.3em]
+%         LDU2 & & & \\
+%         \bottomrule
+%     \end{tabular}
+% \end{minipage}
+% \hfill
+% \begin{minipage}{0.45\textwidth}
+%     \centering
+%     \begin{tabular}{@{} l | l l l l @{}}
+%         \toprule
+%         & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+%         \midrule
+%         RS3 & & & \\ [.3em]
+%         RS4 & & & \\ [.3em]
+%         \cmidrule{1-5}
+%         FPU1 & & & \\
+%         \bottomrule
+%     \end{tabular}
+% \end{minipage}
+% 
+% \begin{center}
+%     \begin{tabular}{@{} l | l l l l @{}}
+%         \toprule
+%         & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+%         \midrule
+%         RS5 & & & \\ [.3em]
+%         RS6 & & & \\ [.3em]
+%         \cmidrule{1-5}
+%         ALU1 & & & \\ [.3em]
+%         ALU2 & & & \\
+%         \bottomrule
+%     \end{tabular}
+% \end{center}
+
+\begin{enumerate}
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \hl{\texttt{F4}} & & \hl{\texttt{-}} & \\ [.3em]
+            \texttt{RS2} & & & & \\ [.3em]
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\ [.3em]
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{center}
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\ [.3em]
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \newpage
+    
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & \hl{2} & 6 & None  & \texttt{RS1}   & \hl{\texttt{LDU1}}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & \hl{2} & 3 & 7 & None  & \hl{\texttt{RS2}}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   &       &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{RS2} & \hl{\texttt{F6}} & & \hl{\texttt{-}} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \hl{\texttt{F4}} & & \hl{\texttt{-}} & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 4 \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}: Here, we have a anti-dependence hazard (WAR) because the third instruction writes the sum to register \texttt{F4} and the first instruction reads \texttt{F4}. In Tomasulo, though, we don't care about this because the issue stage stalls if and only if there are no reservation stations, the Load/Store queue is full (for memory ops), or for speculative instructions (for prediction, which is not our case). Therefore, we issue and start execution. At the end of execution, we will determine whether to write the result or wait.
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & \hl{3} & 7 & None  & \texttt{RS2}   & \hl{\texttt{LDU2}}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & \hl{3} &   &   & \hl{\texttt{WAR I1, F4}} & \hl{\texttt{RS3}} &       \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   &       &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{RS2} & \texttt{F6} & & \texttt{-} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{LDU2} & \hl{\texttt{F6}} & & \hl{\texttt{-}} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & \hl{\texttt{F0}} & & \hl{\texttt{F0}} & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 3 \\ [.3em]
+            \texttt{LDU2}   & 4 \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}: It's the same situation as before with the hazard (WAR), but now it's \texttt{I4} with \texttt{I2}.
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & \hl{4} &   & \texttt{WAR I1, F4}  & \texttt{RS3} & \hl{\texttt{FPU1}} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & \hl{4} &   &   & \hl{\texttt{WAR I2, F6}} & \hl{\texttt{RS4}} &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   &       &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   &       &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   &       &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{RS2} & \texttt{F6} & & \texttt{-} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{LDU2} & \texttt{F6} & & \texttt{-} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & \texttt{F0} & & \texttt{F0} & \\ [.3em]
+            \texttt{RS4} & \hl{\texttt{F2}} & & \hl{\texttt{F2}} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \hl{\texttt{F0}} & & \hl{\texttt{F0}} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 2 \\ [.3em]
+            \texttt{LDU2}   & 3 \\ [.3em]
+            \texttt{FPU1}   & 4 \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}: Instruction 4 cannot begin because there are no available functional units. Therefore, it remains idle at reservation station 4. Instructions 5 and 6 cannot start either because there are no load/store reservation units available. \texttt{ADDUI} operations cannot start because instructions 5 and 6 need to read the \texttt{R1} and \texttt{R2} registers (WAR hazard).
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 &   & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 &   &   & \texttt{WAR I2, F6} & \texttt{RS4} &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     &   &   &   & \hl{\texttt{WAR I3, F0}} &       &       \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     &   &   &   & \hl{\texttt{WAR I4, F2}} &       &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   & \hl{\texttt{WAR I5, R1}} &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   & \hl{\texttt{WAR I6, R2}} &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \hl{\texttt{RAW R1, R2}} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \hl{\texttt{RAW I9, R3}} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{RS2} & \texttt{F6} & & \texttt{-} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{LDU2} & \texttt{F6} & & \texttt{-} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & \texttt{F0} & & \texttt{F0} & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F0} & & \texttt{F0} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 1 \\ [.3em]
+            \texttt{LDU2}   & 2 \\ [.3em]
+            \texttt{FPU1}   & 3 \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & \hl{6} & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 &   & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 &   &   & \texttt{WAR I2, F6} & \texttt{RS4} &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     &   &   &   & \texttt{WAR I3, F0} &       &       \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     &   &   &   & \texttt{WAR I4, F2} &       &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   & \texttt{WAR I5, R1} &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   & \texttt{WAR I6, R2} &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{RS2} & \texttt{F6} & & \texttt{-} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{F4} & & \texttt{-} & \\ [.3em]
+            \texttt{LDU2} & \texttt{F6} & & \texttt{-} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & \texttt{F0} & & \texttt{F0} & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F0} & & \texttt{F0} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 0 \\ [.3em]
+            \texttt{LDU2}   & 1 \\ [.3em]
+            \texttt{FPU1}   & 2 \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & \hl{7} & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 &   & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 &   &   & \texttt{WAR I2, F6} & \texttt{RS4} &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & \hl{7} &   &   & \texttt{WAR I3, F0} & \hl{\texttt{RS1}} &       \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     &   &   &   & \texttt{WAR I4, F2} &       &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   & \texttt{WAR I5, R1} &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   & \texttt{WAR I6, R2} &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \hl{\texttt{16}} & & \hl{\texttt{R1}} & \\ [.3em]
+            \texttt{RS2} & \texttt{F6} & & \texttt{-} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & \texttt{F6} & & \texttt{-} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & \texttt{F0} & & \texttt{F0} & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F0} & & \texttt{F0} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & 0 \\ [.3em]
+            \texttt{FPU1}   & 1 \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & \hl{8} & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 &   &   & \texttt{WAR I2, F6} & \texttt{RS4} &       \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & \hl{8} &   & \texttt{WAR I3, F0} & \texttt{RS1} & \hl{\texttt{LDU1}} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & \hl{8} &   &   & \texttt{WAR I4, F2} & \hl{\texttt{RS2}} &       \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    &   &   &   & \texttt{WAR I5, R1} &       &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   & \texttt{WAR I6, R2} &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS2} & \hl{\texttt{16}} & & \hl{\texttt{R2}} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \hl{\texttt{16}} & & \hl{\texttt{R1}} & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & \texttt{F0} & & \texttt{F0} & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F0} & & \texttt{F0} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 4 \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & 0 \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & \hl{9} &   & \texttt{WAR I2, F6} & \texttt{RS4} & \hl{\texttt{FPU1}} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 &   & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & \hl{9} &   & \texttt{WAR I4, F2} & \texttt{RS2} & \hl{\texttt{LDU2}} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & \hl{9} &   &   & \texttt{WAR I5, R1} & \hl{\texttt{RS5}} &       \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    &   &   &   & \texttt{WAR I6, R2} &       &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS2} & \texttt{16} & & \texttt{R2} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{LDU2} & \hl{\texttt{16}} & & \hl{\texttt{R2}} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \hl{\texttt{F2}} & & \hl{\texttt{F2}} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \hl{\texttt{R1}} & & \hl{\texttt{8}} & \\ [.3em]
+            \texttt{RS6} & & & & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 3 \\ [.3em]
+            \texttt{LDU2}   & 4 \\ [.3em]
+            \texttt{FPU1}   & 4 \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 &   & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 &   & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 &   & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & \hl{10} &   & \texttt{WAR I5, R1} & \texttt{RS5} & \hl{\texttt{ALU1}} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & \hl{10} &   &   & \texttt{WAR I6, R2} & \hl{\texttt{RS6}} &       \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS2} & \texttt{16} & & \texttt{R2} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{LDU2} & \texttt{16} & & \texttt{R2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F2} & & \texttt{F2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{RS6} & \hl{\texttt{R2}} & & \hl{\texttt{8}} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \hl{\texttt{R1}} & & \hl{\texttt{8}} & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 2 \\ [.3em]
+            \texttt{LDU2}   & 3 \\ [.3em]
+            \texttt{FPU1}   & 3 \\ [.3em]
+            \texttt{ALU1}   & 2 \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 &   & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 &   & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 &   & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 &   & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & \hl{11} &   & \texttt{WAR I6, R2} & \texttt{RS6} & \hl{\texttt{ALU2}} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS2} & \texttt{16} & & \texttt{R2} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{LDU2} & \texttt{16} & & \texttt{R2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F2} & & \texttt{F2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{RS6} & \texttt{R2} & & \texttt{8} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{ALU2} & \hl{\texttt{R2}} & & \hl{\texttt{8}} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 1 \\ [.3em]
+            \texttt{LDU2}   & 2 \\ [.3em]
+            \texttt{FPU1}   & 2 \\ [.3em]
+            \texttt{ALU1}   & 1 \\ [.3em]
+            \texttt{ALU2}   & 2 \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}: ``\emph{The instruction 7 has finished executing, and it wants to write the result back. Why can't it do that?}'' Because instruction 5 has higher priority, being the first in chronological order, and the common data bus can host only one value at a time.
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 &   & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & \hl{12} & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 &   & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 &   & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 &   & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS2} & \texttt{16} & & \texttt{R2} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & \texttt{16} & & \texttt{R1} & \\ [.3em]
+            \texttt{LDU2} & \texttt{16} & & \texttt{R2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F2} & & \texttt{F2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{RS6} & \texttt{R2} & & \texttt{8} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{ALU2} & \texttt{R2} & & \texttt{8} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & 0 \\ [.3em]
+            \texttt{LDU2}   & 1 \\ [.3em]
+            \texttt{FPU1}   & 1 \\ [.3em]
+            \texttt{ALU1}   & 0 \\ [.3em]
+            \texttt{ALU2}   & 1 \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}: Each functional unit has finished executing and is ready to write back the result. Again, since there is only one common data bus, we issue each instruction in chronological order. In this case, it is instruction 4.
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & \hl{13} & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 &   & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 &   & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 &   & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & \texttt{16} & & \texttt{R2} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & \texttt{16} & & \texttt{R2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & \texttt{F2} & & \texttt{F2} & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & \texttt{F2} & & \texttt{F2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{RS6} & \texttt{R2} & & \texttt{8} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{ALU2} & \texttt{R2} & & \texttt{8} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & 0 \\ [.3em]
+            \texttt{FPU1}   & 0 \\ [.3em]
+            \texttt{ALU1}   & 0 ($-1$) \\ [.3em]
+            \texttt{ALU2}   & 0 \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & \hl{14} & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 &   & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 &   & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & \texttt{16} & & \texttt{R2} & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & \texttt{16} & & \texttt{R2} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{RS6} & \texttt{R2} & & \texttt{8} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{ALU2} & \texttt{R2} & & \texttt{8} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & 0 ($-1$) \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & 0 ($-2$) \\ [.3em]
+            \texttt{ALU2}   & 0 ($-1$) \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & 14 & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 & \hl{15} & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 &   & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     &   &   &   & \texttt{RAW R1, R2} &       &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & & & & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{RS6} & \texttt{R2} & & \texttt{8} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \texttt{R1} & & \texttt{8} & \\ [.3em]
+            \texttt{ALU2} & \texttt{R2} & & \texttt{8} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & 0 ($-3$) \\ [.3em]
+            \texttt{ALU2}   & 0 ($-2$) \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & 14 & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 & 15 & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 & \hl{16} & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     & \hl{16} &   &   & \texttt{RAW R1, R2} & \hl{\texttt{RS5}} &       \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   &   &   &   & \texttt{RAW I9, R3} &       &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & & & & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \hl{\texttt{R2}} & & \hl{\texttt{R1}} & \\ [.3em]
+            \texttt{RS6} & \texttt{R2} & & \texttt{8} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & \texttt{R2} & & \texttt{8} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & 0 ($-3$) \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+    
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}: This is the power of Tomasulo and its tag. This algorithm doesn't block the tenth instruction because it lacks the operand \texttt{R3}. Instead, it says, ``\emph{You cannot retrieve the value of register \texttt{R3}. No problem. Meanwhile, you can issue the instruction. When the \texttt{R3} value is ready, it will be sent to the Common Data Bus.}''. Thus, instruction 10 waits on the Common Data Bus for the value of register \texttt{R3}. ``\emph{But how does it know when the value is ready?}'' Simple. Use the tag logic. The value will be sent on the Common Data Bus with the key \texttt{ALU1}. Instruction 10 writes the tag ``\texttt{ALU1}'' to the reservation station, and when the Common Data Bus sends that tag, it takes the value.
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & 14 & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 & 15 & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 & 16 & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     & 16 & \hl{17} &   & \texttt{RAW R1, R2} & \texttt{RS5} & \hl{\texttt{ALU1}} \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   & \hl{17} &   &   & \texttt{RAW I9, R3} & \hl{\texttt{RS6}} &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & & & & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R2} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS6} & & \hl{\texttt{ALU1}} & \hl{\texttt{R4}} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \hl{\texttt{R2}} & & \hl{\texttt{R1}} & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & 2 \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{18}
+    \item \textbf{Cycle \theenumi}: We skip cycle 18 because no operations have been performed. In instruction 10, the reservation station reads the value from the common data bus and stores it in memory. It is now ready to be executed!
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & 14 & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 & 15 & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 & 16 & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     & 16 & 17 & \hl{19} & \texttt{RAW R1, R2} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   & 17 &   &   & \texttt{RAW I9, R3} & \texttt{RS6} &       \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & & & & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & \texttt{R2} & & \texttt{R1} & \\ [.3em]
+            \texttt{RS6} & \hl{\texttt{R3}} & & \texttt{R4} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & \texttt{R2} & & \texttt{R1} & \\ [.3em]
+            \texttt{ALU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & 0 \\ [.3em]
+            \texttt{ALU2}   & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+    
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & 14 & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 & 15 & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 & 16 & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     & 16 & 17 & 19 & \texttt{RAW R1, R2} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   & 17 & \hl{20} &   & \texttt{RAW I9, R3} & \texttt{RS6} & \hl{\texttt{ALU2}} \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & & & & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & \texttt{R3} & & \texttt{R4} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & \hl{\texttt{R3}} & & \hl{\texttt{R4}} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & 2 \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \newpage
+        
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{21}
+    \item \textbf{Cycle \theenumi}:
+    
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l c c c c c c @{}}
+            \toprule
+            \textbf{Instruction} & \textbf{Issue} & \textbf{Start Exec} & \textbf{Write Res} & \textbf{Hazard} & \textbf{RSi} & \textbf{Unit} \\
+            \midrule
+            \texttt{I1: SD F4, 0 (R1)}      & 1 & 2 & 6 & None  & \texttt{RS1}   & \texttt{LDU1}  \\ [.5em]
+            \texttt{I2: SD F6, 0 (R2)}      & 2 & 3 & 7 & None  & \texttt{RS2}   & \texttt{LDU2}  \\ [.5em]
+            \texttt{I3: FADD F4, F0, F0}    & 3 & 4 & 8 & \texttt{WAR I1, F4}  & \texttt{RS3} & \texttt{FPU1} \\ [.5em]
+            \texttt{I4: FADD F6, F2, F2}    & 4 & 9 & 13 & \texttt{WAR I2, F6} & \texttt{RS4} & \texttt{FPU1} \\ [.5em]
+            \texttt{I5: LD F0, 16 (R1)}     & 7 & 8 & 12 & \texttt{WAR I3, F0} & \texttt{RS1} & \texttt{LDU1} \\ [.5em]
+            \texttt{I6: LD F2, 16 (R2)}     & 8 & 9 & 14 & \texttt{WAR I4, F2} & \texttt{RS2} & \texttt{LDU2} \\ [.5em]
+            \texttt{I7: ADDUI R1, R1, 8}    & 9 & 10 & 15 & \texttt{WAR I5, R1} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I8: ADDUI R2, R2, 8}    & 10 & 11 & 16 & \texttt{WAR I6, R2} & \texttt{RS6} & \texttt{ALU2} \\ [.5em]
+            \texttt{I9: ADD R3, R2, R1}     & 16 & 17 & 19 & \texttt{RAW R1, R2} & \texttt{RS5} & \texttt{ALU1} \\ [.5em]
+            \texttt{I10: BNE R3, R4, LOOP}   & 17 & 20 & \hl{22} & \texttt{RAW I9, R3} & \texttt{RS6} & \texttt{ALU2} \\
+            \bottomrule
+        \end{tabular}
+        \end{adjustbox}
+    \end{table}
+    
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+                & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS1} & & & & \\ [.3em]
+            \texttt{RS2} & & & & \\
+            \cmidrule{1-5}
+            \texttt{LDU1} & & & & \\ [.3em]
+            \texttt{LDU2} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS3} & & & & \\ [.3em]
+            \texttt{RS4} & & & & \\
+            \cmidrule{1-5}
+            \texttt{FPU1} & & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l | l l l l @{}}
+            \toprule
+            & \texttt{Vj} & \texttt{Qj} & \texttt{Vk} & \texttt{Qk} \\
+            \midrule
+            \texttt{RS5} & & & & \\ [.3em]
+            \texttt{RS6} & \texttt{R3} & & \texttt{R4} & \\
+            \cmidrule{1-5}
+            \texttt{ALU1} & & & & \\ [.3em]
+            \texttt{ALU2} & \texttt{R3} & & \texttt{R4} & \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Unit            & Remaining cycles \\
+            \midrule
+            \texttt{LDU1}   & \\ [.3em]
+            \texttt{LDU2}   & \\ [.3em]
+            \texttt{FPU1}   & \\ [.3em]
+            \texttt{ALU1}   & \\ [.3em]
+            \texttt{ALU2}   & 0 \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+\end{enumerate}
+\emph{Calculate the CPI.}
+
+\highspace
+\textcolor{Green3}{\textbf{\emph{Answer:}}}
+\begin{equation*}
+    \text{CPI} = \dfrac{\text{\# Clock Cycles}}{\text{\# Instructions}} = \dfrac{22}{10} = 2.2
+\end{equation*}

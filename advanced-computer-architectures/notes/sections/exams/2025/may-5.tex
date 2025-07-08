@@ -224,6 +224,45 @@ The branch is completed with 1 cycle delay slot (branch solved in ID stage). \te
 
     \newpage
 
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What should we do about our loop?}}
+    \begin{enumerate}
+        \item Build the \textbf{DAG} for one iteration. A Data Dependency Graph (DAG) for scheduling has nodes, which are operations or instructions, and edges, which are directed and show true dependencies (RAW). For example, an edge from \texttt{A} to \texttt{B} means that \texttt{B} must wait for \texttt{A} to finish.
+        \item Draw a dashed line if there are WAR or WAW hazards. This means we can perform these two instructions in the same cycle if a FU free is available.
+        \item In the table, write the instructions from start to finish.
+    \end{enumerate}
+    \begin{center}
+        \begin{tikzpicture}[node distance=1cm, >=stealth]
+            % Nodes
+            \node[circle, draw] (I1) {$I_{1}$};
+            \node[circle, draw, below=of I1] (I3) {$I_{3}$};
+            \node[circle, draw, below=of I3] (I5) {$I_{5}$};
+            \node[circle, draw, below=of I5] (I7) {$I_{7}$};
+
+            \node[circle, draw, right=3cm of I1] (I2) {$I_{2}$};
+            \node[circle, draw, below=of I2] (I4) {$I_{4}$};
+            \node[circle, draw, below=of I4] (I6) {$I_{6}$};
+            \node[circle, draw, below=of I6] (I8) {$I_{8}$};
+
+            \node[circle, draw, below=1cm of $(I7)!0.5!(I8)$] (I9) {$I_{9}$};
+            \node[circle, draw, below=of I9] (I10) {$I_{10}$};
+
+            % Dashed Edges
+            \draw[dashed, ->] (I3) -- (I1);
+            \draw[dashed, ->] (I5) -- (I3);
+            \draw[dashed, ->] (I7) -- (I5);
+
+            \draw[dashed, ->] (I4) -- (I2);
+            \draw[dashed, ->] (I6) -- (I4);
+            \draw[dashed, ->] (I8) -- (I6);
+
+            % Solid Edges
+            \draw[->] (I7) -- (I9);
+            \draw[->] (I8) -- (I9);
+            \draw[->] (I9) -- (I10);
+
+        \end{tikzpicture}
+    \end{center}
+
     \begin{table}[!htp]
         \centering
         \begin{tabular}{@{} l | l | l | l @{}}
@@ -242,51 +281,15 @@ The branch is completed with 1 cycle delay slot (branch solved in ID stage). \te
         \end{tabular}
     \end{table}
 
+    \newpage
+
 
     \item \emph{How long is the critical path for a single iteration?}
 
     \textcolor{Green3}{\textbf{\emph{Answer:}}} in \textbf{instruction scheduling}, the \textbf{critical path} is the longest chain of dependent operations that must be executed \emph{in sequence} because of true data dependencies (RAW). It determines the \textbf{minimum possible latency} to complete \emph{one full logical iteration}. The critical path length depends on the data dependencies and the assumed functional unit latencies, \textbf{not} the scheduling algorithm.
 
-    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we calculate it for our loop?}}
-    \begin{enumerate}
-        \item Build the \textbf{DAG} for one iteration. A Data Dependency Graph (DAG) for scheduling has nodes, which are operations or instructions, and edges, which are directed and show true dependencies (RAW). For example, an edge from \texttt{A} to \texttt{B} means that \texttt{B} must wait for \texttt{A} to finish.
-        \item Assign a latency to each operation based on the pipeline assumptions. For example, assign one cycle for the load and one cycle for the add.
-        \item Find the \textbf{longest path} from any start node to an end node.
-    \end{enumerate}
-    In our case, the two \texttt{FADD} operations must wait for the corresponding stores. The \texttt{BNE} operator must also wait for the \texttt{ADD} operator because it writes to \texttt{R3}. However, the \texttt{ADD} operator must wait for the two \texttt{ADDUI} operations on the \texttt{R1} and \texttt{R2} registers. As we can see in the following DAG, the \hl{\textbf{critical path for a single iteration is 3}} (\texttt{ADDUI R1} or \texttt{ADDUI R2} $\rightarrow$ \texttt{ADD R3} $\rightarrow$ \texttt{BNE}).
-    \begin{center}
-        \begin{tikzpicture}[
-            node distance=1.5cm and 1cm,
-            box/.style={draw, rectangle, rounded corners, minimum size=6mm, align=center},
-            >=Stealth
-        ]
-            % FADD nodes
-            \node[box] (B1) {\texttt{FADD F4}};
-            \node[box, right=of B1] (B2) {\texttt{FADD F6}};
+    In our case, there are 8 cycles for each iteration, so the \textbf{critical path is 8}.
 
-            % SD nodes
-            \node[box, below=of B1] (A1) {\texttt{SD F4}};
-            \node[box, below=of B2] (A2) {\texttt{SD F6}};
-
-            % ADDUI nodes
-            \node[box, right=of B2] (D1) {\texttt{ADDUI R1}};
-            \node[box, right=of D1] (D2) {\texttt{ADDUI R2}};
-
-            % ADD and BNE
-            \node[box, below=of $(D1)!0.5!(D2)$] (E1) {\texttt{ADD R3}};
-            \node[box, below=of E1] (E2) {\texttt{BNE}};
-
-            % Edges
-            \draw[->] (B1) -- (A1);
-            \draw[->] (B2) -- (A2);
-
-            \draw[->] (D1) -- (E1);
-            \draw[->] (D2) -- (E1);
-            \draw[->] (E1) -- (E2);
-        \end{tikzpicture}
-    \end{center}
-
-    \newpage
 
     \item \emph{What performance did you achieve in CPI?}
 
@@ -312,7 +315,7 @@ The branch is completed with 1 cycle delay slot (branch solved in ID stage). \te
     \end{equation*}
     So we measure \textbf{how much of the machine's peak parallelism we actually use}. The achieved Instruction Per Cycle (IPC) is:
     \begin{equation*}
-        \text{Achieved IPC} = \dfrac{\text{\# Instructions}}{\text{\# Clock Cycles}} \dfrac{10}{8} = 1.25
+        \text{Achieved IPC} = \dfrac{\text{\# Instructions}}{\text{\# Clock Cycles}} = \dfrac{10}{8} = 1.25
     \end{equation*}
     Here, VLIW is 3-issue, so it can execute up to \textbf{3 ops per cycle} if there's no data or resource limit ($\text{Peak IPC} = 3$). So, code efficiency is:
     \begin{equation*}

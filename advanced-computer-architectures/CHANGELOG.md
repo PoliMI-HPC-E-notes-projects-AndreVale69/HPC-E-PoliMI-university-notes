@@ -24,6 +24,7 @@
 - add `Exams`
   - add `2025`
     - add `Midterm - May 5`
+    - add `February 11`
 
 --------------------
 

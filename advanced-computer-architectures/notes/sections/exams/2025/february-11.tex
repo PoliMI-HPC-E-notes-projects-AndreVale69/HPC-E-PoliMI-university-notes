@@ -1929,30 +1929,383 @@ In summary, the entire scenario is as follows:
 \end{enumerate}
 Note: Read from \textbf{Modified} forces a write-back (or direct transfer) to maintain consistency.
 
-% \newpage
-% 
-% \subsubsection*{Exercise 4 - Reordered Buffer}
-% 
-% \emph{Let's consider the following assembly loop where registers \textbf{\texttt{\$R1}} and \textbf{\texttt{\$R2}} are initialized at 0 and 40 respectively:}
-% \begin{lstlisting}[mathescape=false]
-% L0:     LD $F2, 0 ($R1)
-% L1:     ADDD $F4, $F2, $F2
-% L2:     SD $F4, 0 ($R1)
-% L3:     ADDI $R1, $R1, 4
-% L4:     BNE $R1, $R2, L0 # branch predicted as taken
-% \end{lstlisting}
-% \begin{itemize}
-%     \item \emph{How many loop iterations?}
-% 
-%     \textcolor{Green3}{\textbf{\emph{Answer:}}}
-% 
-% 
-%     \item \emph{How many instructions per iteration?}
-% 
-%     \textcolor{Green3}{\textbf{\emph{Answer:}}}
-% 
-% 
-%     \item \emph{How many control vs datapath instructions?}
-% 
-%     \textcolor{Green3}{\textbf{\emph{Answer:}}}
-% \end{itemize}
+\newpage
+
+\subsubsection*{Exercise 4 - Reordered Buffer}
+
+\emph{Let's consider the following assembly loop where registers \textbf{\texttt{\$R1}} and \textbf{\texttt{\$R2}} are initialized at 0 and 40 respectively:}
+\begin{lstlisting}[mathescape=false]
+L0:     LD $F2, 0 ($R1)
+L1:     ADDD $F4, $F2, $F2
+L2:     SD $F4, 0 ($R1)
+L3:     ADDI $R1, $R1, 4
+L4:     BNE $R1, $R2, L0 # branch predicted as taken
+\end{lstlisting}
+\begin{itemize}
+    \item \emph{How many loop iterations?}
+
+    \answer The register \texttt{R1} is incremented by 4 at each iteration:
+    \begin{equation*}
+        \text{Iterations} = \dfrac{40}{4} = 10
+    \end{equation*}
+
+
+    \item \emph{How many instructions per iteration?}
+
+    \answer 5 instructions.
+
+
+    \item \emph{How many control vs datapath instructions?}
+
+    \answer To answer the question, we count \textbf{how many instructions in the loop control the flow} vs \textbf{how many do actual data processing}. In our loop:
+    \begin{lstlisting}[language=unknown]
+L0:     LD $F2, 0($R1)         # datapath: load data
+L1:     ADDD $F4, $F2, $F2     # datapath: compute
+L2:     SD $F4, 0($R1)         # datapath: store data
+L3:     ADDI $R1, $R1, 4       # control: index update
+L4:     BNE $R1, $R2, L0       # control: conditional branch\end{lstlisting}
+    \begin{itemize}
+        \item \textbf{Data path instructions}: \texttt{LD}, \texttt{ADDD}, \texttt{SD}, 3 instructions.
+        \item \textbf{Control instructions}: \texttt{ADDI} (updates loop index), \texttt{BNE} (branch), 2 instructions.
+    \end{itemize}
+    So, the answer is \hl{2 control vs 3 datapath instructions}. In general:
+    \begin{itemize}
+        \item \textbf{Control instructions}: branches, jumps, index updates.
+        \item \textbf{Datapath instructions}: load, store, ALU/FPU operations that compute or move data.
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\noindent
+Write the unrolled version of the loop with unrolling factor 2 by using Register Renaming.
+
+\highspace
+\answer
+\begin{lstlisting}[language=unknown]
+L0:     LD $F2, 0($R1)         # datapath: load data
+L1:     ADDD $F4, $F2, $F2     # datapath: compute
+L2:     SD $F4, 0($R1)         # datapath: store data
+L3:     LD $F6, 4($R1)         # datapath: load data
+L4:     ADDD $F8, $F6, $F6     # datapath: compute
+L5:     SD $F8, 0($R1)         # datapath: store data
+L6:     ADDI $R1, $R1, 8       # control: index update
+L7:     BNE $R1, $R2, L0       # control: conditional branch\end{lstlisting}
+\begin{itemize}
+    \item \emph{How many loop iterations?}
+
+    \answer The register \texttt{R1} is incremented by 8 at each iteration:
+    \begin{equation*}
+        \text{Iterations} = \dfrac{40}{8} = 5
+    \end{equation*}
+
+
+    \item \emph{How many instructions per iteration?}
+
+    \answer 8 instructions.
+
+
+    \item \emph{How many control vs datapath instructions?}
+
+    \answer 2 control vs 6 datapath instructions.
+\end{itemize}
+\emph{Execute the unrolled version of the loop by the \textbf{Speculative Tomasulo} architecture with a 10-entry ROB and:
+\begin{itemize}
+    \item 4 Load Buffers (Load1, Load2, Load3, Load4);
+    \item 4 FP Reservation Stations (FP1, FP2, FP3, FP4)
+    \item 2 Integer Reservation Stations (Int1, Int2)
+\end{itemize}
+Complete the ROB and the Rename Table until the ROB becomes \textbf{full} while the first instruction is still in execution due to a cache miss (*):}
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l l l l l l @{}}
+            \toprule
+            \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+            \midrule
+            \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+            \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+            \texttt{ROB2}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB3}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB4}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB5}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB6}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB7}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+            \texttt{ROB9}   &                                   &               &                   &               &       \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption*{\emph{\textbf{ROB Table}}}
+\end{table}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \texttt{Reg \#}  & \texttt{ROB \#} \\
+        \midrule
+        \texttt{\$F0}    & \texttt{--} \\ [.3em]
+        \texttt{\$F2}    & \\ [.3em]
+        \texttt{\$F4}    & \\ [.3em]
+        \texttt{\$F6}    & \\ [.3em]
+        \texttt{\$F8}    & \\
+        \bottomrule
+    \end{tabular}
+    \caption*{\emph{\textbf{Rename Table}}}
+\end{table}
+
+\highspace
+\answer
+\begin{enumerate}
+    \item First, we allocate the entries given by the exercise in the Rename Table:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            \texttt{Reg \#}  & \texttt{ROB \#} \\
+            \midrule
+            \texttt{\$F0}    & \texttt{--} \\ [.3em]
+            \texttt{\$F2}    & \texttt{ROB0} \\ [.3em]
+            \texttt{\$F4}    & \texttt{ROB1} \\ [.3em]
+            \texttt{\$F6}    & \\ [.3em]
+            \texttt{\$F8}    & \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\emph{\textbf{Rename Table}}}
+    \end{table}
+
+
+    \item We issue the \texttt{L2} instruction. The operation's destination is memory. The status has not been issued yet because we are filling the ROB due to a cache miss, and the processor is waiting for the result of the operation.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB4}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB5}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB6}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB7}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB9}   &                                   &               &                   &               &       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+
+    
+    \newpage
+
+
+    \item We issue the \texttt{L3} instruction. The destination is the left operand, register \texttt{F6}. We use \texttt{Load 2} as the functional unit.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   & \texttt{L3: LD \$F6, 4(\$R1)}     & \texttt{\$F6} & \texttt{Load2}    & No, issued    & No    \\ [.3em]
+                \texttt{ROB4}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB5}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB6}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB7}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB9}   &                                   &               &                   &               &       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            \texttt{Reg \#}  & \texttt{ROB \#} \\
+            \midrule
+            \texttt{\$F0}    & \texttt{--} \\ [.3em]
+            \texttt{\$F2}    & \texttt{ROB0} \\ [.3em]
+            \texttt{\$F4}    & \texttt{ROB1} \\ [.3em]
+            \texttt{\$F6}    & \texttt{ROB3} \\ [.3em]
+            \texttt{\$F8}    & \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\emph{\textbf{Rename Table}}}
+    \end{table}
+
+
+    \newpage
+
+
+    \item We issue the \texttt{L4} instruction.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   & \texttt{L3: LD \$F6, 4(\$R1)}     & \texttt{\$F6} & \texttt{Load2}    & No, issued    & No    \\ [.3em]
+                \texttt{ROB4}   & \texttt{L4: ADDD \$F8, \$F6, \$F6}& \texttt{\$F8} & \texttt{FP2}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB5}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB6}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB7}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB9}   &                                   &               &                   &               &       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            \texttt{Reg \#}  & \texttt{ROB \#} \\
+            \midrule
+            \texttt{\$F0}    & \texttt{--} \\ [.3em]
+            \texttt{\$F2}    & \texttt{ROB0} \\ [.3em]
+            \texttt{\$F4}    & \texttt{ROB1} \\ [.3em]
+            \texttt{\$F6}    & \texttt{ROB3} \\ [.3em]
+            \texttt{\$F8}    & \texttt{ROB4} \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\emph{\textbf{Rename Table}}}
+    \end{table}
+
+
+    \item We issue the \texttt{L5} instruction.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   & \texttt{L3: LD \$F6, 4(\$R1)}     & \texttt{\$F6} & \texttt{Load2}    & No, issued    & No    \\ [.3em]
+                \texttt{ROB4}   & \texttt{L4: ADDD \$F8, \$F6, \$F6}& \texttt{\$F8} & \texttt{FP2}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB5}   & \texttt{L5: SD \$F8, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB6}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB7}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB9}   &                                   &               &                   &               &       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+
+
+    \newpage
+
+
+    \item We issue the \texttt{L6} instruction.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   & \texttt{L3: LD \$F6, 4(\$R1)}     & \texttt{\$F6} & \texttt{Load2}    & No, issued    & No    \\ [.3em]
+                \texttt{ROB4}   & \texttt{L4: ADDD \$F8, \$F6, \$F6}& \texttt{\$F8} & \texttt{FP2}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB5}   & \texttt{L5: SD \$F8, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB6}   & \texttt{L6: ADDI \$R1, \$R1, 8}   & \texttt{\$R1} & \texttt{Int1}     & No, issued    & No    \\ [.3em]
+                \texttt{ROB7}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB9}   &                                   &               &                   &               &       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+
+
+    \item We issue the \texttt{L7} instruction.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   & \texttt{L3: LD \$F6, 4(\$R1)}     & \texttt{\$F6} & \texttt{Load2}    & No, issued    & No    \\ [.3em]
+                \texttt{ROB4}   & \texttt{L4: ADDD \$F8, \$F6, \$F6}& \texttt{\$F8} & \texttt{FP2}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB5}   & \texttt{L5: SD \$F8, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB6}   & \texttt{L6: ADDI \$R1, \$R1, 8}   & \texttt{\$R1} & \texttt{Int1}     & No, issued    & No    \\ [.3em]
+                \texttt{ROB7}   & \texttt{L7: BNE \$R1, \$R2, L0}   & \texttt{--}   & \texttt{Int2}     & No, issued    & No    \\ [.3em]
+                \texttt{ROB8}   &                                   &               &                   &               &       \\ [.3em]
+                \texttt{ROB9}   &                                   &               &                   &               &       \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+
+
+    \newpage
+
+
+    \item We issue \texttt{L0} and \texttt{L1}. Since we need to fill out the entire ROB table and we don't know whether the branch will be true or false, we made a prediction. Therefore, each speculative entry will be set to true.
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l l l @{}}
+                \toprule
+                \texttt{ROB\#}  & \textbf{Instruction} & \textbf{Dest.} & \textbf{Res. Alloc.} & \textbf{Ready/Status} & \textbf{Spec.} \\
+                \midrule
+                \texttt{ROB0}   & \texttt{L0: LD \$F2, 0 (\$R1)}    & \texttt{\$F2} & \texttt{Load1}    & No, exec.(*)  & No    \\ [.3em]
+                \texttt{ROB1}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP1}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB2}   & \texttt{L2: SD \$F4, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB3}   & \texttt{L3: LD \$F6, 4(\$R1)}     & \texttt{\$F6} & \texttt{Load2}    & No, issued    & No    \\ [.3em]
+                \texttt{ROB4}   & \texttt{L4: ADDD \$F8, \$F6, \$F6}& \texttt{\$F8} & \texttt{FP2}      & No, issued    & No    \\ [.3em]
+                \texttt{ROB5}   & \texttt{L5: SD \$F8, 0(\$R1)}     & \texttt{Mem}  & \texttt{--}       & No, issued    & No    \\ [.3em]
+                \texttt{ROB6}   & \texttt{L6: ADDI \$R1, \$R1, 8}   & \texttt{\$R1} & \texttt{Int1}     & No, issued    & No    \\ [.3em]
+                \texttt{ROB7}   & \texttt{L7: BNE \$R1, \$R2, L0}   & \texttt{--}   & \texttt{Int2}     & No, issued    & No    \\ [.3em]
+                \texttt{ROB8}   & \texttt{L0: LD \$F2, 0(\$R1)}     & \texttt{\$F2} & \texttt{Load3}    & No, issued    & Yes   \\ [.3em]
+                \texttt{ROB9}   & \texttt{L1: ADDD \$F4, \$F2, \$F2}& \texttt{\$F4} & \texttt{FP3}      & No, issued    & Yes   \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption*{\emph{\textbf{ROB Table}}}
+    \end{table}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            \texttt{Reg \#}  & \texttt{ROB \#} \\
+            \midrule
+            \texttt{\$F0}    & \texttt{--} \\ [.3em]
+            \texttt{\$F2}    & $\cancel{\texttt{ROB0}}$ \texttt{ROB8} \\ [.3em]
+            \texttt{\$F4}    & $\cancel{\texttt{ROB1}}$ \texttt{ROB9} \\ [.3em]
+            \texttt{\$F6}    & \texttt{ROB3} \\ [.3em]
+            \texttt{\$F8}    & \texttt{ROB4} \\
+            \bottomrule
+        \end{tabular}
+        \caption*{\emph{\textbf{Rename Table}}}
+    \end{table}
+\end{enumerate}

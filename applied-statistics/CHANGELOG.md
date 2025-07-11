@@ -22,6 +22,10 @@
     - add `GLMs for Count Data - The Poisson Model`
     - add `Fitting GLMs`
     - add `Exponential Family`
+  - add `Logistic Regression`
+    - add `What is Logistic Regression?`
+    - add `How does Logistic Regression fit?`
+    - add `Practical Aspects`
 
 --------------------
 

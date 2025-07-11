@@ -1,0 +1,104 @@
+\subsubsection{Practical Aspects}
+
+When we build a Logistic Regression, we must decide: \textbf{\emph{which predictors (variables) should stay in our model?}} For example, maybe we start with 10 possible predictors, but, do they \emph{all} matter? Or are some noise? Adding more predictors \textbf{always} increases our model's flexibility. But more predictors:
+\begin{itemize}
+    \item Make our model more \textbf{complex};
+    \item Risk \textbf{overfitting}: we match our training data perfectly, but fail on new data.
+\end{itemize}
+We want a model that fits well without being overly complex. We balance this trade-off with AIC, BIC and Deviance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not just look at accuracy?}}
+\end{flushleft}
+We could say: ``\emph{we'll just choose the model that predicts our 0s and 1s perfectly}''. But if we keep adding variables, our model can memorize the training data. That \textbf{looks good on training data}, but it won't generalize. So accuracy alone can trick us!
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Variable Selection: AIC, BIC}}
+\end{flushleft}
+In Logistic Regression, we often have \textbf{many predictors}, but not all of them may be useful. We want a model that is good at predicting and not unnecessarily complicated. Then \textbf{AIC (Akaike Information Criterion)} and \textbf{BIC (Bayesian Information Criterion)} help us choose (see page \pageref{paragraph: AIC and BIC}). Both balance:
+\begin{itemize}
+    \item \textbf{Goodness of fit} (higher log-likelihood is better)
+    \item \textbf{Penalty for model complexity} (more predictors $=$ higher penalty)
+\end{itemize}
+\begin{equation*}
+    \begin{array}{rcl}
+        \text{AIC} &=& -2 \ell\left(\hat{\beta}\right) + 2k \\ [.6em]
+        \text{BIC} &=& -2 \ell\left(\hat{\beta}\right) + k \log(n)
+    \end{array}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\ell(\hat{\beta})$: maximized log-likelihood.
+    \item $k$: number of estimated parameters.
+    \item $n$: number of data points.
+\end{itemize}
+\hl{AIC and BIC help us decide \textbf{which predictors to keep} in our Logistic Regression model}. They balance how well our model \emph{fits} the data (log-likelihood) and how \emph{complex} our model is (number of predictors).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{AIC \& BIC: How we use them.}} Try different models (add or remove variables), calculate AIC and BIC for each, and pick the model with the \textbf{lowest AIC or BIC}. These are for \textbf{model selection}, not for predicting new labels directly.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Regularization: Lasso, Ridge}}
+\end{flushleft}
+When we have \textbf{many predictors}, we risk:
+\begin{itemize}
+    \item \textbf{Overfitting}: model fits noise, not the signal.
+    \item \textbf{Instability}: coefficients blow up, especially if predictors are correlated.
+\end{itemize}
+The solution is \textbf{add a penalty to shrink or select coefficients}.
+\begin{itemize}
+    \item \important{Lasso (L1 penalty)} (see page \pageref{paragraph: Lasso}). Adds a penalty for the absolute value of coefficients. Encourages some coefficients to shrink exactly to zero, it does \textbf{variable selection}.
+    \begin{equation*}
+        \text{Penalized Objective:} \quad  \ell(\beta) - \lambda \sum_{j=1}^p \left|\beta_j\right|
+    \end{equation*}
+
+    \item \important{Ridge (L2 penalty)} (see page \pageref{paragraph: Ridge Regression}). Adds a penalty for the squared value of coefficients. Shrinks coefficients but does \textbf{not} set them to zero, then no variable selection, but \textbf{reduces variance}.
+    \begin{equation*}
+        \text{Penalized Objective:} \quad \ell(\beta) - \lambda \displaystyle\sum_{j=1}^p \beta_j^2
+    \end{equation*}
+\end{itemize}
+$\lambda$ is chosen by cross-validation. Both control model complexity, then we have a better generalization.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{No natural $R^2$}}
+\end{flushleft}
+In Linear Regression, $R^2$ is the fraction of variance explained (see page \pageref{eq: coefficient of determination}):
+\begin{equation*}
+    R^2 = 1 - \frac{\text{SSE}}{\text{SST}}
+\end{equation*}
+But for Logistic Regression:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+    \item There's no residual sum of squares because the \textbf{output is probability}.
+    \item There's no direct ``variance explained'', because Logistic Regression does not model variance in a continuous sense.
+\end{itemize}
+Instead, we use:
+\begin{itemize}
+    \item \definition{Pseudo-$R^2$} (or \definition{Pseudo-R-Squared}). It mimics the idea of $R^{2}$ but \textbf{uses log-likelihood} metrics instead. There are different versions of the pseudo R-squared. One of the most famous is the McFadden version:
+    \begin{equation}
+        R^2_{\text{McFadden}} = 1 - \dfrac{\ell(\text{model})}{\ell(\text{null})}
+    \end{equation}
+    This tells us \emph{roughly} \textbf{how much better our model is compared to the simplest model} (with no predictors). Pseudo-$R^2$ is \textbf{not} the same as OLS $R^2$. It's just a rough guide for fit.
+
+    Pseudo-$R^2$ is a \textbf{\underline{quick way}} to gauge if our model has meaningful explanatory power at all.
+
+
+    \item \definition{Deviance} is like the sum of squared residuals in Linear Regression, but for GLMs. It's derived from the log-likelihood: \textbf{lower deviance means better fit}. It shows how well our model fits compared to a ``null'' model (with no predictors at all). A big drop in deviance means our predictors are doing real work. It's another tool to see if adding a variable actually improves fit enough to justify its cost.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How we use it:}} Compare deviance of our model to a \textbf{null model} (which has no predictors). Big reduction in deviance means our \textbf{predictors help a lot}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we use them for Logistic Regression?}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{AIC \& BIC}: help pick the \textbf{best subset of variables}, balancing fit vs. complexity.
+    \item \important{Deviance}: tells us if our predictors actually improve the model.
+    \item \important{Pseudo-$R^2$}: gives us a rough single number for ``model strength''.
+\end{itemize}
+These help us \textbf{build and trust the model}, \underline{before} we check prediction performance with classification metrics. These tools are used to build and choose the best Logistic model. However, we need classification metrics to test how good our final model is at making decisions.

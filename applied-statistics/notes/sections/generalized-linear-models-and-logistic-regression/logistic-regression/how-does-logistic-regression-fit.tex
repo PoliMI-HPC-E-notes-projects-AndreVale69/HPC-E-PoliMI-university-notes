@@ -1,0 +1,84 @@
+\subsubsection{How does Logistic Regression fit?}
+
+As we saw with the Generalized Linear Models (GLMs, page \pageref{subsubsection: Fitting GLMs}), Logistic Regression \textbf{cannot} be fitted by ordinary least squares (OLS) because:
+\begin{itemize}
+    \item The error distribution is not normal anymore.
+    \item The mean is transformed by a link function.
+    \item We need to respect the correct likelihood for the chosen distribution.
+\end{itemize}
+Instead, we use \definition{Maximum Likelihood Estimation (MLE)} (see page \pageref{subsubsection: Fitting GLMs} for an explanation of how MLE works).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Goal: How do we find the best line?}}
+\end{flushleft}
+In \textbf{Linear Regression}, we find the line that \textbf{minimizes squared errors (OLS)}. That works because the data are continuous and the errors are Normal. But in Logistic Regression our outcome is 0 or 1, so the normal error idea makes no sense. The predictions must be probabilities between 0 and 1, so we can't just draw any line.
+
+\highspace
+So instead, we use \textbf{Maximum Likelihood Estimation (MLE)}, that find the line (the coefficients $\beta$) that make the observed 0s and 1s \textbf{most probable} under the model. Where ``most probable'' means that the model's predicted probabilities match what we actually observed \textbf{as closely as possible}, in terms of probability.
+
+\highspace
+Each observation is formally defined as follows:
+\begin{equation*}
+    Y_i \sim \text{Bernoulli}(p_i), \quad p_i = \text{sigmoid}(X_i^T \beta)
+\end{equation*}
+For each data point $i$ the outcome $Y_i$ is either 0 or 1, and the probability that $Y_i = 1$ is $p_i$. So $Y_i$ follows a Bernoulli distribution with probability $p_i$. In other words, \hl{each data point is assumed to be a Bernoulli trial, with probability given by the sigmoid of the linear prediction}.
+
+\highspace
+So the probability of observing $Y_i$ (\textbf{probability of observing one data point}) is:
+\begin{equation*}
+    P\left(Y_i | X_i\right) = p_i^{Y_i} (1 - p_i)^{1 - Y_i}
+\end{equation*}
+That's a smart way to write:
+\begin{equation*}
+    \begin{cases}
+        P\left(Y_i = 1 | X_i\right) = p_i      & \text{ if } Y_i = 1 \\
+        P\left(Y_i = 0 | X_i\right) = 1 - p_i  & \text{ if } Y_i = 0
+    \end{cases}
+\end{equation*}
+
+\highspace
+The \textbf{likelihood} for all data is the product:
+\begin{equation}
+    L(\beta) = \displaystyle\prod_{i=1}^n p_i^{Y_i} (1 - p_i)^{1 - Y_i}
+\end{equation}
+Where the data points are \textbf{independent}. So the probability of seeing \emph{all} our data is the \textbf{product} of the single-point probabilities. It shows how likely our data is given the $\beta$ of our model.
+
+\highspace
+Finally, take the log to simplify (\textbf{log-likelihood}):
+\begin{equation}
+    \ell(\beta) = \sum_{i=1}^n \left[ Y_i \log\left(p_i\right) + \left(1 - Y_i\right) \log\left(1 - p_i\right) \right]
+\end{equation}
+We take the log for simplification purposes:
+\begin{itemize}
+    \item Products are annoying to handle.
+    \item Logs turn products into sums.
+    \item Sums are easier to differentiate.
+\end{itemize}
+So the log-likelihood is just the log of the likelihood, it \textbf{still measures the same fit BUT easier to work with}. Therefore, the \hl{higher the number, the better our model's $\beta$ matches our observed 0s and 1s}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{The trick is to find the best $\beta$. But how do we identify the \emph{best} $\beta$?}}
+\end{flushleft}
+We find the $\beta$ that makes $\ell\left(\beta\right)$ \textbf{as big as possible}. This is the same as finding the \textbf{maximum} of a curved hill. This is the \textbf{core idea} of MLE:
+\begin{itemize}
+    \item Not ``minimize distance'' like OLS;
+    \item But ``maximize the chance we'd see this data if our model is true''.
+\end{itemize}
+However, there's \textbf{no formula} like OLS. So (see page \pageref{subsubsection: Fitting GLMs}):
+\begin{enumerate}
+    \item We start with a guess for $\beta$.
+    \item We check how well that guess ``fits'' (the likelihood).
+    \item We adjust $\beta$ a little, so the overall match gets better.
+    \item We repeat, until the adjustments stop improving the fit.
+\end{enumerate}
+This is done by \textbf{Gradient ascent} (move in the direction that increases fit) or \textbf{Newton-Raphson} or \textbf{Iteratively Reweighted Least Squares (IRLS)} (more efficient ways to jump toward the best spot).
+
+\highspace
+After we find the best $\beta$ (called $\hat{\beta}$), our fitted model is:
+\begin{equation}
+    \log \left(\dfrac{\hat{p}}{1 - \hat{p}}\right) = X^T \hat{\beta}
+    \quad \Longrightarrow \quad 
+    \hat{p} = \frac{1}{1 + e^{-X^T \hat{\beta}}}
+\end{equation}

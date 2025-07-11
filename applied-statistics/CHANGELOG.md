@@ -26,6 +26,8 @@
     - add `What is Logistic Regression?`
     - add `How does Logistic Regression fit?`
     - add `Practical Aspects`
+    - add `Interpreting Logistic Regression Coefficients`
+    - add `Evaluating Logistic Regression`
 
 --------------------
 

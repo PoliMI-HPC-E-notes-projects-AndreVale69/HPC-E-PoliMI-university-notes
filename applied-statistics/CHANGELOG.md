@@ -29,6 +29,7 @@
     - add `Interpreting Logistic Regression Coefficients`
     - add `Evaluating Logistic Regression`
     - add `ROC and AUC`
+  - add `Multiclass Logistic Regression`
 
 --------------------
 

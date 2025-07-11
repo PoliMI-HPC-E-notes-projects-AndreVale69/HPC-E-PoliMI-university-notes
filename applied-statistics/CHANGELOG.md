@@ -28,6 +28,7 @@
     - add `Practical Aspects`
     - add `Interpreting Logistic Regression Coefficients`
     - add `Evaluating Logistic Regression`
+    - add `ROC and AUC`
 
 --------------------
 

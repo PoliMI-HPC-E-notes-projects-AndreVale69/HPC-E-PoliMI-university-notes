@@ -1,0 +1,111 @@
+\subsubsection{Leave-One-Out CV (LOOCV)}\label{subsubsection: Leave-One-Out CV - LOOCV}
+
+\definition{Leave-One-Out Cross-Validation (LOOCV)} is a special case of K-Fold Cross-Validation where: $K = n$. That is, \textbf{each fold contains exactly one observation}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Algorithm}}
+\end{flushleft}
+For a dataset of size $n$, LOOCV works like this:
+\begin{enumerate}
+    \item For each $i = 1, \dots, n$:
+    \begin{enumerate}
+        \item Remove the $i$-th observation from the dataset.
+        \item Fit the model on the remaining $n-1$ points.
+        \item Predict on the left-out point $x_i$.
+        \item Compute the squared error: $\left(y_i - \hat{f}^{(-i)}(x_i)\right)^2$.
+    \end{enumerate}
+    \item Average all $n$ squared errors:
+    \begin{equation}
+        \text{CV}_{\text{LOO}} = \dfrac{1}{n} \cdot \sum_{i=1}^n \left(y_i - \hat{f}^{(-i)}(x_i)\right)^2
+    \end{equation}
+\end{enumerate}
+Each observation gets to be the \textbf{test point once}. The model is trained on \textbf{almost the entire dataset} every time. So the \textbf{bias is very low} (because we're nearly using all the data to train).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros of LOOCV}}
+\end{flushleft}
+\begin{itemize}
+    \item Uses \textbf{maximum training data} each time, this reduces bias.
+    \item No randomness, guarantees \textbf{deterministic result}.
+    \item Simple to implement conceptually.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons of LOOCV}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Very high variance}: Training sets are very similar across folds, so predictions are highly correlated.
+    \item \important{Computationally expensive}: Need to train the model $n$ times.
+    \item \important{Unstable for noisy data}: A single bad point can dominate the result.
+\end{itemize}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l l @{}}
+        \toprule
+        Property & K-Fold ($K = 5$ or $10$) & LOOCV \\
+        \midrule
+        \textbf{Bias}                   & \textcolor{Orange3}{\faIcon{balance-scale}} Moderate  & \textcolor{Green3}{\faIcon{check}} Very low \\ [.5em]
+        \textbf{Variance}               & \textcolor{Green3}{\faIcon{check}} Lower              & \textcolor{Red2}{\faIcon{times}} High \\ [.5em]
+        \textbf{Training size per fold} & $\approx 80, 90\%$                                    & $n - 1$ \\ [.5em]
+        \textbf{Computation}            & Reasonable                                            & \textcolor{Red2}{\faIcon{times}} Expensive \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison with K-Fold CV.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When to use LOOCV}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Small datasets} (e.g. $n < 100$).
+    \item \textbf{Fast LOOCV for Linear Regression}. For linear models fitted by OLS (Ordinary Least Squares), there's a shortcut formula that \textbf{avoids retraining} $n$ times:
+    \begin{equation}
+        \hat{y}_i^{\text{LOO}} = \dfrac{\hat{y}_i - h_i y_i}{1 - h_i}
+        \qquad \text{or} \qquad
+        \text{CV}_{\text{LOO}} = \dfrac{1}{n} \cdot \sum_{i=1}^n \left( \dfrac{y_i - \hat{y}_i}{1 - h_i} \right)^2
+    \end{equation}
+    Where $h_i$ is the \textbf{leverage} from the hat matrix:
+    \begin{equation}
+        \mathbf{H} = X (X^\top X)^{-1} X^\top
+    \end{equation}
+    \hl{This avoids $n$ refits!}
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/cross-validation/k-fold-loocv.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Comparison between K-Fold CV ($K=5$) and Leave-One-Out CV (LOOCV):
+    \begin{itemize}
+        \item Left Plot: \important{K-Fold CV} ($K=5$). There are 5 bars, each representing the MSE (Mean Squared Error) from one fold. Each bar is the \textbf{average error on one subset of the data} (20\% of the dataset in each case).
+
+        The variation between bars is relatively \textbf{moderate}. This is because each validation fold contains \textbf{many points}, making the error estimate for each fold more stable. The training sets are $\approx 80\%$ of the data, it is a good generalization estimate with \textbf{moderate bias} and \textbf{lower variance}.
+
+
+        \item Right Plot: \important{LOOCV}. Each dot represents the \textbf{MSE on one left-out observation} (i.e., each point is its own test set). There are as many points as data examples (25 in this case).
+        
+        The plot is \textbf{much noisier}, with high variability between points. This is because each model is trained on $n-1$ points, and the prediction error is measured on \textbf{just one value}, then very \textbf{high variance}. A \textbf{single outlier can heavily affect the result} for its round.
+    \end{itemize}
+    \begin{center}
+        \begin{tabular}{@{} l l l @{}}
+            \toprule
+            Feature & K-Fold ($K=5$) & LOOCV \\
+            \midrule
+            \textbf{Num. of models trained}   & 5                                                   & 25                   \\ [.3em]
+            \textbf{Training size per fold}   & $\approx 80\%$                                      & $n-1$                \\ [.3em]
+            \textbf{Test size per fold}       & $\approx 20\%$                                      & 1                    \\ [.3em]
+            \textbf{Bias}                     & Slightly higher                                     & \textcolor{Green3}{\faIcon{check}} Very low            \\ [.3em]
+            \textbf{Variance}                 & \textcolor{Green3}{\faIcon{check}} Lower            & \textcolor{Red2}{\faIcon{times}} Higher              \\ [.3em]
+            \textbf{Computation}              & \textcolor{Green3}{\faIcon{check}} Faster           & \textcolor{Red2}{\faIcon{times}} Slower              \\ [.3em]
+            \textbf{Error estimate stability} & \textcolor{Green3}{\faIcon{check}} More stable      & \textcolor{Red2}{\faIcon{times}} More variable       \\
+            \bottomrule
+        \end{tabular}
+    \end{center}}
+\end{figure}

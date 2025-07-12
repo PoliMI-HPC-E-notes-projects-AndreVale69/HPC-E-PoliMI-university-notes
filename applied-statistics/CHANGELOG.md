@@ -17,6 +17,9 @@
 
 - add `Cross-Validation`
   - add `Introduction`
+  - add `Resampling Methods`
+    - add `K-Fold Cross-Validation`
+    - add `Leave-One-Out CV (LOOCV)`
 
 --------------------
 

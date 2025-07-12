@@ -20,6 +20,9 @@
   - add `Resampling Methods`
     - add `K-Fold Cross-Validation`
     - add `Leave-One-Out CV (LOOCV)`
+- add `CART and Random Forest (RF)`
+  - add `Introduction`
+  - add `Structure of Decision Trees`
 
 --------------------
 

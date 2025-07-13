@@ -1,0 +1,251 @@
+\subsection{Model Evaluation \& Interpretation}
+
+After training any machine learning model, trees included, we need to answer:
+\begin{itemize}
+    \item \emph{How accurate is our model?}
+    \item \emph{Is it overfitting or generalizing well?}
+    \item \emph{How does each variable affect predictions?}
+\end{itemize}
+These questions are addressed by two key phases:
+\begin{enumerate}
+    \item \textbf{Evaluation} (measuring performance). To ensure the model predicts well on \textbf{unseen data}, not just on the training set. In tree ensembles, we commonly use:
+    \begin{itemize}
+        \item \important{OOB (Out-of-Bag) Error Estimation}: A clever method for estimating test error \textbf{without needing a separate validation set}.
+        \item \important{Test vs. OOB Error Plots}: As we add \textbf{more trees} to Bagging or Random Forest, we can \textbf{track how the OOB error decreases}. We can also \textbf{plot the error on a true test set} for comparison. These plots help us see when adding more trees no longer improves performance, and whether OOB and test error agree.
+    \end{itemize}
+
+
+    \item \textbf{Interpretation} (understanding how the model works). Once we know the model performs well, we want to \textbf{interpret its behavior}:
+    \begin{itemize}
+        \item \emph{What variables matter most?}
+        \item \emph{How do inputs affect predictions?}
+    \end{itemize}
+    In tree ensembles:
+    \begin{itemize}
+        \item \important{Variable Importance Measures}. \emph{Which predictors are driving the model's decisions?}
+        \begin{itemize}
+            \item For \textbf{Regression Trees}, we measure how much a variable reduces RSS (Residual Sum of Squares) across all splits.
+            \item For \textbf{Classification Trees}, we measure how much a variable reduces Gini impurity across all splits.
+        \end{itemize}
+
+        \item \important{Partial Dependence Plots (PDPs)}. \emph{How does one variable affect the prediction, holding others fixed?}
+        \begin{itemize}
+            \item \textbf{Single-variable PDP}: Shows the marginal effect of one feature on the prediction.
+            \item \textbf{Two-variable PDP}: Shows interaction effects between two features.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is Out-of-Bag (OOB) Error Estimation?}}
+\end{flushleft}
+Normally, we would estimate test error using a separate validation set or cross-validation. But in \textbf{Bagging and Random Forest}, we already have a \hl{built-in trick}: \definition{Out-of-Bag (OOB) error estimation}.
+
+\highspace
+In Bagging (or Random Forest), each tree is trained on a \textbf{bootstrap sample} (randomly drawn with replacement). On average, \textbf{each bootstrap sample contains about 63\% of the original data}. The remaining \textbf{37\% of the data is NOT used to train that tree}; these points are called the \definition{Out-of-Bag (OOB) samples} for that tree.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{How does OOB Error Estimation work?}} Four simple steps:
+\begin{enumerate}
+    \item For each observation, find all trees where this observation was \textbf{OOB} (\hl{not used to train the tree}).
+    \item Predict the observation using only those trees.
+    \item Compare the predicted value to the actual value.
+    \item Compute the overall \textbf{error rate} (classification) or \textbf{mean squared error} (regression) on these OOB predictions.
+\end{enumerate}
+We get an \textbf{honest estimate of test error} without needing a separate validation set. It's \textbf{almost like cross-validation}, but comes for free during training.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        Step & Action \\
+        \midrule
+        Bootstrap samples         & Create many bootstrap datasets              \\ [.3em]
+        OOB samples identified    & For each tree, find data it didn't use      \\ [.3em]
+        OOB predictions collected & Use those trees to predict OOB observations \\ [.3em]
+        Error computed            & Average error over all OOB points           \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of OOB Evaluation Steps.}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When do we use OOB?}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        Scenario & Should we use OOB? \\
+        \midrule
+        Random Forest   & \textcolor{Green3}{\faIcon{check}} Yes \\ [.3em]
+        Bagging         & \textcolor{Green3}{\faIcon{check}} Yes \\ [.3em]
+        Boosting        & \textcolor{Red2}{\faIcon{times}} No (Boosting needs cross-validation instead) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/trees/oob.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{\textbf{Out-of-Bag (OOB) Error vs. Number of Trees} for a Random Forest on synthetic regression data.
+    \begin{itemize}
+        \item \textbf{Early on}: OOB error decreases as more trees are added.
+        \item \textbf{Eventually}: The error stabilizes, adding more trees offers diminishing returns.
+        \item \textbf{Behavior}: This confirms that OOB error can help identify when our forest is large enough.
+    \end{itemize}
+    OOB error acts like \textbf{a built-in validation set} to monitor performance without holding out extra data.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we compare Test Error to OOB Error? (Test vs. OOB Error Plots)}}
+\end{flushleft}
+When we train ensemble models like \textbf{Bagging} or \textbf{Random Forest}, we want to know:
+\begin{itemize}
+    \item \emph{Is our model generalizing well?}
+    \item \emph{Is our model improving as we add more trees?}
+\end{itemize}
+We typically check this by plotting:
+\begin{enumerate}
+    \item \important{Test Error}: Error on an \textbf{external test set} (data unseen during training).
+    \item \important{OOB Error}: Error estimated \textbf{internally} via the \textbf{Out-of-Bag} samples (no need for a separate test set).
+\end{enumerate}
+So, we plot \textbf{Number of Trees} on the x-axis, and we plot both: \textbf{OOB Error} on the y-axis and \textbf{Test Error} on the same axis.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{What should happen in a good model?}}
+\end{flushleft}
+\begin{enumerate}
+    \item Both \textbf{errors should decrease as trees increase}.
+    \item Eventually, both \textbf{stabilize}, adding more trees doesn't improve performance much.
+    \item \textbf{OOB Error should closely match Test Error} (if the model is working well).
+\end{enumerate}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/trees/test-vs-oob.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Plot shows Test Error vs. OOB Error for a Random Forest as the number of trees increases from 25 to 200.
+    \begin{itemize}
+        \item \textbf{Both curves are very close}: This is expected. The Out-of-Bag (OOB) error is designed to approximate the Test Error without needing a separate validation set.
+        \item \textbf{Both errors decrease initially} and stabilize around 100-150 trees. This is typical behavior because more trees generally reduce variance.
+        \item \textbf{Error Levels}: Both errors stabilize between 0.11 and 0.14, indicating the model's performance has plateaued. Adding more trees brings diminishing returns beyond 150 trees.
+    \end{itemize}}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What are Variable Importance Measures?}}
+\end{flushleft}
+While decision trees split on specific features, ensemble methods like \textbf{Random Forests} and \textbf{Boosting} combine many trees. Variable importance tells us \textbf{which features are used most effectively across all trees}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How is importance measured?}}
+\begin{itemize}
+    \item For \important{Regression Trees}: Measured by the \textbf{total decrease in RSS\break (Residual Sum of Squares)} across all splits involving a given feature. It is the sum of all reductions in RSS over all trees when splitting on $X_j$.
+    \item For \important{Classification Trees}: Measured by the \textbf{total decrease in node impurity}, typically Gini Impurity (page \pageref{eq: Gini Index}) or Cross-Entropy (Deviance, page \pageref{eq: Cross-Entropy}). It is the sum of all reductions in Gini impurity (or Entropy) over all trees when splitting on $X_j$.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/trees/variable-importance-measures.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Variable Importance Plot.
+    \begin{itemize}
+        \item \textbf{Feature 4} and \textbf{Feature 0} stand out as the most influential in our Random Forest model. These two features contribute the most to reducing impurity (e.g., Gini impurity) and driving the splits.
+        \item \textbf{Features 5, 9, 3, 6} also have notable contributions but less than Features 4 and 0.
+        \item \textbf{Features 2, 7 and 8} contribute almost nothing; their importance is near zero. These features might be noise or irrelevant for this specific prediction task.
+    \end{itemize}
+    Our model clearly identifies a subset of features as driving the predictions.}
+    \label{fig: variable importance plot}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What are Partial Dependence Plots (PDPs)?}}
+\end{flushleft}
+\definition{Partial Dependence Plots (PDPs)} show the \textbf{average effect of a feature} (or a pair of features) on the model's prediction. It answers to: ``\emph{how does a feature (or two) affect the model's predictions, holding all other features constant?}''.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{How do PDPs work?}} For a given feature $X_j$:
+\begin{enumerate}
+    \item Fix $X_j$ at various values (across its range).
+    \item For each value of $X_j$:
+    \begin{itemize}
+        \item Predict the model's output using the \textbf{actual data for all other features}.
+        \item Average the predictions across all samples.
+    \end{itemize}
+    \item Plot $X_j$ vs. the \textbf{average prediction}.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What PDPs Reveal}}
+\end{flushleft}
+\begin{itemize}
+    \item If the PDP is \textbf{flat} $\rightarrow$ the feature doesn't affect predictions much.
+    \item If the PDP is \textbf{steep or curved} $\rightarrow$ the feature has a strong influence.
+    \item For \textbf{two features} together $\rightarrow$ a 3D surface or heatmap shows interactions.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Types of Partial Dependence Plots}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Single Variable PDP}. Shows \textbf{marginal effect of one feature}.
+    \begin{itemize}
+        \item X-axis: feature values
+        \item Y-axis: average predicted response
+    \end{itemize}
+    For example, \emph{how does Years of Experience affect predicted Salary, on average?}
+    \item \important{Two-Variable PDP (Joint Effect)}. Shows \textbf{interaction effects} between two features. Typically visualized as 3D surface plot or 2D heatmap. For example, \emph{how do Years and Hits together affect Salary?}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are PDPs useful?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Interpretability}: See how features influence the model's behavior globally.
+    \item \textbf{Communication}: Easy to explain to non-technical stakeholders.
+    \item \textbf{Diagnostic tool}: Detect nonlinear effects and interactions.
+\end{itemize}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.7\textwidth]{img/trees/pdp-one-var.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Single Variable Partial Dependence Plots. It takes two features (4 and 2) from the model on page \pageref{fig: variable importance plot}.
+    \begin{itemize}
+        \item \textbf{Feature 4}. The PDP clearly shows variation across values of Feature 4. The model's predictions change meaningfully as Feature 4 changes. \textbf{Feature 4 affects predictions, hence the non-flat PDP}.
+        \item \textbf{Feature 2}. The PDP is almost perfectly flat (variation is very small compared to feature 4). \textbf{Feature 2 has no meaningful marginal effect on the model's predictions}.
+    \end{itemize}}
+\end{figure}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/trees/pdp-two-vars.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{2D Partial Dependence Plot (PDP). It takes two features (4 and 0, both important) from the model on page \pageref{fig: variable importance plot}. The color gradient represents the model's predicted probability (likely class 1 since this is a classifier). Values range approximately from 0.28 to 0.82. In other words, is the \textbf{model's average predicted value}. Areas of similar color indicate regions where the combination of these two features leads to similar predictions. This helps visualize interaction effects between features.
+    \begin{itemize}
+        \item Every point in the grid represents a \textbf{combination of values of Feature 4 and Feature 0}.
+        \item The \textbf{color gradient} (from 0.28 to 0.82) shows how the prediction changes across these combinations.
+        \item \textbf{Contours} group regions with similar predicted values.
+        \item \textbf{Bottom-right}: Lower predicted probability (0.28).
+        \item \textbf{Top-left}: Higher predicted probability (0.82).
+    \end{itemize}}
+\end{figure}

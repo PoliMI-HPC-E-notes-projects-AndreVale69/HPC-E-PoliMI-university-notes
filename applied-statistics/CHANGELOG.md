@@ -23,6 +23,19 @@
 - add `CART and Random Forest (RF)`
   - add `Introduction`
   - add `Structure of Decision Trees`
+  - add `Regression Trees`
+    - add `Region Creation`
+    - add `Recursive Binary Splitting`
+    - add `Minimizing RSS: The Criterion Behind Tree Splits`
+  - add `Overfitting and Tree Pruning`
+    - add `Algorithmic Steps of Pruning`
+  - add `Classification Trees`
+  - add `Trees vs. Linear Models`
+  - add `Ensemble Methods`
+    - add `Bagging`
+    - add `Random Forest`
+    - add `Boosting`
+  - add `Model Evaluation & Interpretation`
 
 --------------------
 

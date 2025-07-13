@@ -47,7 +47,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         </ul></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2024/2025</td>
         <td>Applied Statistics</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=395778&aa=2024&n_docente=Beraha%20Mario&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Beraha Mario</a></td>

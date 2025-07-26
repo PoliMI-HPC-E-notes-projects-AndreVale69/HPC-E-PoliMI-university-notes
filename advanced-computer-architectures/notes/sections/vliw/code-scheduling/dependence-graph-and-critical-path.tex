@@ -1,0 +1,105 @@
+\subsubsection{Dependence Graph and Critical Path}
+
+A \definition{Dependence Graph} (also called a \definition{Data Dependence Graph} or \definition{Instruction Dependence Graph}) is a \textbf{directed acyclic graph (DAG)} used by the compiler to represent \textbf{data dependencies among instructions} in a \textbf{basic block}. It is fundamental in instruction scheduling, especially in VLIW and other statically scheduled architectures.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to Build the Dependence Graph}}
+\end{flushleft}
+To build a \hl{Dependence Graph} from a basic block:
+\begin{enumerate}
+    \item \textbf{Create a node} \hl{for each individual instruction} in the basic block.
+    \item \textbf{Add edges} between nodes based on dependencies: an edge from instruction $I_1 \rightarrow I_2$, means that $I_2$ depends on the results of $I_1$, and $I_2$ cannot execute before $I_1$.
+    \item \textbf{Label each edge} with the type of dependency (usually RAW is critical, WAR/WAW can often be resolved by renaming).
+    \item \textbf{Annotate each node} with the instruction \textbf{latency} (how long it takes to execute) and other scheduling metadata (like priority).
+\end{enumerate}
+Each path in the graph shows \textbf{which instructions must wait for which}. The deeper the graph, the more serialization is required.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Longest Path Computation}}
+\end{flushleft}
+Each node is annotated with:
+\begin{equation}
+    \text{Longest Path}\left(i\right) = \max\left[\text{Longest Path}\left(p\right)\right] + \text{Latency}\left(i\right)    
+\end{equation}
+Where $p$ are all the \textbf{predecessors} of instruction $i$.
+\begin{itemize}
+    \item This gives the \textbf{maximum cumulative latency} needed to reach instruction $i$.
+    \item It reflects \textbf{how deep a node is in terms of data dependencies}.
+\end{itemize}
+Once all node values are computed, the \textbf{maximum among them gives the Critical Path}.
+
+\newpage
+
+\begin{examplebox}[: Exam - 11 february 2025]
+    Let's consider the following \texttt{LOOP} code:
+    \begin{lstlisting}
+LOOP:   LD F1, A(R1)
+        LD F2, A(R2)
+        LD F3, A(R3)
+        FADD F1, F1, F2
+        FADD F2, F2, F3
+        FMUL F1, F1, F2
+        FADD F3, F3, F3
+        ADDUI R2, R1, 8
+        ADDUI R3, R1, 8
+        SD F1, B(R1)
+        ADDUI R1, R1, 4
+        BNE R1, R6, LOOP\end{lstlisting}
+    The DAG is:
+    \begin{center}
+        \begin{tikzpicture}[node distance=1cm, >=stealth]
+            % Nodes
+            \node[circle, draw] (I1) {$I_{1}$};
+            \node[circle, draw, right=of I1] (I2) {$I_{2}$};
+            \node[circle, draw, right=of I2] (I8) {$I_{8}$};
+            \node[circle, draw, right=of I8] (I3) {$I_{3}$};
+            \node[circle, draw, right=of I3] (I9) {$I_{9}$};
+
+            \node[circle, draw, below=1cm of $(I1)!0.5!(I2)$] (I4) {$I_{4}$};
+            \node[circle, draw, below=1cm of $(I2)!0.5!(I3)$] (I5) {$I_{5}$};
+            \node[circle, draw, below=1cm of $(I3)!0.5!(I9)$] (I7) {$I_{7}$};
+
+            \node[circle, draw, below=1cm of $(I4)!0.5!(I5)$] (I6) {$I_{6}$};
+
+            \node[circle, draw, below=of I6] (I10) {$I_{10}$};
+            \node[circle, draw, right=of I10] (I11) {$I_{11}$};
+            \node[circle, draw, right=of I11] (I12) {$I_{12}$};
+
+            \node[circle, draw, below=of I10] (I1_bis) {$I_{1}^{*}$};
+            \node[circle, draw, below=of I11] (I8_bis) {$I_{8}^{*}$};
+            \node[circle, draw, below=of I12] (I9_bis) {$I_{9}^{*}$};
+
+
+            \draw[dashed, ->] (I4) -- (I5);
+            \draw[dashed, ->] (I2) -- (I8);
+            \draw[dashed, ->] (I3) -- (I9);
+            \draw[dashed, ->] (I10) -- (I11);
+            \draw[dashed, ->] (I1_bis) -- (I11);
+            \draw[dashed, ->] (I8_bis) -- (I11);
+            \draw[dashed, ->] (I9_bis) -- (I11);
+
+            \draw[->] (I1) -- (I4);
+            \draw[->] (I2) -- (I4);
+            \draw[->] (I2) -- (I5);
+            \draw[->] (I3) -- (I5);
+            \draw[->] (I3) -- (I7);
+            \draw[->] (I4) -- (I6);
+            \draw[->] (I5) -- (I6);
+            \draw[->] (I6) -- (I10);
+            \draw[->] (I11) -- (I12);
+        \end{tikzpicture}
+    \end{center}
+    An oriented line indicates a RAW dependency. A dashed line indicates a WAR or WAW dependency. For this reason, labels are not inserted. Additionally, since the latency is calculated by hand, no text is inserted to avoid confusion in the graph. The asterisk indicates that these nodes were redrawn for readability.
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the Critical Path?}}
+\end{flushleft}
+The \definition{Critical Path} is the \textbf{longest path} through the dependence graph, starting from an entry instruction and ending at an instruction with no successors.
+\begin{itemize}
+    \item It represents the \textbf{minimum number of clock cycles} \hl{needed to execute the basic block}, even with unlimited resources.
+    \item Any attempt to \textbf{speed up execution} (through scheduling or parallelism) \textbf{cannot beat this lower bound}.
+\end{itemize}
+If our goal is to schedule instructions as efficiently as possible, the critical path is our \textbf{primary constraint}.

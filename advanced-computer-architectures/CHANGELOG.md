@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.11.0](#v0110)
 - [v0.10.0](#v0100)
 - [v0.9.0](#v090)
 - [v0.8.0](#v080)
@@ -12,6 +13,14 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.11.0
+
+- add `VLIW (Very Long Instruction Word)`
+  - add `Code Scheduling`
+    - add `Introduction`
 
 --------------------
 

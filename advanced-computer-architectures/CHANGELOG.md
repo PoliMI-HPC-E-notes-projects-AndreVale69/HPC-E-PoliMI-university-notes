@@ -20,7 +20,9 @@
 
 - add `VLIW (Very Long Instruction Word)`
   - add `Code Scheduling`
-    - add `Introduction`
+    - add `Scheduling Basics`
+    - add `Dependence Graph and Critical Path`
+    - add `ASAP Scheduling Algorithm (As Soon As Possible)`
 
 --------------------
 

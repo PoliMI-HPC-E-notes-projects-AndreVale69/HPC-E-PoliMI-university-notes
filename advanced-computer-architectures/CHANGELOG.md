@@ -24,6 +24,7 @@
     - add `Dependence Graph and Critical Path`
     - add `ASAP Scheduling Algorithm (As Soon As Possible)`
     - add `List-Based Scheduling Algorithm`
+    - add `Local vs Global Scheduling`
 
 --------------------
 

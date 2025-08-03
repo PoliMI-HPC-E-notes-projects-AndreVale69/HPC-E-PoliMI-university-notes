@@ -27,6 +27,7 @@
     - add `Local vs Global Scheduling`
     - add `Local Scheduling Techniques`
       - add `Loop Unrolling`
+      - add `Software Pipelining`
 
 --------------------
 

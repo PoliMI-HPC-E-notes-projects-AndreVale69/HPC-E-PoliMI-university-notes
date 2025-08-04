@@ -30,6 +30,7 @@
       - add `Software Pipelining`
     - add `Global Scheduling`
       - add `Trace Scheduling`
+      - add `Superblock Scheduling`
 
 --------------------
 

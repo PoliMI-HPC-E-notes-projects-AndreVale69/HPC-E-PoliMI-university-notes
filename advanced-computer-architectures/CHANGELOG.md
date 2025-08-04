@@ -28,6 +28,8 @@
     - add `Local Scheduling Techniques`
       - add `Loop Unrolling`
       - add `Software Pipelining`
+    - add `Global Scheduling`
+      - add `Trace Scheduling`
 
 --------------------
 

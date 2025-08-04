@@ -1,0 +1,82 @@
+\subsubsection{Global Scheduling}
+
+\paragraph{Trace Scheduling}\label{paragraph: Trace Scheduling}
+
+\definition{Trace Scheduling} is a \textbf{global instruction scheduling technique} that aims to optimize the \textbf{most frequently executed paths} (called \textbf{traces}) through a program's control flow graph (CFG).
+
+\highspace
+It allows the compiler to move instructions \textbf{across basic block boundaries}, including across branches, to expose more \textbf{instruction-level parallelism (ILP)} and fill wide VLIW instruction words more efficiently.
+\begin{itemize}
+    \item \textbf{Step 1:} \definition{Trace Selection}. A \textbf{trace} is a likely path through the code, a \textbf{linear sequence of basic blocks} that are expected to execute one after the other \textbf{most of the time}.
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How traces are selected}}
+    \end{flushleft}
+    \begin{itemize}
+        \item Based on \textbf{profiling information}, static heuristics, or feedback from runs.
+        \item Hot paths (e.g., common branches of \texttt{if}-\texttt{else} or main loop bodies) are prioritized.
+        \item A trace may include: \textbf{forward branches}, \textbf{backward branches}, multiple blocks treated as a \textbf{single scheduling unit}.
+    \end{itemize}
+    We can think of a trace as a \textbf{``super-block'' of code} that is optimized as a single unit, assuming that it is frequently executed in that order.
+
+
+    \item \textbf{Step 2:} \definition{Trace Compaction (Scheduling)}. Once the trace is selected, the compiler:
+    \begin{itemize}
+        \item Builds a \textbf{dependence graph} for the entire trace.
+        \item Applies \textbf{list-based scheduling} across all blocks in the trace.
+        \item Moves instructions \textbf{upward} across branches if possible, to fill unused slots (VLIW-friendly).
+    \end{itemize}
+    This reordering allows:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item Filling of issue slots across multiple basic blocks.
+        \item Earlier execution of long-latency operations (e.g., memory loads).
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Speculation and Compensation Code}}
+\end{flushleft}
+\textcolor{Red2}{\faIcon{times-circle} \textbf{Problem.}} When instructions are \textbf{moved across branches}, they might be executed \textbf{in paths where they shouldn't}. This is called \definition{Specualtive Execution}:
+\begin{itemize}
+    \item The compiler \textbf{speculates} that a certain path is taken.
+    \item It moves instructions \textbf{before a branch}, even if they are only \textbf{valid in one branch}.
+\end{itemize}
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Compensation Code.}} To \textbf{preserve correctness}, the compiler adds \textbf{compensation code} in \textbf{off-trace blocks} to:
+\begin{itemize}
+    \item Recompute or restore the correct values.
+    \item Prevent side effects (e.g., stores) from speculates
+\end{itemize}
+
+\highspace
+\begin{definitionbox}[: Compensation Code]
+    \definition{Compensation Code} is \textbf{extra code inserted by the compiler} to \textbf{preserve program correctness} after performing speculative instruction movement during global scheduling (e.g., in trace scheduling).
+\end{definitionbox}
+
+\highspace
+\begin{examplebox}[: Compensation Code]
+    Suppose this trace is selected:
+    \begin{lstlisting}[language=c]
+if (x > 0)
+    A = B + C;  // part of the trace
+else
+    A = D + E\end{lstlisting}
+    Compiler speculatively moves \texttt{A = B + C} above the \texttt{if}. Then in the \texttt{else} block, it inserts:
+    \begin{lstlisting}[language=c]
+A = D + E;      // compensation code\end{lstlisting}
+    This ensures correctness \textbf{if the speculation fails}.
+\end{examplebox}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{23em} @{}}
+        \toprule
+        Step & Action \\
+        \midrule
+        \textbf{Trace Selection}    & Choose most likely sequence of basic blocks (the ``hot path'').   \\ [.5em]
+        \textbf{Trace Compaction}   & Reorder instructions across blocks to improve ILP and scheduling. \\ [.5em]
+        \textbf{Speculation}        & Move instructions before branches, assuming likely path.          \\ [.5em]
+        \textbf{Compensation Code}  & Inserted to preserve semantics if speculation was wrong.          \\
+        \bottomrule
+    \end{tabular}
+    \caption{Trace Scheduling summary.}
+\end{table}

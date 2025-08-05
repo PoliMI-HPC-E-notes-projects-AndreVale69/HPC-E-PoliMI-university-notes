@@ -1,0 +1,60 @@
+\subsection{Cache Miss Classification}
+
+Whenever the CPU requests data, the \textbf{cache may or may not contain it}:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] If it's there $\Rightarrow$ \definition{Cache Hit}
+    \item[\textcolor{Red2}{\faIcon{times}}] If it's not $\Rightarrow$ \definition{Cache Miss}
+\end{itemize}
+There are \textbf{different causes} for cache misses. Understanding their classification helps in designing \textbf{better memory hierarchies}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{The 3 Caches Model of Cache Misses}}
+\end{flushleft}
+This classic classification includes:
+\begin{itemize}
+    \item \definition{Compulsory Misses} (aka \definition{Cold Start Misses}) occurs the \textbf{first time} a block is accessed, so it's \textbf{not in the cache yet}. It occurs because the cache starts empty and we must load the block from main memory. For example:
+    \begin{lstlisting}[language=C, mathescape=true]
+// first time a[0] is accessed $\rightarrow$ compulsory miss
+int x = a[0];\end{lstlisting}
+    These \textbf{always occur}, even with infinite cache. Can be \textbf{reduced with prefetching} or \textbf{larger blocks} (use spatial locality).
+
+    \item \definition{Capacity Misses}. The cache is \textbf{too small} to hold all the data the program is working on. So, \textbf{useful blocks are evicted} and later needed again, causing misses. For example:
+    \begin{lstlisting}[language=C]
+for (i = 0; i < 100000; i++) {
+    sum += arr[i];
+}\end{lstlisting}
+    If the array \texttt{arr} is larger than the cache, older blocks will be replaced, causing misses later. Reducing these misses requires a \textbf{larger cache}. Still subject to \textbf{cost, power, and hit time trade-offs}.
+
+    \item \definition{Conflict Misses} (aka \definition{Collision} or \definition{Interference Misses}). Happens when \textbf{two or more blocks map to the same cache set}, and they overwrite each other, \textbf{even if the cache is not full}. Occurs in \textbf{direct-mapped caches} and \textbf{set-associative caches} with limited associativity. For example:
+    \begin{lstlisting}[language=C, mathescape=true]
+// Suppose these addresses map to the same set:
+int a = mat[0][0];       // $\rightarrow$ cache set X
+int b = mat[512][0];     // $\rightarrow$ same cache set X\end{lstlisting}
+    They keep evicting each other: \textbf{ping-pong effect}. Can be reduced by: \textbf{higher associativity}, \textbf{better mapping}, using \textbf{victim cashes}.
+
+    \newpage
+    
+    \item (\hl{in multiprocessors}) \definition{Coherence Misses}. Introduced later with \textbf{shared-memory multiprocessors}. It occurs when \textbf{another processor modifies a cache block} that a core was using. The block must be \textbf{invalidated}, leading to a \textbf{miss on next access}. For example:
+    \begin{itemize}
+        \item Processor A and B both cache variable \texttt{x}.
+        \item A writes to \texttt{x}, B's copy is invalidated.
+        \item B tries to read \texttt{x}, then coherence miss.
+    \end{itemize}
+    These are handled by \textbf{cache coherence protocols} (like MESI), and it is only relevant in \textbf{multi-core systems}.
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{11.5em} p{12em} @{}}
+        \toprule
+        Type & Cause & How to reduce \\
+        \midrule
+        \textbf{Compulsory} & First-time access                         & Larger blocks, prefetching                \\ [.5em]
+        \textbf{Capacity}   & Working set $>$ cache size                & Larger cache                              \\ [.5em]
+        \textbf{Conflict}   & Multiple blocks map to the same location  & Higher associativity, victim cache        \\ [.5em]
+        \textbf{Coherence}  & Invalidation from another processor       & Coherence protocol (MESI, MOESI, etc.)    \\
+        \bottomrule
+    \end{tabular}
+    \caption{Cache Miss Classification.}
+\end{table}

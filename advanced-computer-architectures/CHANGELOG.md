@@ -21,6 +21,7 @@
 
 - add `Advanced Memory`
   - add `Introduction`
+  - add `Cache Miss Classification`
 
 --------------------
 

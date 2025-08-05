@@ -1,0 +1,90 @@
+\section{Advanced Memory}
+
+\subsection{Introduction}
+
+Modern processors operate at very high speeds, and any delay in accessing data can drastically reduce performance. Yet, fast memory is expensive and limited in size, while large memory is slow. \hl{This chapter provides strategies} to \textbf{bridge the gap} between processor speed and memory latency, introducing techniques to \textbf{optimize access time, reduce misses, and manage complexity}.
+
+\highspace
+Understanding \textbf{advanced memory hierarchy} allows us to:
+\begin{itemize}
+    \item Reduce the \textbf{Average Memory Access Time (AMAT)}.
+    \item Optimize system performance while managing cost and power.
+    \item Design efficient \textbf{cache architectures}, essential in high-performance systems (from embedded CPUs to data centers)
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Motivation for Hierarchical Memory}}
+\end{flushleft}
+Programmers naturally wish for: ``\emph{an unlimited amount of memory, as  fast as the CPU}''. But this ideal is physically and economically unfeasible:
+\begin{itemize}
+    \item \textbf{Fast memories} (SDRAM) are \textbf{very expensive} and \textbf{power-hungry}.
+    \item \textbf{Slow memories} (DRAM) are \textbf{cheaper} and \textbf{larger}, but much \textbf{slower}.
+\end{itemize}
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: A memory hierarchy.}} Build a layered system of memories, where each layer:
+\begin{itemize}
+    \item Gets \textbf{faster} and \textbf{smaller} as we go \textbf{upward}.
+    \item Gets \textbf{slower} and \textbf{larger} as we go \textbf{downward}.
+\end{itemize}
+Each upper level stores a \textbf{subset} of data from the lower level. This way, \textbf{frequently accessed data} stays in \textbf{fast memory (cache)} and \textbf{less frequent data} is stored deeper (L2, L3, DRAM, Disk).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{user-secret} \textbf{Illusion of a Large, Fast Memory}}
+\end{flushleft}
+Even though the real system consists of many memory levels, \textbf{the processor ``sees''} a \textbf{single unified memory}. Thanks to the hierarchy and locality principles:
+\begin{itemize}
+    \item Most accesses hit the \textbf{fast upper-level caches}.
+    \item Rarely used data is retrieved from lower levels (with longer latency).
+\end{itemize}
+This \emph{illusion} is what enables high-speed execution even with cost-effective memory.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{There is a sort of hierarchy with different levels of access to memory benefits. Do developers manually choose fast or slow memory?}}
+\end{flushleft}
+\textbf{No}, typically \textbf{developer do} \emph{not} \textbf{manually choose} which memory level (L1, L2, DRAM, etc.) stores the data. Instead, the \textbf{hardware and compiler manage this automatically}, using a memory hierarchy. \emph{So what's going on?}
+\begin{itemize}
+    \item The developer writes code as if there's \textbf{one big memory}.
+    \item The system \textbf{automatically} stores:
+    \begin{itemize}
+        \item Frequently used data in \textbf{fast memory (L1 cache)}.
+        \item Less-used data in \textbf{slower memory (L2/L3 cache or RAM)}.
+    \end{itemize}
+    \item The \textbf{processor checks the fast levels first} and, only if needed, moves to slower levels.
+\end{itemize}
+This is what we call the \textbf{illusion of a large and fast memory}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How is locality linked to the hierarchy?}}
+\end{flushleft}
+\definition{Locality} is a \textbf{behavioral pattern of how programs access memory}. The \textbf{memory hierarchy is \emph{designed to exploit locality}}. There are two types of locality in programs:
+\begin{itemize}
+    \item \definition{Temporal Locality}: ``\emph{\textbf{if we used this data recently, we will likely use it again soon}}''. For example:
+    \begin{lstlisting}[language=c]
+for (int i = 0; i < 100; i++) {
+    sum += a[i];   // temporal locality for variable `sum`
+}\end{lstlisting}
+    Where \texttt{sum} is read and written \textbf{many times in a short span}, so \textbf{keep it in the L1 cache} to avoid loading from RAM every time.
+
+    \item \definition{Spatial Locality}: ``\emph{\textbf{if we access this memory address, we will probably access nearby ones soon}}''. For example:
+    \begin{lstlisting}[language=c]
+for (int i = 0; i < 1000; i++) {
+    // spatial locality: accessing sequential array elements
+    x = arr[i];
+}\end{lstlisting}
+    If we access \texttt{arr[0]}, we will soon access \texttt{arr[1]}, \texttt{arr[2]}, etc. The system loads \textbf{entire blocks} (not just one word) into cache, anticipating the next accesses.
+\end{itemize}
+The \hl{hierarchy is effective only if programs exhibit locality}. Fast memory (caches) are \textbf{small}, so they \textbf{rely on locality} to keep relevant data. \hl{Without locality, caches would be useless}: every access would go to slow memory.
+
+\begin{examplebox}[: Memory Hierarchy Analogy]
+    Think of a \textbf{bookshelf system}:
+    \begin{itemize}
+        \item We keep our most-used books on our desk (L1).
+        \item Others in our room shelf (L2).
+        \item The rest in the university library (main memory).
+        \item The rarest in the city archive (disk).
+    \end{itemize}
+    If we're smart about what to keep close (using locality), we'll avoid most slow trips.
+\end{examplebox}

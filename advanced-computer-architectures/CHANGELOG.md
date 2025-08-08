@@ -21,10 +21,12 @@
 
 - add `Advanced Memory`
   - add `Introduction`
+  - add `Principle of Locality`
   - add `Cache Miss Classification`
-  - add `Reducing Miss Rate Techniques`
-    - add `Increasing Cache Size`
-    - add `Increasing Block Size`
+  - add `Improving Cache Performance`
+    - add `Reducing Miss Rate Techniques`
+      - add `Increasing Cache Size`
+      - add `Increasing Block Size`
 
 --------------------
 

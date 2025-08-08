@@ -24,6 +24,7 @@
   - add `Cache Miss Classification`
   - add `Reducing Miss Rate Techniques`
     - add `Increasing Cache Size`
+    - add `Increasing Block Size`
 
 --------------------
 

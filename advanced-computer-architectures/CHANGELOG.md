@@ -22,6 +22,7 @@
 - add `Advanced Memory`
   - add `Introduction`
   - add `Principle of Locality`
+  - add `So, what is a cache?`
   - add `Cache Miss Classification`
   - add `Improving Cache Performance`
     - add `Reducing Miss Rate Techniques`

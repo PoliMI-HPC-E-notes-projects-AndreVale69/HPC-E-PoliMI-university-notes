@@ -1,0 +1,134 @@
+\subsubsection{Block Placement: \emph{Where can a block be placed?}}\label{subsubsection: Block placement}
+
+This question is about \hl{how memory addresses map to positions in the cache}. It defines the \textbf{mapping policy} between \textbf{main memory blocks} and \textbf{cache lines}.
+
+\highspace
+There are \textbf{three classic cache organizations}:
+\begin{enumerate}
+    \item \definition{Direct-Mapped Cache}. It is the simplest and most intuitive. Each block from memory \textbf{can go in only one location} in the cache.
+    \begin{equation}
+        \text{Cache Index} = \left(\text{Block Address}\right) \mod \left(\text{Number of Cache Blocks}\right)
+    \end{equation}
+    This means:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Easy and \textbf{fast lookup} (just compute index).
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] But high risk of \textbf{conflict misses} (collision): two blocks that map to the same index will evict each other repeatedly.
+        \begin{figure}[!htp]
+            \centering
+            \includegraphics[width=\textwidth]{img/collision-in-hashing-768.png}
+            \caption{A great analogy is in a hashing environment, where a collision occurs if a key is the same. In our case, it's the same: same index, collision!\cite{GFG_CollisionResolutionImage_2025}}
+        \end{figure}
+    \end{itemize}
+    \begin{examplebox}[: Direct-Mapped Cache]
+        Cache has 8 blocks: indexes from 0 to 7. The memory block of 12 is calculated as follows:
+        \begin{equation*}
+            12 \mod 8 = 4
+        \end{equation*}
+        And it can only go in \textbf{cache block 4}.
+        \begin{center}
+            \begin{tabular}{@{} c c @{}}
+                \toprule
+                Memory Block & Cache Block \\
+                \midrule
+                4   & 4 \\ [.3em]
+                12  & 4 \\ [.3em]
+                20  & 4 \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+        So if we alternate access to blocks 12 and 20, we get repeated evictions, then poor performance.
+    \end{examplebox}
+
+
+    \item \definition{Fully Associative Cache}. A block from memory \textbf{can be placed in any cache line}. There is \hl{no index in the address} (no needed), and the mapping rule is a \textbf{full \texttt{TAG} comparison across all cache lines}. This means:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textbf{No conflict misses} (since any block can go anywhere).
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Ideal flexibility.
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textbf{Expensive} hardware: must compare TAGs for \emph{all} cache lines. Because to do this, the hardware includes:
+        \begin{itemize}
+            \item $N$ \textbf{comparators}, each comparing the input tag with the tag stored in one of the $N$ cache lines.
+            \item A \textbf{priority encoder} or logic to select the matching line (if any).
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] Slower access.
+    \end{itemize}
+
+
+    \item \definition{N-Way Set-Associative Cache}. A compromise between direct-mapped and fully associative.
+    \begin{itemize}
+        \item Cache is divided into \textbf{sets}.
+        \item Each set contains $n$ \textbf{lines} (ways).
+        \item A memory block maps to \textbf{exactly one set}, but can be placed in \textbf{any of the $n$ lines} within that set.
+    \end{itemize}
+    The mapping rule is:
+    \begin{equation}
+        \text{Set Index} = \left(\text{Block Address}\right) \mod \left(\text{Number of Sets}\right)
+    \end{equation}
+    This reduces conflict misses \textbf{while keeping lookup cost low} (only compare tags inside the set).
+
+    \begin{examplebox}[: N-Way Set-Associative Cache]
+        Imagine a 2-way set-associative cache with 4 sets (each set has 2 blocks). For example, the \textbf{block 12} goes into \textbf{Set 0}:
+        \begin{equation*}
+            12 \mod 4 = 0
+        \end{equation*}
+        In Set 0 it can go into \textbf{either Way 0 or Way 1}.
+        \begin{center}
+            \begin{tabular}{@{} c | c @{}}
+                \toprule
+                Memory Block & Set Index \\
+                \midrule
+                0   & 0 \\
+                4   & 0 \\
+                8   & 0 \\
+                12  & 0 \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+        Each of these blocks competes for 2 slots in Set 0, so \textbf{fewer conflicts} than direct-mapped.
+    \end{examplebox}
+\end{enumerate}
+Summary of Block Placement Policies:
+\begin{itemize}
+    \item \textbf{Direct-Mapped}
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l @{}}
+                \toprule
+                Mapping Rule & Flexibility & Hardware Cost & Risk of Conflict Miss \\
+                \midrule
+                $\text{Block Address} \mod \# \text{Blocks}$ & \textcolor{Red2}{\faIcon{circle}} Rigid (1 line)  & \textcolor{Green3}{\faIcon{check-circle}} Simple  & \textcolor{Red2}{\faIcon{circle}} High \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+    \end{table}
+
+
+    \item \textbf{Fully Associative}
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} p{10em} l l l @{}}
+                \toprule
+                Mapping Rule & Flexibility & Hardware Cost & Risk of Conflict Miss \\
+                \midrule
+                Any block to any line (compare all) & \textcolor{Green3}{\faIcon{circle}} Full Freedom  & \textcolor{Red2}{\faIcon{circle}} Expensive  & \textcolor{Green3}{\faIcon{circle}} None \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+    \end{table}
+
+
+    \item \textbf{N-Way Set-Associative}
+    \begin{table}[!htp]
+        \centering
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l l @{}}
+                \toprule
+                Mapping Rule & Flexibility & Hardware Cost & Risk of Conflict Miss \\
+                \midrule
+                $\text{Block Address} \mod \# \text{Sets}$ & \textcolor{Yellow3}{\faIcon{circle}} Medium  & \textcolor{Yellow3}{\faIcon{circle}} Moderate  & \textcolor{Yellow3}{\faIcon{circle}} Controlled \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+    \end{table}
+\end{itemize}

@@ -24,6 +24,11 @@
   - add `Principle of Locality`
   - add `So, what is a cache?`
   - add `Cache Performance Metrics`
+  - add `Cache Architecture`
+    - add `Block Placement: Where can a block be placed?`
+    - add `Block Identification: How is a block found?`
+    - add `Replacement Strategy: Which block should be replaced?`
+    - add `Write Strategy: What happens on a write?`
   - add `Cache Miss Classification`
   - add `Improving Cache Performance`
     - add `Reducing Miss Rate Techniques`

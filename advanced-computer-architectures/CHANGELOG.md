@@ -37,6 +37,7 @@
       - add `Increasing Cache Size`
       - add `Increasing Block Size`
       - add `Increasing Associativity`
+      - add `Victim Cache`
 
 --------------------
 

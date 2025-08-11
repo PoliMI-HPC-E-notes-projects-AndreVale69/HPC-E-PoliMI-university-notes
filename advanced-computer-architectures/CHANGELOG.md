@@ -29,6 +29,7 @@
     - add `Block Identification: How is a block found?`
     - add `Replacement Strategy: Which block should be replaced?`
     - add `Write Strategy: What happens on a write?`
+  - add `Miss Penalty Reduction`
   - add `Cache Miss Classification`
   - add `Improving Cache Performance`
     - add `Reducing Miss Rate Techniques`

@@ -1,0 +1,95 @@
+\subsection{Design Space of Cache}
+
+Designing a cache involves tuning several parameters that all interact with each other. Changing one parameter usually impacts hit time, miss rate, and miss penalty, so it's always about trade-offs.
+\begin{enumerate}
+    \item \important{Cache Size}
+    \begin{itemize}
+        \item \textbf{Bigger cache}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Lower miss rate (can store more of the working set).
+            \item[\textcolor{Red2}{\faIcon{times}}] Higher hit time (more bits to check, longer wires, more complex lookup).
+            \item[\textcolor{Red2}{\faIcon{times}}] More area and power consumption.
+        \end{itemize}
+        \item \textbf{Smaller cache}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Faster hit time, lower power.
+            \item[\textcolor{Red2}{\faIcon{times}}] Higher miss rate.
+        \end{itemize}
+    \end{itemize}
+    We can't make L1 huge without slowing it down, that's why big caches are placed at L2 or L3.
+    
+    \item \important{Block Size (Cache Line Size)}
+    \begin{itemize}
+        \item \textbf{Larger block}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Exploits spatial locality better (fetches more neighboring data on each miss).
+            \item[\textcolor{Red2}{\faIcon{times}}] Higher miss penalty (more bytes to transfer on a miss).
+            \item[\textcolor{Red2}{\faIcon{times}}] Possible increase in \textbf{conflict misses} if large blocks reduce the number of total blocks.
+        \end{itemize}
+        \item \textbf{Smaller block}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Lower miss penalty (less data to fetch per miss).
+            \item[\textcolor{Green3}{\faIcon{check}}] More blocks $\rightarrow$ potentially lower conflict misses.
+            \item[\textcolor{Red2}{\faIcon{times}}] Less spatial locality exploitation.
+        \end{itemize}
+    \end{itemize}
+    \item \important{Associativity}
+    \begin{itemize}
+        \item \textbf{Direct-Mapped}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Simple, fast hit time.
+            \item[\textcolor{Red2}{\faIcon{times}}] High conflict miss rate.
+        \end{itemize}
+        \item \textbf{Fully Associative}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] No conflict misses.
+            \item[\textcolor{Red2}{\faIcon{times}}] Slow and expensive to implement for large caches.
+        \end{itemize}
+        \item \textbf{N-Way Set Associative}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Balance between conflict misses and complexity.
+            \item[\textcolor{Red2}{\faIcon{times}}] Higher hit time than direct-mapped.
+        \end{itemize}
+    \end{itemize}
+    \textbf{General trend}: Increasing associativity reduces \textbf{conflict misses} but increases \textbf{hit time} and hardware complexity.
+    
+    \item \important{Replacement Policy}. Determines which block is evicted on a miss (in associative caches):
+    \begin{itemize}
+        \item \textbf{LRU (Least Recently Used)}: good with temporal locality but expensive for high associativity.
+        \item \textbf{Random}: simple, avoids pathological patterns, but ignores usage.
+        \item \textbf{FIFO}: simple, but can evict still-hot blocks.
+    \end{itemize}
+    \textbf{Trend}: For low associativity (2-4 ways), LRU is common; for high associativity, pseudo-LRU or random is used.
+    
+    \item \important{Write Policy}. Two decisions here:
+    \begin{itemize}
+        \item \textbf{Write-Through vs Write-Back}
+        \begin{itemize}
+            \item \hl{Write-through}: simpler, always update memory; higher memory traffic.
+            \item \hl{Write-back}: update cache only, mark dirty; write to memory only on eviction.
+        \end{itemize}
+        \item \textbf{Write Allocate vs No Write Allocate}
+        \begin{itemize}
+            \item \hl{Write Allocate}: bring the block into cache on a write miss; better with write-back.
+            \item \hl{No Write Allocate}: write directly to memory on a miss; better with write-through.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l | l | l @{}}
+            \toprule
+            Parameter & Bigger/More & Smaller/Less \\
+            \midrule
+            \textbf{Cache size}     & $\downarrow$ miss rate, $\uparrow$ hit time               & $\uparrow$ miss rate, $\downarrow$ hit time                   \\ [.3em]
+            \textbf{Block size}     & $\uparrow$ spatial locality, $\uparrow$ penalty           & $\downarrow$ penalty, $\downarrow$ spatial gain               \\ [.3em]
+            \textbf{Associativity}  & $\downarrow$ conflict misses, $\uparrow$ hit time         & $\uparrow$ conflict misses, $\downarrow$ hit time             \\ [.3em]
+            \textbf{Replacement}    & $\uparrow$ LRU accuracy, $\uparrow$ hardware cost         & $\downarrow$ complexity, $\uparrow$ random evictions          \\ [.3em]
+            \textbf{Write policy}   & $\downarrow$ traffic (write-back), $\uparrow$ complexity  & $\uparrow$ traffic (write-through), $\downarrow$ complexity   \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Design Trade-offs.}
+\end{table}

@@ -38,6 +38,7 @@
       - add `Increasing Block Size`
       - add `Increasing Associativity`
       - add `Victim Cache`
+      - add `Pseudo-Associativity & Way Prediction`
 
 --------------------
 

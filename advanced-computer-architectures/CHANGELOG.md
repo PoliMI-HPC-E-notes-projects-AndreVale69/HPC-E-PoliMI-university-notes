@@ -41,6 +41,7 @@
       - add `Pseudo-Associativity & Way Prediction`
       - add `Hardware Prefetching (Instructions & Data)`
       - add `Software Prefetching (Compiler-Controlled)`
+      - add `Compiler Optimizations (for Cache Performance)`
 
 --------------------
 

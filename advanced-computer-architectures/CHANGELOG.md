@@ -42,6 +42,8 @@
       - add `Hardware Prefetching (Instructions & Data)`
       - add `Software Prefetching (Compiler-Controlled)`
       - add `Compiler Optimizations (for Cache Performance)`
+    - add `Reducing Miss Penalty Techniques`
+      - add `Read Priority over Write on Miss`
 
 --------------------
 

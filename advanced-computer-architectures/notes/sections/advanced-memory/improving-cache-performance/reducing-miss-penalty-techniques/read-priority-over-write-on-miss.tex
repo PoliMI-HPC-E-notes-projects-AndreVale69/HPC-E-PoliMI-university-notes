@@ -1,0 +1,91 @@
+\subsubsection{Reducing Miss Penalty Techniques}
+
+\paragraph{Read Priority over Write on Miss}
+
+A cache miss can happen in two main ways:
+\begin{itemize}
+    \item \textbf{Read miss}: The CPU needs data from memory (load instruction).
+    \item \textbf{Write miss}: The CPU wants to store data to memory (store instruction) and the block isn't in the cache.
+\end{itemize}
+When a miss happens, the cache must send a \textbf{request to the next memory level} (L2, DRAM). But memory is slow and usually \textbf{only one outstanding miss can be serviced at a time per port}.
+
+\highspace
+\textbf{Idea:} when both reads and writes compete for memory access, \textbf{give priority to reads} because:
+\begin{itemize}
+    \item Reads \textbf{stall the CPU} immediately (we can't execute without the data).
+    \item Writes often go to a \textbf{write buffer} and can be delayed without stopping execution.
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{So are we assuming that a read and a write miss happen at the same time?}} Yes, we're talking about a situation where two independent memory operations are outstanding in the cache/memory system at the same time. That can happen in a modern CPU because pipelines are out-of-order and non-blocking. For example, imagine:
+\begin{enumerate}
+    \item Cycle 10 $\rightarrow$ CPU issues load from address A $\rightarrow$ \textbf{read miss}.
+    \item Cycle 12 $\rightarrow$ CPU issues store to address B $\rightarrow$ \textbf{write miss}.
+    \item Both go into the miss queue.
+    \item Memory controller sees both pending, \textbf{picks read first} to reduce CPU stall.
+    \item Write sits in the write buffer until read completes, then gets sent to memory.
+\end{enumerate}
+The ``\emph{simultaneous}'' read miss and write miss doesn't mean they happen in the \emph{exact same cycle}, it means they are \textbf{both pending before memory has finished handling the first one}, so the controller has to choose an order.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Basic Concept}}
+\end{flushleft}
+\begin{itemize}
+    \item Case 1: \important{Write-Through with Write Buffer}. Writes go immediately to memory but are buffered to avoid stalling.
+    \begin{enumerate}
+        \item CPU issues a \textbf{write} $\rightarrow$ cache updated (write-through, value is written to cache block and main memory) $\rightarrow$ \textbf{write buffer} stores the memory update so the CPU doesn't wait.
+        \item Later, CPU issues a \textbf{read miss}.
+        \item Before fetching from memory, the cache controller \textbf{checks the write buffer}:
+        \begin{itemize}
+            \item If the read address matches an address in the write buffer $\rightarrow$ \textbf{read directly from the buffer} so we don't get stale data.
+            \item If no match $\rightarrow$ bypass the write requests in the buffer and \textbf{immediately send the read miss to memory} (read priority).
+        \end{itemize}
+        \item Writes in the buffer are sent to memory later, in background, when the bus is free.
+    \end{enumerate}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it works:}} ensures read misses aren't delayed by pending writes and still guarantees correctness if the needed data is in the write buffer.
+
+
+    \item Case 2: \important{Write-Back with Dirty Block Replacement}. Writes are deferred until a dirty block is evicted.
+    \begin{enumerate}
+        \item Cache uses \textbf{write-back} policy $\rightarrow$ writes only update cache and mark block as dirty.
+        \item On a \textbf{read miss}, we need to bring a new block into the cache.
+        \item If the victim block is \textbf{clean} (Dirty Bit is 0) $\rightarrow$ just replace it.
+        \item If the victim block is \textbf{dirty} (Dirty Bit is 1):
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Without read priority}: we'd write the dirty block back to memory \emph{before} fetching the new block $\rightarrow$ long delay before CPU gets the new data.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{With read priority}:
+            \begin{enumerate}
+                \item Copy the dirty block into the \textbf{write buffer} (so it can be written to memory later).
+                \item \textbf{Immediately start fetching the new block} for the read miss.
+                \item Once memory is free, the dirty block in the write buffer is written back in the background.
+            \end{enumerate}
+        \end{itemize}
+    \end{enumerate}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it works:}} the CPU gets the missing data sooner and the dirty block write-back doesn't block the read fetch.
+\end{itemize}
+These ``\emph{read priority}'' methods aren't about \emph{reordering a generic queue arbitrarily}, they're about \textbf{changing the handling sequence inside the cache controller's normal process} so that when a \textbf{read miss} and a \textbf{write-related action} would normally compete for memory access, the \textbf{read gets serviced first} within that specific policy's procedure.
+
+\highspace
+In other words:
+\begin{itemize}
+    \item In \textbf{write-through with write buffer}: instead of draining the write buffer first, we pause it (unless the read needs its data) and go straight to the read miss fetch.
+    \item In \textbf{write-back with dirty block replacement}: instead of writing the dirty victim to memory \emph{before} fetching the new block, we park it in the write buffer and fetch the read's block immediately.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] Reduces \textbf{CPU stall time} by overlapping write operations with read miss handling.
+    \item[\textcolor{Green3}{\faIcon{check}}] Keeps the processor busy instead of waiting for slow write completions.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{RAW hazard through memory}}. If the read request matches an address in the write buffer, we must read from there instead of memory.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Write buffer overflow}}. If too many writes accumulate, read requests can still be delayed.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Control complexity}}. Cache controller must track dependencies between writes and reads.
+\end{itemize}

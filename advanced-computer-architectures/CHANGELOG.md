@@ -46,6 +46,7 @@
       - add `Read Priority over Write on Miss`
       - add `Sub-block Placement`
       - add `Early Restart & Critical Word First`
+      - add `Non-Blocking Caches`
 
 --------------------
 

@@ -1,0 +1,68 @@
+\paragraph{Software Prefetching (Compiler-Controlled)}
+
+Hardware prefetchers work automatically but \textbf{cannot always detect complex or irregular access patterns}. A \textbf{compiler} (or programmer) often has more information about upcoming memory accesses and can explicitly request that certain data be loaded in advance.
+
+\highspace
+This \textbf{targets compulsory and some capacity misses} by overlapping memory fetches with useful computation.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Idea}}
+\end{flushleft}
+The \textbf{compiler analyzes the program} (often using profiling data) to identify memory accesses that could cause misses. It inserts \textbf{special prefetch instructions} into the code, placed \emph{before} the data is actually needed. These instructions \textbf{fetch the block into cache} or \textbf{into a register}, giving enough time for the load to complete before use.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Types of Software Prefetching}}
+\end{flushleft}
+\begin{enumerate}
+    \item \definition{Register Prefetching}. Prefetch into \textbf{CPU registers} for immediate use. For example, HP PA-RISC ``load'' instruction. Useful for small, predictable data needs.
+    \item \definition{Cache Prefetching}. Prefetch into \textbf{cache} not into registers. For example, MIPS IV, PowerPC, SPARC v9 have dedicated cache prefetch instructions. Data stays in cache until needed by normal load.
+\end{enumerate}
+\begin{examplebox}
+    Here, the compiler issues a prefetch for \texttt{A[i+8]} while the CPU is still working on \texttt{A[i]}.
+    \begin{itemize}
+        \item \textbf{Without Prefetching}
+        \begin{lstlisting}[language=c]
+for (i = 0; i < N; i++) {
+    sum += A[i];  // May cause many misses
+}\end{lstlisting}
+        \item \textbf{With Compiler-Inserted Prefetch}
+        \begin{lstlisting}[language=c]
+for (i = 0; i < N; i++) {
+    __prefetch(&A[i+8]);  // Load ahead of time
+    sum += A[i];
+}\end{lstlisting}
+    \end{itemize}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance Considerations}}
+\end{flushleft}
+Prefetch instructions \textbf{occupy instruction slots}, so the CPU must be able to issue them without stalling important work. In \textbf{superscalar processors}, the difficulty is reduced because multiple instructions can be issued in parallel. The \textbf{distance between prefetch and actual use} is crucial:
+\begin{itemize}
+    \item Too close $\rightarrow$ miss penalty still occurs.
+    \item Too far $\rightarrow$ data might be evicted before use.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-offs}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{15em} | p{15em} @{}}
+        \toprule
+        Pros & Cons \\
+        \midrule
+        \textcolor{Green3}{\faIcon{check}} Reduces compulsory/capacity misses for predictable accesses. & \textcolor{Red2}{\faIcon{times}} Wastes bandwidth if data not used. \\ [.3em]
+        \textcolor{Green3}{\faIcon{check}} Works for irregular patterns hardware may miss.              & \textcolor{Red2}{\faIcon{times}} Adds extra instructions (execution overhead). \\ [.3em]
+        \textcolor{Green3}{\faIcon{check}} Can be tuned by the compiler based on profiling.             & \textcolor{Red2}{\faIcon{times}} Needs accurate prediction of future accesses. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Software prefetching leverages \textbf{compiler insight} to prepare data before it's needed. It is especially useful for \textbf{predictable loops} and \textbf{regular patterns}, but must be carefully tuned to avoid wasted bandwidth and unnecessary instruction overhead.

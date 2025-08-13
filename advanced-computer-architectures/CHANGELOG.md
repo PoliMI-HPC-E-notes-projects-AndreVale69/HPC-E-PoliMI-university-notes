@@ -39,6 +39,7 @@
       - add `Increasing Associativity`
       - add `Victim Cache`
       - add `Pseudo-Associativity & Way Prediction`
+      - add `Hardware Prefetching (Instructions & Data)`
 
 --------------------
 

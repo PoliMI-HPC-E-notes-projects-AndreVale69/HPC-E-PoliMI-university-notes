@@ -1,0 +1,89 @@
+\paragraph{Hardware Prefetching (Instructions \& Data)}
+
+Even with optimized cache size, associativity, and victim caches, \textbf{compulsory misses} will still occur: the first time a block is accessed, it has to be fetched.
+
+\highspace
+\textbf{Idea:} If we can \emph{predict} what data or instructions will be needed soon, we can bring them into the cache early. When the CPU asks for them, they're already there, so \textbf{no miss penalty}.
+\begin{itemize}
+    \item \definition{Instruction Prefetching}. Instruction streams often have \textbf{strong spatial locality} (instructions are usually executed sequentially). \textbf{Hardware prefetch logic} detects sequential access patterns and preloads \textbf{the next block of instructions} while the current one is being executed.
+
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Reduces \textbf{compulsory misses} for sequential code.
+        \item[\textcolor{Green3}{\faIcon{check}}] Keeps the instruction pipeline fed.
+    \end{itemize}
+
+    \begin{examplebox}[: Alpha AXP 21064]
+        The \textbf{Alpha AXP 21064} was a \textbf{high-performance microprocessor} from Digital Equipment Corporation (DEC) released in the early 1990s, one of the first in the Alpha architecture family.
+
+        \highspace
+        It was one of the earliest commercially available CPUs to implement \textbf{stream buffer-based hardware prefetching} for caches.
+
+        \highspace
+        The 21064's data cache was direct-mapped, which is fast but prone to \textbf{conflict misses}. To help hide memory latency, DEC implemented \textbf{hardware prefetching using stream buffers}:
+        \begin{itemize}
+            \item When the CPU missed in the cache for an address, the hardware \textbf{predicted the next sequential address} that would be needed.
+            \item It loaded them into \textbf{stream buffers} in advance, so when the CPU accessed them, they were ready.
+        \end{itemize}
+        This prefetch mechanism was \textbf{triggered automatically} by the detection of sequential access patterns (common in loops and array processing).
+
+        \highspace
+        Before this, hardware prefetching wasn't common in general-purpose CPUs, prefetching was mostly a software/compiler job. The Alpha 21064's implementation showed that \textbf{simple hardware mechanisms could significantly reduce memory stall cycles}. Later CPUs (from MIPS, PowerPC, Intel, AMD, etc.) adopted similar or more advanced prefetching techniques.
+
+        \highspace
+        In summary, on a miss:
+        \begin{enumerate}
+            \item Fetch the \textbf{requested block} into the instruction cache.
+            \item Also fetch the \textbf{next sequential block} into a separate \textbf{instruction stream buffer}.
+        \end{enumerate}
+        If the next fetch hits in the stream buffer, the block is moved to the cache, and the next block after that is prefetched.
+    \end{examplebox}
+
+
+    \item \definition{Data Prefetching}. Data Prefetching means \textbf{bringing data into the cache \emph{before} the CPU actually requests it}, so that when it needs it, it's already there. This \textbf{hides memory latency}. Prefetching can be done by:
+    \begin{itemize}
+        \item \textbf{software} (compiler or programmer inserts prefetch instructions).
+        \item \textbf{Hardware} (CPU detects patterns and fetches ahead automatically).
+    \end{itemize}
+    Data prefetching is more challenging because data access patterns can be irregular. However, in many workloads (e.g., scientific computing, multimedia), data is accessed in predictable sequences.
+    \begin{enumerate}
+        \item CPU detects a \textbf{patter of accesses}, usually sequential or strided addresses (e.g., \texttt{A[0]}, \texttt{A[1]}, \texttt{A[2]}, ...).
+        \item It predicts the \textbf{next address} we'll want.
+        \item It sends a request to memory/cache hierarchy \textbf{in advance}.
+        \item When we actually access that address later, it's already in the cache, then \textbf{hit} instead of miss.
+    \end{enumerate}
+    More specifically:
+    \begin{enumerate}
+        \item \important{Cache Miss}. CPU requests address \texttt{X}. It's not in the cache, then \textbf{miss}. Cache controller fetches block \texttt{X} from memory \textbf{into the cache}.
+        
+        
+        \item \important{Prefetch the next block(s)}. The hardware prefetcher guesses the \textbf{next block(s)} we'll need (usually sequential, if we missed on block \texttt{X}, next will be \texttt{X+1}, \texttt{X+2}, etc). These predicted blocks are \textbf{not} put into the main cache immediately. Instead, they are stored in the \textbf{D-stream buffer}.
+
+        \begin{flushleft}
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a ``\emph{hardware data prefetcher}'' with D-stream buffers?}}
+        \end{flushleft}
+        It's a \textbf{small dedicated hardware unit} sitting next to the cache. A \definition{D-Stream Buffer} is a temporary holding area for \textbf{prefetched data} that isn't in the cache yet, but might be needed soon.
+
+        It's a sort of ``waiting room'' for data that the CPU hasn't requested yet, but that the prefetcher predicts it will.
+
+
+        \item \important{CPU requests prefetched data}. If later the CPU requests block \texttt{X+1}:
+        \begin{enumerate}
+            \item Prefetcher sees it's already in the D-stream buffer.
+            \item Moves it \textbf{quickly} from the D-stream buffer into the cache $\rightarrow$ \textbf{fast hit}.
+        \end{enumerate}
+    \end{enumerate}
+    \newpage
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not put prefetched data directly into the cache?}}
+    \end{flushleft}
+    Prefetched data might never be used. If we store it directly in cache, we risk evicting useful data (\textbf{cache pollution}). Stream buffers keep it separate until it's actually needed, so only \emph{useful} prefetched data enters the cache.
+
+    \begin{examplebox}[: Data Prefetching Analogy]
+        Think of the \textbf{cache} as the table we're eating at, and the \textbf{D-stream buffer} as a \textbf{side tray} where the waiter puts the next dish they think we'll want.
+        \begin{itemize}
+            \item If they guessed right, they slide it onto our plate instantly.
+            \item If they guessed wrong, they take it away without messing with our current plate.
+        \end{itemize}
+    \end{examplebox}
+\end{itemize}
+Hardware prefetching \textbf{guesses future accesses} and proactively brings data or instructions closer to the CPU, reducing \textbf{compulsory} and some \textbf{capacity misses}, but must be carefully tuned to avoid \textbf{wasting bandwidth}.

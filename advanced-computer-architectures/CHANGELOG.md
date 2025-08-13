@@ -44,6 +44,7 @@
       - add `Compiler Optimizations (for Cache Performance)`
     - add `Reducing Miss Penalty Techniques`
       - add `Read Priority over Write on Miss`
+      - add `Sub-block Placement`
 
 --------------------
 

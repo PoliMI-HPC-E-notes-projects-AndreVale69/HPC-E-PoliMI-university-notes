@@ -48,6 +48,7 @@
       - add `Early Restart & Critical Word First`
       - add `Non-Blocking Caches`
       - add `Second-Level and Multi-Level Caches`
+      - add `Merging Write Buffers`
 
 --------------------
 

@@ -1,0 +1,109 @@
+\paragraph{Merging Write Buffers}
+
+When a \textbf{write-through cache} is used (see page \hqpageref{Cache Write Policies: Write-Through}), every store operation that misses in the cache writes data to the \textbf{write buffer} before going to memory. The write buffer:
+\begin{itemize}
+    \item Temporarily holds these writes so the CPU doesn't stall waiting for memory.
+    \item Sends them to memory \textbf{in the background}.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem:}} If multiple writes target \textbf{adjacent addresses} in the same memory block:
+\begin{itemize}
+    \item Without merging $\rightarrow$ each write generates a \textbf{separate memory transaction}.
+    \item This \textbf{wastes bandwidth} and increases \textbf{miss penalty} for other operations waiting for the bus.
+\end{itemize}
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution:}} Equip the write buffer with the ability to \textbf{merge} multiple writes to the \textbf{same block} into a \textbf{single memory access}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Structure of a merging write buffer entry}}
+\end{flushleft}
+Each entry in a merging write buffer stores:
+\begin{enumerate}
+    \item \important{Block address}. Aligned to the cache block size (e.g., 32B or 64B), it is used to \hl{detect if a new write is to the same block}.
+    \item \important{Data field}. Space for an entire cache block. Initially empty except for the bytes written so far.
+    \item \important{Byte-valid mask}. One bit per byte (or per word) in the block. It indicates which parts of the block have valid, updated data from the CPU.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+\end{flushleft}
+Let's say cache block size is 32 bytes, and CPU writes 8 bytes at a time.
+\begin{enumerate}
+    \item \important{CPU write hits the cache}
+    \begin{itemize}
+        \item If \textbf{write-through cache}: update the cache line and send the same write to the write buffer.
+        \item If \textbf{write-back cache with eviction}: when a dirty line is evicted, it goes into the write buffer.
+    \end{itemize}
+    \item \important{Write buffer search}. When sending the write to the write buffer:
+    \begin{enumerate}
+        \item \textbf{Align the address} to the block boundary (e.g., address \texttt{0x1048}, block base \texttt{0x1040}).
+        \item Search the write buffer for an \textbf{entry with the same block base address}.
+    \end{enumerate}
+    \item[\theenumi{a}.] \important{Merge into existing entry (same block)}. If \hl{found}:
+    \begin{itemize}
+        \item Place the new 8 bytes into the \textbf{correct offset} inside the existing data field.
+        \item Set the corresponding bits in the \textbf{byte-valid mask} to \texttt{1}.
+        \item No new memory transaction is started yet, the entry remains until it's full or needs to be flushed.
+    \end{itemize}
+    \setcounter{enumi}{\theenumi}
+    \item[\theenumi{b}.] \important{Create new entry (different block)}. If \hl{not found}:
+    \begin{itemize}
+        \item Allocate a new entry in the write buffer.
+        \item Store:
+        \begin{itemize}
+            \item Block base address.
+            \item Data in the correct offset.
+            \item Byte-valid mask with those bytes set.
+        \end{itemize}
+    \end{itemize}
+    \item \important{Flushing to memory}. When the write buffer decides to send data to memory (due to bus availability or eviction):
+    \begin{enumerate}
+        \item If the byte-valid mask $=$ ``all 1s'' $\rightarrow$ send the full block.
+        \item If mask is partial $\rightarrow$ send a \emph{partial write} (if memory bus supports it) or first read the block from memory, merge, then write.
+    \end{enumerate}
+    After sending, the entry is removed from the buffer.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}
+    Cache block size is 32 bytes, addresses \texttt{0x1000}-\texttt{0x101F}:
+    \begin{enumerate}
+        \item Write \texttt{8B @ 0x1000}. New entry:
+        \begin{itemize}
+            \item \texttt{Base = 0x1000}
+            \item \texttt{Data[0:7] = \emph{value}}
+            \item \texttt{Mask = 00000011} (binary per word).
+        \end{itemize}
+        \item Write \texttt{8B @ 0x1008}. Same base, then merge into existing entry:
+        \begin{itemize}
+            \item \texttt{Data[8:15] = \emph{value}}
+            \item Mask updated
+        \end{itemize}
+        \item Write \texttt{8B @ 0x1010}. Same base, merge again.
+        \item When buffer flushes: send one \textbf{32B write} to memory.
+    \end{enumerate}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Fewer memory transactions} $\rightarrow$ less contention on the memory bus.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Better bandwidth efficiency}.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Lower miss penalty} for reads waiting on bus availability.
+\end{itemize}
+Particularly effective for write-through caches. Also helps in write-back caches when dirty blocks are evicted and written in pieces.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-offs}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{More Complex Hardware}: Need matching logic and byte masking.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Extra Area}: Each entry must store masks and partial data.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Delay in Writes}: If the buffer is full, CPU may still stall.
+\end{itemize}
+
+\highspace
+Merging write buffers \textbf{reduces the number of memory transactions} for adjacent writes, saving \textbf{bandwidth} and \textbf{reducing contention}, thus lowering effective \textbf{miss penalty} for both reads and writes.

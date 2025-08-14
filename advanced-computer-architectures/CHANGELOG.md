@@ -47,6 +47,7 @@
       - add `Sub-block Placement`
       - add `Early Restart & Critical Word First`
       - add `Non-Blocking Caches`
+      - add `Second-Level and Multi-Level Caches`
 
 --------------------
 

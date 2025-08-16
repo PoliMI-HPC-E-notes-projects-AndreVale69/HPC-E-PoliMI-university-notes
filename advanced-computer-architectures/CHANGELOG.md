@@ -49,6 +49,8 @@
       - add `Non-Blocking Caches`
       - add `Second-Level and Multi-Level Caches`
       - add `Merging Write Buffers`
+    - add `Reducing Hit Time Techniques`
+      - add `Small and Simple L1 Caches`
 
 --------------------
 

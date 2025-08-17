@@ -51,6 +51,7 @@
       - add `Merging Write Buffers`
     - add `Reducing Hit Time Techniques`
       - add `Small and Simple L1 Caches`
+      - add `Avoid address translation (VIPT caches)`
 
 --------------------
 

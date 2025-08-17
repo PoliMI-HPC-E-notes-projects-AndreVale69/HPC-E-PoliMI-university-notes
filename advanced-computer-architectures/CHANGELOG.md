@@ -54,6 +54,7 @@
       - add `Avoid address translation (VIPT caches)`
       - add `Pipelined Writes`
       - add `Small Sub-Blocks for Write-Through Caches`
+    - add `Summary`
 
 --------------------
 

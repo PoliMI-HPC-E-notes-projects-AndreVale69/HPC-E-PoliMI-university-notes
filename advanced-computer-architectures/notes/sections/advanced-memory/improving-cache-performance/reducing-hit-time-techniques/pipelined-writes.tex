@@ -1,0 +1,36 @@
+\paragraph{Pipelined Writes}
+
+Modern CPUs are deeply \textbf{pipelined}, they execute multiple instructions per cycle, often out-of-order. If the \textbf{cache write path} is slow (due to checking tags, updating data arrays, handling dirty bits, etc.), it could:
+\begin{itemize}
+    \item Increase the \textbf{hit time} (because reads and writes compete for resources).
+    \item Stall the \textbf{pipeline}, lowering CPU throughput.
+\end{itemize}
+\textbf{Idea:} Pipeline the cache write operations, so multiple writes can be \textbf{in flight simultaneously}, just like instructions in a CPU pipeline.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+\end{flushleft}
+Instead of treating a \textbf{write} as one monolithic operation, \textbf{split it into stages} (decode, tag check, data array update, buffer, etc.). New writes can be \textbf{accepted every cycle} even if the previous one hasn't finished yet. Reads can often proceed independently while writes are being finalized. This allows:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] Increases \textbf{throughput} of cache writes (important for store-intensive workloads).
+    \item[\textcolor{Green3}{\faIcon{check}}] Prevents \textbf{write bottlenecks} in superscalar and out-of-order pipelines.
+    \item[\textcolor{Green3}{\faIcon{check}}] Allows \textbf{parallelism}, reads can often proceed even while earlier writes are completing.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Reduced average hit time}, since the CPU does't have to wait for each write to complete before issuing the next one.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Hazard detection}: Must ensure reads don't bypass pending writes to the same address.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Extra control logic}: More complex write pipeline control.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Area/Power}: Additional buffering and pipeline registers.
+\end{itemize}
+However, \textbf{pipelined writes} improve cache performance by allowing multiple writes to overlap, reducing their effect on \textbf{hit time} and preventing them from slowing down the CPU pipeline.
+
+\highspace
+\begin{examplebox}
+    Imagine a write normally takes 3 cycles: Address decode, Tag check, Data write. \textbf{Without pipelining}: The CPU must wait three cycles; then, the throughput is one write every three cycles. But \textbf{with pipelining}, a new write can enter each cycle, then throughput becomes 1 write per cycle (latency still 3, but overlapped).
+\end{examplebox}

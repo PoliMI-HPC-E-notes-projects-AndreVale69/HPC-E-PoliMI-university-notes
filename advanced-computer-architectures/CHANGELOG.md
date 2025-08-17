@@ -53,6 +53,7 @@
       - add `Small and Simple L1 Caches`
       - add `Avoid address translation (VIPT caches)`
       - add `Pipelined Writes`
+      - add `Small Sub-Blocks for Write-Through Caches`
 
 --------------------
 

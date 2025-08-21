@@ -1,0 +1,65 @@
+\section{Multithreading (TLP)}
+
+\subsection{Introduction}
+
+So far, we have seen \textbf{how processors exploit Instruction-Level Parallelism (ILP)}. The central question was: \emph{how many instructions from a \textbf{single thread} can be executed at the same time?}
+
+\highspace
+There are two fundamental strategies we already saw:
+\begin{enumerate}
+    \item \textbf{Superscalar (dynamic scheduling)}, page \pageref{subsubsection: Superscalar Processors}. The processor fetches multiple instructions per cycle. Hardware (using mechanisms like Tomasulo's algorithm, page \pageref{subsection: tomasulo algorithm}, reorder buffers, page \pageref{subsubsection: Reorder Buffer - ROB}, register renaming, page \pageref{subsubsection: Register Renaming}, speculation) decides in real-time which instructions can issue and execute without violating dependencies.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Advantage}}: the compiler doesn't need to know the microarchitecture in detail; the processor dynamically extracts parallelism.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Limitation}}: this requires very complex hardware, because every cycle the CPU must check dependencies across many instructions, select ready ones, handle multiple wakeups, arbitrate functional units.
+    \end{itemize}
+
+    
+    \item \textbf{VLIW (Very Long Instruction Word, static scheduling)}. The compiler does the hard work: it schedules instructions into ``bundles'' that can execute in parallel. Each bundle is one wide instruction word containing multiple operations.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Advantage}}: simpler hardware, just execute the bundles as they are.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Limitation}}: the compiler must know exact latencies, and it has to speculate on what parallelism is available. If the program has little ILP, many slots inside the wide word stay empty (wasted).
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why both superscalar and VLIW hit a wall}}
+\end{flushleft}
+In both cases, the goal is to exploit \textbf{parallelism inside one thread}. But in practice, this parallelism is \textbf{limited}:
+\begin{itemize}
+    \item \textbf{True dependencies (RAW hazards)}: some instructions simply must wait for the result of previous ones.
+    \item \textbf{Control dependencies (branches)}: the processor doesn't know which path will be taken, so it may waste cycles.
+    \item \textbf{Memory stalls}: loads that miss in the cache introduce huge delays.
+\end{itemize}
+As a result, even if the processor can \emph{issue 8 instructions per cycle}, a single thread rarely provides that many independent instructions at the right time. This is why \textbf{real processors rarely go beyond 4-6 issue slots}. Further expansion would require more complex scheduling logic and consume more energy, yet most of those slots would remain unused.
+
+\highspace
+In the issue diagrams we've already seen, this appears as \textbf{bubbles} (stalls) or \textbf{empty slots} (NO-OP): spaces where no instruction issues because none are ready, even though the hardware could handle more.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{The motivation for Multithreading}}
+\end{flushleft}
+This is exactly where multithreading enters the story. The reasoning is:
+\begin{itemize}
+    \item If one thread alone cannot keep the machine busy, why not let \textbf{another thread} provide instructions in the meantime?
+    \item Instead of waiting for a stalled instruction (e.g., a cache miss that takes 200 cycles), the processor can \textbf{switch to a different thread} whose instructions are ready.
+    \item This way, the \textbf{unused slots of ILP} can be filled by exploiting \important{Thread-Level Parallelism (TLP)}.
+\end{itemize}
+So multithreading does not replace ILP, it complements it.
+\begin{itemize}
+    \item ILP: look for parallelism inside a single instruction stream.
+    \item TLP: look for parallelism across multiple instruction streams (threads).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{First idea of hardware support}}
+\end{flushleft}
+To do this, the processor needs:
+\begin{itemize}
+    \item One \textbf{register state and program counter per thread} (so it can keep track of each thread's progress).
+    \item A fast way to \textbf{select which thread to run} each cycle.
+    \item Shared functional units and memory system (since we don't want to duplicate the entire core).
+\end{itemize}
+This is much cheaper than adding ever more ILP hardware (which grows superlinearly in complexity).

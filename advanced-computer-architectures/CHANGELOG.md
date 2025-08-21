@@ -20,6 +20,9 @@
 
 ### v0.13.0
 
+- add `Multithreading (TLP)`
+  - add `Introduction`
+
 --------------------
 
 ### v0.12.0

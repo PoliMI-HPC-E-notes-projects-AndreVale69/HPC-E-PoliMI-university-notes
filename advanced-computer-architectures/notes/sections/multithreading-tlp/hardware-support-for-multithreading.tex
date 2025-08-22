@@ -1,0 +1,69 @@
+\subsection{Hardware Support for Multithreading}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{copy} \textbf{What must be duplicated?}}
+\end{flushleft}
+A thread, as we defined earlier, is basically:
+\begin{itemize}
+    \item A \textbf{Program Counter (PC)} (to know where it is in the instruction stream).
+    \item A \textbf{Register File (RF)} with all architectural registers (general-purpose, FP, control/status).
+    \item Status bits like condition codes.
+\end{itemize}
+To support multiple threads simultaneously, the CPU must keep \textbf{a separate copy of this state for each hardware thread}. For example: if one core supports 4 hardware threads, it will contain 4 PCs and 4 register files. These register files don't all sit in a single bank, but usually they are \textbf{physically replicated} so the \textbf{CPU can ``switch'' instantly} by pointing to a different set.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{share-alt} \textbf{What can be shared?}}
+\end{flushleft}
+The \textbf{expensive datapath and memory hierarchy} are \hl{not duplicated}:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{share-alt}}] \textbf{Function Units (FUs)}: ALUs, FPUs, Load/Store units.
+    \item[\textcolor{Green3}{\faIcon{share-alt}}] \textbf{Caches (L1, L2, L3)}: shared among threads of the core.
+    \item[\textcolor{Green3}{\faIcon{share-alt}}] \textbf{TLB \& Memory System}: usually shared, sometimes partitioned logically.
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} Because duplicating those would make multithreading as expensive as adding more cores. The point is to keep utilization high \emph{without} replicating all the silicon.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why a Thread is a smart idea}}
+\end{flushleft}
+Adding a whole \textbf{new core costs lots of area and power} (extra datapath, extra L1 caches, extra pipeline logic). Adding a \textbf{hardware thread} only costs extra register files $+$ PC logic. This is much cheaper in silicon area, but still allows the processor to stay busy by \textbf{switching between threads when one is waiting}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does it achieve?}} It does \textbf{not double performance}, since threads still share execution resources. But it can improve throughput significantly, especially when:
+\begin{itemize}
+    \item One thread stalls on memory $\rightarrow$ the other fills in.
+    \item Threads use different resources (e.g., one integer-heavy, one floating-point-heavy).
+\end{itemize}
+It's a \textbf{clever way to parallelize} at low cost: instead of building another core, let one core host multiple \emph{active threads}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{exchange-alt} \textbf{Thread Switching}}
+\end{flushleft}
+\definition{Thread Switching} happens when the CPU stops executing one thread and starts executing another. The main \hl{goal} is to \textbf{switch to another thread quickly enough to hide stalls}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How?}}
+\begin{itemize}
+    \item Hardware keeps all thread contexts ``live''.
+    \item Switching is just select another Program Counter and Register File in the next cycle.
+    \item No need to save/restore to memory like the OS does
+\end{itemize}
+\textcolor{Red2}{\faIcon{clock} \textbf{Latency}}
+\begin{itemize}
+    \item \important{Fine-Grained MT}: can switch \textbf{every cycle}.
+    \item \important{Coarse-Grained MT}: switches on stalls $\rightarrow$ costs a few cycles for pipeline drain/refill, but much cheaper than OS context switches.
+    \item \important{Simultaneous MT} (page \pageref{}): no ``switch'', but multiple threads issue in the same cycle, so contexts are interleaved continuously.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Resource Sharing Challenges}}
+\end{flushleft}
+Since threads share FUs and caches, conflicts can occur:
+\begin{itemize}
+    \item Two threads want the ALU in the same cycle $\rightarrow$ one must wait.
+    \item Threads can evict each other's cache lines (cache thrashing).
+\end{itemize}
+Simultaneous MT especially must use \textbf{smart scheduling policies} to prevent one thread from starving others. We will review each of these scenarios.

@@ -1,0 +1,77 @@
+\subsection{Typology of Hardware Multithreading}
+
+\definition{Hardware Multithreading} is a technique used in modern processors to improve resource utilization and overall throughput by \textbf{allowing multiple threads to be executed concurrently within a single core}.
+
+\highspace
+This section introduces the main types of hardware multithreading:
+\begin{itemize}
+    \item \definition{Coarse-Grained Multithreading (CGMT)}. The processor executes one thread until it hits a \textbf{long-latency stall} (e.g., cache miss to DRAM). Then it \textbf{switches to another thread}. The switch requires \textbf{draining/refilling the pipeline}, which costs a few cycles, but that's negligible compared to hundreds of cycles of stall.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Very \textbf{simple to implement} (just duplicate PC $+$ registers).
+            \item[\textcolor{Green3}{\faIcon{check}}] Effective at hiding \emph{long} stalls (memory, I/O).
+        \end{itemize}
+
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Useless against \emph{short} stalls (like data hazards or branch mispredicts).
+            \item[\textcolor{Red2}{\faIcon{times}}] Pipeline bubbles still occur frequently.
+        \end{itemize}
+    \end{itemize}
+
+    \begin{examplebox}[: CGMT Analogy]
+        Imagine one cashier per supermarket checkout. When a cashier has to wait for a price check (long stall), they temporarily leave and another cashier steps in. But for small pauses (handing change), the switch isn't worth it.
+    \end{examplebox}
+    
+
+    \item \definition{Fine-Grained Multithreading (FGMT)}. The processor \textbf{switches\break thread every cycle} (usually round-robin). If one thread is stalled, it's skipped. Each thread makes slower progress (because it only issues one instruction every few cycles), but the \textbf{pipeline never sits idle}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Hides all kinds of stalls}, even short ones.
+            \item[\textcolor{Green3}{\faIcon{check}}] Keeps functional units busy almost every cycle.
+        \end{itemize}
+
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Increases \textbf{per-thread latency} (our program feels slower if it's the only one running).
+            \item[\textcolor{Red2}{\faIcon{times}}] Requires very fast thread-selection logic.
+        \end{itemize}
+    \end{itemize}
+
+    \begin{examplebox}[: CGMT Analogy]
+        Imagine a classroom where students (threads) answer questions in strict rotation. Even if one student hesitates, the next gets the turn immediately, so the teacher (pipeline) never waits.
+    \end{examplebox}
+
+
+    \item \definition{Simultaneous Multithreading (SMT)}. The processor is \textbf{wide superscalar} (can issue 4-8 instructions per cycle). But one thread alone rarely fills all slots (ILP limit). So the CPU can issue instructions from \textbf{different threads in the same cycle}. Combines ILP (multiple instructions per thread) and TLP (multiple threads).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Maximizes \textbf{throughput per cycle}.
+            \item[\textcolor{Green3}{\faIcon{check}}] Utilizes execution units that would otherwise be idle.
+        \end{itemize}
+
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Threads compete for shared resources (caches, ALUs, branch predictors).
+            \item[\textcolor{Red2}{\faIcon{times}}] Per-thread performance can vary unpredictably (depends on\break what the sibling thread does).
+            \item[\textcolor{Red2}{\faIcon{times}}] Hardware complexity is high (must decide \emph{which thread's instructions} win each slot).
+        \end{itemize}
+    \end{itemize}
+
+    \begin{examplebox}[: CGMT Analogy]
+        Think of a wide highway with 8 lanes (issue slots). A single car (thread) can't use them all. With multiple cars (threads), the lanes are filled more efficiently, but they can also block each other if not well managed.
+    \end{examplebox}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{history} \textbf{Summary}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Coarse-Grain MT:} simple, hides \emph{long} stalls only.
+    \item \textbf{Fine-Grain MT:} frequent switching, hides \emph{all} stalls, but per-thread latency grows.
+    \item \textbf{SMT:} most advanced, fills superscalar issue slots with multiple threads, best throughput, but high complexity and contention.
+\end{itemize}

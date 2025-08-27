@@ -25,6 +25,7 @@
   - add `What is a Thread?`
   - add `Multithreading Basics`
   - add `Hardware Support for Multithreading`
+  - add `Typology of Hardware Multithreading`
 
 --------------------
 

@@ -65,8 +65,40 @@ This section introduces the main types of hardware multithreading:
         Think of a wide highway with 8 lanes (issue slots). A single car (thread) can't use them all. With multiple cars (threads), the lanes are filled more efficiently, but they can also block each other if not well managed.
     \end{examplebox}
 \end{itemize}
+The figure \ref{fig: Execution Slot Utilization}, page \pageref{fig: Execution Slot Utilization}, makes clear the \textbf{design philosophy shift} we introduced in Section \ref{subsection: Multithreading Basics}, page \pageref{subsection: Multithreading Basics}.
+\begin{itemize}
+    \item In the \textbf{superscalar single-thread case}, the CPU tries to minimize \emph{latency} for one thread, but many execution slots remain empty due to ILP limits.
+    \item \textbf{Coarse-grain multithreading} improves throughput only when a thread is completely blocked by a long stall, but short stalls still waste slots.
+    \item \textbf{Fine-grain multithreading} fills the pipeline continuously, maximizing \textbf{throughput} but stretching \emph{per-thread latency} (since each thread issues less often).
+    \item \textbf{SMT} goes further: by issuing multiple threads simultaneously, it combines ILP and TLP to achieve the \textbf{highest throughput}, at the cost of unpredictable latency per thread (threads interfere for shared resources).
+\end{itemize}
+Thus, the figure visually captures the \textbf{central idea of multithreading}: stop focusing exclusively on speeding up a \emph{single} thread (ILP); instead, keep the core busy across \emph{multiple} threads, so the processor's valuable resources are rarely idle.
 
-\highspace
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/execution-slot-utilization.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Execution Slot Utilization.\cite{hennessy2017computer} This figure shows \textbf{how a superscalar pipeline's issue slots are used} under four scenarios:
+    \begin{enumerate}
+        \item \textbf{Superscalar without multithreading}. Only one thread. Many slots are \textbf{empty} (white) because the single thread suffers stalls: dependencies, cache misses, branch mispredicts. Even if the core is 4-issue wide, often only 1-2 instructions can issue per cycle.
+
+
+        \item \textbf{Coarse-Grained Multithreading (CGMT)}. The figure shows long stretches of slots in one color (Thread A), then a big stall (white), then long stretches in another color (Thread B). Here, each thread runs until it encounters a long stall (e.g., a memory miss). Then the hardware switches to another thread. Empty slots still exist between switches, because the pipeline must ``drain/refill''.
+        
+
+        \item \textbf{Fine-Grained Multithreading (FGMT)}. Threads alternate every cycle (different colors interleaved). This keeps slots filled continuously, even if one thread stalls. However, each thread progresses more slowly, since it only issues every $N$ cycles (with $N$ threads).
+        
+
+        \item \textbf{Simultaneous Multithreading (SMT)}. Multiple threads share the pipeline \textbf{within the same cycle}. Different colors appear \textbf{side-by-side in the same cycle row}, showing two (or more) threads issuing simultaneously. This achieves the \textbf{highest utilization} of slots: both ILP (within one thread) and TLP (across threads) contribute to filling the issue width.
+    \end{enumerate}
+    In the superscalar case, black represents one reference thread, gray represents instructions from different threads, and white represents empty slots, i.e., unused pipeline capacity.}
+    \label{fig: Execution Slot Utilization}
+\end{figure}
+
+\vspace{-1em}
+
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{history} \textbf{Summary}}
 \end{flushleft}

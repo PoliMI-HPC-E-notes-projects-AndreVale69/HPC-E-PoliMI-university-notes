@@ -1,0 +1,33 @@
+\section{SIMD \& Vector Architectures}
+
+\subsection{Why DLP now? Limits of ILP}
+
+Throughout the '90s and '00s, we pursued better performance by extracting \textbf{Instruction-Level Parallelism (ILP)} through wider pipelines, out-of-order (OoO) scheduling, branch prediction, and speculation. That path \hl{hit three walls}:
+\begin{enumerate}
+    \item \important{Control wall (branches).} When control flow is irregular, speculation wastes work; deeper pipelines make each misprediction more expensive. \textbf{Even with good predictors, we still pay frequent bubbles}.
+    
+
+    \item \important{Memory wall (cache misses + irregularity).} ILP engines require a large number of independent operands that are readily available. However, real code often involves pointer chases or unpredictable misses. OoO can hide some latency, but only if the instruction window ``sees'' other independent work. This is an \textbf{increasingly power-hungry proposition}.
+
+
+    \item \important{Complexity/energy wall.} The machines that find ILP (renaming, large ROB/RS, etc.) require more energy and area as the issue is widened or the windows are enlarged. The result is that \textbf{a lot of energy is spent to squeeze out a few more IPCs}.
+\end{enumerate}
+We \textbf{can't keep relying on ILP}; we need other parallelism models, such as TLP, DLP, and RLP.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The alternative: exploit Data-Level Parallelism (DLP)}}
+\end{flushleft}
+Many kernels are \textbf{same operation, many elements} (images, linear algebra, DSP, ML). With \textbf{SIMD/vector}, one instruction drives many element operations in lockstep, \emph{a single instruction stream controls multiple Processing Elements (PEs)}, so we amortize the control overhead and keep the datapaths busy.
+
+\highspace
+\definition{Data-Level Parallelism (DLP)} exists when the \textbf{same operation} can be applied \textbf{independently} to many data items at once. In other words, we don't need to wait for the result of one element before processing the next because all elements are parallelizable.
+
+\highspace
+The classic example: adding two arrays element by element. Each sum \texttt{x[i] + y[i]} is independent, so all iterations could, in principle, run at the same time. This is why we often say DLP is ``\emph{same instruction, multiple data}''.
+
+\highspace
+An in-order vector processor can \hl{match or surpass the performance of a complex out-of-order (OoO) core} on such workloads by relying on data locality (DLP) and achieving better energy efficiency.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why the energy win?}} Because \textbf{SIMD only needs to fetch one instruction per data operation}. We fetch/decode once; the work spreads out over many lanes and elements. That's less front-end activity, less rename/issue overhead, and more of our power going into real arithmetic. In other words, \hl{one instruction controls many ALUs, so fetch/decode overhead is amortized}.

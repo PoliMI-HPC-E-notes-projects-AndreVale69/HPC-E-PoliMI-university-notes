@@ -26,6 +26,7 @@
   - add `Multithreading Basics`
   - add `Hardware Support for Multithreading`
   - add `Typology of Hardware Multithreading`
+  - add `SMT on Wide Superscalars`
 
 --------------------
 

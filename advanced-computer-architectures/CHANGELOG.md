@@ -23,6 +23,7 @@
 
 - add `SIMD & Vector Architectures`
   - add `Why DLP now? Limits of ILP`
+  - add `Flynn's taxonomy`
 
 --------------------
 

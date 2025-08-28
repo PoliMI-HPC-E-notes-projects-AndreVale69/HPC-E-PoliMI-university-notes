@@ -1,0 +1,110 @@
+\subsection{SIMD Architecture}
+
+In a \textbf{SIMD machine}, there is a \textbf{single control unit} (the ``brain'') with \textbf{one Program Counter (PC)}. Each instruction is \textbf{fetched once} from this PC and then \textbf{broadcast} to all the \textbf{Processing Elements (PEs)}. Each PE executes that instruction \textbf{in lockstep}, but on its own \textbf{local data}.
+
+\begin{examplebox}[: Analogy]
+    Think of a classroom. One teacher (controller) gives instructions (``add 5 to your number''), and 32 students (PEs) each apply it to their own notebooks (registers). Everyone does the same thing at the same time, but on different numbers.
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{microchip} \textbf{Muscle of a SIMD machine: Processing Elements (PEs)}}
+\end{flushleft}
+A \definition{Processing Element (PE)} is the \textbf{replicated compute unit} in a SIMD array.
+\begin{itemize}
+    \item Each PE executes the \textbf{same instruction} broadcast by the controller, but on its \textbf{own local data}.
+    \item Together, many PEs form the ``data-parallel fabric'' of the machine.
+\end{itemize}
+So if the controller says ``\emph{add 5}'', every PE performs an addition in lockstep, but on its own input value.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What a PE typically contains.}} A PE is usually quite simple compared to a full CPU core:
+\begin{itemize}
+    \item \textbf{Registers}: its own small set of registers, holding local operands and results.
+    \item \textbf{ALU/FPU}: an arithmetic unit (sometimes both integer and floating point).
+    \item \textbf{Optional Local Memory}: in some SIMD arrays (like early Connection Machines), each PE had a small local memory slice. In vector-register architectures, the ``vector register file'' plays this role.
+\end{itemize}
+\hl{Contrast with a general-purpose core}: a core has its own PC, branch predictor, caches, etc. A PE does \textbf{not}, it \textbf{relies on the central controller}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How PEs execute.}} All PEs step through the \textbf{same instruction} simultaneously. For example, suppose we have 4 PEs, each storing a number in a register:
+\begin{itemize}
+    \item Controller issues: \texttt{ADD R1, R2, R3}
+    \item PE0 does $\texttt{R1}_{\texttt{0}} = \texttt{R2}_{\texttt{0}} + \texttt{R3}_{\texttt{0}}$
+    \item PE1 does $\texttt{R1}_{\texttt{1}} = \texttt{R2}_{\texttt{1}} + \texttt{R3}_{\texttt{1}}$
+    \item PE2 does $\texttt{R1}_{\texttt{2}} = \texttt{R2}_{\texttt{2}} + \texttt{R3}_{\texttt{2}}$
+    \item PE3 does $\texttt{R1}_{\texttt{3}} = \texttt{R2}_{\texttt{3}} + \texttt{R3}_{\texttt{3}}$
+\end{itemize}
+The \textbf{operation is identical}, but the \textbf{data are distinct}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why one PC is powerful}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Energy-efficient}: only one instruction fetch/decode per operation, instead of per PE.
+    \item \textbf{Code compactness}: the program is written once, not duplicated per PE.
+    \item \textbf{Simplicity}: no need for synchronization between PEs, since they all step in lockstep.
+\end{itemize}
+This is why SIMD machines historically delivered \textbf{high performance per watt} compared to pushing ILP in superscalars.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{blender} \textbf{Mixing SISD $+$ SIMD}}
+\end{flushleft}
+Most real systems are \textbf{hybrids}:
+\begin{itemize}
+    \item A \textbf{scalar unit} executes normal SISD instructions.
+    \item SIMD/vector instructions are executed by \textbf{PE arrays}.
+    \item For example, in MIPS $+$ VMIPS, we have both normal scalar registers and vector registers; in modern Intel, we have scalar x86 instructions plus AVX-512 SIMD ops.
+\end{itemize}
+So the system still looks like ``one CPU'' to the programmer, but when SIMD instructions are hit, the PEs all fire in parallel.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Comparison to MIMD}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{MIMD (multicores)}: each core has its own PC, they can all run different instructions on different data. Synchronization becomes our problem (locks, barriers).
+    \item \textbf{SIMD}: one PC only, \emph{no divergence}. Either all PEs do the same instruction, or some are ``masked off'' (we'll cover masking later).
+\end{itemize}
+This explains why \textbf{GPUs}, though they manage thousands of threads, are essentially \textbf{SIMD under the hood}: groups of threads (warps) share a PC and execute in lockstep.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why vector processors are a clean SIMD implementation}}
+\end{flushleft}
+Vector machines (like Cray, or our teaching model VMIPS) embody this model:
+\begin{itemize}
+    \item The ``one controller'' issues \textbf{vector instructions}.
+    \item The ``many PEs'' are abstracted as \textbf{lanes} inside vector functional units (VFUs).
+    \item The ``one PC'' is the scalar control flow, but a vector instruction keeps PEs busy for many cycles.
+\end{itemize}
+This is why we say: \textbf{vector processors $=$ classical SIMD}, just presented in a more programmer-friendly way (vector registers, vector instructions).
+
+\highspace
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/simd.pdf}
+    \caption{Vector Processor vs GPU SIMD Processor (side by side). \cite{hennessy2017computer}}
+    \label{fig: Vector Processor vs GPU SIMD Processor}
+\end{figure}
+
+\noindent
+This figure (\ref{fig: Vector Processor vs GPU SIMD Processor}) is a comparison diagram and it places two architectures next to each other to show that \textbf{both are SIMD machines}, but they realize the model differently.
+\begin{itemize}
+    \item \important{Vector Processor} (left side). This is the ``one controller, many PEs, one PC'' architecture that we have emphasized (this is what we are studying for the exam).
+    \begin{itemize}
+        \item \textbf{Vector Register File (VRF)}: Large registers hold many elements (e.g., 64 floats).
+        \item \textbf{Vector Functional Units (VFUs)}: Operate in \emph{lanes} (each lane $=$ a PE). When we issue one vector instruction, the controller streams elements from the VRF through the VFUs.
+        \item \textbf{SIMD property}: One instruction (\texttt{ADDV}) controls many operations in parallel across lanes.
+        \item \textbf{Control}: Still a single PC driving both scalar and vector instructions.
+    \end{itemize}
+    \item \important{GPU SIMD Processor} (right side). The GPU realization is \textbf{multithreaded SIMD}: more flexible, hides memory latency, but still ``one controller $+$ many lanes per warp''.
+    \begin{itemize}
+        \item \textbf{Registers per thread}: Each SIMD ``lane'' is associated with its own registers. Instead of a shared vector register file, each thread has its private state.
+        \item \textbf{Warp Scheduler}: The GPU groups threads into \emph{warps} (e.g., 32 threads). Each warp has a single PC. The scheduler chooses which warp runs, hiding latency by switching between them.
+        \item \textbf{SIMD property}: Within a warp, one instruction is broadcast to all lanes (threads), still SIMD execution.
+        \item \textbf{Control}: Many warps $=$ many PCs, but within each warp it's pure SIMD.
+    \end{itemize}
+\end{itemize}
+Vectors and GPUs are two faces of SIMD. Vector machines present SIMD as ``vector registers $+$ vector instructions'', and GPUs present SIMD as ``threads grouped into warps, each warp executing SIMD-style''. Both fit Flynn's SIMD category because: \textbf{one instruction stream (per vector op or per warp)}; \textbf{multiple data elements processed in parallel by replicated datapaths (lanes/PEs)}.

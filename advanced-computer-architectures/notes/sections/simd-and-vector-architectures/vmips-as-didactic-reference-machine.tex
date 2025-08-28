@@ -1,0 +1,76 @@
+\subsection{VMIPS as Didactic Reference Machine}
+
+\definition{Vector MIPS (VMIPS)} is \textbf{not a commercial computer}, but a \textbf{teaching model} of a vector processor created by Hennessy \& Patterson \cite{hennessy2017computer} to illustrate how vector architectures work.
+
+\highspace
+It starts from \textbf{MIPS}, a clean RISC scalar ISA we already know, then it adds a \textbf{vector unit}: a Vector Register File (VRF), a Vector Functional Units (VFUs), and a Load/Store Unit (LSU) that fetches/stores vectors from memory. The \textbf{scalar MIPS core} remains present, handling sequential code, address calculations, and control flow. So VMIPS is like saying: ``\emph{what if our simple MIPS machine also had a Cray-style vector coprocessor?}''.
+
+\highspace
+If we think of MIPS as the ``teaching model'' for scalar RISC pipelines, then \textbf{VMIPS is the teaching model for vector processors}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why VMIPS?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{MIPS as a base}: they extended MIPS because it's a \textbf{minimal, orthogonal RISC ISA}, already widely used in education. Students know MIPS from scalar pipelines, so adding vectors to it is natural.
+    \item \textbf{Faithful to Cray design}: VMIPS adopts all the key Cray-style choices: vector register file, pipelined functional units, chaining, interleaved memory banks. So that reasoning about performance (like counting cycles for DAXPY) reflects reality.
+    \item \textbf{Simplicity over full realism}: Real Cray machines had more complex instruction sets, memory systems, and register counts. VMIPS reduces this to the essentials so that students can do cycle-by-cycle performance calculations without drowning in detail.
+    \item \textbf{Bridge to modern SIMD/GPU}: Once we understand VMIPS, it's easier to see the connection to modern extensions (AVX, SVE, RISC-V V) and GPUs. It provides the conceptual foundation: vector registers, pipelined FUs, interleaved memory.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{bookmark} \textbf{Three pillars of any vector machine}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Vector Register File (VRF)}. The \definition{Vector Register File (VRF)} is a special register bank designed to hold \textbf{entire vectors of data} rather than single scalars.
+    \begin{itemize}
+        \item In a scalar machine (like MIPS), each register holds \textbf{one word} (e.g., 32 bits).
+        \item In a vector machine, each \textbf{vector register} holds \textbf{many elements} (e.g., 64 elements $\times$ 64-bit each in VMIPS).
+    \end{itemize}
+    So, instead of saying ``\emph{register \texttt{R1} contains the value 5}'', in a vector machine we say ``\emph{vector register \texttt{V1} contains the 64 values of array X}''.
+
+    \highspace
+    A \textbf{Vector Register File} is large, think of it as \textbf{8-32 registers}, each containing \textbf{64-128 elements}. It has \textbf{multiple read and write ports} (e.g., 16 read, 8 write in VMIPS) because many functional units (add, multiply, load/store) may want to read/write concurrently. Ports are connected via a \textbf{crossbar} to the Vector Functional Units (VFUs). However, the VRF's role in execution is to \hl{act as a compiler-controlled buffer between the memory and compute units} (elements are streamed out to the functional units one per cycle).
+
+
+    \item \important{Vector Functional Units (VFUs)}. A \definitionWithSpecificIndex{Vector Functional Unit\break (VFU)}{Vector Functional Unit (VFU)}{} is a \textbf{pipelined arithmetic unit} (adder, multiplier, divider, logical unit, etc.) that operates on elements of a vector register \textbf{one after another, in a streaming fashion}. Think of them as the ``datapath lanes'' of the vector processor: they take operands from the VRF, process them in a pipeline, and return results into another VRF.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Chaining.}} One of the most important features is the \definition{Chaining}: The output of one VFU can feed directly into another \hl{without waiting for the full vector to finish}.
+
+
+    \item \important{Vector Load/Store Unit (LSU)}. The \definitionWithSpecificIndex{Vector Load/Store Unit\break (LSU)}{Vector Load/Store Unit (LSU)}{} is the hardware that transfers whole vectors of data between \textbf{main memory} and the \textbf{Vector Register File (VRF)}.
+    \begin{itemize}
+        \item Scalar load/store moves one word.
+        \item Vector load/store moves an \textbf{entire vector} (e.g., 64 elements in\break VMIPS) efficiently, in a pipelined, streaming fashion.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works}}
+    \begin{itemize}
+        \item \definition{Vector Load (\texttt{LV})}: fetches a sequence of words from memory into a vector register (\texttt{LV V1, addr}). Memory latency is paid \textbf{once}, then elements stream into the VRF one per cycle.
+        \item \definition{Vectore Store (\texttt{SV})}: writes all elements of a vector register to memory (\texttt{SV addr, V1}). Again, throughput is 1 word per cycle.
+    \end{itemize}
+    The LSU sustains the \hl{high bandwidth} required to keep vector pipelines busy. 
+
+    \highspace
+    The memory system is composed of \textbf{interleaved memory banks} because a single memory bank cannot deliver one word per cycle. Therefore, VMIPS assumes \textbf{multiple banks}, with each bank servicing one access per cycle. Addresses are interleaved across banks (e.g., word 0 goes to bank 0, word 1 goes to bank 1, and so on). This allows sequential vector loads and stores to map nicely across banks, achieving continuous bandwidth.
+
+    \newpage
+
+    The \textbf{access modes} are smarter. There are two main modes of access:
+    \begin{itemize}
+        \item \textbf{Strided access} (for structured data): we can load every $k$-th element into a vector register (important for traversing rows/columns in matrices). For example: \texttt{LVWS V1, addr, stride=4} loads every 4th word.
+        \item \textbf{Gather/Scatter} (for irregular patterns): With an \textbf{index vector}, we can load or store non-contiguous elements. Useful for sparse matrices or irregular data structures.
+    \end{itemize}
+    Everything is important because, without a high-bandwidth LSU, the vector pipelines (VFUs) would starve. Caches are also less useful here since vector codes have predictable, streaming patterns. This is why vector machines rely on banked memory and LSU instead of data caches.
+
+
+    \item \important{Scalar Side}. The scalar side makes VMIPS (and real vector machines) \textbf{general-purpose}:
+    \begin{itemize}
+        \item If a program is \textbf{not} vectorizable, it still runs fine (just slower, scalar-only).
+        \item If \textbf{part} of a program is vectorizable (like inner loops), the scalar processor sets it up and hands the heavy work to the vector unit.
+    \end{itemize}
+    This hybrid model is exactly what we see today: CPUs with SIMD units, GPUs with scalar ``schedulers'' and SIMD ``warps''.
+\end{itemize}
+We introduce VRF, VFUs, LSU, and Scalar Side in VMIPS because they are the three fundamental building blocks of a vector machine. Understanding them gives us a simple but accurate model of how vectors are executed, how latency is hidden, and how memory bandwidth is sustained. Exactly what we need to analyze performance and compare to other architectures.

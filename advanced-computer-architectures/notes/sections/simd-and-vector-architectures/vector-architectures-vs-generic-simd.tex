@@ -1,0 +1,75 @@
+\subsection{Vector Architectures vs Generic SIMD}
+
+Not all SIMD is created equal. Vector processors are one way to implement SIMD and solve many problems that generic SIMD arrays face.
+
+\begin{itemize}
+    \item \important{Generic SIMD (Flynn-style)}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{book}}] \textcolor{Green3}{\textbf{Programming model:}} The programmer sees many PEs arranged in an array. One instruction is broadcast to all. Data may live in each PE's local memory.
+        \item[\textcolor{Green3}{\faIcon{layer-group}}] \textcolor{Green3}{\textbf{Pipeline behavior:}} Each PE executes the operation independently, but control is centralized. Latency is exposed: if an operation takes multiple cycles, PEs may stall until it finishes.
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Limitations}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Not very programmer-friendly (we must think in terms of PEs, local memory, communication).
+            \item[\textcolor{Red2}{\faIcon{times}}] Latency of pipelines shows up as wasted cycles.
+            \item[\textcolor{Red2}{\faIcon{times}}] Branching and irregular control flow are both awkward.
+        \end{itemize}
+    \end{itemize}
+    This is why such pure SIMD arrays (Illiac IV, Connection Machine) are more of \hl{historical interest}.
+
+
+    \item \important{Vector architectures (Cray-style, VMIPS model)}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{book}}] \textcolor{Green3}{\textbf{Programming model:}}
+        \begin{itemize}
+            \item We write in terms of \textbf{vector registers} (\texttt{V1, V2, V3}), not individual PEs.
+            \item A vector instruction (\texttt{ADDV V1, V2, V3}) specifies an operation on \emph{whole arrays of elements}.
+            \item The hardware hides the fact that many simple datapaths (lanes) do the work in parallel.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{layer-group}}] \textcolor{Green3}{\textbf{Pipeline behavior:}}
+        \begin{itemize}
+            \item Functional units are deeply pipelined. Once started, they produce one result per cycle.
+            \item \textbf{Element independence} (no cross-element dependency), easy to pipeline at high frequency.
+            \item Latency of the first result is amortized over the whole vector.
+        \end{itemize}
+    \end{itemize}
+    So instead of stalling for pipeline latency, the programmer only cares about \textbf{vector length} and throughput.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Difference between Generic SIMD and Vector architectures}}
+\end{flushleft}
+The difference is in \textbf{how the machine executes each instruction internally}, and that makes generic SIMD slower in practice.
+\begin{itemize}
+    \item \important{Generic SIMD (``array of PEs'' model)}. Imagine we have $N$ Pes, each with its own ALU. The controller broadcasts: \texttt{ADD R1, R2, R3}. Each PE executes this instruction \textbf{exactly like a tiny CPU would}.
+
+    \highspace
+    Now suppose the \textbf{\texttt{ADD} instruction has a latency of 6 cycles} (because of pipelining). In a scalar CPU, we can overlap new instructions while waiting. But in a simple SIMD array, all PEs must \textbf{wait 6 cycles} before they can do the next instruction, because each PE is ``frozen'' until the operation finishes.
+
+    \highspace
+    \textbf{Result:} latency is exposed. Throughput is lower because every vector operation pays the full latency cost.
+
+
+    \item \important{Vector architectures (Cray-style)}. We don't address individual PEs. We issue a \textbf{vector instruction}: \texttt{ADDV V1, V2, V3}. Inside the vector unit, the operation is \textbf{pipelined}:
+    \begin{itemize}
+        \item Cycle 1: first pair of elements enters the adder.
+        \item Cycle 2: second pair enters, first is still computing.
+        \item Cycle 3: third pair enters, first is nearly done.
+        \item And so on.
+    \end{itemize}
+    After the latency of 6 cycles, we start getting \textbf{1 result per cycle}. If our vector has 64 elements:
+    \begin{itemize}
+        \item Startup cost: 6 cycles.
+        \item Then 64 results flow out, one per cycle.
+        \item Total $=$ 70 cycles.
+        \item Throughput $\approx 1$ per cycle (after startup).
+    \end{itemize}
+    \textbf{Result:} latency is hidden; throughput is maximized.
+\end{itemize}
+The core difference:
+\begin{itemize}
+    \item \textbf{Generic SIMD}: think of it as $N$ \emph{little scalar processors} all stalling on latency. Each vector op takes latency $\times$ vector length.
+    \item \textbf{Vector processor}: think of it as a \emph{conveyor belt (pipeline)}. Latency is only paid once; then results stream out every cycle.
+\end{itemize}
+That's why vector processors were a revolution compared to \naive SIMD arrays.

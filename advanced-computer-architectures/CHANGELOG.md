@@ -26,6 +26,7 @@
   - add `Flynn's taxonomy`
   - add `SIMD Architecture`
   - add `Vector Architectures vs Generic SIMD`
+  - add `Anatomy of a Classic Vector Machine`
 
 --------------------
 

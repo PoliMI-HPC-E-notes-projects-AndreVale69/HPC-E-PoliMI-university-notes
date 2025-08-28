@@ -28,6 +28,7 @@
   - add `Vector Architectures vs Generic SIMD`
   - add `Anatomy of a Classic Vector Machine`
   - add `VMIPS as Didactic Reference Machine`
+  - add `Case Study: DAXPY`
 
 --------------------
 

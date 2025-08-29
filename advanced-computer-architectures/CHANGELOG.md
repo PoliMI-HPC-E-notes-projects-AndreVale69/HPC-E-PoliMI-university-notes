@@ -33,6 +33,7 @@
   - add `Multiple Lanes`
   - add `Handling Vector Lengths`
   - add `Control Divergence Inside Loops`
+  - add `Memory System for Vectors`
 
 --------------------
 

@@ -1,0 +1,65 @@
+\subsection{Handling Vector Lengths}
+
+Vector processors execute operations on \textbf{vectors of fixed hardware length}: the \definition{Maximum Vector Length (MVL)}. For VMIPS, MVL is 64 elements. But in \hl{real programs, the loop trip count $n$ may not equal MVL}:
+\begin{itemize}
+    \item Sometimes \textbf{shorter} (e.g., process only 31 elements).
+    \item Sometimes \textbf{longer} (e.g., process 1000 elements).
+\end{itemize}
+We need mechanisms to \hl{handle this mismatch} between \textbf{program data size} and \textbf{hardware register size}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Maximum Vector Length (MVL)}}
+\end{flushleft}
+\definition{Maximum Vector Length (MVL)} is a hardware constant: the \hl{maximum number of elements that a vector register can hold in a given vector processor}. It is the \textbf{physical width} of the vector register file. For example, in VMIPS, the MVL is 64 elements, so \textbf{each vector register can store 64 elements}, each 64 bits long.
+
+\highspace
+There are several reasons why MVL is necessary. One of those reasons is the hardware boundary, because the vector register file (VRF) is finite in size. Thus, MVL specifies the limits of the hardware in order to balance cost, area, and memory bandwidth (\hl{hardware upper bound}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Vector Length Register (VLR)}}
+\end{flushleft}
+The \definition{Vector Length Register (VLR)} is a \textbf{special control register} in a vector processor. It specifies the \textbf{active number of elements} that vector instructions will operate on, \textbf{for the current loop segment}. From this definition, we can derive a logical constraint:
+\begin{equation}
+    0 \leq \text{VLR} \leq \text{MVL}
+\end{equation}
+In other words, the number of active elements must be less than or equal to the maximum number of elements that a vector register can hold, known as the MVL or hardware upper bound.
+
+\highspace
+Classic vector machines handle ``\emph{less than MVL}'' cases elegantly with VLR, thus avoiding a special scalar loop. This is why Cray-style vectors are considered more flexible than fixed-width SIMD. For instance, if an MVL is 64 and a loop has 100 elements, execution is divided into two steps. First, VLR is equal to 64, and the first 64 elements are run. Then, VLR is equal to 36, and the last 36 elements are run. In this example, the hardware still works with 64-entry registers, but only the first VLR entries are ``active''.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is the Vector Length Register (VLR) really needed?}}
+\end{flushleft}
+Suppose our machines has MVL equals to 64. Every vector instruction would always operate on all 64 elements of a vector register. Now imagine our program loop has 100 elements. Execution attempt:
+\begin{enumerate}
+    \item First iteration: process elements 0-63. Ok.
+    \item Second iteration: Process elements 64-127. However, our loop only has 100 elements. Reading/writing beyond the array bounds would result in incorrect program behavior.
+\end{enumerate}
+\textbf{With VLR:} In the second iteration, the VLR is set to 36 and only elements from 64 to 99 are processed. Unused entries are ignored. This eliminates the need for separate scalar loops, and the vector ISA works cleanly for any loop size.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Strip Mining}}
+\end{flushleft}
+What if the \textbf{loop trip count $n$ is larger than MVL}? We use \definition{Strip Mining}, a \textbf{compiler technique} used to transform a loop with an arbitrary number of iterations $n$ into \textbf{chunks of size MVL} (the hardware maximum vector length):
+\begin{enumerate}
+    \item \textbf{Partition the loop} into chunks of size MVL.
+    \item Execute the body for each full chunk.
+    \item For the last remainder ($n \mod \left(\text{MVL}\right)$), set the VLR to that remainder size.
+\end{enumerate}
+In other words:
+\begin{equation}
+    \text{Loop of size } n \quad \Rightarrow \quad \left\lfloor \dfrac{n}{\text{MVL}} \right\rfloor \text{ full strips } + \left(n \mod \text{MVL}\right) \text{ remainder strip}
+\end{equation}
+For example $n = 1000$, $\text{MVL} = 64$:
+\begin{itemize}
+    \item Do 15 iterations of 64 elements ($15 \times 64 = 960$).
+    \item Last strip is 40 elements ($1000 \mod 64 = 40$).
+\end{itemize}
+It is essential because \textbf{real program loops can be much longer than MVL}.
+
+\highspace
+Together, they make vector machines \textbf{flexible} for any loop length, while maintaining \textbf{regular, efficient execution}.

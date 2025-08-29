@@ -1,0 +1,58 @@
+\subsection{Control Divergence Inside Loops}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The problem: control dependence}}
+\end{flushleft}
+Consider a loop with a conditional inside:
+\begin{lstlisting}[language=c]
+for (i = 0; i < 64; i++) {
+    if (X[i] != 0)
+        X[i] = X[i] - Y[i];
+}\end{lstlisting}
+This loop is \textbf{data-parallel} (each iteration is independent), but the \texttt{if} makes it \textbf{non-uniform}:
+\begin{itemize}
+    \item Some elements of \texttt{X} satisfy the condition, others don't.
+    \item A \naive vector processor cannot execute this with a single vector instruction, because it would apply the operation to \textbf{all} elements indiscriminately.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The solution: Vector Mask Registers (VMRs)}}
+\end{flushleft}
+A \definition{Vector Mask Register (VMR)} is a \textbf{Boolean vector} with one bit per element (length $=$ MVL). Each bit says whether the corresponding element is ``\emph{active}'' (1) or ``\emph{disabled}'' (0). When enabled, \textbf{all vector instructions are executed under the mask}. Instead, inactive elements are skipped, leaving data unchanged. This is \textbf{predication at the vector level}.
+
+\highspace
+For example:
+\begin{enumerate}
+    \item Load \texttt{X} and \texttt{Y} into vector registers.
+    \item Compare \texttt{X} with zero and then produce a mask vector:
+    \begin{itemize}
+        \item \texttt{Mask[i] = 1} if \texttt{X[i] != 0}
+        \item \texttt{Mask[i] = 0} otherwise
+    \end{itemize}
+    \item Apply subtraction under the mask:
+    \begin{itemize}
+        \item If \texttt{Mask[i] = 1}, do \texttt{X[i] = X[i] - Y[i]}
+        \item If \texttt{Mask[i] = 0}, leave \texttt{X[i]} unchanged
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Keeps loops vectorizable}, even with conditionals.
+        \item[\textcolor{Green3}{\faIcon{check}}] Avoids scalar fallback code.
+        \item[\textcolor{Green3}{\faIcon{check}}] Masking is orthogonal: \textbf{any} vector instruction can be predicated.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] Cycles are still spent for \textbf{all} elements, even masked ones (though inactive results are discarded).
+        \item[\textcolor{Red2}{\faIcon{times}}] If many elements are masked off, the efficiency drops.
+        \item[\textcolor{Red2}{\faIcon{times}}] Still, better than serializing into scalar execution.
+    \end{itemize}
+\end{itemize}
+In conclusion, \textbf{vector mark registers solve the problem of control divergence in vector loops}. These registers enable predicated vector execution, maintaining the effectiveness of vectorization even when loops contain \texttt{if} conditions. Conceptually, this solution can be written as follows: ``perform this operation only for elements with a 1 in the mask bit''.

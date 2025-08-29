@@ -32,6 +32,7 @@
   - add `Chaining, Convoys, and Chimes`
   - add `Multiple Lanes`
   - add `Handling Vector Lengths`
+  - add `Control Divergence Inside Loops`
 
 --------------------
 

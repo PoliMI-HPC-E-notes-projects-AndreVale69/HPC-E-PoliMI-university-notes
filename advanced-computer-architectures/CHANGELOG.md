@@ -29,6 +29,7 @@
   - add `From single bus to interconnection networks`
   - add `Network performance metrics`
   - add `Classic Multiprocessor Topologies`
+  - add `Address-Space Models`
 
 --------------------
 

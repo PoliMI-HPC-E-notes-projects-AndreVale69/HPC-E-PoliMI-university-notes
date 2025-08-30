@@ -25,6 +25,7 @@
 
 - add `Multiprocessors`
   - add `What is a multiprocessor?`
+  - add `Key Design Questions`
 
 --------------------
 

@@ -31,6 +31,7 @@
   - add `Classic Multiprocessor Topologies`
   - add `Address-Space Models`
   - add `Physical Memory Organization`
+  - add `Small-scale multicores`
 
 --------------------
 

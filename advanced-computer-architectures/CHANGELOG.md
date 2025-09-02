@@ -32,6 +32,7 @@
   - add `Address-Space Models`
   - add `Physical Memory Organization`
   - add `Small-scale multicores`
+  - add `Distributed Shared Memory`
 
 --------------------
 

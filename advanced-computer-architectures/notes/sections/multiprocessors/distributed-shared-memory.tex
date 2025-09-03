@@ -93,3 +93,61 @@ The \textbf{interconnection network} ties everything together. Responsibilities:
     \item \textbf{Scalability}: provide enough bandwidth/low latency for dozens of nodes.
 \end{itemize}
 Topologies used: Crossbar (small systems), 2D mesh, torus, fat-tree, and often implemented as a Network-on-Chip (NoC) for chip multiprocessors.
+
+\begin{takeawaysbox}[: Important Concepts of Distributed Shared Memory Chapter]
+    In this box, we will address some common questions about this topic. In particular, what does it mean that the memory is shared physically but not logically? Why and how can programmers not see this difference? 
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What does \emph{global shared address space} mean?}}
+    \end{flushleft}
+    Imagine in a single-processor system: memory is a \textbf{linear array of addresses} (\texttt{0x0000} … up to max). In a multiprocessor with \textbf{DSM}, we want to \textbf{preserve this illusion}:
+    \begin{itemize}
+        \item Every processor sees \textbf{the same set of addresses}.
+        \item Address \texttt{0x1000} always refers to the \emph{same logical location} for all processors, no matter which node owns it physically.
+    \end{itemize}
+    In DSM, the hardware and OS cooperate so that any load/store instruction can be applied to \emph{any address} in that global space.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How is this built if memory is distributed?}}
+    \end{flushleft}
+    Physical memory is \textbf{partitioned across nodes}:
+    \begin{itemize}
+        \item Node 0 ``owns'' addresses \texttt{0x0000} $\rightarrow$ \texttt{0x0FFF}.
+        \item Node 1 ``owns'' addresses \texttt{0x1000} $\rightarrow$ \texttt{0x1FFF}.
+        \item Node 2 ``owns'' addresses \texttt{0x2000} $\rightarrow$ \texttt{0x2FFF}.
+        \item ... and so on.
+    \end{itemize}
+    Each node's memory controller is responsible for its \textbf{portion} of the global space. If a processor in Node 0 accesses address \texttt{0x2200}:
+    \begin{enumerate}
+        \item Its cache misses $\rightarrow$ request goes to the interconnect.
+        \item The interconnect routes the request to \textbf{Node 2}, because Node 2 owns the range \texttt{0x2000}-\texttt{0x2FFF}.
+        \item Node 2's memory module returns the data.
+    \end{enumerate}
+    So it's \textbf{transparent to the programmer} because they don't care where data is physically located.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why should a processor ever access \emph{remote} memory?}}
+    \end{flushleft}
+    Because \textbf{parallel programs share data}. Some examples:
+    \begin{itemize}
+        \item \textbf{Shared data structures}: Suppose Node 0 initializes an array. Later, Node 1 must process part of it. Even if that part resides in Node 0's memory, Node 1 can access it via DSM.
+        \item \textbf{Synchronization variables}: Locks, semaphores, and barriers must be visible to all processors. A lock variable in Node 3's memory must be accessible by Node 0 when it tries to acquire the lock.
+        \item \textbf{Work distribution}: In scientific simulations, the global domain (e.g., a 3D grid of cells) is spread across nodes. But some computations require reading/writing data from neighbors in another node.
+    \end{itemize}
+    If no processor could access remote memory, it wouldn't be ``shared memory'' anymore; it would be pure \textbf{message passing}.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not just use private memory (clusters, next section)?}}
+    \end{flushleft}
+    In message-passing clusters, the programmer must \textbf{manually orchestrate communication} (e.g., MPI):
+    \begin{itemize}
+        \item Node 0 does \texttt{send(array, Node 1)}.
+        \item Node 1 does \texttt{receive(array, Node 0)}.
+    \end{itemize}
+    In DSM/CC-NUMA, the \textbf{hardware handles this automatically}. A simple load/store suffices. This makes DSM \textbf{much easier to program}, at the cost of more complex hardware.
+\end{takeawaysbox}
+
+\noindent
+In conclusion, DSM provides a global shared address space by mapping each physical memory partition into one big address map. Any processor can issue a load/store to any address and the system routes the request to the right node. This allows transparent sharing of data structures and synchronization variables, without explicit message passing.

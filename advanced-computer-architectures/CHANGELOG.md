@@ -33,6 +33,7 @@
   - add `Physical Memory Organization`
   - add `Small-scale multicores`
   - add `Distributed Shared Memory`
+  - add `Distributed-memory clusters`
 
 --------------------
 

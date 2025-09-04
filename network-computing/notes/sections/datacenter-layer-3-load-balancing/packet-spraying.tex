@@ -1,0 +1,53 @@
+\subsection{Packet Spraying}
+
+\definition{Packet Spraying} is a load balancing technique where \textbf{each packet} of a flow is sent over a \textbf{different path} in the network, instead of keeping the whole flow on a single path. This technique \textbf{balances the load immediately} across all available links and ensures that no path is left idle, thus \hl{optimizing network capacity utilization}. However, there is one \textbf{significant issue}: \hl{packets of the same flow may arrive out of order} due to the varying delays of the different paths taken. TCP is confused by out-of-order delivery and thinks packets are lost, \hl{resulting in unnecessary retransmissions and reduced throughput}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Idea of Packet Spraying}}
+\end{flushleft}
+Instead of assigning an entire flow to \textbf{one path}, packet spraying sends \textbf{each packet} of the flow independently across different available paths. For example, we have 4 equal-cost paths.
+\begin{itemize}
+    \item Packet 1 $\rightarrow$ Path A
+    \item Packet 2 $\rightarrow$ Path B
+    \item Packet 3 $\rightarrow$ Path C
+    \item Packet 4 $\rightarrow$ Path D
+\end{itemize}
+The intuition of Packet Spraying: By spreading packets at the \emph{finest granularity}, all network links are used more evenly, and congestion is less likely to form.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Great load distribution}}. No path stays idle while another is overloaded. Utilizes all network capacity.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Simple logic}}. Doesn't need complex flow classification or scheduling. Just a round-robin or randomized assignment of packets.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Fast reaction}}. Even short flows (mice) benefit, because their few packets can be split across paths immediately.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{TCP reordering problem}}. TCP expects packets of a flow to arrive \textbf{in order}. With packet spraying, packets take different paths $\rightarrow$ different latencies $\rightarrow$ \hl{arrive out of order}. TCP interprets out-of-order packets as \textbf{loss} $\rightarrow$ triggers retransmissions, reduces congestion window, lowers throughput.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Hardware complexity}}. Switches need per-packet decisions at line rate, which can be expensive.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Not suitable for elephants}}. Large flows generate so many packets that reordering overhead becomes very high.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Reordering Issue (and why Packet Spraying is absolutely avoided in production)}}
+\end{flushleft}
+Let's say \emph{flow F} has 3 packets:
+\begin{itemize}
+    \item P1 goes on Path 1 (latency 5 ms).
+    \item P2 goes on Path 2 (latency 8 ms).
+    \item P3 goes on Path 3 (latency 6 ms).
+\end{itemize}
+They arrive at the receiver as: P1 $\rightarrow$ P3 $\rightarrow$ P2. This out-of-order process produces the following errors:
+\begin{itemize}
+    \item TCP sees missing sequence numbers (it expected P2 after P1).
+    \item Receiver sends \textbf{duplicate ACKs} (saying ``I didn't get P2'').
+    \item Sender wrongly assumes \textbf{congestion/loss} $\rightarrow$ retransmits and slows down.
+\end{itemize}
+As a result, throughput drops and latency increases. CPU is wasted on useless retransmissions. That's why it is \textbf{not used in production} as a general solution.

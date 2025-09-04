@@ -16,6 +16,7 @@
 - add `Datacenter Layer 3 Load Balancing`
   - add `Recap: Datacenters`
   - add `Introduction`
+  - add `Packet Spraying`
 
 --------------------
 

@@ -17,6 +17,7 @@
   - add `Recap: Datacenters`
   - add `Introduction`
   - add `Packet Spraying`
+  - add `Equal Cost Multi Path (ECMP)`
 
 --------------------
 

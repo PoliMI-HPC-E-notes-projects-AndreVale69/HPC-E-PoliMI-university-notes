@@ -21,6 +21,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `Introduction`
   - add `FEM for Poisson 1D`
     - add `What is the Poisson Equation?`
+    - add `Problem definition`
 
 --------------------
 

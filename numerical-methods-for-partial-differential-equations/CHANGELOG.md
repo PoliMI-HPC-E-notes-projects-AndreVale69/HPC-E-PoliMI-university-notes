@@ -23,6 +23,7 @@ Each version follows the Conventional Commits structure. For more information on
     - add `What is the Poisson Equation?`
     - add `Problem definition`
     - add `Weak formulation`
+    - add `Galerkin formulation`
 
 --------------------
 

@@ -32,7 +32,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=154207" target="_blank">Silvano Cristina</a></td>
         <td><ul>
             <li><a href="advanced-computer-architectures">Course Details</a></li>
-            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v0.15.0</a></li>
+            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.0.0</a></li>
             <li><a href="advanced-computer-architectures/notes/formulary.pdf">Formulary</a></li>
         </ul></td>
     </tr>

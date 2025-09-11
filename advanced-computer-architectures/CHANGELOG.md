@@ -34,6 +34,7 @@
   - add `Small-scale multicores`
   - add `Distributed Shared Memory`
   - add `Distributed-memory clusters`
+  - add `Communication/Programming Models`
 
 --------------------
 

@@ -24,6 +24,8 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Problem definition`
     - add `Weak formulation`
     - add `Galerkin formulation`
+    - add `Finite Element formulation`
+      - add `Constructing the finite-element space V_h`
 
 --------------------
 

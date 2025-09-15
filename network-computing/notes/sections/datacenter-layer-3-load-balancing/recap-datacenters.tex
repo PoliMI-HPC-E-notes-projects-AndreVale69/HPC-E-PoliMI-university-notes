@@ -1,0 +1,52 @@
+\section{Datacenter Layer 3 Load Balancing}
+
+\subsection{Recap: Datacenters}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Characteristics of Workloads}}
+\end{flushleft}
+Datacenters support very \textbf{different types of applications}, which shape the way networks are designed.
+\begin{itemize}
+    \item \textbf{HPC (High-Performance Computing)}. Focus on scientific simulations, weather modeling, genome analysis. Workloads: large parallel computations. Require \textbf{low latency} and \textbf{high throughput} for inter-node communication.
+    \item \textbf{Web services}. Think Google Search, Facebook, Instagram. Many short-lived requests/responses. Traffic is bursty, dominated by \textbf{small ``mice flows''}. Latency-sensitive: users notice if it's slow.
+    \item \textbf{Machine Learning (ML)}. Training large models across GPUs/TPUs. Requires frequent \textbf{synchronization} (gradient updates). Workloads dominated by \textbf{large ``elephant flows''} (bulk transfers). Need predictable, low tail latency (slowest worker delays the whole training).
+    \item \textbf{Big Data (MapReduce, Spark, etc.)}. Shuffle phase $=$ massive all-to-all data exchange. Demands \textbf{high aggregate bandwidth}. Workloads are throughput-oriented, but also sensitive to stragglers.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Traffic Variability}}
+\end{flushleft}
+Datacenter traffic is not uniform. It's a \textbf{mixture of short and long flows}, and this mix complicates network design.
+\begin{itemize}
+    \item \textbf{Short flows (mice)}. Few KBs to MBs, bursty, latency-sensitive. For example: a web request, RPC, or cache lookup. Critical: the user's experience depends on their fast completion.
+    \item \textbf{Long flows (elephants)}. Hundreds of MBs to GBs, throughput-\break oriented. For example: dataset shuffling, ML gradient exchange, backups. Can easily congest network links if not managed carefully.
+    \item \textbf{Traffic patterns}
+    \begin{itemize}
+        \item \textbf{Shuffle traffic}: many-to-many, typical in MapReduce or Spark.
+        \item \textbf{Gradient aggregation}: many-to-one or all-to-all, in ML training.
+        \item \textbf{Incast}: one client requests data from many servers at once $\rightarrow$ bursts that overwhelm buffers.
+    \end{itemize}
+\end{itemize}
+Networks must serve both mice and elephants efficiently. Prioritizing one can hurt the other.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{Goal: High Bisection Bandwidth}}
+\end{flushleft}
+Split the network into two equal halves; the \textbf{bisection bandwidth} is the total capacity of the links connecting them. Instead, \textbf{full-bisection bandwidth} means that every server can communicate with every other at full NIC speed, without bottlenecks.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why it matters?}}
+\begin{itemize}
+    \item HPC: ensures all nodes in a parallel job can exchange data efficiently.
+    \item Web services: prevents hotspots\footnote{%
+        A \definition{Hotspot} in a datacenter network is a \textbf{point of congestion}, usually a specific link or switch that gets overloaded with too much traffic, while other parts of the network remain underutilized.
+    } when thousands of requests are routed.
+    \item ML/Big Data: allows large-scale shuffles without stragglers.
+\end{itemize}
+The main \textbf{challenge} is achieving full bisection bandwidth at low cost, but it requires special topologies (Fat-Tree, Clos, Jellyfish).
+
+\highspace
+In conclusion, datacenters run a \textbf{mix of workloads} (HPC, web, ML big data), which produce \textbf{variable traffic patterns} (mice vs. elephant flows, shuffle, gradient aggregation). The \textbf{main networking goal} is to deliver \textbf{high bisection bandwidth} so any-to-any communication can happen efficiently.

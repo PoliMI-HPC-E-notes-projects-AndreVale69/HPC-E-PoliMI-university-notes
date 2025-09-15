@@ -1,0 +1,206 @@
+\subsection{Equal Cost Multi Path (ECMP)}\label{subsection: Equal Cost Multi Path (ECMP)}
+
+In datacenter networks (e.g., Fat-Tree/Clos topologies), there are \textbf{multiple equal-cost paths} between a source and a destination. Traditional IP routing normally picks \textbf{one path}, which wastes capacity. \definition{Equal Cost Multi-Path (ECMP)} is the standard mechanism that allows a router/switch to use \textbf{all equal-cost paths}.
+
+\highspace
+Main characteristics:
+\begin{itemize}
+    \item \textbf{Per-flow load balancing}: ECMP does not spray packets individually (like packet spraying). Instead, it \hl{ensures} that \textbf{all packets of the same flow follow the same path} and this avoids TCP reordering.
+    \item \textbf{Hashing}: Switches compute a hash of packet header fields (usually 5-tuple: source IP, destination IP, source port, destination port, protocol). The hash value is mapped to one of the available next-hop paths. All packets of the same flow produce the same hash $\rightarrow$ go on the same path.
+\end{itemize}
+In summary, ECMP is a Layer 3 load balancing technique where each flow is assigned to one of the available equal-cost paths using a hash function on packet headers, ensuring packets stay in order and TCP remains happy.
+
+\begin{examplebox}
+    Say there are 4 equal-cost paths. A hash function outputs values 0-3.
+    \begin{itemize}
+        \item Flow A (src, dst, IP and port) hashes to 0 $\rightarrow$ path 1.
+        \item Flow B hashes to 2 $\rightarrow$ path 3.
+        \item Flow C hashes to 2 $\rightarrow$ also path 3.
+        \item Flow D hashes to 1 $\rightarrow$ path 2.
+    \end{itemize}
+    Each flow is consistently mapped to one path. Packets stay in order.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon[regular]{thumbs-down} \textbf{Hash Collisions and Inefficiency}}
+\end{flushleft}
+In ECMP, the hash function maps each flow to one of the available paths. If two or more \textbf{large elephant flows} hash to the same path, that path becomes congested and other paths may stay underutilized. This is called a \definition{Hash Collision}. Collisions are harmless for tiny mice flows, but disastrous when multiple elephants collide.
+
+\newpage
+
+\noindent
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why Collisions Matter.}} \textbf{Elephant flows dominate traffic volume}. Even if 90\% of flows are small, the few elephants carry most of the bytes. If elephants collide on the same link, throughput is reduced and latency spikes for other flows sharing that links. It creates \textbf{hotspots} while parallel links sit idle.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Inefficiency.}} Hashing spreads flows \emph{randomly}, not \emph{evenly}. With $k$ paths, the load per path can vary widely, especially when:
+\begin{itemize}
+    \item The number of elephant flows is small.
+    \item A few unlucky hashes cluster them together.
+\end{itemize}
+So the network's \textbf{theoretical capacity} is high, but \textbf{effective throughput} is lower due to imbalance.
+
+\begin{examplebox}[: Hash Collisions and Inefficiency]
+    Imagine 4 equal-cost paths and 3 elephant flows.
+    \begin{itemize}
+        \item Flow A $\rightarrow$ hashes to path 1.
+        \item Flow B $\rightarrow$ hashes to path 1.
+        \item Flow C $\rightarrow$ hashes to path 3.
+    \end{itemize}
+    Path usage:
+    \begin{itemize}
+        \item Path 1: 2 elephants (overloaded).
+        \item Path 2: empty.
+        \item Path 3: 1 elephant.
+        \item Path 4: empty.
+    \end{itemize}
+    Outcome:
+    \begin{itemize}
+        \item Path 1 congests $\rightarrow$ throughput limited.
+        \item 50\% of available network capacity wasted (paths 2 and 4 unused).
+    \end{itemize}
+\end{examplebox}
+
+\noindent
+ECMP's reliance on static hashing leads to \textbf{hash collisions}, where multiple large flows land on the same path. This causes \textbf{inefficient bandwidth utilization} and \textbf{network hotspots}, even though other paths are free.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{radiation-alt} \textbf{There are two problems that ECMP still cannot resolve}}
+\end{flushleft}
+Incast and rack skew are two problems that ECMP alone cannot solve. This is one of the reasons that pushes researchers to find a better solution.
+\begin{itemize}
+    \item \label{def: Bursty Traffic - Incast} \definition{Bursty Traffic (Incast)}. Incast happens when \textbf{one receiver asks for data from many servers at the same time}. For example, a storage node requests blocks from 50 servers; all 50 servers respond \textbf{at once} and their packets all converge on the \textbf{same final link} to the receiver.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Why ECMP doesn't help.}} ECMP can spread traffic across multiple \emph{upstream} paths. But the \textbf{last hop into the receiver} is always the same physical link. That link suddenly gets a burst of packets from 50 sources.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The consequence.}} The buffer at that last-hop switch \textbf{overflows}. Packets are dropped, so TCP retransmits. Latency increases dramatically.
+
+    \highspace
+    So even if ECMP spreads flows earlier in the path, it \hl{\textbf{cannot prevent congestion at the final bottleneck}} in incast scenarios.
+
+
+    \item \definition{Flow Skew Across Racks}. Skew means imbalance. Some racks \textbf{generate much more traffic} than others, depending on what services run there.
+    
+    For example:
+    \begin{itemize}
+        \item Rack A: runs a database cluster $\rightarrow$ produces many \textbf{elephant flows}.
+        \item Rack B: runs lightweight web servers $\rightarrow$ produces mostly \textbf{mice flows}.
+    \end{itemize}
+    ECMP hashes flows randomly, but Rack A already has more elephants, so its outgoing paths are \textbf{more likely to get congested}; Rack B's paths stay underutilized.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Why this is a problem.}} ECMP doesn't adapt to traffic intensity differences between racks. It treats all flows equally, ignoring that some racks are ``heavy hitters''. So \hl{persistent \textbf{hotspots near busy racks}} and wasted capacity elsewhere.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{industry} \textbf{ECMP in Production and Its Limitations}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why ECMP Was Adopted.}} There are three main reasons:
+    \begin{itemize}
+        \item \textbf{Industry standard}: ECMP is built into traditional routing protocols (OSPF, IS-IS, BGP).
+        \item \textbf{Easy to deploy}: No special hardware or centralized controller\break needed.
+        \item \textbf{Good enough for mice flows}: in web workloads (many small flows), ECMP spreads traffic fairly evenly. Avoids TCP reordering (a major plus over packet spraying).
+    \end{itemize}
+
+
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Observed Problems in Production.}} But at hyperscale (tens or hundreds of thousands of servers), \textbf{ECMP inefficiencies become visible}:
+    \begin{itemize}
+        \item \textbf{Static \& oblivious to congestion}. ECMP only looks at header hashes, not at link utilization. A congested link may still attract new elephant flows while other links remain idle.
+        \item \textbf{Flow collisions}. In large topologies, even with thousands of equal-cost paths, collisions between elephants are common. A few unlucky hashes waste a lot of bisection bandwidth.
+        \item \textbf{Wasted capacity}. Studies (e.g., on fat-tree topologies with $\approx 27$k hosts) showed ECMP could waste \textbf{over 60\% of available bisection bandwidth} on average due to imbalance.
+        \item \textbf{Long-lived collisions}. Once a flow is hashed to a path, it stays there. If that assignment is bad, the flow suffers for its entire lifetime.
+    \end{itemize}
+\end{itemize}
+ECMP became the \textbf{default production solution} because it's simple, distributed, and TCP-friendly. But at datacenter scale, its \textbf{static, hash-based nature} makes it inefficient, prompting research into \textbf{smarter, traffic-aware load balancers} like Hedera (SDN-based, page \pageref{subsection: Hedera - Dynamic Flow Scheduling}) and HULA (P4-based, page \pageref{subsection: HULA - Load Balancing in P4}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Simplicity}}. Uses a straightforward hashing mechanism. No central controller or complex scheduling needed. Easy to implement in commodity switches.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Avoids packet reordering}}. All packets of the same flow follow the same path. TCP sees packets in order, so it doesn't mistakenly trigger retransmissions.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Good for many short flows (mice)}}. With millions of short, random flows, the hashing tends to spread them fairly well. This makes ECMP very effective in web-service workloads where flows are small and numerous.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Scalability}}. ECMP is distributed: each switch does hashing locally. No centralized bottleneck, works across large-scale datacenters.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Widely supported}}. ECMP is built into IP routing standards\break (OSPF, IS-IS, BGP). Already deployed in real datacenters today.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Hash collisions}}. Two or more elephant flows (large flows) may hash to the same path. Result: some links get congested while others are idle $\rightarrow$ creates hotspots.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{No congestion awareness}}. ECMP assigns paths purely based on hash, not on current load. If one link is already overloaded, ECMP doesn't know $\rightarrow$ it may keep adding new flows there.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Unfairness}}. Mice flows are fine, but a single elephant can dominate a link if unlucky with its hash. Other elephants hashed to that path suffer, while bandwidth on other links is wasted.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Static behavior}}. Once a flow is mapped, it stays on that path until it finishes. ECMP doesn't migrate flows if conditions change.
+    \end{itemize}
+\end{itemize}
+ECMP is simple, scalable, and TCP-friendly, which is why it's the default in datacenters. But it's also \textbf{static and oblivious to congestion}, so it can lead to \textbf{hotspots} when elephant flows collide.
+
+\begin{deepeningbox}[: How ECMP Uses Hashing to Pick a Path]
+    Three steps:
+    \begin{enumerate}
+        \item \important{Multiple Equal-Cost Paths Exist}. Imagine a datacenter topology (like a Fat-Tree). From server \textbf{S1} to server \textbf{S2}, the routing protocol (e.g., OSPF, IS-IS) discovers that there are \textbf{$k$ different next-hop paths} that all have the \textbf{same cost}. For example, 4 paths, so the next-hops are \texttt{\{N1, N2, N3, N4\}}. The routing table on the switch stores:
+        \begin{equation*}
+            \text{Destination S2} \rightarrow \text{Next-hops: N1, N2, N3, N4 (all cost 10)}
+        \end{equation*}
+        So, the switch knows it \emph{can choose} any of them.
+
+
+        \item \important{Switch Computes a Hash of the Flow}. When a new packet arrives, the switch looks at the \textbf{flow identifier} (usually 5-tuple: source IP, destination IP, source port, destination port, protocol). It computes a \textbf{hash function}, for example:
+        \begin{lstlisting}
+hash = H(srcIP, dstIP, srcPort, dstPort, proto)\end{lstlisting}
+        This gives an integer value.
+
+
+        \item \important{Map the Hash to a Next-Hop}. Now comes the key: the switch takes the hash value \textbf{modulo the number of available next-hops ($k$)}:
+        \begin{lstlisting}
+path_index = hash % k\end{lstlisting}
+        \begin{itemize}
+            \item If \texttt{path\_index = 0} $\rightarrow$ send packet to N1.
+            \item If \texttt{path\_index = 1} $\rightarrow$ send packet to N2.
+            \item If \texttt{path\_index = 2} $\rightarrow$ send packet to N3.
+            \item If \texttt{path\_index = 3} $\rightarrow$ send packet to N4.
+        \end{itemize}
+        All packets of the same flow have same 5-tuple, then same hash and same path. Instead, different flows have different hashes and likely different paths.
+    \end{enumerate}
+    
+    \newpage
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why This Works}}
+    \end{flushleft}
+    The \textbf{paths themselves aren't ``hashable''}. Instead, the switch maintains a \emph{list of possible next-hops} for the destination. The hash selects an \textbf{index} into that list. This is why the hash needs to be ``uniform'' $\rightarrow$ to spread flows across all next-hops evenly.
+
+    In other words, ECMP doesn't hash the paths themselves. It hashes the \textbf{flow's header fields} and then uses the hash result to pick an \textbf{index} from the list of equal-cost paths in the routing table.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why ECMP Uses Modulo on the Hash Value}}
+    \end{flushleft}
+    We want to assign each flow to \textbf{one of the available next-hops}. Suppose there are $k$ equal-cost paths (say 4). The switch needs a simple way to map the \textbf{huge range of hash outputs} (e.g., 32-bit integer) down to just 4 choices.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Problem.}} Hash functions produce large numbers (e.g., $0 \dots 2^{32-1}$). But the switch only has a small number of next-hops ($k$ paths). We need a consistent, deterministic way to map ``large space $\xrightarrow{to}$ small space''.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The Solution: Modulo.}} Compute:
+    \begin{lstlisting}
+path_index = hash(flow_id) % k\end{lstlisting}
+    The result is guaranteed to be in the range $0 \dots k-1$. That matches exactly the \textbf{indices of the next-hop list}. For example, with 4 paths:
+    \begin{lstlisting}[mathescape=true]
+hash(flow A) = 57 $\rightarrow$ 57 % 4 = 1 $\rightarrow$ path 2
+hash(flow B) = 134 $\rightarrow$ 134 % 4 = 2 $\rightarrow$ path 3
+hash(flow C) = 29 $\rightarrow$ 29 % 4 = 1 $\rightarrow$ path 2        
+    \end{lstlisting}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Modulo Works Well.}} There are three main reasons:
+    \begin{enumerate}
+        \item \textbf{Uniformity}: If the hash function is good, the outputs are ``random-looking'', so modulo spreads flows fairly evenly across paths.
+        \item \textbf{Deterministic}: Same flow always hashes to the same path.
+        \item \textbf{Simple in hardware}: Modulo is fast and easy for switches to implement.
+    \end{enumerate}
+    Modulo is used because it \textbf{compresses the large hash space into exactly the number of available paths}. That way, every flow gets assigned to one valid next-hop index.
+\end{deepeningbox}

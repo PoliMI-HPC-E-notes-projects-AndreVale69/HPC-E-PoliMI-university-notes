@@ -63,7 +63,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=717400" target="_blank">Botti Michele</a></td>
         <td><ul>
             <li><a href="calcolo-numerico">Course Details</a></li>
-            <li><a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF v1.1.0</a></li>
+            <li><a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF v1.2.0</a></li>
         </ul></td>
     </tr>
     <tr>

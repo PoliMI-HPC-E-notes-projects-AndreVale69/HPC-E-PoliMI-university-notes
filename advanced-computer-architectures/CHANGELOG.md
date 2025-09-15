@@ -35,6 +35,7 @@
   - add `Distributed Shared Memory`
   - add `Distributed-memory clusters`
   - add `Communication/Programming Models`
+  - add `Why caches matter`
 
 --------------------
 

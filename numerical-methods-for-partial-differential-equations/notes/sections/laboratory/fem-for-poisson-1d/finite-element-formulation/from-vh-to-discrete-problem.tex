@@ -1,0 +1,171 @@
+\paragraph[From V\texorpdfstring{$_h$}{\_h} to the Discrete Problem]{From $V_{h}$ to the Discrete Problem}
+
+We want:
+\begin{equation*}
+    a(u_h, v_h) = F(v_h) \quad \forall v_h \in V_h
+\end{equation*}
+With:
+\begin{itemize}
+    \item $a(u,v) = \displaystyle\int_{0}^{1} \mu(x) \cdot u'(x) \cdot v'(x)\, \mathrm{d}x$
+    \item $F(v) = \displaystyle\int_{0}^{1} f(x) \cdot v(x)\, \mathrm{d}x$
+\end{itemize}
+Pick a basis $\{\varphi_j\}_{j=1}^{N_h}$ of $V_h$. Write the unknown as:
+\begin{equation}
+    u_h(x) = \sum_{j=1}^{N_h} U_j \, \varphi_j(x)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $U_j$ are the unknown coefficients (nodal values in the Lagrangian case).
+    \item $\varphi_j$ are the known basis functions (hat functions for $r=1$).
+\end{itemize}
+
+\highspace
+Now, we \textbf{plug into the weak form}. Take $v_h = \varphi_i$, one basis function. Then:
+\begin{equation*}
+    a(u_h, \varphi_i) = F(\varphi_i)
+\end{equation*}
+Now compute the left-hand side:
+\begin{equation*}
+    a(u_h, \varphi_i) = \int_0^1 \mu(x) \cdot \left(\sum_{j=1}^{N_h} U_j \cdot \varphi_j'(x)\right) \cdot \varphi_i'(x)\, \mathrm{d}x
+\end{equation*}
+Since the integral is linear:
+\begin{equation*}
+    a(u_h, \varphi_i) = \sum_{j=1}^{N_h} U_j \cdot \int_0^1 \mu(x) \cdot \varphi_j'(x) \cdot \varphi_i'(x)\, \mathrm{d}x
+\end{equation*}
+We now \textbf{define}:
+\begin{equation}
+    A_{ij} = \int_0^1 \mu(x) \cdot \varphi_j'(x) \cdot \varphi_i'(x)\, \mathrm{d}x
+\end{equation}
+\begin{equation}
+    f_i = \int_0^1 f(x) \cdot \varphi_i(x)\, \mathrm{d}x
+\end{equation}
+So the weak form equation becomes:
+\begin{equation}
+    \sum_{j=1}^{N_h} A_{ij} \cdot U_j = f_i, \quad i=1,\dots,N_h
+\end{equation}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Matrix form}}
+\end{flushleft}
+That's exactly the linear system:
+\begin{equation}
+    A U = f
+\end{equation}
+Where:
+\begin{itemize}
+    \item $A = \left(A_{ij}\right)$ is the \definition{Stiffness Matrix}.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the Stiffness Matrix?}} In the finite element method, when we discretize a PDE like the Poisson problem, the weak form introduces integrals of derivatives of the basis functions. These integrals become the \textbf{entries of the stiffness matrix} (see above):
+    \begin{equation*}
+        A_{ij} = \displaystyle\int_{\Omega} \mu(x) \cdot \nabla \varphi_j(x) \cdot \nabla \varphi_i(x)\, \mathrm{d}x
+    \end{equation*}
+    Where $A$ is called the \definition{Stiffness Matrix}. It is \textbf{symmetric positive definite (SPD)} if the bilinear form is symmetric and coercive. Its size is $N_h \times N_h$, where $N_h$ is the number of degrees of freedom (basis functions).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called stiffness?}} The name comes from \textbf{structural mechanics}. Originally, FEM was used to model elastic bars, beams, membranes. The relation ``$\text{force} = \text{stiffness} \times \text{displacement}$'' in elasticity correspond to the matrix equation:
+    \begin{equation*}
+        K u = f
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $u$ are displacement at nodes;
+        \item $f$ are nodal forces;
+        \item $K$ is the stiffness matrix, encoding how ``resistant'' (stiff) the structure is to deformation.
+    \end{itemize}
+    Even though we now use FEM for general PDEs, the name stuck.
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Composition of the Stiffness Matrix}}
+    \begin{itemize}
+        \item \textbf{Diagonal entries} $A_{ii}$: measure how strongly a degree of freedom (a node) resists deformation, i.e. the ``self-stiffness''.
+        \item \textbf{Off-diagonal entries} $A_{ij}$: measure the coupling between neighboring basis functions (nodes). If two nodes share an element, the integral is nonzero; otherwise, it's zero.
+    \end{itemize}
+    Thus, the stiffness matrix is:
+    \begin{itemize}
+        \item \textbf{Sparse}: only nearby nodes interact.
+        \item \textbf{Structured}: for 1D linear elements, it is \textbf{tridiagonal}.
+        \item \textbf{Conditioning}: its conditions number grows like $h^{-2}$ (with mesh size $h$).
+    \end{itemize}
+
+    \newpage
+
+    \textcolor{Green3}{\faIcon{book} \textbf{Key properties (why it's nice computationally)}}
+    \begin{itemize}
+        \item \textbf{Symmetric}: $A_{ij} = A_{ji}$
+        \item \textbf{Positive definite} (for $\mu>0$): $U^{T} A U>0$ for all nonzero vectors $U$.
+        \item \textbf{Sparse/Local}: $\varphi_{i}$ overlaps only with a few neighbors, so only a few nonzeros per row.
+        \item \textbf{Conditioning} scales with mesh size (roughly $\kappa\left(A\right) \sim h^{-2}$ in 1D), motivating preconditioners.
+    \end{itemize}
+    In summary, the stiffness matrix shows how the domain resists changes.
+
+
+    \item $U = \left(U_1,\dots,U_{N_h}\right)^{T}$ are the \important{unknown nodal values}.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How $U$ is defined.}} We write the approximate solution in the finite element space $V_h$:
+    \begin{equation*}
+        u_h(x) = \displaystyle\sum_{j=1}^{N_h} U_j \cdot \varphi_j(x)
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $\left\{\varphi_j\right\}_{j=1}^{N_h}$ are the basis functions of $V_h$.
+        \item $U_j$ are scalars: \textbf{degrees of freedom (DoFs)}.
+    \end{itemize}
+    Thus, $U = \left(U_1, U_2, \dots, U_{N_h}\right)^T$.
+
+    \textcolor{Green3}{\faIcon{book} \textbf{Nodal values.}} Because we chose the \textbf{Lagrangian (nodal) basis}, each $\varphi_{j}$ has the property:
+    \begin{equation*}
+        \varphi_j(x_i) = \delta_{ij}
+    \end{equation*}
+    That means:
+    \begin{equation*}
+        U_j = u_h(x_j)
+    \end{equation*}
+    i.e. the unknown coefficients \textbf{are literally the approximate solution at the mesh nodes} (internal nodes only, since boundary ones are fixed to zero).
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Physical interpretation}}
+    \begin{itemize}
+        \item In \textbf{structural mechanics}: $U$ are nodal \textbf{displacements}.
+        \item In \textbf{heat problems}: $U$ are nodal \textbf{temperatures}.
+        \item In \textbf{Poisson problems} (our lab): $U$ are just nodal \textbf{values of the solution}.
+    \end{itemize}
+    In other words, solving $AU=f$ gives us the ``best'' nodal approximation of the exact PDE solution.
+
+
+    \item $f = \left(f_1,\dots,f_{N_h}\right)^{T}$ is the \important{load vector}.
+
+    \textcolor{Green3}{\faIcon{book} \textbf{Definition of the load vector.}} For each basis function $\varphi_i$, the load vector entry is:
+    \begin{equation*}
+        f_i = F\left(\varphi_i\right) = \displaystyle\int_\Omega f(x) \cdot \varphi_i(x)\,\mathrm{d}x
+    \end{equation*}
+    So the \textbf{load vector} $f$ collects the effect of the forcing term $f(x)$ applied to the PDE, projected onto the finite element basis.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it appears.}} The weak formulation was:
+    \begin{equation*}
+        a(u_h, v_h) = F(v_h), \quad \forall v_h \in V_h
+    \end{equation*}
+    With:
+    \begin{equation*}
+        F(v_h) = \int_\Omega f(x)\,v_h(x)\,dx
+    \end{equation*}
+    When we take $v_h = \varphi_i$, we get exactly $f_i$. Thus, the right-hand side of the system $AU=f$ is the vector with entries $f_i$.
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Physical meaning}}
+    \begin{itemize}
+        \item In mechanics: $f$ represents \textbf{external forces} applied at the nodes.
+        \item In heat transfer: $f$ represents \textbf{heat sources} distributed in the domain.
+        \item In general PDEs: it's how the \textbf{forcing term} $f(x)$ excites the system.
+    \end{itemize}
+    So just like $A$ encodes ``resistance'', $f$ encodes ``applied load''.
+
+    \textcolor{Green3}{\faIcon{book} \textbf{Local-to-global composition.}} Just like the stiffness matrix, the load vector is built \textbf{element by element}:
+    \begin{itemize}
+        \item On each element $K$, compute
+        \begin{equation*}
+            f^{(K)}_\alpha = \int_K f(x) \cdot N_\alpha(x) \, \mathrm{d}x
+        \end{equation*}
+        Where $N_{\alpha}$ are local shape functions.
+        \item Then assemble into the global vector $f$.
+    \end{itemize}
+    In summary, the load vector $f$ is the FEM representation of the source term $f(x)$. Each entry $f_{i}$ measures how much the source excites the basis function $\varphi_{i}$. Physically, it is the ``external input'' applied to the system.
+\end{itemize}
+Now we have a \textbf{discrete, well-posed algebraic system}. This is exactly what FEM libraries (like \texttt{deal.II}) are built to assemble and solve. The next step is coding.

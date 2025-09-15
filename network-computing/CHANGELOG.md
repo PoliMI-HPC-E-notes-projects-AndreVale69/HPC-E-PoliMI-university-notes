@@ -19,6 +19,7 @@
   - add `Packet Spraying`
   - add `Equal Cost Multi Path (ECMP)`
   - add `Hedera: Dynamic Flow Scheduling`
+  - add `HULA: Load Balancing in P4`
 
 --------------------
 

@@ -29,6 +29,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `From V_h to the Discrete Problem`
     - add `Implementation in deal.II`
       - add `Install & Setup`
+      - add `Program Structure`
 
 --------------------
 

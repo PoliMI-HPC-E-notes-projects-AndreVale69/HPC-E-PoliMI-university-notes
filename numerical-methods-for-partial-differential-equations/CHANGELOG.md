@@ -27,6 +27,8 @@ Each version follows the Conventional Commits structure. For more information on
     - add `Finite Element formulation`
       - add `Constructing the finite-element space V_h`
       - add `From V_h to the Discrete Problem`
+    - add `Implementation in deal.II`
+      - add `Install & Setup`
 
 --------------------
 

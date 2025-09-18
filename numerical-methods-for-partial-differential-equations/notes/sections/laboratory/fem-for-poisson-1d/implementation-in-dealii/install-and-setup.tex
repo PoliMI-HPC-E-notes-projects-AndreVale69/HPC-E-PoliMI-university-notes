@@ -1,0 +1,147 @@
+\subsubsection{Implementation in \texttt{deal.II}}
+
+\paragraph{Install \& Setup}
+
+At the Politecnico di Milano, professors suggest installing \texttt{mk}, a project that provides environment modules for scientific computing libraries and packages with portable x86-64 Linux libraries. Developed at the MOX Center at the Politecnico di Milano, it is based on \href{https://lmod.readthedocs.io/en/latest/index.html}{\texttt{Lmod}}, a tool for managing user environments dynamically. To install it, we can simply follow the instructions in the \href{https://github.com/pcafrica/mk}{README on GitHub}.
+
+\highspace
+There are other common ways to install \texttt{deal.II}. Follow this guide to install \texttt{deal.II} (either natively or via Docker, etc.):
+\begin{center}
+    \href{https://github.com/dealii/dealii/wiki/Getting-deal.II}{Getting \texttt{deal.II}} \vspace{2em}
+    \qrcode{https://github.com/dealii/dealii/wiki/Getting-deal.II}
+\end{center}
+
+\highspace
+Now we move to the project skeleton. We assume a structure of this type:
+\begin{lstlisting}
+lab01/
+  CMakeLists.txt
+  src/
+    main.cpp\end{lstlisting}
+The \texttt{CMakeLists.txt} file:
+\begin{lstlisting}[mathescape=false]
+# Minimum CMake version required.
+cmake_minimum_required(VERSION 3.12)
+# Project name and language.
+project(01_poisson_1d LANGUAGES CXX)
+
+# Set C++ standard to C++11.
+set(CMAKE_CXX_STANDARD 11)
+# Require C++11 standard.
+set(CMAKE_CXX_STANDARD_REQUIRED "ON")
+
+# Set default build type to Release.
+if(NOT CMAKE_BUILD_TYPE OR "${CMAKE_BUILD_TYPE}" STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
+message(STATUS)
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_definitions(-DBUILD_TYPE_DEBUG)
+endif()
+
+# Locate MPI compiler.
+find_package(MPI REQUIRED)
+set(CMAKE_CXX_COMPILER "${MPI_CXX_COMPILER}")
+
+# Locate Boost.
+find_package(Boost 1.72.0 REQUIRED
+        COMPONENTS filesystem iostreams serialization
+        HINTS ${BOOST_DIR} $ENV{BOOST_DIR} $ENV{mkBoostPrefix})
+message(STATUS "Using the Boost-${Boost_VERSION} configuration found at ${Boost_DIR}")
+message(STATUS)
+include_directories(${Boost_INCLUDE_DIRS})
+
+# Locate deal.II and initialize its variables.
+find_package(deal.II 9.3.1 REQUIRED
+        HINTS ${DEAL_II_DIR} $ENV{DEAL_II_DIR} $ENV{mkDealiiPrefix})
+deal_ii_initialize_cached_variables()
+
+# Add useful compiler flags.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfloat-conversion -Wmissing-braces -Wnon-virtual-dtor")
+
+# Add the executable and link it to deal.II.
+add_executable(lab-01 main.cpp)
+deal_ii_setup_target(lab-01)
+\end{lstlisting}
+Where:
+\begin{itemize}
+    \item Build type (Release or Debug):
+    \begin{lstlisting}
+# Set default build type to Release.
+if(NOT CMAKE_BUILD_TYPE OR "${CMAKE_BUILD_TYPE}" STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
+message(STATUS)
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_definitions(-DBUILD_TYPE_DEBUG)
+endif()\end{lstlisting}
+    Sets \textbf{default build type} to release (faster and optimized).
+
+
+    \item MPI:
+    \begin{lstlisting}
+# Locate MPI compiler.
+find_package(MPI REQUIRED)
+set(CMAKE_CXX_COMPILER "${MPI_CXX_COMPILER}")\end{lstlisting}
+    MPI (Message Passing Interface) is the standard for distributed parallelism (multiple nodes, HPC clusters). \texttt{deal.II} uses MPI for parallel FEM solvers. Even if the first lab is serial, MPI will still be useful in the future.
+
+
+    \item Boost:
+    \begin{lstlisting}
+# Locate Boost.
+find_package(Boost 1.72.0 REQUIRED
+        COMPONENTS filesystem iostreams serialization
+        HINTS ${BOOST_DIR} $ENV{BOOST_DIR} $ENV{mkBoostPrefix})
+message(STATUS "Using the Boost-${Boost_VERSION} configuration found at ${Boost_DIR}")
+message(STATUS)
+include_directories(${Boost_INCLUDE_DIRS})\end{lstlisting}
+    Boost is a large \texttt{C++} library, like a ``standard library extension''. The version $\ge1.72$ is required with the components:
+    \begin{itemize}
+        \item \texttt{filesystem}: utilities to traverse folders, read/write files.
+        \item \texttt{iostreams}: extensions for input/output streams.
+        \item \texttt{serialization}: save/load objects in binary/text formats.
+    \end{itemize}
+    It is needed because \texttt{deal.II} itself depends on Boost for many utilities.
+    
+    
+    \item \texttt{find\_package(deal.II ...)}: Locates our \texttt{deal.II} installation and imports its CMake configuration.
+    
+    
+    \item \texttt{deal\_ii\_initialize\_cached\_variables()}: Initializes compiler flags,\break include paths, etc.
+    
+
+    \item Compiler flags:
+    \begin{lstlisting}
+# Add useful compiler flags.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfloat-conversion -Wmissing-braces -Wnon-virtual-dtor")\end{lstlisting}
+    Adds extra warnings to help catch common FEM bugs:
+    \begin{itemize}
+        \item \texttt{-Wfloat-conversion}: warns when ints are silently converted to\break floats (dangerous in mesh indexing).
+        \item \texttt{-Wmissing-braces}: warns about missing braces in initializers.
+        \item \texttt{-Wnon-virtual-dtor}: warns if a base class has virtual methods but no virtual destructor (classic memory leak risk).
+    \end{itemize}
+    
+    
+    \item \texttt{add\_executable(...)}: Defines the actual program we want to compile (Lab 01 solver).
+    
+    
+    \item \texttt{deal\_ii\_setup\_target(...)}: Connects our target to \texttt{deal.II}'s libraries, so we can use all its functionality.
+\end{itemize}
+
+\begin{remarkbox}[: \texttt{CMakeLists}]
+    A \texttt{CMakeLists.txt} file is essentially the \emph{recipe} that CMake uses to configure and build our project. We can think of it as a ``build script'' written in a declarative mini-language.
+
+    \highspace
+    In the context of \texttt{deal.II} labs, the \texttt{CMakeLists.txt} file plays a central role because:
+    \begin{itemize}
+        \item It tells \textbf{CMake} the \textbf{project name} and which \textbf{languages} we are using (\texttt{C++} in our case).
+        \item It specifies the \textbf{minimum CMake version} required.
+        \item It imports the \texttt{deal.II} \textbf{library} and makes its headers and compiled code available to our project.
+        \item It defines which \textbf{source files} should be compiled into an executable.
+        \item It links our executable against \texttt{deal.II} (and possibly other libraries like \texttt{MPI} or \texttt{LAPACK} if enabled).
+    \end{itemize}
+\end{remarkbox}

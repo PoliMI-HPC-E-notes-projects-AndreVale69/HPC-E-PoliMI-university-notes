@@ -1,0 +1,122 @@
+\subsection{HULA: Load Balancing in P4}\label{subsection: HULA - Load Balancing in P4}
+
+Hedera required a \textbf{centralized controller} to monitor flows and compute paths. This created \textbf{scalability issues} (too much data, too slow to react). The HULA idea was: ``instead of centralizing everything, can the \textbf{network itself} quickly share congestion information?''.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Key Idea of HULA}}
+\end{flushleft}
+\definition{HULA}\cite{katta2016hula} proposes \textbf{summarized state propagation in the data plane}:
+\begin{itemize}
+    \item Switches exchange \textbf{lightweight summaries} of congestion information.
+    \item Each switch only needs to know the \textbf{best next hop} for a given destination \hl{based on congestion}.
+    \item This information is updated hop-by-hop, similar to a distance-vector routing protocol; but instead of distance, it propagates \textbf{available bandwidth}.
+\end{itemize}
+In other words, switches gossip about \textbf{which path currently has the most free capacity}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What ``summarized state'' means.}} Instead of reporting \textbf{every flow} (like Hedera), each switch maintains only a \textbf{simple summary}:
+\begin{itemize}
+    \item The ``best next hop'' to reach each destination.
+    \item The ``bottleneck bandwidth'' available along that path.
+\end{itemize}
+When a switch hears an update from a neighbor, it compares bottleneck values and updates its local decision.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why this works.}} No need for a central controller; state is compact, only ``best path summaries'', not per-flow details. Also, updates are fast and localized, so switches can quickly adapt to changing congestion.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Core Workflow}}
+\end{flushleft}
+HULA uses \textbf{summarized state} (best path $+$ available bandwidth) to guide forwarding.
+\begin{enumerate}
+    \item \textbf{Probing Phase}. Special ``probe'' packets are sent periodically. Each switch forwards probes toward destinations, updating them with the \textbf{minimum available bandwidth} seen along the path (the bottleneck). This way, probes carry information like: ``to reach Rack X through me, the bottleneck capacity is 8 Gbps''.
+    \item \textbf{State Propagation}. Neighboring switches receives probes and compare them with their own tables. They update their \textbf{next-hop choice} if the new probe advertises a better path (higher available bandwidth).
+    \item \textbf{Forwarding Decisions}. For normal data packets, the switch consults its \textbf{HULA table} (map destination to best next-hop). Packets are forwarded along the path with the \textbf{highest bottleneck bandwidth}.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: How this looks in practice]
+    Suppose a switch has 3 possible next hops to reach Rack X.
+    \begin{itemize}
+        \item Probe from Next-Hop A says: bottleneck $=$ 5 Gbps.
+        \item Probe from Next-Hop B says: bottleneck $=$ 9 Gbps.
+        \item Probe from Next-Hop C says: bottleneck $=$ 2 Gbps.
+    \end{itemize}
+    The switch picks \textbf{Next-Hop B} as the forwarding choice for Rack X.
+\end{examplebox}
+
+\noindent
+\textcolor{Green3}{\faIcon{\speedIcon} \textbf{Why P4 Matters.}} HULA was implemented using \textbf{P4} on programmable switches (page \pageref{subsection: Data Plane Programming and P4}). P4 allows parsing probe headers, updating state tables at line rate, and making per-packet forwarding decisions based on congestion summaries. So HULA shows the power of \textbf{programmable data planes}, the logic of a load balancer can run directly inside the switch.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{HULA vs. ECMP vs. Hedera}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{HULA vs. ECMP}
+    \begin{itemize}
+        \item \textbf{ECMP} (page \pageref{subsection: Equal Cost Multi Path (ECMP)}): per-flow hashing, static, oblivious to congestion. Works fine for mice flows, but elephants collide and waste capacity.
+        \item \textbf{HULA}: uses congestion-aware summarized state (probes). Always tries to send traffic on the \textbf{least congested path}. Adapts quickly if conditions change.
+    \end{itemize}
+    In summary, ECMP is simple but blind. In contrast, HULA is slightly more complex, yet smart and adaptive.
+    \item \important{HULA vs. Hedera}
+    \begin{itemize}
+        \item \textbf{Hedera} (page \pageref{subsection: Hedera - Dynamic Flow Scheduling}): centralized controller monitors flows, detect elephants, reschedules them. Works, but controller overhead and slow reaction make it less practical at hyperscale.
+        \item \textbf{HULA}: no central controller, switches propagate state locally via probes. Runs entirely in the data plane (thanks to P4). Much faster reaction, lightweight, scalable.
+    \end{itemize}
+    In summary, Hedera is centralized and heavyweight. In contrast, HULA is distributed and lightweight.
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l l l l @{}}
+            \toprule
+            Feature & ECMP & Hedera \cite{al2010hedera} & HULA \cite{katta2016hula} \\
+            \midrule
+            Path selection          & Hash-based (static)   & Centralized scheduling        & Distributed, congestion-aware     \\[.3em]
+            TCP friendliness        & Yes (per-flow)        & Yes (per-flow)                & Yes (per-flow)                    \\[.3em]
+            Congestion awareness    & No                    & Yes (elephants only)          & Yes (all flows, summarized state) \\[.3em]
+            Reaction speed          & Instant (but static)  & Slow (controller polling)     & Fast (in-switch updates)          \\[.3em]
+            Scalability             & High, but inefficient & Limited by controller load    & High (distributed)                \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{ECMP vs. Hedera vs. HULA.}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Scalability}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Local state only}. Each switch keeps just a small table: ``for each destination rack, what's the best next hop $+$ bottleneck bandwidth''. No need for per-flow global state like Hedera.
+    \item \textbf{Constant overhead}. Probes are periodic and lightweight. Overhead doesn't explode with number of flows, it scales to very large datacenters.
+    \item \textbf{Line-rate operation}. Implemented in P4, so congestion-aware forwarding happens directly in hardware pipelines, at full switch speed.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Multi-Tier Applicability}}
+\end{flushleft}
+Datacenter fabrics (Clos/Fat-Tree) are \textbf{multi-tiered}: edge $\rightarrow$ aggregation $\rightarrow$ spine. HULA integrates naturally because each tier just propagates summarized state (best path per destination rack), and the gossip spreads across the whole fabric, hop by hop. For example:
+\begin{itemize}
+    \item Edge switch learns from its uplinks which spine has the least congested path to a destination rack.
+    \item Aggregation switches forward probes upward, spines propagate summaries downward.
+    \item Over time, all switches converge on good next-hop decisions.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits at Scale}} \textbf{\&} \textcolor{Red2}{\faIcon{times-circle} \textbf{Limitations}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Distributed load balancing} across the entire topology, not just within one tier.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Fast reaction} to shifting elephant flows anywhere in the fabric.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Robustness}: no central bottleneck, even if a switch fails, the gossiping continues with others.
+    \item[\textcolor{Red2}{\faIcon{times}}] Probes give only \textbf{approximate congestion info} (summarized state).
+    \item[\textcolor{Red2}{\faIcon{times}}] Works well when congestion is stable or slowly changing, but very short-lived bursts may still slip through.
+    \item[\textcolor{Red2}{\faIcon{times}}] Still per-flow forwarding, so extreme incast patterns (see page \pageref{def: Bursty Traffic - Incast}) at the receiver can't be ``solved'' by HULA alone (same as ECMP/Hedera).
+\end{itemize}
+So HULA scales well to multi-tier datacenter networks because it uses \textbf{local, summarized state} and \textbf{distributed probe-based updates}. This makes it lightweight, fast, and practical for hyperscale fabrics where Hedera's centralized controller would collapse.

@@ -32,6 +32,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `Program Structure`
       - add `General Structure`
       - add `Header File`
+      - add `Setup: turning math objects into deal.II objects`
 
 --------------------
 

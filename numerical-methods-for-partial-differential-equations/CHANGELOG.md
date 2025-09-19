@@ -31,6 +31,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `Install & Setup`
       - add `Program Structure`
       - add `General Structure`
+      - add `Header File`
 
 --------------------
 

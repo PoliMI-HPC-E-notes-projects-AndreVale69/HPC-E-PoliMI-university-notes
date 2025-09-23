@@ -33,6 +33,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `General Structure`
       - add `Header File`
       - add `Setup: turning math objects into deal.II objects`
+      - add `Assemble: compute A and f`
 
 --------------------
 

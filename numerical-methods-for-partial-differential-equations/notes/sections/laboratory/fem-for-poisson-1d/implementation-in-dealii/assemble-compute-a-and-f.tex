@@ -1,0 +1,609 @@
+\paragraph[Assemble: compute \texorpdfstring{$A$}{A} and \texorpdfstring{$f$}{f}]{Assemble: compute $A$ and $f$}
+
+This is the part at the top of \code{assemble()}:
+\begin{lstlisting}[language=C++]
+// Number of local DoFs for each element.
+const unsigned int dofs_per_cell = fe->dofs_per_cell;
+
+// Number of quadrature points for each element.
+const unsigned int n_q = quadrature->size();
+
+// FEValues instance.
+// This object allows to compute basis functions, their
+// derivatives, the reference-to-current element mapping
+// and its derivatives on all quadrature points
+// of all elements.
+FEValues<dim> fe_values(
+    *fe,
+    *quadrature,
+    // Here we specify what quantities we need FEValues
+    // to compute on quadrature points.
+    // For our test, we need:
+    // - the values of shape functions
+    // - the derivative of shape functions
+    // - the position of quadrature points
+    // - the product J_c(x_q)*w_q
+    update_values |
+    update_gradients |
+    update_quadrature_points |
+    update_JxW_values
+);
+
+// Local matrix and right-hand side vector.
+// We will overwrite them for each element within the loop.
+FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
+Vector<double>     cell_rhs(dofs_per_cell);
+
+// We will use this vector to store the global indices
+// of the DoFs of the current element within the loop.
+std::vector<types::global_dof_index> dof_indices(dofs_per_cell);
+
+// Reset the global matrix and vector, just in case.
+system_matrix = 0.0;
+system_rhs    = 0.0;\end{lstlisting}
+\begin{itemize}
+    \item \important{\code{dofs\_per\_cell}}. Each element (cell) of the mesh has its own set of \emph{local} basis functions (shape functions). This number depends on:
+    \begin{itemize}
+        \item The finite element type (\code{FE\_Q<dim>(r)} $\rightarrow$ polynomial degree);
+        \item The dimension (\code{dim}).
+    \end{itemize}
+    For example, 1D linear elements ($r=1$), then 2 local DoFs per cell.
+
+
+    \item \important{\code{n\_q = quadrature->size()}}. Quadrature rule defines how many integration points we use \emph{per cell}. Needed because we approximate integrals by weighted sums at quadrature points.
+
+
+    \item \important{\code{FEValues} object}. This is the \textbf{bridge between reference element and physical cell}. It knows how to evaluate:
+    \begin{itemize}
+        \item Values of shape functions (\code{update\_values})
+        \item Gradients of shape functions (\code{update\_gradients})
+        \item Coordinates of quadrature points (\code{update\_quadrature\_points})
+        \item Jacobian $\times$ weight factors (\code{update\_JxW\_values})
+    \end{itemize}
+    Essentially, this object does all the geometric bookkeeping for us.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is \code{FEValues} needed?}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What we want to compute.}} From laboratory 1, we know the weak form turns into local contributions like (page \pageref{eq: stiffness matrix}):
+        \begin{equation*}
+            A^{(K)}_{ij} = \int_{K} \mu(x) \cdot \nabla \varphi_i(x) \cdot \nabla \varphi_j(x) \, \mathrm{d}x
+        \end{equation*}
+        And (page \pageref{eq: nodal forces}):
+        \begin{equation*}
+            f^{(K)}_{i} = \int_{K} f(x) \cdot \varphi_i(x)\, \mathrm{d}x
+        \end{equation*}
+        For each element $K$. So we need:
+        \begin{itemize}
+            \item Basis functions $\varphi_i(x)$;
+            \item Their gradients $\nabla \varphi_i(x)$;
+            \item Quadrature weights and Jacobians for mapping integrals from reference element to physical cell.
+        \end{itemize}
+
+        
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{The ``manual'' alternative.}} In principle we could:
+        \begin{enumerate}
+            \item Hard-code the formulas for each basis function;
+            \item Transform coordinates from the reference element (e.g. $[-1,1]$) to the physical element;
+            \item Compute the Jacobian determinant $J$ and its inverse transpose for gradients;
+            \item Loop over quadrature nodes, evaluating shape functions and gradients by hand.
+        \end{enumerate}
+        This is \textbf{tedious, error-prone, and messy} (especially in 2D/3D or for higher order elements).
+
+
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{What \code{FEValues} does.}} \code{FEValues} is the \textbf{automation tool}:
+        \begin{itemize}
+            \item Given:
+            \begin{itemize}
+                \item The finite element space (\code{FE\_Q}),
+                \item The quadrature rule (\code{QGauss}),
+                \item The flags (\code{update\_values | update\_gradients | ...}),
+            \end{itemize}
+            \item It precomputes, for \textbf{all quadrature points of a given cell}:
+            \begin{itemize}
+                \item $\varphi_i(x_q)$ $\rightarrow$ basis values;
+                \item $\nabla \varphi_i(x_q)$ $\rightarrow$ basis gradients, mapped to physical cell;
+                \item $x_q$ $\rightarrow$ actual coordinates of quadrature points;
+                \item $J(x_q) w_q$ $\rightarrow$ the correct measure for integration.
+            \end{itemize}
+        \end{itemize}
+        So instead of writing integrals by hand, we just write:
+        \begin{lstlisting}[language=C++]
+fe_values.shape_value(i, q)
+fe_values.shape_grad(i, q)
+fe_values.quadrature_point(q)
+fe_values.JxW(q)\end{lstlisting}
+        And it gives the correct quantity.
+    \end{itemize}
+
+
+    \item \important{Local containers (\code{cell\_matrix}, \code{cell\_rhs})}. Each cell contributes a \textbf{local stiffness matrix} and a \textbf{local load vector}. These are small (size $=$ \code{dofs\_per\_cell} $\times$ \code{dofs\_per\_cell}). We recompute them for each element, then add them into the big global system.
+    
+
+    \item \important{\code{dof\_indices} vector}. Temporary storage: maps local DoFs of the cell to global DoF indices. For example, on cell 3, local DoFs might correspond to global DoFs \code{[5, 6]}.
+    
+
+    \item \important{Reset global system}. Before assembly, set matrix and RHS to zero, so we don't accumulate leftovers from a previous call.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Element-wise assembly of local matrices and vectors into the global system}}
+\end{flushleft}
+\begin{lstlisting}[language=C++]
+for (const auto &cell : dof_handler.active_cell_iterators())
+{
+    // Reinitialize the FEValues object on current element.
+    // This precomputes all the quantities we requested when
+    // constructing FEValues (see the update_* flags above)
+    // for all quadrature nodes of the current cell.
+    fe_values.reinit(cell);
+
+    // We reset the cell matrix and vector
+    // (discarding any leftovers from previous element).
+    cell_matrix = 0.0;
+    cell_rhs    = 0.0;
+
+    for (unsigned int q = 0; q < n_q; ++q)
+    {
+        // Here we assemble the local contribution for
+        // current cell and current quadrature point,
+        // filling the local matrix and vector.
+
+        // Here we iterate over *local* DoF indices.
+        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        {
+            for (unsigned int j = 0; j < dofs_per_cell; ++j)
+            {
+                // FEValues::shape_grad(i, q) returns
+                // the gradient of the i-th basis function
+                // at the q-th quadrature node, already mapped
+                // on the physical element:
+                // we don't have to deal with the
+                // mapping, it's all hidden inside FEValues.
+                cell_matrix(i, j) += diffusion_coefficient.value(
+                    fe_values.quadrature_point(q))  // mu(x)
+                    * fe_values.shape_grad(i, q)    // (I)
+                    * fe_values.shape_grad(j, q)    // (II)
+                    * fe_values.JxW(q);             // (III)
+            }
+
+            cell_rhs(i) += forcing_term.value(
+                fe_values.quadrature_point(q)
+            ) * fe_values.shape_value(i, q) * fe_values.JxW(q);
+        }
+    }
+
+    // At this point the local matrix and
+    // vector are constructed: we need to sum them into the
+    // global matrix and vector. To this end, we need to
+    // retrieve the global indices of the DoFs of current cell.
+    cell->get_dof_indices(dof_indices);
+
+    // Then, we add the local matrix and vector into
+    // the corresponding positions of the global matrix
+    // and vector.
+    system_matrix.add(dof_indices, cell_matrix);
+    system_rhs.add(dof_indices, cell_rhs);
+}\end{lstlisting}
+\begin{itemize}
+    \item \important{\code{for (const auto \&cell : dof\_handler.active\_cell\_iterators())}} \code{dof\_handler} is the object that knows the mesh (triangulation) and the distribution of DoFs on it. \code{active\_cell\_iterators()} returns \textbf{iterators to all active cells} in the mesh.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is an \emph{active cell}?}} \code{deal.II} supports \textbf{adaptive meshes}: some cells can be refined into smaller children. The \textbf{active cells} are those that are \textbf{leaves of the refinement tree}, i.e. the cells we actually want to assemble on. If we're using a uniform mesh (like in our laboratory), then \textbf{all cells are active}. So this loop literally means: ``\emph{for each element of the mesh on which the solution is represented, do the following steps}''.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why loop over cells?}} Finite element assembly is \textbf{element-by-element}:
+    \begin{enumerate}
+        \item Compute the \emph{local} contributions (cell matrix and RHS).
+        \item Scatter them into the \emph{global} system.
+    \end{enumerate}
+    That's why we need to visit each cell in turn.
+
+
+    \item \important{\code{fe\_values.reinit(cell);}} \code{fe\_values} was created outside the loop with a finite element (\code{fe}), a quadrature rule (\code{quadrature}), and some update flags (\code{update\_values}, \code{update\_gradients}, ...). However, at that particular moment, it was not linked to any specific cell. So, calling \code{reinit(cell)} means: ``\emph{take this cell, map the reference element to its physical shape, and precompute all the quantities we asked for at quadrature points (shape values, gradients, JxW, coordinates, ...)}''.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it's necessary.}} Every cell can have different geometry (different size, position, refinement). The mapping (and therefore Jacobian, gradients, quadrature point positions) changes per cell. \code{reinit(cell)} makes sure that \code{fe\_values.shape\_grad(i,q)} or \code{fe\_values.JxW(q)} (see below) correspond to \textbf{this specific cell}.
+
+
+    \item \important{\code{cell\_matrix = 0.0; cell\_rhs = 0.0;}} These two variables are the \textbf{local contributions} for the current cell. They are small (size $=$ \code{dofs\_per\_\break cell} $\times$ \code{dofs\_per\_cell} for the matrix, and \code{dofs\_per\_cell} for the RHS). Since we are looping over all cells, we need to \textbf{clear them out} before computing the contributions for this cell. Otherwise, leftovers from the previous cell would pollute the new computations.
+    
+
+    \item \important{\code{for (unsigned int q = 0; q < n\_q; ++q) \{...\}}}. \textbf{Iterate all quadrature points on the current cell} to accumulate the cell's local matrix and RHS via numerical integration.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it exists.}} Our integrals:
+    \begin{equation*}
+        A^{(K)}_{ij} = \int_K \mu\cdot \nabla\phi_{i} \cdot \nabla\phi_j\,\mathrm{d}x, \qquad f^{(K)}_{i} = \int_K f\cdot \phi_i\,\mathrm{d}x
+    \end{equation*}
+    Are \textbf{approximated by sums} over quadratures nodes $x_{q}$:
+    \begin{equation*}
+        \begin{array}{rcl}
+            A^{(K)}_{ij} &\approx& \displaystyle\sum_{q=1}^{n_q}\mu(x_q)\cdot \nabla\phi_i(x_q) \cdot \nabla\phi_j(x_q) \cdot JxW(q) \\[.5em]
+            f^{(K)}_{i} &\approx& \displaystyle\sum_{q=1}^{n_q} f(x_q) \cdot \phi_{i}(x_{q}) \cdot JxW(q)
+        \end{array}
+    \end{equation*}
+    Here $JxW(q)$ is the mapped weight $\left|\det J_{K}\right| \cdot w_{q}$ from the reference element to the physical cell.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What are $x_q$?}} They are the \textbf{quadrature points}, i.e. the positions inside each cell where the integral is sampled. When we replace integrals with quadrature, we need both:
+    \begin{itemize}
+        \item the \textbf{weights} $w_q$ (how much each sample contributes);
+        \item the \textbf{points} $x_q$ (where to evaluate the integrand).
+    \end{itemize}
+    So $x_q$ are the specific coordinates where we evaluate the shape functions, their gradients, and the data $f(x)$, $\mu(x)$, etc.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need them?}} Look at our weak form:
+    \begin{equation*}
+        a(u,v) = \int_{\Omega} \mu(x) \cdot \nabla u(x) \cdot \nabla v(x)\,\mathrm{d}x, \qquad F(v) = \int_{\Omega} f(x) \cdot v(x)\,\mathrm{d}x
+    \end{equation*}
+    The quadrature approximation is:
+    \begin{equation*}
+        a(u,v) \;\approx\; \sum_{q=1}^{n_q} \mu(x_q) \cdot \nabla u(x_q) \cdot \nabla v(x_q) \cdot JxW(q)
+    \end{equation*}
+    \begin{equation*}
+        F(v) \;\approx\; \sum_{q=1}^{n_q} f(x_q) \cdot v(x_q) \cdot JxW(q)
+    \end{equation*}
+    Here we see explicitly: we need to know \textbf{where} to evaluate $\mu(x)$, $f(x)$, $\phi_{i}(x)$, $\nabla\phi_i(x)$. That ``where'' is exactly the quadrature point $x_q$.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Where does $JxW(q)$ come from?}} In FEM, we don't integrate directly on each physical cell $K$. We map everything back to a \textbf{reference cell} $\hat{K}$ (like $[-1,1]$ in 1D, the unit square in 2D, ...). The map $F_K : \hat{K} \to K$ has a \textbf{Jacobian matrix}:
+    \begin{equation}
+        J_{K}\left(\hat{\xi}\right) = \dfrac{\partial x}{\partial \hat{\xi}}
+    \end{equation}
+    When we change variables in an integral, the measure transforms as:
+    \begin{equation*}
+        \int_{K} g(x)\, \mathrm{d}x = \int_{\hat{K}} g\left(F_{K}\left(\hat{\xi}\right)\right) \cdot \left|\det J_{K}\left(\hat{\xi}\right)\right| \, \mathrm{d}\hat{\xi}
+    \end{equation*}
+    On the reference cell, we approximate the integral with quadrature:
+    \begin{equation*}
+        \int_{\hat{K}} g\left(F_{K}\left(\hat{\xi}\right)\right) \cdot \left|\det J_{K}\left(\hat{\xi}\right)\right| \, \mathrm{d}\hat{\xi}
+        \;\approx\;
+        \displaystyle\sum_{q=1}^{n_q} g\left(F_K\left(\hat{\xi}_q\right)\right) \cdot \left|\det J_K\left(\hat{\xi}_q\right)\right| \cdot w_{q}
+    \end{equation*}
+    Where $w_q$ are the quadrature weights on $\hat{K}$.
+
+    \code{deal.II} packages the product:
+    \begin{equation*}
+        \left|\det J_K\left(\hat{\xi}_q\right)\right| \cdot w_q
+    \end{equation*}
+    Into one quantity:
+    \begin{lstlisting}
+fe_values.JxW(q)\end{lstlisting}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why we need it.}} If we didn't multiply by $JxW(q)$:
+    \begin{itemize}
+        \item Our integral would be computed as if the cell had \textbf{unit size and shape}.
+        \item For example, in 1D, integrating over $\left[0,h\right]$ would give the same result as over $\left[0,1\right]$.
+        \item That's completely wrong: the measure (length, area, volume) of each cell must appear in the integral.
+    \end{itemize}
+    $JxW(q)$ is the \textbf{correct measure of the little piece of the cell around quadrature point} $x_{q}$.
+
+
+    \item \important{\code{for (unsigned int i = 0; i < dofs\_per\_cell; ++i) \{...\}}}. Each\break cell has \code{dofs\_per\_cell} local shape functions $\left\{\varphi_{i}\right\}$. This loop means: ``\emph{for each local basis function $\varphi_{i}$ on this element, compute its contribution}''.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it needed?}}
+    \begin{enumerate}
+        \item \textbf{For the matrix} $A^{(K)}$ we need contributions for every pair $\left(i,j\right)$. That's why inside this loop there's another nested loop over \code{j}. So we fill an entries of the local stiffness matrix.
+        \item \textbf{For the RHS} $f^{(K)}$ each equation corresponds to a test function $\varphi_{i}$. So for each \code{i}, we compute:
+        \begin{equation*}
+            f^{(K)}_{i} \approx \displaystyle\sum_q f\left(x_{q}\right) \cdot \varphi_{i}\left(x_{q}\right) \cdot JxW(q)
+        \end{equation*}
+    \end{enumerate}
+
+
+    \item \important{Fill Stiffness Matrix}
+    \begin{lstlisting}[language=C++]
+for (unsigned int j = 0; j < dofs_per_cell; ++j) {
+    cell_matrix(i, j) += diffusion_coefficient.value(
+        fe_values.quadrature_point(q))  // mu(x)
+        * fe_values.shape_grad(i, q)    // (I)
+        * fe_values.shape_grad(j, q)    // (II)
+        * fe_values.JxW(q);             // (III)
+}\end{lstlisting}
+    Inside the surrounding loops over the cell and the quadrature point $q$, that line accumulates the quadrature contribution to:
+    \begin{equation*}
+        A^{(K)}_{ij} \;\approx\; \displaystyle\sum_{q=1}^{n_{q}} \mu(x_q) \cdot \nabla\phi_{i}\left(x_{q}\right) \cdot \nabla\phi_{j}\left(x_{q}\right) \cdot JxW(q)
+    \end{equation*}
+    Which is the discrete version of:
+    \begin{equation*}
+        A^{(K)}_{ij} = \displaystyle\int_{K} \mu(x) \cdot \nabla\phi_i(x) \cdot \nabla\phi_j(x)\,\mathrm{d}x \; \text{(local form)}
+    \end{equation*}
+    Summing over all cells later gives the global entries $A_{ij}$ used in $A\, u = f$.
+
+    A few precise points about what happens here:
+    \begin{itemize}
+        \item \textbf{Role of} $j$: for a fixed $i$, we pair the test function $\phi_i$ with every trial function $\phi_j$ on the cell. That's why this loop runs over all local DoFs. The result is the full dense local matrix $\left(A^{(K)}_{ij}\right)_{i,j=0}^{\text{dofs\_per\_cell}-1}$.
+        
+        \item \textbf{What each factor supplies}:
+        \begin{itemize}
+            \item $\mu(x_q)$ is:
+            \begin{lstlisting}[language=C++]
+diffusion_coefficient.value(
+    fe_values.quadrature_point(q)
+)\end{lstlisting}
+            \item \code{fe\_values.shape\_grad(i,q)} is $\nabla\phi_i(x_q)$ in \textbf{physical} coordinates.
+            \item \code{fe\_values.shape\_grad(j,q)} is $\nabla\phi_j(x_q)$.
+            \item \code{fe\_values.JxW(q)} is the mapped weight $\left|\det J_K\left(\hat{\xi}_q\right)\right| \cdot w_q$.
+        \end{itemize}
+
+        \item \textbf{Symmetry}: since $\nabla\phi_i\cdot\nabla\phi_j = \nabla\phi_j\cdot\nabla\phi_i$ and $\mu\ge 0$, the local (and global) matrix is symmetric: $A_{ij}=A_{ji}$. Many codes exploit this to halve work, but it's fine (and clearer) to assemble all $(i,j)$.
+
+        \item \textbf{Cost structure}: the nested \code{i,j} loops make the local work $O(n_q \cdot \code{dofs\_per\_cell}^2)$ per cell (big $O$ notation). For $r=1$ in 1D, $\code{dofs\_}\break\code{per\_cell}=2$, so this is tiny; in higher order/dimension, careful placement of the \code{mu(x\_q)} load (hoist it outside the \code{j} loop), and reuse of \code{shape\_grad(i,q)} values help with performance.
+        
+        \item \textbf{Connection to the notes}: the exact same bilinear form shown in our laboratory 1 solution:
+        \begin{equation*}
+            A_{ij} = a\left(\phi_j,\phi_i\right)=\displaystyle\int_{\Omega} \mu \cdot \phi_{j}' \cdot \phi_{i}'\,\mathrm{d}x
+        \end{equation*}
+        Is what we're discretizing here via quadrature on each cell.
+    \end{itemize}
+    After this \code{j} loop finishes (for the current $i$ and current $q$), we've added the $q$-th quadrature contribution to the entire \textbf{row} $i$ of the local matrix. The outer loops over $q$ (quadrature points) and then over $i$ complete the whole local matrix for the cell; afterwards we scatter it to the global matrix with \code{system\_matrix.add(dof\_indices, cell\_matrix)}.
+
+
+    \item \important{Assemble load vector (right-hand side)}
+    \begin{lstlisting}[language=C++]
+cell_rhs(i) += forcing_term.value(
+                fe_values.quadrature_point(q)
+               ) * fe_values.shape_value(i, q) *
+               fe_values.JxW(q);\end{lstlisting}
+    We start from the weak formulation of the Poisson problem:
+    \begin{equation*}
+        a(u, v) = F(v), \quad \forall v \in V
+    \end{equation*}
+    With:
+    \begin{equation*}
+        a(u,v) = \int_{\Omega} \mu(x) \cdot u'(x) \cdot v'(x)\, \mathrm{d}x, 
+        \quad
+        F(v) = \int_{\Omega} f(x) \cdot v(x)\, \mathrm{d}x 
+    \end{equation*}
+    When we discretize, the \textbf{load vector entry} for basis/test function $\phi_{i}$ is:
+    \begin{equation*}
+        f_{i} = \int_{\Omega} f(x) \cdot \phi_i(x)\, \mathrm{d}x
+    \end{equation*}
+    In the code each part corresponds to the quadrature approximation of this integral:
+    \begin{itemize}
+        \item \important{\code{forcing\_term.value(fe\_values.quadrature\_point(q))}} is $f(x_{q})$, the source term evaluated at the quadrature point $x_{q}$.
+        
+        \item \important{\code{fe\_values.shape\_value(i, q)}} is $\phi_{i}(x_{q})$, the value of the $i$-th basis (test) function at the quadrature point.
+        
+        \item \important{\code{fe\_values.JxW(q)}} is the \textbf{Jacobian times weight}, it converts the integral over a possibly deformed cell into a sum of weighted contributions at quadrature points. Formally, it's:
+        \begin{equation*}
+            JxW(q) = \det\left(J_T\left(x_q\right)\right) \cdot w_q
+        \end{equation*}
+        Where $\det(J_{T})$ is the Jacobian determinant of the mapping from the reference element, and $w_{q}$ is the quadrature weight.
+
+        \item \important{\code{cell\_rhs(i) += ...}} we sum these contributions over all quadrature points $q$. This approximates:
+        \begin{equation*}
+            f_i \approx \sum_q f(x_q) \cdot \phi_i(x_q) \cdot JxW(q)
+        \end{equation*}
+    \end{itemize}
+    This line is building the discrete version of the \textbf{load vector}. For each degree of freedom (basis function $\phi_{i}$), it accumulates the weighted contributions of the source term $f$ over the cell, using numerical quadrature. We can think of it as: ``\emph{take the forcing term at each integration point, multiply by the shape function, scale by the correct measure of volume (\code{JxW}), and sum them up to get the correct right-hand-side entry}''.
+
+
+    \item \important{\code{cell->get\_dof\_indices(dof\_indices);}}
+    
+    \textcolor{Green3}{\faIcon{book} \textbf{The context.}} Up to this point, we've assembled the \textbf{local stiffness matrix} (\code{cell\_matrix}) and the \textbf{local load vector} (\code{cell\_rhs}) for one element (\code{cell}). These are written in terms of the \textbf{local basis functions} on that cell. But the \textbf{global linear system} is assembled in terms of \textbf{global degrees of freedom (DoFs)}, one big vector \code{u} and one big matrix \code{A} for the whole mesh. So, we need a map: \emph{which global indices do our local basis functions correspond to?}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does \code{get\_dof\_indices} do?}} Each \code{cell} in \code{deal.II} has a small number of \textbf{local DoFs} (e.g. 2 in 1D linear case, 3 in quadratic case, etc.). The method:
+    \begin{lstlisting}
+cell->get_dof_indices(dof_indices);\end{lstlisting}
+    Fills the vector \code{dof\_indices} with the \textbf{global numbering} assigned to those local DoFs by the \code{DoFHandler}. For example, in 1D with $N=3$ cells, linear elements (\code{r=1}):
+    \begin{itemize}
+        \item Nodes: $x_0, x_1, x_2, x_3$.
+        \item Global DoFs: numbered \code{[0,1,2,3]}.
+        \item Cell 0 (interval $[x_0, x_1]$): local DoFs $\to$ global indices \code{[0,1]}.
+        \item Cell 1 ($[x_1, x_2]$): local DoFs $\to$ \code{[1,2]}.
+        \item Cell 2 ($[x_2, x_3]$): local DoFs $\to$ \code{[2,3]}.
+    \end{itemize}
+    When we call \code{get\_dof\_indices} on cell 1, we'll get \code{{1,2}}.
+
+    \begin{examplebox}[: Physical analogy]
+        Think of each \textbf{cell} like a small team in a company:
+        \begin{itemize}
+            \item Locally, the team has roles ``\code{Alice = i=0}, \code{Bob = i=1}''.
+            \item But globally, \code{Alice} is employee \code{\#123}, \code{Bob} is employee \code{\#124} in the company's HR system.
+            \item \code{get\_dof\_indices} is the lookup that tells us ``local slot $\to$ global employee number'', so we can update the \textbf{global payroll system} (the linear system) correctly.
+        \end{itemize}
+    \end{examplebox}
+
+
+    \item \important{Scatter-Add from the element (\code{cell}) to the global system}
+    \begin{lstlisting}[language=C++]
+system_matrix.add(dof_indices, cell_matrix);
+system_rhs.add(dof_indices, cell_rhs);\end{lstlisting}
+    They are just compact shorthands for the ``triple loop'' we'd otherwise write:
+    \begin{itemize}
+        \item \textbf{Matrix}
+        \begin{lstlisting}[language=C++]
+for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    for (unsigned int j = 0; j < dofs_per_cell; ++j)
+        system_matrix.add(
+            dof_indices[i],
+            dof_indices[j],
+            cell_matrix(i,j)
+        );\end{lstlisting}
+        This adds each local entry $\left(A^{K}\right)_{ij}$ into the \textbf{global} entry $A_{\text{glob}(i),\text{glob}(j)}$
+        \item \textbf{RHS vector}
+        \begin{lstlisting}[language=C++]
+for (unsigned int i = 0; i < dofs_per_cell; ++i)
+    system_rhs(dof_indices[i]) += cell_rhs(i);\end{lstlisting}
+        This adds the local load entry $f^{K}_{i}$ into the global $f_{\text{glob}(i)}$.
+    \end{itemize}
+    Here \code{dof\_indices[i]} is exactly the global DoF index for the $i$-th local basis function (provided by \code{cell->get\_dof\_indices(...)}), so each cell contributes to the \textbf{same} global rows/columns where nodes are shared. Over all cells, these adds build the global linear system $Au=f$ (the discrete version of $a(u,v)=F(v)$).
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Boundary Conditions}}
+\end{flushleft}
+\begin{lstlisting}[language=C++]
+// Boundary conditions.
+{
+    // We construct a map that stores,
+    // for each DoF corresponding to a Dirichlet condition,
+    // the corresponding value.
+    // E.g., if the Dirichlet condition is
+    // u_i = b, the map will contain the pair (i, b).
+    std::map<types::global_dof_index, double> boundary_values;
+
+    // This object represents our boundary data
+    // as a real-valued function
+    // (that always evaluates to zero).
+    Functions::ZeroFunction<dim> bc_function;
+
+    // Then, we build a map that,
+    // for each boundary tag, stores the
+    // corresponding boundary function.
+    std::map<
+        types::boundary_id,
+        const Function<dim> *
+    > boundary_functions;
+    boundary_functions[0] = &bc_function;
+    boundary_functions[1] = &bc_function;
+
+    // interpolate_boundary_values fills
+    // the boundary_values map.
+    VectorTools::interpolate_boundary_values(
+        dof_handler,
+        boundary_functions,
+        boundary_values
+    );
+
+    // Finally, we modify the linear system
+    // to apply the boundary conditions.
+    // This replaces the equations
+    // for the boundary DoFs with the corresponding
+    // u_i = 0 equations.
+    MatrixTools::apply_boundary_values(
+        boundary_values,
+        system_matrix,
+        solution,
+        system_rhs,
+        true
+    );
+}\end{lstlisting}
+\begin{itemize}
+    \item \important{\code{std::map<types::global\_dof\_index,double> boundary\_values}} is essentially preparing a \textbf{container to store Dirichlet boundary conditions}.
+    \begin{itemize}
+        \item \code{types::global\_dof\_index} is just \code{deal.II}'s typedef for an unsigned integer that labels a degree of freedom (DoF) in the \textbf{global numbering} created by the \code{DoFHandler}. Every unknown of the system (i.e. each node where we want to compute the solution) gets such an index.
+        \item \code{double} is the prescribed value of the solution at that DoF, coming from the boundary condition.
+    \end{itemize}
+    So this \code{map} will be filled later with pairs of the form:
+    \begin{equation*}
+        (i, b) \quad \text{meaning: DoF } i \text{ must take the value } b.
+    \end{equation*}
+    For our Poisson 1D (with homogeneous Dirichlet BCs $u(0)=u(1)=0$), this means we will eventually store something like:
+    \begin{itemize}
+        \item \code{(DoF index at x=0, 0.0)}
+        \item \code{(DoF index at x=1, 0.0)}
+    \end{itemize}
+    And possibly more if the mesh has multiple boundary faces. In other words, this line declares a data structure that will \textbf{hold all the boundary constraints} needed to later enforce them in the linear system. 
+
+
+    \item \important{\code{Functions::ZeroFunction<dim> bc\_function;}} creates an object that represents the \textbf{mathematical function $u(x)=0$} in the whole domain of dimension \code{dim}.
+    \begin{itemize}
+        \item \code{Functions::ZeroFunction<dim>} is a class provided by \code{deal.II} that inherits from \code{Function<dim>}.
+        \item It is a simple function object: whenever we evaluate it at some point $x \in \mathbb{R}^\text{dim}$, it always returns \code{0.0}.
+        \item The template parameter \code{<dim>} just means it works in 1D, 2D, or 3D, depending on our problem setup.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need it?}} Because boundary conditions in \code{deal.II} are expressed as \textbf{functions defined on the boundary}. Even if the condition is simply homogeneous Dirichlet ($u=0$), we still need to pass a function object. So here, \code{bc\_function} is the \emph{prescribed boundary function} that tells the solver: ``\emph{on the boundary, the solution must equal zero}''.
+
+    Later on, this object is associated with the boundary ids (e.g. left and right ends of the interval in 1D), and then interpolated into the discrete finite element space to actually generate the values for each boundary DoF.
+
+
+    \item \important{Set the Dirichlet functions}
+    \begin{lstlisting}[language=C++]
+std::map<
+    types::boundary_id,
+    const Function<dim> *
+> boundary_functions;
+boundary_functions[0] = &bc_function;
+boundary_functions[1] = &bc_function;\end{lstlisting}
+    First of all, we prepare a \code{map} between boundary identifiers and the corresponding \emph{boundary conditions}.
+    \begin{itemize}
+        \item \code{types::boundary\_id} is just a \code{deal.II} typedef (an integer type) used to \textbf{tag different parts of the boundary} of the mesh.
+        \item The value is a pointer to a \code{const Function<dim>} object, because different boundaries may have different prescribed functions.
+    \end{itemize}
+    So this \code{map} will tell \code{deal.II} ``\emph{on boundary with id X, apply function Y as boundary condition}''.
+
+    About assignments:
+    \begin{itemize}
+        \item \code{boundary\_functions[0] = \&bc\_function;} Boundary with \code{id = 0} (e.g. in 1D, this corresponds to $x=0$) is assigned the function \code{bc\_function}. Recall \code{bc\_function} is \code{ZeroFunction<dim>}, so: ``\emph{on boundary 0, impose \code{u = 0}}''.
+        \item \code{boundary\_functions[1] = \&bc\_function;} Boundary with \code{id = 1} (e.g. in 1D, the point $x = 1$) is also assigned the same zero function. So ``\emph{on boundary 1, impose \code{u = 0}}''.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why two lines?}} In our lab problem (Poisson in 1D), the domain is $\Omega = \left(0, 1\right)$ and the BCs are homogeneous Dirichlet:
+    \begin{equation*}
+        u(0)=0, \quad u(1)=0
+    \end{equation*}
+    \code{deal.II} distinguishes boundaries using IDs. By default: left endpoint of the 1D interval $\to$ \code{id 0}; right endpoint $\to$ \code{id 1}. So we explicitly say: \textbf{both boundary ids (0 and 1) are constrained with the zero Dirichlet function}.
+
+
+    \item \important{Computes boundary condition values}
+    \begin{lstlisting}[language=C++]
+VectorTools::interpolate_boundary_values(
+    dof_handler,
+    boundary_functions,
+    boundary_values
+);\end{lstlisting}
+    This function from \code{deal.II} \textbf{computes the actual values of the boundary conditions on the degrees of freedom (DoFs) that live on the boundary}, and fills the \code{boundary\_values} map we created earlier.
+    \begin{enumerate}
+        \item \textbf{Inputs}
+        \begin{itemize}
+            \item \code{dof\_handler}: knows the finite element space and which DoFs are attached to which cells/faces. It can tell us which DoFs sit on the boundary.
+            \item \code{boundary\_functions}: the map that says: ``\emph{on boundary \code{id = X}, apply function \code{Y}}''.
+            \item \code{boundary\_values}: the map that will be filled.
+        \end{itemize}
+        \item \textbf{Interpolation process}
+        \begin{itemize}
+            \item For each boundary id in \code{boundary\_functions}, \code{deal.II} finds all the DoFs lying on that boundary part.
+            \item It then evaluates the corresponding function (here \code{bc\_function}, i.e. always \code{0.0}) at the DoF locations.
+            \item It records the pair \code{(global\_dof\_index, value)} into \code{boundary\_values}.
+        \end{itemize}
+        \item \textbf{Result}: after this call, \code{boundary\_values} contains entries like:
+        \begin{equation*}
+            \left\{0 \to 0.0, 19 \to 0.0\right\}
+        \end{equation*}
+        Assuming DoF and DoF 19 happen to be the endpoints of our 1D mesh with 20 subintervals.
+    \end{enumerate}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this interpolation needed?}} Because the function is continuous (mathematical), but the finite element solution space is discrete: it only knows about DoFs. We must translate ``\emph{$u(x)=0$ on boundary}'' into ``\code{DoF \#i = 0.0}'' for every DoF lying on the boundary. So this line is the \textbf{bridge} between the abstract boundary condition (function on the boundary) and the concrete algebraic system (specific entries in vectors/matrices).
+
+
+    \item \important{Impose Dirichlet BCs on the linear system}
+    \begin{lstlisting}[language=C++]
+MatrixTools::apply_boundary_values(
+    boundary_values,
+    system_matrix,
+    solution,
+    system_rhs,
+    true
+);\end{lstlisting}
+    Inputs:
+    \begin{itemize}
+        \item \code{boundary\_values}: the map $\{ i \mapsto b_i \}$ saying ``\emph{DoF $i$ must take value $b_i$}''.
+        \item \code{system\_matrix} $A$, \code{system\_rhs} $f$, and the current \code{solution} vector $u$ (used/updated).
+        \item The last flag \code{true} means \textbf{also eliminate columns} (keeps the system symmetric and clean).
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{stream} \textbf{What \code{apply\_boundary\_values} does (Dirichlet enforcement).}} For each constrained DoF $i$ in \code{boundary\_values}:
+    \begin{enumerate}
+        \item \textbf{Zero the entire row $i$} of $A$.
+        \item \textbf{Put a 1 on the diagonal}: $A_{ii} \leftarrow 1$.
+        \item \textbf{Set the RHS}: $f_{i} \leftarrow b_{i}$.
+        \item If \code{eliminate\_columns == true} (our case), \textbf{also zero column $i$} and \textbf{correct the RHS} of the \emph{unconstrained} equations to account for the known value $u_{i} = b_{i}$:
+        \begin{equation*}
+            f_j \leftarrow f_j - A_{j i}^{\text{(old)}} \cdot b_i \quad \text{for all unconstrained } j
+        \end{equation*}
+        Then set $A_{j i} \leftarrow 0$ for all $j \neq i$.
+        \item \textbf{Set the solution entry}: $u_{i} \leftarrow b_{i}$ (so the vector is consistent for output/initial guesses).
+    \end{enumerate}
+    Net effect: the $i$-th equation becomes exactly $u_{i} = b_{i}$ and the rest of the system is modified so those fixed values no longer appear implicitly on the left-hand side.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why the last \code{true} matters}}
+    \begin{itemize}
+        \item \code{true} (\textbf{eliminate columns}): preserves symmetry/positive definiteness (important for CG), avoids spurious nonzeros, and makes the algebra cleaner.
+        \item \code{false}: leaves columns intact; sometimes used to keep certain preconditioner patterns, but less common for symmetric SPD problems.
+    \end{itemize}
+    So this single call rewrites our system so that \textbf{boundary DoFs are hard-set to the prescribed values} and the remaining unknowns solve a system that already accounts for those fixed notes.
+\end{itemize}
+In conclusion, the assembly routine builds the algebraic system corresponding to our PDE. First, it computes the local stiffness matrices and load vectors on each element using quadrature, then it inserts them into the global matrix and right-hand side. Finally, boundary conditions are enforced by directly modifying the system so that boundary DoFs take the prescribed values. After this step, the discrete problem is fully defined as a linear system $Au = f$, ready to be solved with the chosen linear solver.
+
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-cpp}{\faIcon{download} Source}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-cpp}
+\end{center}

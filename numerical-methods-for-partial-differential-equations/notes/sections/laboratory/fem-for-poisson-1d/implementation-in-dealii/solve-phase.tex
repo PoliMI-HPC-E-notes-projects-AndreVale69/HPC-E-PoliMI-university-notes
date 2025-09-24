@@ -1,0 +1,102 @@
+\paragraph{Solve phase}
+
+Once the assembly stage is completed and boundary conditions have been enforced, we are left with a well-posed linear system of equations:
+\begin{equation*}
+    A u = f
+\end{equation*}
+Where $A$ is the global stiffness matrix, $f$ is the right-hand side vector, and $u$ is the vector of unknown DoFs. The next step is to actually \textbf{solve this system numerically}.
+
+\highspace
+In finite element problems (FEMs), the system matrix is typically \textbf{symmetric and positive definite} (SPD) for elliptic PDEs like the Poisson equation. This property makes the \textbf{Conjugate Gradient (CG) method} an excellent choice, since it is designed specifically for large, sparse SPD systems. The code sets up a solver with a tolerance proportional to the residual norm of the right-hand side, specifies a maximum number of iterations, and then calls the CG routine to compute the solution vector. For now, the solver uses no preconditioner, meaning convergence may be slower on more challenging problems, but the overall workflow is clear:
+\begin{enumerate}
+    \item Define a stopping criterion (\code{SolverControl}).
+    \item Create the CG solver object (\code{SolverCG}).
+    \item Apply it to the matrix, right-hand side, and unknown vector (\code{solve}).
+\end{enumerate}
+The result is that the unknown vector \code{solution} now contains the discrete approximation of the PDE solution at the mesh nodes.
+
+\begin{lstlisting}[language=C++]
+void Poisson1D::solve()
+{
+    printf("===============================================\n");
+
+    // Here we specify the maximum number of iterations of the
+    // iterative solver, and its tolerance.
+    SolverControl solver_control(1000, 1e-6 * system_rhs.l2_norm());
+
+    // Since the system matrix is symmetric and positive definite (SPD),
+    // we solve the system using the conjugate gradient method.
+    SolverCG<Vector<double>> solver(solver_control);
+
+    printf("  Solving the linear system\n");
+    // We don't use any preconditioner for now,
+    // so we pass the identity matrix as preconditioner.
+    solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
+    std::cout << "  " << solver_control.last_step()
+              << " CG iterations"
+              << std::endl;
+}\end{lstlisting}
+\begin{itemize}
+    \item \important{\code{SolverControl}}
+    \begin{lstlisting}[language=C++]
+SolverControl solver_control(
+    1000, 1e-6 * system_rhs.l2_norm()
+);\end{lstlisting}
+    \code{SolverControl} is a \code{deal.II} \textbf{utility class} that defines the \textbf{stopping criteria} for iterative solvers. Every iterative solver (like CG, GMRES, etc.) needs to know \emph{when to stop}.That can be either:
+    \begin{itemize}
+        \item When the residual becomes smaller than a given tolerance, or
+        \item When a maximum number of iterations is reached.
+    \end{itemize}
+    The arguments:
+    \begin{itemize}
+        \item \code{1000} is the \textbf{maximum number of iterations}. If the solver hasn't converged within 1000 iterations, it stops anyway. This prevents infinite loops or wasted computation.
+        \item \code{1e-6 * system\_rhs.12\_norm()} is the \textbf{tolerance on the residual norm}. Where \code{system\_rhs.12\_norm()} computes the Euclidean norm of the right-hand side vector $f$. Multiplying by $10^{-6}$ sets the tolerance proportional to the size of the problem data. This means: we ask the solver to reduce the residual until:
+        \begin{equation*}
+            \left\| r \right\| \leq 10^{-6} \cdot \left\| f \right\|
+        \end{equation*}
+        Where $r = A u - f$ is he residual vector.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this choice?}} Using a \textbf{relative tolerance} $\dfrac{\left\| r \right\|}{\left\| f \right\|} < 10^{-6}$ is standard, because it makes the convergence criterion independent of the scale of the problem. For example, if $f$ is very large, then asking for an absolute residual smaller than $10^{-6}$ would be meaningless. By scaling with $\left\|f\right\|$, the solver stops when the residual is \emph{six orders of magnitude smaller than the forcing term}.
+
+    In other words, this line says ``\textbf{run the iterative solver for at most 1000 steps, but stop earlier if the residual has dropped below $10^{-6}$ times the size of the right-hand side}''.
+
+
+    \item \important{\code{SolverCG}}
+    \begin{lstlisting}[language=C++]
+SolverCG<Vector<double>> solver(solver_control);\end{lstlisting}
+    \begin{itemize}
+        \item \code{SolverCG} is \code{deal.II}'s implementation of the \textbf{Conjugate Gradient (CG) method}. The CG method is an iterative algorithm designed for solving \textbf{symmetric positive definite (SPD)} linear systems $Au=f$. In our Poisson problem, the stiffness matrix $A$ is SPD (because the bilinear form $a(u,v) = \int \mu \cdot \nabla u \cdot \nabla v$ is coercive), so CG is the ideal solver.
+        
+        \item The solver is templated on the vector type it operates with. Here we use \code{<Vector<double>>} (\code{deal.II}'s own vector class) to represent the solution, RHS, and residual vectors. This ensures compatibility with the algebra objects created during assembly.
+        
+        \item The solver object is constructed and linked with the \code{SolverControl} defined earlier. This means the CG solver will follow those stopping rules:
+        \begin{itemize}
+            \item Maximum 1000 iterations, or
+            \item Residual norm below $10^{-6} \left\| f \right\|$.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \important{\code{solve}}
+    \begin{lstlisting}[language=C++]
+solver.solve(
+    system_matrix,
+    solution,
+    system_rhs,
+    PreconditionIdentity()
+);\end{lstlisting}
+    \begin{itemize}
+        \item \code{system\_matrix} is the global stiffness matrix $A$ assembled in the previous phase. It encodes how basis functions interact (the bilinear form).
+        \item \code{solution} is the vector $u$ of unknowns. On entry, it usually contains zero (or a guess). On exit, it will contain the computed approximation of the PDE solution at the mesh DoFs.
+        \item \code{system\_rhs} is the right-hand side vector $f$. It represents the load functional, i.e. the forcing term integrated against basis functions.
+        \item \code{PreconditionIdentity()} specifies the \textbf{preconditioner} to use. Here it's just the \emph{identity preconditioner} (i.e. no preconditioning). In practice, the solver just uses the raw system matrix. For small or simple problems, this is fine; for larger systems, one would replace it with something like \code{PreconditionJacobi}, \code{PreconditionSSOR}, or even more advanced preconditioners.
+    \end{itemize}
+    When this function returns, \code{solution} contains the discrete FE approximation $u_{h}$. \code{solver\_control.last\_step()} tells us how many CG iterations were needed.
+\end{itemize}
+
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-cpp}{\faIcon{download} Source}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-cpp}
+\end{center}

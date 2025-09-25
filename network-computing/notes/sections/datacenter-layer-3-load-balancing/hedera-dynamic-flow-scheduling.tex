@@ -1,0 +1,145 @@
+\subsection{Hedera: Dynamic Flow Scheduling}\label{subsection: Hedera - Dynamic Flow Scheduling}
+
+We just saw the weaknesses of \textbf{ECMP} (page \pageref{subsection: Equal Cost Multi Path (ECMP)}):
+\begin{itemize}
+    \item It \textbf{hashes flows blindly}, without knowing current congestion.
+    \item Multiple \textbf{elephant flows} can collide on the same path, creating hotspots.
+    \item Meanwhile, other links stay idle, wasted capacity.
+\end{itemize}
+Hyperscale datacenters\footnote{%
+    \definition{Hyperscale datacenters} are very large cloud facilities designed to support tens of thousands of servers and millions of virtual machines, built with uniform, modular infrastructure (compute, storage, networking) that can scale out efficiently to meet massive and dynamic workload demands.
+} needed a \textbf{smarter, traffic-aware solution} to balance flows dynamically.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is Hedera?}}
+\end{flushleft}
+\definition{Hedera} is a \textbf{dynamic flow scheduling system for datacenter networks}, proposed in a research paper at NSDI 2010.\cite{al2010hedera}
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Key Insight of Hedera.}} Most datacenter traffic volume is carried by a \textbf{small fraction of flows} (the elephants). Mice flows (small, latency-sensitive) are numerous but consume little bandwidth. If we can \textbf{identify and schedule only elephant flows} intelligently, we can \hl{fix most congestion while keeping the system lightweight}.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{The Problem Statement.}} Hedera addresses this question: ``\emph{how can we schedule large flows in a datacenter network so that they are spread across available paths, avoiding hotspots and using full network capacity?}''. Specifically:
+\begin{itemize}
+    \item Input: a set of \textbf{elephant flows} in a multi-path datacenter topology (e.g., Fat-Tree).
+    \item Goal: assign each elephant to a path such that: network utilization is balanced; no link is overloaded while others are idle; small flows are not disrupted.
+\end{itemize}
+Hedera's motivation is that ECMP wastes bandwidth by ignoring flow sizes, so it proposes a system that \textbf{detects elephant flows and dynamically schedules them across paths} to avoid congestion.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Hedera Architecture (SDN $+$ OpenFlow, Centralized Controller)}}
+\end{flushleft}
+Hedera introduces a \textbf{centralized SDN controller} (page \pageref{subsection: SDN Architecture}) that has a \textbf{global view of the datacenter network}.
+\begin{itemize}
+    \item Switches \textbf{report flow statistics} (e.g., which flows they see, how much bandwidth each uses).
+    \item The controller runs a \textbf{scheduling algorithm} to compute optimal paths for \textbf{elephant flows}.
+    \item The controller then \textbf{installs forwarding rules} in the switches using \textbf{OpenFlow} (page \pageref{subsection: OpenFlow}).
+\end{itemize}
+So instead of random per-flow hashing (ECMP), Hedera makes \textbf{explicit\break scheduling decisions}.
+
+\highspace
+The \textbf{key components} of the Hedera architecture are:
+\begin{itemize}
+    \item \important{Commodity switches (OpenFlow-enabled)}: forward packets based on flow rules (see below) and export flow-level statistics (e.g., byte counts, duration) to the controller.
+    \item \important{Centralized Controller (Hedera brain)}: collects network-wide flow information, identifies elephants and assigns paths to elephants to balance load.
+    \item \important{Flow Rules}: installed dynamically by the controller into switches. They specify that packets of flow $F$ should go through next-hop $N$.
+\end{itemize}
+The detailed workflow is as follows:
+\begin{enumerate}
+    \item \textbf{Flows arrive}: initially handled by ECMP.
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Wait, so ECMP isn't being replaced?}}
+    \end{flushleft}
+    No! Because Hedera needs a \textbf{lightweight default mechanism} for small flows, and a \textbf{smarter mechanism} only for the big ones. So, \hl{all flows start with ECMP}:
+    \begin{itemize}
+        \item New flows are hashed to a path immediately $\rightarrow$ very low latency to start forwarding.
+        \item No controller intervention required.
+    \end{itemize}
+
+    \item \textbf{Switch counters} reveal that some flows are big (exceed a threshold, e.g., $>10$ MB). Switch counters report flow statistics to the Hedera controller.
+
+    \item \important{Controller detects elephants}. If a flow grows beyond a threshold, it's classified as an elephant. So the \textbf{controller computes a better path} for that flow.
+
+    \item \important{Controller installs new rules} in switches via OpenFlow.
+
+    \item \important{Elephants are moved} to less congested paths, while mice stay with ECMP.
+\end{enumerate}
+This was one of the first real examples of \textbf{SDN applied to datacenter load balancing}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Elephant vs. Mice Flow Scheduling}}
+\end{flushleft}
+First of all, \emph{why do we need different treatment?}
+\begin{itemize}
+    \item \important{Mice flows (tiny, short-lived)}
+    \begin{itemize}
+        \item They are \textbf{the majority by count} but carry very little total traffic.
+        \item They finish so fast that trying to schedule them centrally would take longer than the flow itself.
+        \item They are \textbf{latency-sensitive} (user-facing requests).
+    \end{itemize}
+    \item \important{Elephant flows (large, long-lived)}
+    \begin{itemize}
+        \item They are \textbf{few in number} but carry most of the bytes.
+        \item If badly placed, they can congest links and hurt many other flows.
+        \item They are \textbf{throughput-sensitive} (bulk transfers, ML gradient sync, big shuffles).
+    \end{itemize}
+\end{itemize}
+So Hedera's philosophy: \textbf{let mice run free (ECMP), but carefully shepherd elephants}.
+\begin{itemize}
+    \item \important{Scheduling Mice Flows}. Mice flows use ECMP (hash-based, per-flow).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Immediate forwarding, no controller involvement.
+        \item[\textcolor{Green3}{\faIcon{check}}] Keeps latency low.
+        \item[\textcolor{Green3}{\faIcon{check}}] Scales to millions of flows without overloading the controller.
+    \end{itemize}
+    \item \important{Scheduling Elephant Flows}. The controller monitors flow statistics from switches. A flow is promoted to \emph{elephant} if it exceeds a threshold (e.g., $>10$ MB transferred). The controller computes a less congested path for the elephant and installs OpenFlow rules to move it there.
+
+    The main \textbf{goal} is spread elephants across available paths, avoid collisions (two elephants on the same path) and increase overall throughput and fairness.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Flow Demand Computation Algorithm}}
+\end{flushleft}
+Once Hedera identifies the \textbf{set of elephant flows}, it needs to estimate how much \textbf{bandwidth each elephant ``wants''} (its demand) and assign flows to paths so that no single link is overloaded, and network utilization is balanced.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{chart-bar}}] \textcolor{Green3}{\textbf{Estimating Flow Demands}}. The \textbf{controller} collects statistics from switches: byte counters per flow and flow duration. From this, it computers the \textbf{demand}: expected bandwidth requirement of the flow. Demand is not just ``how much data so far'', it is an estimate of how much the flow \emph{will need} in the near future.
+
+    \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Scheduling Algorithm}}. Hedera then runs a \textbf{demand-aware placement algorithm}:
+    \begin{enumerate}
+        \item \textbf{Construct a demand matrix}, where rows are sources and columns are destinations. Each entry is the total demand (sum of flows) between that source and destination.
+        \item \textbf{Solve a multi-commodity flow problem (approximation)}. A multi-commodity flow occurs when many flows compete for shared resources, such as links. The algorithm tries to maximize utilization while respecting link capacities.
+        \item \textbf{Greedy assignment of flows to paths}. Place the largest-demand flows first; assign them to paths with available capacity; continue with smaller flows, updating remaining link capacity.
+    \end{enumerate}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Strengths}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Weaknesses}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Strengths}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Traffic-aware scheduling}}. Unlike ECMP, Hedera looks at actual flow sizes. Elephants are spread across paths, it avoids collisions and hotspots.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Better utilization of network capacity}}. Reduces wasted bandwidth and improves aggregate throughput in Fat-Tree/Clos topologies.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Hybrid design (ECMP $+$ centralized scheduling)}}
+        \begin{itemize}
+            \item Mice flows: stay on ECMP $\rightarrow$ simple, fast, scalable.
+            \item Elephant flows: centrally scheduled $\rightarrow$ efficient use of resources.
+        \end{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Proof of concept for SDN in datacenters}}. Hedera was one of the \textbf{first real SDN applications}. Showed that centralized control could improve load balancing.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Weaknesses}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Controller scalability}}. Collecting flow statistics and computing assignments for many elephants is computationally heavy. Doesn't scale easily to Hyperscale datacenters with millions of flows.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Reaction time}}. Detection of elephants takes time (flows must exceed a threshold). By the time scheduling decisions are made, network conditions may already have changed.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Centralization overhead}}. All decisions come from one controller. In large networks, this becomes a bottleneck and a single point of failure.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Limited granularity}}. Only elephants are scheduled; mice remain random. If mice collectively create congestion, Hedera doesn't help.
+    \end{itemize}
+\end{itemize}
+Hedera is an \textbf{improvement over ECMP} because it solves elephant collisions with centralized, demand-aware scheduling, which improves throughput and fairness. However, \textbf{controller overhead and slow reaction times limit its scalability} in real-world, production-scale data centers. This is why subsequent work (e.g., \textbf{HULA}) shifted toward \textbf{in-switch, decentralized, and faster load balancing} that leverages programmable data planes instead of heavy, centralized control.

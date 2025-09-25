@@ -1,0 +1,105 @@
+\paragraph{General Structure}
+
+We stopped in theory with:
+\begin{equation*}
+    a(u,v) = F(v) \quad \forall v \in V
+\end{equation*}
+Restricted to the finite element space $V_h$, this became:
+\begin{equation*}
+    \sum_{j=1}^{N_h} U_j a(\varphi_j,\varphi_i) = F(\varphi_i), \quad i=1,\dots,N_h
+\end{equation*}
+Which is the \textbf{linear system}:
+\begin{equation*}
+    A u = f
+\end{equation*}
+With:
+\begin{itemize}
+    \item $A_{ij} = a(\varphi_j,\varphi_i)$ (\textbf{stiffness matrix})
+    \item $f_i = F(\varphi_i)$ (\textbf{load vector})
+    \item $u = (U_1, \ldots, U_{N_h})^T$ (\textbf{vector of unknown coefficients}).
+\end{itemize}
+So mathematically, we ``only'' need to \textbf{assemble} $A$, \textbf{assemble} $f$, \textbf{and solve} $Au=f$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Mapping math objects to \texttt{deal.II} objects}}
+\end{flushleft}
+We wrap everything in a class \texttt{Poisson1D} to keep the code modular (easy to reuse in future labs, 2D or 3D). Inside the class we store:
+\begin{itemize}
+    \item \textbf{Discretization parameters}: number of elements \texttt{N}, polynomial degree \texttt{r}.
+    \item \textbf{Mesh}: the triangulation of $\Omega=(0,1) \rightarrow$ \texttt{Triangulation<dim>}
+    \item \textbf{Basis functions \& polynomial degree}: Finite Element space definition $\rightarrow$ \texttt{FE\_Q<dim>(r)}
+    \item \textbf{Integration of bilinear or linear forms}: quadrature rules
+    \begin{equation*}
+        \rightarrow \texttt{QGauss<dim>} \text{ and } \texttt{FEValues}
+    \end{equation*}
+    \item \textbf{System matrix (sparse)}: $A \rightarrow$ \texttt{SparseMatrix<double>}
+    \item \textbf{Sparsity structure}: pattern of nonzeros $\rightarrow$ \texttt{SparsityPattern}
+    \item \textbf{Load vector \& Solution vector}: $f, u \rightarrow$ \texttt{Vector<double>}
+\end{itemize}
+We use the static member \texttt{dim} to make the code dimension-independent (if we later change \texttt{dim = 2}, we can reuse the same structure for 2D). However, every mathematical entity from the variational formulation has a ``natural home'' in \texttt{deal.II}.
+
+\newpage
+
+\noindent
+Note: It's normal that this mapping feels not immediate the first time. It is like learning a new programming framework:
+\begin{itemize}
+    \item At the math level, we already know what we need (mesh, basis, test functions, bilinear/linear forms, linear system).
+    \item At the code level, \texttt{deal.II} already has these structures, but the names and abstractions are new.
+\end{itemize}
+However, once learned, the same structure applies to all future PDE solvers in \texttt{deal.II}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Why split into \texttt{setup}, \texttt{assemble}, \texttt{solve}, \texttt{output}?}}
+\end{flushleft}
+After mapping mathematical objects to \texttt{deal.II} objects, we can create a powerful plan. Typically, the best solution is a 4-step workflow:
+\begin{enumerate}
+    \item \important{Setup}. Before any computation, we need to \textbf{initialize} all the structures: mesh, FE space, DoFs (Degree of Freedoms), sparsity pattern, vectors. This is a one-time preparation step.
+    \item \important{Assemble}. Local integrals (element stiffness matrices, local RHS) must be computed and inserted into global $A$ and $f$. This mirrors the theory: local basis function $\rightarrow$ global system.
+    \item \important{Solve}. The heart of the problem: solve the linear system $Au = f$. In theory, ``find $u$ in $V_h$''. In code, apply a solver (solvers that have already been seen in the Numerical Linear Algebra course, such as Conjugate Gradient, GMRES, etc.).
+    \item \important{Output}. Once we have $u$, we need to use it: visualize (ParaView), compute errors, post-process quantities. This is not math anymore, but engineering practice: without output, the solution is useless.
+\end{enumerate}
+The next sections will cover each step in detail.
+
+\newpage
+
+\begin{landscape}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=1.6\textwidth]{img/poisson-1d/pde-workflow.pdf}
+        \caption{Map of translation from math $\rightarrow$ code $\rightarrow$ implementation flow.}
+    \end{figure}
+\end{landscape}
+
+\newpage
+
+\noindent
+Regarding the figure on the previous page:
+\begin{itemize}
+    \item \important{Mathematics} (left column). This is what we derived in the theory part (weak $\rightarrow$ Galerkin $\rightarrow$ FEM). It is pure \textbf{math}, independent of any programming language.
+    
+    \item \important{\texttt{deal.II} Objects} (middle column). Here we see the \textbf{software representation} of each math object.
+    \begin{enumerate}
+        \item \textbf{Geometry \& discretization}
+        \begin{itemize}
+            \item \texttt{Triangulation<dim>} $\rightarrow$ the mesh $\Omega_h$
+            \item \texttt{FE\_Q<dim>(r)} $\rightarrow$ basis functions of degree $r$
+            \item \texttt{DoFHandler<dim>} $\rightarrow$ numbering of the unknowns (degrees of freedom, DoFs)
+        \end{itemize}
+        \item \textbf{Assembly tools}
+        \begin{itemize}
+            \item \texttt{FEValues}, \texttt{QGauss} $\rightarrow$ integration over elements (numerical qua\-drature)
+            \item Assembly loops $\rightarrow$ compute local $A^K$, $f^K$ and scatter them into the global system
+        \end{itemize}
+        \item \textbf{Algebraic structures}
+        \begin{itemize}
+            \item \texttt{SparseMatrix<double>} $\rightarrow$ the stiffness matrix $A$
+            \item \texttt{Vector<double>} $\rightarrow$ the load vector $f$ and solution $u$
+            \item \texttt{SparsityPattern} $\rightarrow$ structure of nonzeros (saves memory and computation)
+        \end{itemize}
+    \end{enumerate}
+    Each \textbf{mathematical ingredient} has a \texttt{deal.II} \textbf{class} implementing it.
+    
+    \item \important{Solver Pipeline} (right column). Finally, the \textbf{workflow} of the finite element solver. This is the \emph{four-step structure}: setup, assemble, solve and output. This is the \textbf{concrete implementation}. It correspond 1-to-1 with the previous two columns.
+\end{itemize}

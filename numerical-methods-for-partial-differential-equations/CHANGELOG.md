@@ -9,8 +9,34 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.3.0
+
+- add `Laboratory`
+  - add `Introduction`
+  - add `FEM for Poisson 1D`
+    - add `What is the Poisson Equation?`
+    - add `Problem definition`
+    - add `Weak formulation`
+    - add `Galerkin formulation`
+    - add `Finite Element formulation`
+      - add `Constructing the finite-element space V_h`
+      - add `From V_h to the Discrete Problem`
+    - add `Implementation in deal.II`
+      - add `Install & Setup`
+      - add `Program Structure`
+      - add `General Structure`
+      - add `Header File`
+      - add `Setup: turning math objects into deal.II objects`
+      - add `Assemble: compute A and f`
+      - add `Solver phase`
+      - add `Output phase`
+      - add `Extensions`
 
 --------------------
 

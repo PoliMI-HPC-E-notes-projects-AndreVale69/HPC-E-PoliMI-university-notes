@@ -1,0 +1,76 @@
+\subsection{Why Cache Coherence?}
+
+In a \textbf{shared-memory multiprocessor}, each processor has \textbf{private caches} to reduce latency and offload the memory bus. This works perfectly for \textbf{private data} (no other core cares). But when data are \textbf{shared} among processors, the same memory block may exist in \textbf{multiple caches}. That raises the \definition{Cache Coherence problem}:
+\begin{itemize}
+    \item Processors might see \textbf{different values} for the same memory location, depending on which cache they read from.
+    \item For example, \texttt{Core A} writes \texttt{X=0} $\to$ \texttt{X=1} in its cache, but \texttt{Core B} still has \texttt{X=0} in its own cache. If \texttt{B} now reads, it gets the \textbf{stale value}.
+\end{itemize}
+So the central question: \textbf{How do we ensure that all processors have a coherent view of shared memory?}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What ``coherence'' means}}
+\end{flushleft}
+A memory system is called \definition{Coherent} if the following hold:
+\begin{enumerate}
+    \item \textbf{Program order preserved locally}: if a processor writes \code{X} then reads \code{X} (without another processor intervening), it must read back its \textbf{own last write}.
+    \item \textbf{Read sees the latest write (globally)}: a read by processor \code{P2} after processor \code{P1} wrote to \code{X} should return \code{P1}'s value; provided enough time has passed and no other writes to \code{X} happened in between.
+    \item \textbf{Write serialization}: all processors must see writes to the \textbf{same location} in the \textbf{same order}. If \code{P1} writes \code{X=1} and then \code{P2} writes \code{X=2}, no core should ever observe the sequence \code{2} then later \code{1}.
+\end{enumerate}
+These three properties \textbf{define coherence}. The precise timing of when values become visible is part of \textbf{consistency models} (later topic). In summary:
+\begin{itemize}
+    \item \textbf{Reads} must return the most recent value written to that address.
+    \item \textbf{Writes} must be \textbf{serialized}, only one writer can ``own'' the data at a time; all other cached copies must be invalidated or updated.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Two protocol families to fix it}}
+\end{flushleft}
+To enforce coherence, we need a \textbf{protocol} that ensures caches are synchronized:
+\begin{enumerate}
+    \item \definition{Write-Invalidate protocol}. Before writing, a processor sends an \textbf{invalidate} to all other caches holding that block. From now on, the writer has \textbf{exclusive access}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Only the \textbf{first write} to a block generates traffic; subsequent writes are silent.
+        \item[\textcolor{Green3}{\faIcon{check}}] Good for write-heavy workloads (exploits temporal locality).
+    \end{itemize}
+    \item \definition{Write-Update protocol}. On each write, the new value is \textbf{pushed to all other caches} (and often memory).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Readers see the new value immediately (lower latency).
+        \item[\textcolor{Red2}{\faIcon{times}}] Every write consumes \textbf{bandwidth}.
+    \end{itemize}
+\end{enumerate}
+Almost all modern multiprocessors use \textbf{write-back caches} $+$ \textbf{write-invalidate protocols} (not update) to reduce bus traffic.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c c c c @{}}
+        \toprule
+        \textbf{T} & \textbf{Processor A} & \textbf{Processor B} & \textbf{Memory (X)} \\
+        \midrule
+        0 & & & 1 \\[.3em]
+        1 & Read $X$ (1) $\rightarrow$ cache \code{A=1} & & 1 \\[.3em]
+        2 & Cache: \code{A=1} & Read $X$ (1) $\rightarrow$ cache \code{B=1} & 1 \\[.3em]
+        3 & Write $X=0$ $\rightarrow$ cache \code{A=0} & Cache: \code{B=1} & 0 \\
+        \bottomrule
+    \end{tabular}
+    \caption{The \textbf{cache coherence problem} for a single memory location (\code{X}), read and written by two processors (\code{A} and \code{B}).\cite{hennessy2017computer}}
+\end{table}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} c c c c @{}}
+            \toprule
+            \textbf{T} & \textbf{Processor A} & \textbf{Processor B} & \textbf{Mem (X)} \\
+            \midrule
+            0 & & & 0 \\[.3em]
+            1 & Read $X \to$ cache miss $\to$ \code{A=0} & & 0 \\[.3em]
+            2 & Cache: \code{A=0} & Read $X \to$ cache miss $\to$ \code{B=0} & 0 \\[.3em]
+            3 & Write $X=1 \to$ cache \code{A=1} & Cache invalidated \code{A} & 0 \\[.3em]
+            4 & Cache: \code{A=1} & Read $X \to$ cache miss $\to$ \code{B=1} & 1 \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{An example of an \textbf{invalidation protocol} (write-invalidate) working on a snooping bus for a single cache block (\code{X}) with \textbf{write-back caches}.\cite{hennessy2017computer}}
+\end{table}

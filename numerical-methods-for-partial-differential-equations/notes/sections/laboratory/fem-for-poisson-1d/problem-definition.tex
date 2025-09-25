@@ -1,0 +1,163 @@
+\subsubsection{Problem definition}
+
+The Poisson equation itself is a general PDE:
+\begin{equation*}
+    - u''(x) = f(x) \quad \text{in some domain}
+\end{equation*}
+To make it a \textbf{mathematical problem} we say:
+\begin{itemize}
+    \item \emph{Where} we are solving it: the \textbf{domain} $\Omega = (0, 1)$.
+    \item \emph{What constraints} we impose: the \textbf{boundary conditions} $u(0) = u(1) = 0$.
+    \item \emph{What data} we have: here $\mu(x) = 1$ and a particular forcing $f(x)$.
+\end{itemize}
+Using these definitions, we can formulate the problem as a Boundary Value Problem (BVP). Without these specifications, ``the Poisson equation'' is too vague: infinitely many situations are possible, and no unique solution can be defined.
+
+\begin{deepeningbox}[: Boundary Value Problem (BVP)]
+    Before explaining what a BVP is, it is important to understand the difference between a classic ODE and a PDE.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Differential Equations: ODE vs PDE}}
+    \end{flushleft}
+    \begin{itemize}
+        \item An \definition{ODE (Ordinary Differential Equation)} involves derivatives with respect to \emph{one variable} (usually time $t$).
+        \item A \definition{PDE (Partial Differential Equation)} involves derivatives with respect to \emph{several variables} (like space $x$, $y$, $z$, and maybe time).
+    \end{itemize}
+    Both need some extra information to be \textbf{solvable}. That ``extra information'' comes in two main flavors:
+    \begin{itemize}
+        \item \textbf{Initial conditions} (tell us the state at $t=0$, then we can evolve forward in time).
+        \item \textbf{Boundary conditions} (tell us what happens at the edges of the spatial domain, then we can solve inside).
+    \end{itemize}
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{book} \textbf{Boundary Value Problem (BVP)}}
+    \end{flushleft}
+    A \definition{Boundary Value Problem (BVP)} is a differential equation (ODE or PDE) with conditions prescribed \textbf{at the boundary of the domain}. Formally:
+    \begin{equation*}
+        \begin{cases}
+            Lu(x) = f(x), & x \in \Omega, \\
+            \text{Boundary conditions on } \partial \Omega.
+        \end{cases}
+    \end{equation*}
+    \begin{itemize}
+        \item $L$: differential operator (e.g. $ -u''$ in 1D Poisson).
+        \item $\Omega$: = the domain (like the interval $(0,1)$).
+        \item $\partial\Omega$: the boundary (here just the two points $0$ and $1$).
+    \end{itemize}
+\end{deepeningbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Dirichlet Boundary Condition (Dirichlet BC)?}}
+\end{flushleft}
+In this laboratory, we impose $u=0$ at both ends. That corresponds physically to the ends of the bar are held at zero temperature. Other choices are possible (Neumann, Robin, etc.), but \textbf{Dirichlet} is the simplest starting case.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why we call it ``Problem Definition''?}}
+\end{flushleft}
+Because in numerical methods (and PDE theory) the workflow is always:
+\begin{enumerate}
+    \item \important{Continuous problem definition}: PDE $+$ domain $+$ boundary conditions.
+    \item \important{Weak formulation}: rewrite it in an integral form suitable for analysis.
+    \item \important{Galerkin formulation}: restrict to a finite-dimensional space.
+    \item \important{Finite element formulation}: translate into linear algebra.
+    \item \important{Implementation}: write the solver in \texttt{deal.II}.
+\end{enumerate}
+So ``problem definition'' is step 1 of this workflow.
+
+\highspace
+\begin{deepeningbox}[: Dirichlet Boundary Condition]
+    When we solve a PDE, we don't just solve ``inside'' the domain $\Omega$. We must also tell the solver \textbf{what happens at the edges} (the boundary $\partial \Omega$).
+
+    There are three classical types:
+    \begin{enumerate}
+        \item \definition{Dirichlet} $\rightarrow$ fix the \textbf{value} of the solution at the boundary.
+        \item \definition{Neumann} $\rightarrow$ fix the \textbf{derivative/flux} of the solution at the boundary.
+        \item \definition{Robin} (mixed) $\rightarrow$ fix a \textbf{combination} of value and derivative.
+    \end{enumerate}
+    A \textbf{Dirichlet condition} prescribes directly the solution value:
+    \begin{equation}
+        u(x) = g(x) \quad \text{on } \partial\Omega
+    \end{equation}
+    \begin{itemize}
+        \item If $g(x) = 0$, it's called a \definition{Homogeneous Dirichlet condition}.
+        \item If $g(x) \neq 0$, it's \definition{Non-Homogeneous Dirichlet}.
+    \end{itemize}
+    In our case, we impose: $u(0) = u(1) = 0$. At the both ends of the bar, the temperature (or displacement, or potential) is forced to \textbf{zero}. That's a \textbf{homogeneous Dirichlet boundary condition}.
+\end{deepeningbox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Problem Definition: Poisson Equation in 1D}}
+\end{flushleft}
+We are working on the interval (domain):
+\begin{equation*}
+    \Omega = (0,1)
+\end{equation*}
+The \textbf{equation} is:
+\begin{equation*}
+    \begin{cases}
+        - \left(\mu(x) u'(x)\right)' = f(x), & x \in \Omega, \\[.5em]
+        u(0) = u(1) = 0 &
+    \end{cases}
+\end{equation*}
+The unknown function is $u(x)$, for example the \textbf{temperature along a 1D bar}. The coefficient $\mu(x) = 1$ is the \textbf{diffusion coefficient} or \textbf{conductivity} of the material. If it varied, it would mean the material has regions that conduct more or less. Finally, the forcing term $f(x)$ is a piecewise function:
+\begin{equation*}
+    f(x) = 
+    \begin{cases}
+        0,  & x \leq \tfrac{1}{8} \text{ or } x > \dfrac{1}{4}, \\[.5em]
+        -1, & \dfrac{1}{8} < x \leq \dfrac{1}{4}.
+    \end{cases}
+\end{equation*}
+There is a \textbf{negative source term} (a ``sink'' of heat, or a downward force density) only in the interval $\left.\left( \dfrac{1}{8}, \dfrac{1}{4} \right.\right]$. Outside, nothing happens ($f = 0$).
+
+\highspace
+We use Dirichlet boundary conditions:
+\begin{equation*}
+    u(0) = u(1) = 0
+\end{equation*}
+\begin{itemize}
+    \item Physically: the ends of the bar are fixed to zero temperature.
+    \item Mathematically: they ``anchor'' the solution and ensure uniqueness.
+\end{itemize}
+The PDE we wrote above (differential equation $+$ boundary conditions) is called the \textbf{strong formulation}. It's ``\emph{strong}'' because it requires $u(x)$ to be smooth enough so that derivatives exist in the classical sense. Later, we'll relax this condition with the \textbf{weak formulation}.
+
+\begin{deepeningbox}[: Strong Formulation]
+    The \definition{Strong Formulation} of a PDE is the problem written:
+    \begin{itemize}
+        \item as a \textbf{differential equation} (derivatives explicitly present),
+        \item together with \textbf{boundary conditions} (Dirichlet, Neumann, ...),
+        \item requiring the solution $u(x)$ to be smooth enough for the derivatives to make sense pointwise.
+    \end{itemize}
+    So, for this laboratory, the strong formulation is exactly:
+    \begin{equation*}
+        \begin{cases}
+            - \left(\mu(x) u'(x)\right)' = f(x), & x \in (0,1), \\[.5em]
+            u(0) = u(1) = 0, &
+        \end{cases}
+    \end{equation*}
+    With $\mu(x) = 1$, and our piecewise forcing $f(x)$.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why ``strong''?}}
+    \end{flushleft}
+    Because it requires ``strong'' regularity:
+    \begin{itemize}
+        \item The solution $u$ must be differentiable enough so that $u'(x)$ and $(\mu u')'(x)$ exist as classical derivatives.
+        \item We must be able to plug $u(x)$ \textbf{directly into the PDE} and check if it satisfies the equation \emph{point by point}.
+    \end{itemize}
+    If $f$ is discontinuous (as in our lab, where it jumps at $x=\frac{1}{8}$ and $x=\frac{1}{4}$), the strong formulation becomes tricky because classical derivatives may not exist everywhere. That's why we move to the \textbf{weak formulation}: it relaxes smoothness requirements but still captures the PDE.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{stream} \textbf{Workflow in PDE analysis}}
+    \end{flushleft}
+    \begin{enumerate}
+        \item \textbf{Strong formulation}: the PDE as we would write it in physics. Clear, but often too strict mathematically.
+        \item \textbf{Weak formulation}: rewrite as an integral equation using test functions and integration by parts. Because it is more flexible (allows solutions with less regularity, e.g. only square-integrable derivatives). This is the starting point for numerical methods.
+        \item \textbf{Galerkin / Finite Element formulation}: approximate the weak formulation in a finite-dimensional space, leading to a linear algebra system.
+    \end{enumerate}
+\end{deepeningbox}

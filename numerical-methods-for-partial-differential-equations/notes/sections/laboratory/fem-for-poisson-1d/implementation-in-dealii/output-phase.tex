@@ -1,0 +1,104 @@
+\paragraph{Output phase}
+
+After assembling and solving the linear system, the final step is to \textbf{visualize the computed finite element solution}. The output phase is responsible for exporting the discrete solution (stored in the vector \code{solution}) together with the mesh information, into a file format that can be inspected with external visualization tools such as \code{ParaView}. In \code{deal.II}, this task is managed by the \code{DataOut} class, which collects numerical results defined on the mesh and writes them in common scientific formats (e.g. VTK).
+
+\begin{lstlisting}[language=C++]
+void Poisson1D::output() const
+{
+    printf("===============================================\n");
+
+    // The DataOut class manages writing the results to a file.
+    DataOut<dim> data_out;
+
+    // It can write multiple variables (defined on the same mesh)
+    // to a single file. Each of them can be added by calling
+    // add_data_vector, passing the
+    // associated DoFHandler and a name.
+    data_out.add_data_vector(dof_handler, solution, "solution");
+
+    // Once all vectors have been inserted, call build_patches
+    // to finalize the DataOut object,
+    // preparing it for writing to file.
+    data_out.build_patches();
+
+    // Then, use one of the many write_* methods to write
+    // the file in an appropriate format.
+    const std::string output_file_name =
+      "output-" + std::to_string(N + 1) + ".vtk";
+    std::ofstream output_file(output_file_name);
+    data_out.write_vtk(output_file);
+
+    printf("Output written to %s\n", output_file_name.c_str());
+    printf("===============================================\n");
+}\end{lstlisting}
+\begin{itemize}
+    \item \important{\code{DataOut<dim> data\_out;}} \code{DataOut} is a \code{deal.II} \textbf{utility class} that handles the export of finite element data for visualization. It knows how to:
+    \begin{itemize}
+        \item Collect solution vectors (and possibly multiple variables).
+        \item Reconstruct them on each cell.
+        \item Write them into output formats like \code{VTK}, \code{VTU}, \code{DX}, etc.
+    \end{itemize}
+    Like most \code{deal.II} classes, it is templated on the \textbf{dimension of the problem} (1D, 2D, 3D). This is needed so that it knows how to traverse the mesh and build patches (pieces of the mesh decorated with solution values).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need it?}} By itself, the vector \code{solution} is just a list of numbers, one per degree of freedom. \code{DataOut} takes those numbers, matches them with the geometry of the mesh (\code{dof\_handler}), and generates the geometric $+$ data description that visualization software understands. In other words, this line creates an empty \code{DataOut} object, which will be filled with the solution data and then asked to write an output file.
+    
+
+    \item \important{\code{data\_out.add\_data\_vector(dof\_handler, solution, ``solution'');}}
+    
+    This call \textbf{registers a vector of values} (in our case, the finite element solution) with the \code{DataOut} objects. It links:
+    \begin{itemize}
+        \item The \textbf{mesh and DoF structure} (\code{dof\_handler});
+        \item The \textbf{numerical data} (\code{solution} vector);
+        \item And a \textbf{name} (\code{``solution''}) that will appear in the output file.
+    \end{itemize}
+    Input parameters:
+    \begin{itemize}
+        \item \important{\code{dof\_handler}}: Tells \code{DataOut} how the DoFs are placed on the mesh, so it knows where each entry of the solution vector belongs.
+        \item \important{\code{solution}}: The vector of computed values at all DoFs. This is the result of the solver, now ready to be visualized.
+        \item \important{\code{``solution''}}: A label for the data field. If we open the \code{.vtk} file in \code{ParaView}, we'll see this name in the list of available scalar fields.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need it?}} We can add \textbf{multiple data vectors} with different names (e.g. \code{``temperature''}, \code{``flux''}, \code{``error\_indicator''}). Here, we just add the single primary unknown, the scalar solution of the Poisson equation. In other words, this line tells \code{DataOut}: ``\emph{here is the solution vector, defined over the mesh in \code{dof\_handler}. Save it as a field called \code{solution}}''.
+    
+
+    \item \important{\code{data\_out.build\_patches();}} This command tells the \code{DataOut} object: ``\emph{take the mesh $+$ DoF information, interpolate the solution, and build the geometric representation that will be written to file}''. Concretely, it constructs \textbf{patches}: small pieces of the domain (usually one per cell) where the solution values are stored in a format compatible with visualization software.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why ``patches''?}} In finite elements, the solution is represented by shape functions on each cell. For output, visualization tools expect a piecewise polynomial field that can be plotted as colors, contours, etc. \code{build\_pathces()} evaluates the solution on each cell and prepares this piecewise description. By default, one patch corresponds to one cell of the mesh. If the FE degree is $>$ 1, \code{deal.II} subdivides the cell appropriately so that curved shape functions are represented smoothly in the output.
+
+    In other words, this step \textbf{finalizes the \code{DataOut} object}, making it ready for export. Before this call, \code{data\_out} only know ``there's a solution vector''; after it, it has all the geometric and field data structured for writing.
+    
+
+    \item \important{Write \code{vtk}}
+    \begin{lstlisting}[language=C++]
+const std::string output_file_name =
+    "output-" + std::to_string(N + 1) + ".vtk";
+std::ofstream output_file(output_file_name);
+data_out.write_vtk(output_file);\end{lstlisting}
+    \begin{enumerate}
+        \item \textbf{File name construction}. Builds the name of the output file as a string. It will look like \code{output-20.vtk} if $N+1=20$ (i.e. the number of mesh nodes). This way, the filename encodes the resolution of the mesh, useful when running with different discretizations.
+
+        \item \textbf{Open file stream}. Creates an output stream and opens the file with the chosen name. If the file already exists, it will be overwritten.
+        
+        \item \textbf{Write data in \code{VTK} format}. Writes the content of \code{data\_out} (mesh $+$ solution values) into the file, in \code{VTK} format. \code{VTK} is a standard format for scientific visualization, compatible with tools like \code{ParaView}. Once written, we can load the \code{.vtk} file in one of these programs to see plots, color maps, or isosurfaces of our computed solution.
+    \end{enumerate}
+    In other words, this block \textbf{exports the numerical solution to disk} in a standard visualization format.
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/poisson-1d/paraview-1.pdf}
+        \captionsetup{singlelinecheck=off}
+        \caption[]{Solution in \code{ParaView}.
+        \begin{itemize}
+            \item The \textbf{domain is 1D} (the Poisson problem in $\left(0,1\right)$), but \code{ParaView} always tries to render in 3D space. That's why we see a thin vertical line at the center.
+            \item The \textbf{color map} represents our finite element solution along that 1D mesh.
+            \item The \textbf{scale bar} on the right shows that the solution is close to zero, with small negative values (down to about $-1.8 \times 10^{-2}$).
+            \item The \textbf{axes triad} in the bottom left confirms: the mesh is along the $x$ axis, with $y=z=0$.
+        \end{itemize}}
+    \end{figure}
+\end{itemize}
+
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-cpp}{\faIcon{download} Source}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-cpp}
+\end{center}

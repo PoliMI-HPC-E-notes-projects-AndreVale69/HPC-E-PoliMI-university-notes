@@ -1,0 +1,69 @@
+\subsection{Introduction}
+
+\begin{remarkbox}[: OSI model]
+    The \definition{OSI (Open Systems Interconnection) Model}, developed by the International Organization for Standardization (ISO), is a conceptual framework that standardizes how different systems communicate over a network. It divides network communication into \textbf{seven layers}, each with specific responsibilities, enabling interoperability between diverse systems and technologies.
+
+    \highspace
+    The Seven Layers of the OSI Model:
+    \begin{enumerate}
+        \item \textbf{Physical Layer}: Handles the physical connection between devices, transmitting raw bits over a medium. It defines hardware elements like cables, hubs, and transmission modes (e.g., simplex, half-duplex). Examples include USB and Ethernet.
+
+        \item \textbf{Data Link Layer}: Ensures error-free data transfer between nodes on the same network. It manages framing, physical addressing (MAC), and error detection. Devices like switches and bridges operate here.
+
+        \item \textbf{Network Layer}: Responsible for routing and forwarding data across different networks. It uses logical addressing (IP) to determine the best path for data packets. Routers work at this layer.
+
+        \item \textbf{Transport Layer}: Ensures reliable end-to-end communication. It segments data, manages flow control, and handles error recovery. Protocols like TCP and UDP operate here.
+
+        \item \textbf{Session Layer}: Manages sessions between devices, including establishing, maintaining, and terminating connections. It also handles synchronization and recovery.
+
+        \item \textbf{Presentation Layer}: Translates data into a format suitable for the application layer. It handles encryption, compression, and data formatting (e.g., JPEG, MPEG).
+
+        \item \textbf{Application Layer}: Closest to the user, it provides network services like file transfer, email, and directory services. Protocols include HTTP, FTP, and SMTP.
+    \end{enumerate}
+\end{remarkbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is Layer 3 Load Balancing?}}
+\end{flushleft}
+\definition{Layer 3 (L3)} means the \textbf{network layer} in the OSI model, where \textbf{IP routing} happens. In a datacenter with many redundant paths (like a Fat-Tree), there are usually several routes of the \textbf{same cost} between a source and destination. \definition{Layer 3 Load Balancing} is the process of:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] Choosing \textbf{which path} a packet (or a whole flow) takes among those equal-cost routes.
+    \item[\textcolor{Green3}{\faIcon{bullseye}}] With the goal of \textbf{distributing traffic} evenly across the network.
+\end{itemize}
+Unlike \textbf{Layer 4-7 load balancing} (used for applications, web servers, etc.), L3 load balancing doesn't care about \emph{which service} is being accessed. It only cares about \textbf{routing packets} across the network fabric efficiently. It's a \textbf{network-wide optimization}:
+\begin{itemize}
+    \item Not about picking \emph{which server} handles a request,
+    \item But about picking \emph{which path} data takes to reach its destination.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why L3 Load Balancing is Needed}}
+\end{flushleft}
+Modern datacenter topologies (like \textbf{Fat-Tree/Clos}) provide \textbf{many equal-cost paths} between any two racks. For example: rack A wants to send data to rack B $\rightarrow$ there may be 8, 16, or more paths that cost the same.
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] If traffic always follows a single path, some links get congested (hotspots) and other links remain idle (wasted bandwidth).
+    \item[\textcolor{Green3}{\faIcon{check}}] With \textbf{load balancing} the traffic is spread across multiple available paths. It ensures higher \textbf{bisection bandwidth utilization} and improves both \textbf{throughput} and \textbf{latency}.
+\end{itemize}
+The \textbf{goal} is to \hl{maximize the use of the parallel paths} by distributing traffic wisely.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges}}
+\end{flushleft}
+Load balancing at Layer 3 (IP routing) is not trivial because of \textbf{traffic dynamics}:
+\begin{itemize}
+    \item \important{Flows come and go quickly}. Millions of short-lived flows (RPCs, queries) coexist with long-lived flows (backups, ML training). If the algorithm reacts too slowly $\rightarrow$ short flows finish before rebalancing even happens.
+    \item \important{Mix of short and long flows}
+    \begin{itemize}
+        \item \textbf{Mice flows}: small, latency-sensitive, numerous.
+        \item \textbf{Elephant flows}: large, bandwidth-hungry, can dominate a link.
+    \end{itemize}
+    Balancing both types is tricky:
+    \begin{itemize}
+        \item If we spread elephants badly $\rightarrow$ collisions $\rightarrow$ hotspots.
+        \item If we treat mice like elephants $\rightarrow$ too much scheduling overhead.
+    \end{itemize}
+    \item \important{TCP sensitivity}. TCP assumes packets of a flow arrive in order. If packets of the same flow are split across multiple paths $\rightarrow$ reordering happens $\rightarrow$ TCP slows down (false congestion signals). This rules out naïve strategies like packet spraying.
+\end{itemize}
+So the challenge is balance traffic in real-time while respecting the nature of \textbf{mice vs. elephant flows} and avoiding TCP issues.

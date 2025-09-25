@@ -1,0 +1,213 @@
+\paragraph{Header File}
+
+The following header defines a \textbf{Poisson 1D solver} with the classic FEM workflow:
+\begin{equation*}
+    \code{setup()} \rightarrow \code{assemble()} \rightarrow \code{solve()} \rightarrow \code{output()}
+\end{equation*}
+Each member maps 1-to-1 to a mathematical object.
+
+\begin{lstlisting}[language=C++,mathescape=true]
+#ifndef POISSON1D_HPP
+#define POISSON1D_HPP
+
+#include <deal.II/base/function.h>
+#include <deal.II/base/quadrature_lib.h>
+
+#include <deal.II/dofs/dof_handler.h>
+#include <deal.II/fe/fe_q.h>
+
+#include <deal.II/grid/tria.h>
+
+#include <deal.II/lac/sparsity_pattern.h>
+#include <deal.II/lac/sparse_matrix.h>
+#include <deal.II/lac/vector.h>
+
+#include <memory>
+
+using namespace dealii;
+
+/**
+ * Minimal Poisson 1D solver skeleton.
+ * Only the core fields from our math $\textcolor{codegreen}{\rightarrow}$ deal.II mapping.
+ */
+class Poisson1D
+{
+public:
+  // Physical dimension (1D, 2D, 3D)
+  static constexpr unsigned int dim = 1;
+
+  // $\textcolor{codegreen}{\mu}$(x) - diffusion coefficient (Lab 01: $\textcolor{codegreen}{\mu \equiv 1}$).
+  class DiffusionCoefficient : public Function<dim>
+  {
+  public:
+    // Constructor.
+    DiffusionCoefficient() = default;
+
+    // Evaluation.
+    double value(const Point<dim> &, const unsigned int = 0) const override {
+      return 1.0;
+    }
+  };
+
+  // f(x) - forcing term (Lab 01: -1 on (1/8, 1/4], 0 elsewhere).
+  class ForcingTerm : public Function<dim>
+  {
+  public:
+    // Constructor.
+    ForcingTerm() = default;
+
+    // Evaluation.
+    double value(const Point<dim> &p, const unsigned int = 0) const override {
+      const double x = p[0];
+      return (x > 1.0/8.0 && x <= 1.0/4.0) ? -1.0 : 0.0;
+    }
+  };
+
+  // Constructor: N = (N+1) elements on [0,1], r = FE degree.
+  Poisson1D(const unsigned int &N_, const unsigned int &r_)
+    : N(N_), r(r_) {}
+
+  // FEM pipeline (defined later).
+  void setup();    // mesh, FE, DoFs, sparsity, allocate A,f,u
+  void assemble(); // local integrals $\textcolor{codegreen}{\rightarrow}$ global A,f and apply Dirichlet
+  void solve();    // linear solver (CG)
+  void output() const; // VTK write
+
+protected:
+  // Discretization parameters
+  const unsigned int N; // N+1 elements
+  const unsigned int r; // polynomial degree
+
+  // Problem data
+  DiffusionCoefficient diffusion_coefficient;
+  ForcingTerm          forcing_term;
+
+  // Geometry & FE space
+  Triangulation<dim>                  mesh;
+  std::unique_ptr<FiniteElement<dim>> fe;           // e.g., FE_Q<dim>(r)
+  std::unique_ptr<Quadrature<dim>>    quadrature;   // e.g., QGauss<dim>(r+1)
+  DoFHandler<dim>                     dof_handler;
+
+  // Algebraic objects: A u = f
+  SparsityPattern      sparsity_pattern;
+  SparseMatrix<double> system_matrix;
+  Vector<double>       system_rhs;
+  Vector<double>       solution;
+};
+
+#endif //POISSON1D_HPP\end{lstlisting}
+
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-hpp}{\faIcon{download} Source}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/f04f312da68d16c253f46493ae7eaf24#file-poisson1d-hpp}
+\end{center}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Public section}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{\code{static constexpr unsigned int dim = 1;}}. We hard-code the \textbf{physical dimension} to 1. It simplifies the lab (no templates), while preserving \code{deal.II}'s dimension-aware types (\code{Triangulation<dim>}, \code{DoFHandler<dim>}, ...). If we later want 2D/3D, we'd typically turn the class into \code{template<int dim>} and reuse the same structure.
+    
+
+    \item \important{Problem data as \code{Function<dim>}}
+    \begin{lstlisting}[language=C++]
+class DiffusionCoefficient  : public Function<dim> { ... };
+class ForcingTerm           : public Function<dim> { ... };\end{lstlisting}
+    \code{deal.II} algorithms expect coefficients and source terms as ``\textbf{Function objects}'', a polymorphic interface for values/derivatives at points. We override \code{value()} function to return $\mu(x)$ and $f(x)$. However, for this lab:
+    \begin{itemize}
+        \item $\mu(x) \equiv 1$
+        \item $f(x) = -1$ on $\left.\left(\dfrac{1}{8}, \dfrac{1}{4}\right.\right]$, and $0$ elsewhere.
+    \end{itemize}
+    Keeping them as members makes it easy to pass them to assembly and boundary utilities (e.g., \code{VectorTools}, \code{MatrixTools}).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Function objects?}} In \code{deal.II}, coefficients, source terms, boundary data, exact solutions, etc. are modeled by classes derived from \code{dealii::\break Function<dim>}. \code{Function<dim>} class is abstract and provides some default implementations. Since it is abstract, we cannot create objects directly using this class. Instead, we need to create a derivative, such as the \code{ForcingTerm} class. \code{Function<dim>} class exposes \textbf{virtual methods} like:
+    \begin{itemize}
+        \item \code{value(const Point<dim>\&, unsigned int component=0)}
+        \item \code{gradient(const Point<dim>\&, unsigned int component=0)}
+        \item \code{vector\_value(...)}, \code{vector\_gradient(...)}, etc.
+    \end{itemize}
+    Because they're virtual, algorithms (assembly, interpolation, error post-processing) can accept a \textbf{reference to the base type} \code{Function<dim>\&} and work with \emph{any} concrete subclass we provide; that's \textbf{runtime polymorphism}. Here we have override only the value function, but we could override also other methods if we need it.
+
+
+    \item \important{Constructor}
+    \begin{lstlisting}[language=C++]
+Poisson1D(const unsigned int &N_, const unsigned int &r_)
+  : N(N_), r(r_) {}\end{lstlisting}
+    \begin{itemize}
+        \item \code{N} controls the \textbf{mesh resolution} (here: the implementation uses $N+1$ elements on $\left[0,1\right]$).
+        \item \code{r} is the FE \textbf{polynomial degree} (so $V_{h}$ is $\mathbb{P}_{r}$ continuous).
+    \end{itemize}
+    Both are stored as \code{const} so they're fixed for the life of the object.
+
+
+    \item \important{Pipeline methods}. This mirrors the \textbf{four canonical FEM phases}.
+    \begin{itemize}
+        \item \code{setup()}. Build everything static: mesh, FE, DoFs, sparsity, allocate \code{A}, \code{f}, \code{u}.
+        \item \code{assemble()}. Compute local element matrices/vectors and scatter into global \code{A}, \code{f}; apply Dirichlet.
+        \item \code{solve()}. Run a linear solver (CG here, as $A$ is SPD\footnote{%
+            A real square matrix $A$ is Symmetric Positive Definite (SPD) if $A^T = A$ and $x^T A x > 0$ for all nonzero vectors $x$. Consequences: all eigenvalues are real and strictly positive; $A$ admits a Cholesky factorization $A = R^T R$; it defines an inner product $\langle x,y\rangle_A = x^T A y$; Krylov solvers like Conjugate Gradient (CG) are applicable and guaranteed to converge. In FEM: stiffness matrices from coercive elliptic problems with homogeneous Dirichlet BCs are SPD.
+        } for Poisson).
+        \item \code{output()}. Write results (VTK) for ParaView, etc.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Protected section (the state of our solver)}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Discretization parameters}
+    \begin{lstlisting}[language=C++]
+const unsigned int N;  // N+1 elements on [0,1]
+const unsigned int r;  // FE degree (P_r)
+    \end{lstlisting}
+    These determine mesh size and polynomial degree; together they define $V_h$.
+
+
+    \item \important{Problem data (instances)}
+    \begin{lstlisting}[language=C++]
+DiffusionCoefficient diffusion_coefficient;
+ForcingTerm          forcing_term;\end{lstlisting}
+    Kept as objects (not pointers). They're cheap and provide an easy API during assembly and BCs.
+
+
+    \item \important{Geometry \& FE}
+    \begin{lstlisting}[language=C++]
+Triangulation<dim>                  mesh;
+std::unique_ptr<FiniteElement<dim>> fe;
+std::unique_ptr<Quadrature<dim>>    quadrature;
+DoFHandler<dim>                     dof_handler;\end{lstlisting}
+    \begin{itemize}
+        \item \code{Triangulation<dim>}: the \textbf{mesh} $\mathcal{T}_h$.
+        \item \code{FiniteElement<dim>} is an \textbf{abstract base}; \code{FE\_Q<dim>} derives from it. Storing a \code{unique\_ptr<FiniteElement<dim>>} lets we choose the concrete FE at runtime (here \code{FE\_Q<1>(r)}, but later we could switch type/degree without changing the class definition).
+
+        \code{fe} is our \textbf{finite element type}, it tells \code{deal.II}
+        \begin{itemize}
+            \item What the \textbf{local basis functions} are on each cell $K$;
+            \item Where the \textbf{degrees of freedom (DoFs)} live (endpoints, midpoints, ...);
+            \item How to get \textbf{shape values} $\phi_{i}\left(x_{q}\right)$ and \textbf{gradients} $\phi_{i}'(x_{q})$ at\break quadrature points;
+            \item How many \textbf{DoFs per cells} there are, etc.
+        \end{itemize}
+        \item Same idea for \code{Quadrature<dim>}: we'll usually pick \code{QGauss<dim>\break (r+1)} in \code{setup()}.
+        \item \code{DoFHandler<dim>} binds FE to the mesh and assigns \textbf{global DoF indices} (the algebraic unknowns).
+    \end{itemize}
+    \textbf{Lifetime ordering}: class members are destroyed in the \textbf{reverse} order of their declaration in \code{C++}. Here, \code{dof\_handler} is declared \textbf{after} \code{mesh}, so it is destroyed \textbf{before} \code{mesh} $\rightarrow$ this is the safe order required by \code{deal.II} (the handler must not outlive the mesh).
+
+
+    \newpage
+
+
+    \item \important{Algebraic structures}
+    \begin{lstlisting}[language=C++]
+SparsityPattern      sparsity_pattern;
+SparseMatrix<double> system_matrix;
+Vector<double>       system_rhs;
+Vector<double>       solution;\end{lstlisting}
+    \begin{itemize}
+        \item \code{SparsityPattern} captures where nonzeros can appear (from FE connectivity).
+        \item \code{SparseMatrix<double>} holds the global \textbf{stiffness matrix} $A$.
+        \item \code{Vector<double>}: RHS $f$ and solution $u$.
+    \end{itemize}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Strict style nit:}} many teams avoid \code{using namespace dealii;} in headers to prevent symbol pollution; for a lab it's okay, but in production we'd prefer \code{dealii::} prefixes or put \code{using} in the \code{.cpp}.
+\end{itemize}

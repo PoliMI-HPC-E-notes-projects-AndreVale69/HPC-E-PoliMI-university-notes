@@ -36,6 +36,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `Assemble: compute A and f`
       - add `Solver phase`
       - add `Output phase`
+      - add `Extensions`
 
 --------------------
 

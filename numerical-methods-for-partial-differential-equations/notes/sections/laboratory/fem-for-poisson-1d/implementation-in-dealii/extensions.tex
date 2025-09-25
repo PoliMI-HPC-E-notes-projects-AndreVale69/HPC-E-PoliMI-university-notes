@@ -1,0 +1,147 @@
+\paragraph{Extensions}
+
+In the basic implementation of our Poisson solver, all parameters are \emph{hard-coded} inside the \code{C++} source:
+\begin{itemize}
+    \item The number of mesh elements \code{N + 1};
+    \item The polynomial degree \code{r};
+    \item The diffusion coefficient \code{$\mu$(x)};
+    \item The right-hand side \code{f(x)}, etc.
+\end{itemize}
+This means that if we want to change, for example, the mesh size or ghe degree of the finite elements, we need to \textbf{edit the code and recompile}.
+
+\highspace
+The class \code{ParameterHandler} in \code{deal.II} solves this inconvenience: it lets us \textbf{define, document, and read parameters from a text file} at runtime:
+\begin{itemize}
+    \item We register each parameter in the handler with a name, default value, and description.
+    \item We then parse an input \code{.prm} file.
+    \item The solver reads the values directly from that file, so we can change parameters without touching or recompiling the \code{C++} code.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{\code{ParameterHandler}: Example workflow}}
+\end{flushleft}
+\begin{enumerate}
+    \item In our solver class, we declare a \code{ParameterHandler prm;} object.
+    \item In a dedicated method (say \code{declare\_parameters()}), we register entries, e.g.:
+    \begin{lstlisting}[language=C++]
+prm.declare_entry(
+    "N", "39", Patterns::Integer(),
+    "Number of elements in the mesh"
+);
+prm.declare_entry(
+    "r", "1", Patterns::Integer(),
+    "Polynomial degree of FE space"
+);\end{lstlisting}
+    \item In another method (e.g. \code{parse\_parameters(const std::string \&filename)}), we load the file:
+    \begin{lstlisting}[language=C++]
+prm.parse_input(filename);
+N = prm.get_integer("N");
+r = prm.get_integer("r");\end{lstlisting}
+    \item Then we can run our program with a parameter file \code{parameters.prm}:
+    \begin{lstlisting}
+subsection Poisson problem
+    set N = 100
+    set r = 2
+end\end{lstlisting}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why \code{ParameterHandler} is useful}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Flexibility}: we can run different problem configurations just by editing the text file.
+    \item \textbf{Reproducibility}: parameter files can be saved and shared.
+    \item \textbf{Scalability}: in larger PDE projects, the number of parameters grows quickly (mesh files, time steps, tolerances, preconditioners, ...). Hard-coding them becomes impractical.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Profiling: \code{TimerOutput}}}
+\end{flushleft}
+The goal is to turn our solver from ``\emph{it runs}'' into ``\emph{it runs and we \textbf{know} why it takes that long}''. So we can reason about scalability, pick better solvers/preconditioners, and justify design changes like mesh resolution or FE degree.
+
+\highspace
+After we write and test the code, we want to measure performance to find bottlenecks and possibly introduce optimizations. \code{TimerOutput} gives us an at-a-glance table with wall times/percentages per section; if we later need flame graphs or per-function hotsposts, switch to an external profiler. \textbf{What it measures}:
+\begin{itemize}
+    \item \textbf{Setup (initialization)}: mesh creation/refinement, DoF enumeration, sparsity pattern allocation. Helps check overhead of changing \code{N}, \code{r}, or reading meshes from file.
+    \item \textbf{Assembly}: local integrals to global matrix/vector. Typically dominates at moderate sizes; reveals impact of quadrature order, FE degree, cache behavior, and boundary handling.
+    \item \textbf{Solve}: linear solver and preconditioner. On large problems this is often the \textbf{bottleneck}; timing it lets us compare CG vs GMRES, or Jacobi vs (S)SOR vs SSOR, etc.
+    \item \textbf{Output}:  I/O and data formatting (e.g., VTK). Useful to know if file writing is skewing short runs.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How it works (conceptually)}}
+\end{flushleft}
+We create a \code{TimerOutput} object once (\code{.hpp} file):
+\begin{lstlisting}[language=C++]
+#include <deal.II/base/timer.h>
+
+class Poisson1D
+{
+    public:
+        ...
+        // Constructor: N = (N+1) elements on [0,1], r = FE degree.
+        Poisson1D(const unsigned int &N_, const unsigned int &r_)
+            : N(N_), r(r_),
+            // Print one line per timer section, wall times only.
+            timer(
+                std::cout, TimerOutput::summary,
+                TimerOutput::wall_times
+            )
+        {}
+
+        // FEM pipeline (defined later).
+        void setup();
+        void assemble();
+        void solve();
+        void output() const;
+        void print_timing() const;  // new
+    protected:
+        // Discretization parameters
+        ...
+
+        // Problem data
+        ...
+
+        // Geometry & FE space
+        ...
+
+        // Algebraic objects: A u = f
+        ...
+
+        // Profiling
+        mutable TimerOutput timer;
+}\end{lstlisting}
+We wrap each \textbf{phase} in a timed scope (\code{.cpp} file):
+\begin{lstlisting}[language=C++]
+void Poisson1D::setup()
+{
+  TimerOutput::Scope t(timer, "1_setup");
+  // ...
+}
+
+void Poisson1D::assemble()
+{
+  TimerOutput::Scope t(timer, "2_assembly");
+  // ...
+}
+
+void Poisson1D::solve()
+{
+  TimerOutput::Scope t(timer, "3_solve");
+  // ...
+}
+
+void Poisson1D::output() const
+{
+  TimerOutput::Scope t(timer, "4_output");
+  // ...
+}
+
+void Poisson1D::print_timing() const
+{
+  timer.print_summary();
+}\end{lstlisting}
+On exit, it prints a \textbf{summary table} with times per label and percentages of total wall-time.

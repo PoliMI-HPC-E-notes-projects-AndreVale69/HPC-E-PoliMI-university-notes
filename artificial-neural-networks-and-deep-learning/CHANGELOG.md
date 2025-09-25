@@ -9,3 +9,6 @@
 ### v0.1.0
 
 - add `CHANGELOG.md`
+- add `Introduction to Deep Learning`
+  - add `Machine Learning Foundations`
+    - add `Machine Learning Paradigms`

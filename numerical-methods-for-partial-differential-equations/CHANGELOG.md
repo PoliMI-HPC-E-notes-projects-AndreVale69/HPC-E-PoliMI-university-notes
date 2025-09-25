@@ -35,6 +35,7 @@ Each version follows the Conventional Commits structure. For more information on
       - add `Setup: turning math objects into deal.II objects`
       - add `Assemble: compute A and f`
       - add `Solver phase`
+      - add `Output phase`
 
 --------------------
 

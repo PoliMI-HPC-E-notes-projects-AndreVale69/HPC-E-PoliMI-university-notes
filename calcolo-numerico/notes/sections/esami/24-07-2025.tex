@@ -365,4 +365,138 @@ polyval(Pf, xj)\end{lstlisting}
 f(xj) - polyval(Pf, xj)\end{lstlisting}
         Il quale è il \textbf{vettore degli error puntuali} $E\left(\bar{x}_{j}\right)$. Infine, prendiamo il \textbf{massimo in valore assoluto} di questi errori, ovvero la norma infinito dell'errore di interpolazione.
     \end{itemize}
+
+
+    \item Ripetere il punto precedente usando i nodi di Chebyshev (estremi inclusi) nell'intervallo $I$. Indicando con $\Pi_{10}^{C}f$ l'interpolante corrispondente, riportare il massimo dell'errore di approssimazione sui punti $\left\{\overline{x}_{j}\right\}_{j = 1, \dots, 701}$ e i comandi Matlab usati.
+    
+    \begin{remarkbox}
+        Alcune osservazioni:
+        \begin{itemize}
+            \item Perché introdurre i nodi di Chebyshev? Se si scelgono i \textbf{nodi equispaziati}, come è stato fatto nell'esercizio precedente, l'errore di interpolazione può diventare molto grande per funzioni un po' oscillanti, soprattutto vicino agli estremi (\definition{Fenomeno di Runge}). Per ridurre questo problema, si usano i \textbf{nodi di Chebyshev}, che non sono equispaziati: sono più \textbf{densi agli estremi} e più radi al centro.
+            
+            \item I nodi di Chebyshev di ordine $n+1$ (quindi per un polinomio di grado $n$) in un intervallo generico $\left[a,b\right]$ sono:
+            \begin{equation*}
+                x_{k} = \dfrac{a+b}{2} + \dfrac{b-a}{2}\cdot\cos\left(\dfrac{2k+1}{2(n+1)}\cdot\pi\right), \quad k = 0,1,\dots,n
+            \end{equation*}
+            Noti anche come \textbf{nodi di Chebyshev di prima specie}. Per esempio, con $\left[a,b\right] = \left[-1,1\right]$ diventano semplicemente:
+            \begin{equation*}
+                x_k = \cdot\cos\left(\dfrac{2k+1}{2(n+1)}\pi\right)
+            \end{equation*}
+            Attenzione, questi nodi sono usati nel caso in cui gli estremi \textbf{non} siano inclusi.
+
+            \item Differenza tra i nodi equispaziati e i nodi di Chebyshev:
+            \begin{itemize}
+                \item \textbf{Equispaziati}: uniformi su $\left[a,b\right]$
+                \item \textbf{Chebyshev}: più concentrati agli estremi, quindi si riducono al minimo l'effetto di oscillazioni indesiderate, e quindi garantiscono che l'errore massimo teorico sia quasi ottimale.
+            \end{itemize}
+
+            \item Con i \textbf{nodi di Chebyshev di seconda specie}, gli estremi vengono presi in considerazione:
+            \begin{equation*}
+                x_{k} = \dfrac{a+b}{2} + \frac{b-a}{2}\cdot\cos\left(\dfrac{k}{n}\cdot\pi\right), \quad k=0,\dots,n
+            \end{equation*}
+            Quindi $x_{0} = a$ e $x_{n} = b$.
+        \end{itemize}
+    \end{remarkbox}
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Il codice è identico al precedente ma differisce soltanto come si costruisce il vettore $x$:
+    \begin{lstlisting}[language=MATLAB]
+% estremi intervallo
+a = -2; b = 2;
+k = 0:n;
+
+% nodi di Chebyshev (seconda specie, estremi inclusi)
+xnC = (a+b)/2 + (b-a)/2 * cos(k/n * pi);
+% se fosse stato di prima specie:
+% xnC = (a+b)/2 + (b-a)/2 * cos((2*k+1)/(2*(n+1)) * pi);
+
+% polinomio interpolante di grado n sui nodi di Chebyshev
+PfC = polyfit(xnC, f(xnC), n);
+% massimo errore di approssimazione
+erC = max(abs(f(xj) - polyval(PfC, xj)));
+disp('Massimo errore di approssimazione con nodi di Chebyshev');
+disp(erC);\end{lstlisting}
+    Risultato:
+    \begin{lstlisting}
+Massimo errore di approssimazione con nodi di Chebyshev
+     0.060307\end{lstlisting}
+
+
+    \item Rappresentare in un unico grafico: la funzione $f(x)$, i polinomi $\Pi_{10}f$ e $\Pi_{10}^{C}f$. Caricare l'immagine generata in formato \texttt{png} con opportuna legenda.
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+
+    \begin{lstlisting}[language=MATLAB]
+figure;
+hold on;
+plot(xj, f(xj), 'r', 'DisplayName', 'funzione originale');
+plot(xj, polyval(Pf, xj), '-b', 'DisplayName', 'interp con nodi equispaziati');
+plot(xj, polyval(PfC, xj), '-g', 'DisplayName', 'interp con nodi di Chebyshev');
+legend show;
+title('Confronto tra funzione e polinomi interpolanti');
+xlabel('x');
+ylabel('y');
+grid on;
+hold off;\end{lstlisting}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.8\textwidth]{img/24-07-2025/24-07-2025-compare.pdf}
+    \end{figure}
+
+    \newpage
+
+    \item Costruire il polinomio interpolante su nodi di Chebyshev al variare di $n = 10, 20, 30, 40$. Calcolare l'errore di interpolazione sui $701$ punti $\overline{x}_{j}$ e riportare in notazione esponenziale il vettore degli errori al variare di $n$. Quale andamento si osserva?
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+    \begin{lstlisting}[language=MATLAB]
+minVal = 10;
+maxVal = 50;
+step = 10;
+errors = zeros(1, 5);
+
+for n = minVal:step:maxVal
+    k = 0:n;
+    xnC = (a+b)/2 + (b-a)/2 * cos(k/n * pi);
+    PfC = polyfit(xnC, f(xnC), n);
+    erC = max(abs(f(xj) - polyval(PfC, xj)));
+    errors(n/step) = erC;
+end
+
+disp('Errori al variare di n:');
+disp(errors);\end{lstlisting}
+    Risultato:
+    \begin{lstlisting}
+Errori al variare di n:
+     0.060307     0.004226    0.0003243   2.7112e-05   0.00026034\end{lstlisting}
+    Si può osservare una decrescita esponenziale dell'errore al variare di \texttt{n}.
+
+
+    \item Si introduca l'interpolante di Lagrange composito $\Pi_{k}^{H}$ con $k \ge 1$ definendo con precisione la notazione utilizzata. A partire dalla stima di convergenza dell'interpolatore Lagrangiano, si deduca la stima dell'errore di interpolazione composita in funzione di $H$ ed $k$.
+    
+    \begin{remarkbox}
+        L'interpolazione di Lagrange è un approccio diverso al problema dell'interpolazione.
+        \begin{itemize}
+            \item \important{Interpolante di Lagrange classico}. Si costruisce \textbf{un unico polinomio} $\Pi_{n} f$ di grado $n$ che interpola $f$ in $n+1$ nodi su tutto l'intervallo $\left[a,b\right]$. Ma in questo caso, se $n$ diventa grande, si hanno oscillazioni (\definition{Fenomeno di Runge}), instabilità numerica, costo alto.
+            
+            \item \important{Interpolante di Lagrange composito}. L'idea \eaccent di \textbf{non usare un unico polinomio di alto grado}, ma tanti polinomi di basso grado costruiti \textbf{pezzo per pezzo} su sottointervalli.
+            \begin{itemize}
+                \item Si divide l'intervallo $\left[a,b\right]$ in $M$ sottointervalli di ampiezza massima $H = \max \left|x_{i + 1} - x_{i}\right|$.
+                \item Su ogni sottointervallo si costruisce un \textbf{polinomio interpolante di grado} $k$ (con $k+1$ nodi per sottointervallo).
+                \item L'interpolante composito $\Pi_{k}^{H}f$ \eaccent la funzione ``a tratti'' che, su ogni sottointervallo, coincide con il polinomio interpolante locale.
+            \end{itemize}
+
+            \item \important{Convergenza e stima dell'errore}. Per l'interpolazione di Lagrange su un singolo intervallo, \eaccent noto che (se $f \in C^{k+1}$):
+            \begin{equation*}
+                \left|f(x) - \Pi_{k}f(x)\right| \le C \, h^{k+1}, \quad h = \text{ampiezza dell'intervallo}
+            \end{equation*}
+            Per la versione composita:
+            \begin{itemize}
+                \item Ogni sottointervallo ha ampiezza $\le H$;
+                \item L'errore su ciascun pezzo \eaccent $\mathcal{O}\left(H^{k+1}\right)$;
+                \item Quindi l'errore globale dell'interpolante composito $\Pi_{k}^{H}$ \eaccent anch'esso:
+                \begin{equation*}
+                    \left\| f - \Pi_{k}^{H} f \right\|_{\infty} \le C \, H^{\,k+1}
+                \end{equation*}
+            \end{itemize}
+        \end{itemize}
+    \end{remarkbox}
 \end{enumerate}

@@ -13,3 +13,4 @@
   - add `Machine Learning Foundations`
     - add `Machine Learning Paradigms`
       - add `Supervised Learning`
+      - add `Unsupervised Learning`

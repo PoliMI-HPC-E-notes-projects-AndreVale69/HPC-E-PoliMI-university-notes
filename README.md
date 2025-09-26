@@ -114,7 +114,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=986&aa=2024&n_docente=Quarteroni%20Alfio%20Maria&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Quarteroni Alfio Maria</a></td>
         <td><ul>
             <li><a href="numerical-methods-for-partial-differential-equations">Course Details</a></li>
-            <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.2.0</a></li>
+            <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.3.0</a></li>
         </ul></td>
     </tr>
     <tr>

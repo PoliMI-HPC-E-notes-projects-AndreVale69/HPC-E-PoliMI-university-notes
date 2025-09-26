@@ -1,0 +1,308 @@
+\subsubsection{Finite Element formulation}
+
+We already derived:
+\begin{itemize}
+    \item \textbf{Weak formulation} (page \pageref{subsubsection: Weak formulation}), find $u \in V$ such that:
+    \begin{equation*}
+        a(u,v) = F(v) \quad \forall v \in V
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $V = H^{1}_{0}\left(\Omega\right)$
+        \item $a\left(u,v\right) = \displaystyle\int_{0}^{1} u'\left(x\right)v'\left(x\right)\,\mathrm{d}x$
+        \item $F(v) = \displaystyle\int_{0}^{1} f(x)v(x)\,\mathrm{d}x$
+    \end{itemize}
+    \item \textbf{Galerkin formulation} (page \pageref{subsubsection: Galerkin formulation}), restrict to a finite-dimensional space $V_{h} \subset V$:
+    \begin{equation*}
+        a(u_h, v_h) = F(v_h) \quad \forall v_h \in V_h
+    \end{equation*}
+\end{itemize}
+So the question is: \textbf{how to choose $V_{h}$?}
+
+\longline
+
+\paragraph[Constructing the finite-element space \texorpdfstring{$V_h$}{Vh}]{Constructing the finite-element space $V_h$}
+
+\textbf{We want to approximate the infinite-dimensional space}. The weak formulation lives in $V = H^{1}_{0}(\Omega)$, which is infinite-dimensional. To make it computable, Galerkin requires a \textbf{finite-dimensional subspace} $V_{h} \subset V$. But how do we describe $V_{h}$? We need a concrete way.
+
+\highspace
+\textbf{Mesh gives structure}.\label{def: Mesh} A \definition{Mesh} is a way to divide our domain $\Omega$ (here $\left(0,1\right)$) into \textbf{smaller, simple pieces} called \textbf{elements}.
+\begin{itemize}
+    \item In 1D: elements are \textbf{intervals}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/poisson-1d/mesh-1d.pdf}
+        \caption{An example of a 1D mesh for $(0,1)$, partitioned into 4 elements (so 5 internal nodes plus the two boundaries). Each segment is an \textbf{element}, and the blue dots are the \textbf{nodes} $x_{0}, x_{1}, \dots, x_{5}$.}
+    \end{figure}
+    
+    \newpage
+    
+    \item In 2D: elements are usually \textbf{triangles} or \textbf{quadrilaterals}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.56\textwidth]{img/poisson-1d/mesh-2d.pdf}
+        \caption{An example of a 2D triangular mesh of the unit square $(0,1) \times (0,1)$. The blue dots are the \textbf{nodes}. The black lines are the \textbf{edges of the triangular elements}. Each small triangle is one \textbf{finite element}.}
+    \end{figure}
+    \item In 3D: elements are \textbf{tetrahedra} or \textbf{hexahedra (cubes)}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.66\textwidth]{img/poisson-1d/mesh-3d.pdf}
+        \caption{An example of a 3D mesh of the unit cube $\left(0, 1\right)^{3}$, divided into smaller hexahedral elements (little cubes). Each transparent cyan block is one \textbf{element}. The black lines are the \textbf{edges of the mesh}.}
+    \end{figure}
+\end{itemize}
+These elements are ``building blocks'' on which we define our basis functions.
+
+\highspace
+Formally, a \definition{Mesh} (or triangulation) $\mathcal{T}_{h}$ of a domain $\Omega$ is a collection of elements $K$ such that:
+\begin{enumerate}
+    \item $\displaystyle\bigcup_{K \in \mathcal{T}_{h}} K = \Omega$ (the elements cover the whole domain).
+    \item Two elements only touch on their boundary; they don't overlap inside.
+    \item Each element has a ``small'' size related to the \textbf{mesh parameter} $h$, typically the maximum diameter of all elements:
+    \begin{equation*}
+        h = \max_{K \in \mathcal{T}_{h}} \text{diam}\left(K\right)
+    \end{equation*}
+    In 1D, where $K = \left[x_{i-1}, x_{1}\right]$, its \textbf{diameter} is just its length:
+    \begin{equation*}
+        \text{diam}\left(K\right) = \left|x_{i} - x_{i-1}\right|
+    \end{equation*}
+    In 2D, if $K$ is a triangle, its diameter is the length of the \textbf{longest edge}. In 3D, if $K$ is a tetrahedron, its diameter is the longest distance between two of its vertices. So, $\text{diam}(K)$ gives a \hl{size measure of that element}.
+\end{enumerate}
+It is called a ``mesh'' because, when viewed in two or three dimensions, its elements form a grid or net, much like the mesh of a fishing net or the pixels of an image.
+
+\highspace
+In short, a \textbf{mesh is the discretization of the geometry of our domain into small, simple elements}. It is the foundation of finite elements. Without a mesh, we wouldn't know \emph{where} to place our basis functions.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{So, what exactly is a mesh parameter?}}
+\end{flushleft}
+We define the \definition{Mesh Parameter $h$} (or \textbf{mesh size}) as:
+\begin{equation}
+    h = \max_{K \in \mathcal{T}_h} \text{diam}(K)
+\end{equation}
+This is a \textbf{global measure}: it takes the largest element in the mesh. If the mesh is uniform (all elements equal size), then $h$ is just the common element size. If the mesh is non-uniform (some small, some large elements), then $h$ tells us the size of the \textbf{worst (largest) element}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does the Mesh Parameter matter?}}
+\begin{itemize}
+    \item \textbf{Accuracy}: Smaller $h$ $\rightarrow$ more elements $\rightarrow$ better approximation of the true solution.
+    \item \textbf{Computational cost}: Smaller $h$ $\rightarrow$ bigger system of equations $\rightarrow$ more memory and CPU time.
+    \item \textbf{Convergence theory}: Error estimates are usually written like:
+    \begin{equation*}
+        \left\|u - u_h\right\| \leq C h^{p}
+    \end{equation*}
+    Where $p$ depends on the polynomial degree $r$. So the quality of the mesh directly controls how fast we converge to the true solution.
+\end{itemize}
+For example, suppose $\Omega = (0,1)$, partitioned into $N+1$ intervals. Each interval has length $h = \dfrac{1}{\left(N+1\right)}$. If $N = 9$, then $h = 0.1$. If $N = 99$, then $h = 0.01$, so the mesh is 10 times finer.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{1D Poisson Problem}}
+\end{flushleft}
+Our laboratory has the domain $\Omega = \left(0, 1\right)$. We take a number of mesh elements of $N+1 = 20$. Then we have nodes:
+\begin{equation*}
+    x_0 = 0, \; x_1 = h, \; x_2 = 2h, \dots, x_{20} = 1
+\end{equation*}
+With $h = \dfrac{1}{N + 1} = \dfrac{1}{20}$. Each element is $K_{i} = \left[x_{i-1}, x_{i}\right]$. So the mesh is simply the collection:
+\begin{equation*}
+    \mathcal{T}_{h} = \left\{
+        \left[0, h\right], \;
+        \left[h, 2h\right], \;
+        \left[2h, 3h\right], \dots,
+        \left[1-h, 1\right]
+    \right\}
+\end{equation*}
+This breaks the continuous problem into ``small, simple pieces''. So the domain is now ``atomic pieces'' $K_{i}$. On each element we can define \textbf{local polynomials}. 
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we approximate with polynomials on each piece?}}
+    \label{label: why do we approximate with polynomials on each piece}
+\end{flushleft}
+There are four reasons:
+\begin{itemize}
+    \item \hl{Because polynomials are \textbf{simple and computable}}. Polynomials have \textbf{explicit formulas} for derivatives and integrals. In FEM we need to compute integrals like:
+    \begin{equation*}
+        \displaystyle\int_{K_{i}} u_{h}'(x) \cdot v_{h}'(x) \,\mathrm{d}x
+    \end{equation*}
+    And with polynomials these are straightforward.
+    \item \hl{Because polynomials are \textbf{good local approximators}}. By Taylor's theorem, any smooth function can be approximated locally by a polynomial. On a small element $K_{i}$, the solution $u(x)$ doesn't change much, so a low-degree polynomial (linear, quadratic) already gives a good fit. The smaller the element (smaller $h$), the better a polynomial of fixed degree approximates the true solution.
+    \item \hl{Because they ``glue together'' nicely}. If we define one polynomial per element, we can impose \textbf{continuity} at shared nodes. This gives us \textbf{global continuous functions} built from local building blocks. With polynomials, enforcing continuity at nodes is natural (hat functions are 1 at one node, 0 at others).
+    \item \hl{Because they give sparse algebraic systems}. Each polynomial (hat function) has \textbf{local support}: it is nonzero only on 2 neighboring elements (in 1D, for $r=1$). This locality produces a \textbf{sparse stiffness matrix} (tridiagonal in 1D, banded in higher dimensions). Sparse systems are efficient to store and solve, essential for HPC.
+\end{itemize}
+\begin{examplebox}[: Physical analogy]
+    Imagine we cut a bent stick (the real solution) into small pieces:
+    \begin{itemize}
+        \item On each piece, we approximate it with a simple ruler (straight line is a linear polynomial).
+        \item The smaller the pieces, the more the rulers together resemble the original curve.
+        \item If we want higher accuracy per piece, we can replace the ruler with a curved template (quadratic, cubic polynomial).
+    \end{itemize}
+\end{examplebox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/poisson-1d/approximation.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Graphical 1D example showing how a smooth curve can be approximated by piecewise polynomials of degree one (straight lines) on the mesh.
+    \begin{itemize}
+        \item The \textbf{red curve} is the exact function $u(x) = \sin(2\pi x)$.
+        \item The \textbf{blue dashed line} is the finite element approximation with $r=1$: piecewise linear segments between mesh nodes.
+        \item The \textbf{black dots} are the mesh nodes, where the FE solution matches the exact one.
+    \end{itemize}
+    As we refine the mesh ($N$ larger, $h$ smaller), the blue curve hugs the red one more closely.}
+\end{figure}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/poisson-1d/approximation-2.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Graphical 1D example showing how a smooth curve can be approximated by piecewise polynomials of degree one (straight lines) on the mesh.
+    \begin{itemize}
+        \item The \textbf{red curve} is the exact function $u(x) = \sin(2\pi x)$.
+        \item The \textbf{blue dashed curve} is the piecewise linear approximation ($r=1$): straight line segments.
+        \item The \textbf{green dash-dot curve} is the piecewise quadratic approximation ($r=2$): parabolas on each element.
+    \end{itemize}
+    We can see that the quadratic elements hug the sine curve much better, especially between the nodes. However, despite the increased precision, the system size, cost, and DoFs (Degrees of Freedom, or the number of equations to be solved) all increase.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Define piecewise polynomials}}
+\end{flushleft}
+For a given polynomial degree $r$:
+\begin{equation}\label{eq: Poisson 1D - Enforce continuity}
+    X_{h}^{r}\left(\Omega\right) = \left\{ v_{h} \in C^{0}\left(\left[0,1\right]\right) \; : \; v_{h}|_{K_{i}} \in \mathbb{P}_r, \ \forall i\right\}
+\end{equation}
+Meaning:
+\begin{itemize}
+    \item $v_h \in C^0([0,1])$: every function in $X_h^r(\Omega)$ must be \textbf{continuous} across the whole domain. No ``jumps'' are allowed between one element and the next. So when we glue local polynomials together, they must match at the common endpoints (nodes).
+
+    Reason: the weak formulation requires $u_h \in H^{1}\left(\Omega\right)$, and $H^{1}$ functions must be continuous.
+    \item $v_h|_{K_i} \in \mathbb{P}_r$: where $|_{K_i}$ means ``restricted to the element $K_i$''. On each mesh element $K_i = [x_{i-1}, x_i]$, the function is a polynomial of degree $\leq r$. For example:
+    \begin{itemize}
+        \item If $r=1$, on each element $K_i$, $v_h(x) = a + b x$ (a straight line).
+        \item If $r=2$, then $v_h(x) = a + b x + c x^2$ (a parabola).
+    \end{itemize}
+    So globally, $v_{h}$ is ``piecewise polynomial'': it can change slope or curvature from one element to the next, but it remains continuous.
+    \item $\forall i$: this condition applies \textbf{on every element of the mesh}. We cannot have a polynomial on some elements and something else on others, the rule is uniform across the mesh.
+    \item Restricted to each element $K_i$, it is a polynomial of degree at most $r$.
+    \item For $r=1$, that means \textbf{straight lines on each interval}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Impose boundary conditions}}
+\end{flushleft}
+From the laboratory problem:
+\begin{equation*}
+    u(0) = 0, \quad u(1) = 0
+\end{equation*}
+The solution must vanish at the endpoints of the domain. However, the continuous weak space already encodes this. From the weak formulation:
+\begin{equation*}
+    \begin{array}{rcl}
+        u \in V &=& H^1_0(\Omega) \\[.3em]
+        &=& \left\{ v \in H^1(\Omega) : v(0) = v(1) = 0 \right\}
+    \end{array}
+\end{equation*}
+So in the continuous problem, we don't enforce the boundary conditions by extra conditions; they are \textbf{baked into the function space} itself. So far, we constructed:
+\begin{equation*}
+    X_h^r(\Omega) = \{ v_h \in C^0([0,1]) : v_h|_{K_i} \in \mathbb{P}_r \}
+\end{equation*}
+But these functions don't necessarily vanish at the boundary. To fix this, we take:
+\begin{equation}\label{eq: Poisson 1D - Impose boundary conditions}
+    V_h = X_h^r(\Omega) \cap H^1_0(\Omega)
+\end{equation}
+Meaning:
+\begin{itemize}
+    \item Functions must belong to $X_h^r(\Omega)$ (continuous, piecewise polynomials).
+    \item \textbf{And} they must vanish at the boundary, just like in $H^{1}_{0}\left(\Omega\right)$.
+\end{itemize}
+In other words, restrict the finite element space so that all functions automatically vanish at the boundary. In practice, this removes the boundary basis functions and leaves only the internal degrees of freedom.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Choose a basis (Lagrangian ``hat'' functions)}}
+    \label{def: choose a Lagrangian basis}
+\end{flushleft}
+Now we need a basis of $V_h$. A \definition{Basis} is like a set of ``Lego bricks'' from which we can build any object in a space. The basis gives us a \textbf{small finite set of functions} from which all others in the space can be built. From the finite element space $V_{h}$, we can find $N$ \textbf{basis functions} $\varphi_{1}, \dots, \varphi_{N}$ such that:
+\begin{equation}
+    u_{h}(x) = \displaystyle\sum_{j=1}^{N} U_{j} \cdot \varphi_{j}(x) \quad \forall u_h \in V_h
+\end{equation}
+Where the coefficients $U_{j}$ are just numbers and the $\varphi_{j}$ are the ``bricks'' (basis functions). In 1D, for $r=1$, these $\varphi_{j}$ are the hat functions. Without a basis, the space is just an abstract definition.
+
+\highspace
+Once we expand the unknown $u_{h}$ in this basis, the PDE problem reduces to solving for the coefficients $U_{j}$. This is how we go from an infinite-dimensional PDE to a finite-dimensional \textbf{linear system} $AU = f$ (\textbf{from functions to algebra}).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why choose a Lagrangian basis?}} There are many possible bases, but the \textbf{Lagrangian nodal basis} is the most natural for FEM. Its key properties:
+\begin{enumerate}
+    \item \important{Interpolation property}. Each basis function $\varphi_j$ satisfies:
+    \begin{equation*}
+        \varphi_j(x_i) = \delta_{ij}
+    \end{equation*}
+    It equals \textbf{1 at its own node} and \textbf{0 at all others}. This makes coefficients $U_j$ directly equal to the \textbf{nodal values} of the solution:
+    \begin{equation*}
+        u_h(x_i) = U_i
+    \end{equation*}
+    So the unknowns are literally ``the solution at the mesh nodes''.
+    
+    \item \important{Local support}. Each $\varphi_j$ is nonzero only on a small neighborhood of nodes (two elements in 1D). This leads to a \textbf{sparse matrix}, which is essential for computational efficiency.
+
+    \item \important{Intuitive geometry}. The basis functions look like little ``hats'' (for $r=1$) or ``arches'' (for $r=2$), easy to visualize and implement. In higher dimensions, they become pyramids (2D triangles) or tents (3D tetrahedra).
+
+    \item \important{Implementation in FEM libraries}. Packages like \texttt{deal.II}, \texttt{FEniCS}, \texttt{gmsh}, etc. all rely on nodal (Lagrangian) bases as the standard choice. They are the simplest to code, especially for assembling element matrices and evaluating values at quadrature points.
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Could we use another basis?}} \textbf{Yes}, hierarchical bases, modal bases (e.g., Legendre polynomials), spectral methods (global polynomials). \textbf{But} those are more complex, less intuitive, and not the standard starting point. So for our laboratory, the goal is clarity and efficiency, that's why we stick to \textbf{Lagrangian hat functions}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{history} \textbf{Summary}}
+\end{flushleft}
+We successfully built the finite element space $V_h$. Here is a list of the steps we took:
+\begin{enumerate}
+    \item \important{Start from the weak space} (page \pageref{subsubsection: Weak formulation}). The PDE requires solutions in:
+    \begin{equation*}
+        V = H^1_0(\Omega)
+    \end{equation*}
+    i.e. continuous functions with square-integrable derivatives, vanishing on the boundary. This space is infinite-dimensional.
+    
+
+    \item \important{Partition the domain (mesh)} (page \pageref{def: Mesh}). Divide $\Omega=(0,1)$ into $N+1$ small intervals:
+    \begin{equation*}
+        \mathcal{T}_h = \left\{K_i = [x_{i-1}, x_i] : i=1,\dots,N+1\right\}, \quad h=\dfrac{1}{N+1}
+    \end{equation*}
+
+
+    \item \important{Define local polynomial shape} (page \pageref{label: why do we approximate with polynomials on each piece}). On each element $K_i$, we decide that admissible functions are \textbf{polynomials of degree} $r$:
+    \begin{equation*}
+        v_h|_{K_i} \in \mathbb{P}_r
+    \end{equation*}
+    Where $r=1$ are straight lines, $r=2$ are parabolas, etc.
+
+
+    \item \important{Enforce continuity} (page \pageref{eq: Poisson 1D - Enforce continuity}). Require that these piecewise polynomials join continuously across elements:
+    \begin{equation*}
+        X_h^r(\Omega) = \left\{ v_h \in C^0([0,1]) : v_h|_{K_i} \in \mathbb{P}_r \ \forall K_i\right\}
+    \end{equation*}
+
+
+    \item \important{Impose boundary conditions} (page \pageref{eq: Poisson 1D - Impose boundary conditions}). Since the PDE requires $u(0)=u(1)=0$, we restrict to functions that vanish at the endpoints:
+    \begin{equation*}
+        V_h = X_h^r(\Omega) \cap H^1_0(\Omega)
+    \end{equation*}
+
+
+    \item \important{Choose a basis} (page \pageref{def: choose a Lagrangian basis}). Pick a convenient set of basis functions for $V_h$.
+    \begin{itemize}
+        \item Standard choice: \textbf{Lagrangian nodal basis} (hat functions).
+        \item They are 1 at one node, 0 at all others, and supported only on neighboring elements.
+    \end{itemize}
+    Thus, any approximate solution is written as:
+    \begin{equation*}
+        u_h(x) = \sum_{j=1}^{N_h} U_j \cdot \varphi_j(x)
+    \end{equation*}
+    With unknown coefficients $U_j$ (the degrees of freedom).
+\end{enumerate}

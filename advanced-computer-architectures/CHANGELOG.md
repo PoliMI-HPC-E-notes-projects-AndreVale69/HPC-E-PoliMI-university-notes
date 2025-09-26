@@ -39,6 +39,7 @@
   - add `Why Cache Coherence?`
   - add `Snooping (bus-based) Protocols`
     - add `Snoopy bus idea, broadcast, and scalability limits`
+    - add `Practicalities: duplicate tag to avoid stalling the core`
 
 --------------------
 

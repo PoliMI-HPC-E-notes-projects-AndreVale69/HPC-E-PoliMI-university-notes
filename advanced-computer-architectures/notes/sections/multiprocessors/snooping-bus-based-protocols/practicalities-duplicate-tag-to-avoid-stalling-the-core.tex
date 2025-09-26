@@ -1,0 +1,44 @@
+\subsubsection{Practicalities: duplicate tag to avoid stalling the core}
+
+In a \textbf{snooping system}, every bus transaction (read, write, invalidate, etc.) must be \textbf{checked} against the cache tags to see if the block is present. That means, whenever another processor issues a request, \emph{our} cache must search its tag store.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle}} Here comes the problem. The \textbf{cache tag array} is already heavily used by the \textbf{local processor} (to check hits/misses on every load/store). If we force the processor to stop whenever the bus needs a tag lookup, we create \textbf{conflicts}:
+\begin{enumerate}
+    \item Either the processor stalls waiting for the snoop check;
+    \item Or the snoop is delayed (risking coherence violations).
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The solution: Duplicate tag (``snoop tag'')}}
+\end{flushleft}
+Designers add a \textbf{duplicate copy} of the cache's tag array, called \definition{Snoop Tag Store}. It is a much smaller, parallel structure. However, this duplicate is used \textbf{only for coherence snooping}:
+\begin{itemize}
+    \item Whenever a bus transaction occurs, the snoop tag is checked to see if this cache has the block.
+    \item Meanwhile, the main tag array is still free to serve the local processor.
+\end{itemize}
+This \textbf{prevents} the processor pipeline from \textbf{stalling} due to bus snoop checks and \textbf{minimizes snooping overhead}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Implementation details}}
+\end{flushleft}
+The \textbf{snoop tag array} doesn't need data, only \textbf{address $+$ state bits} (valid/\break dirty/ownership).For example, in an \textbf{MSI/MESI protocol} (covered later), each line of the snoop tag contains:
+\begin{itemize}
+    \item The block's tag;
+    \item Its coherence state (M, E, S, I.)
+\end{itemize}
+On a bus transaction, if the tag matches and the line is not \code{Invalid}, the cache controller reacts (invalidate, flush data, etc.). This check can happen \textbf{every cycle} without disturbing the processor's own cache access.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Trade-off}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] Cost: extra silicon area for a second tag store (smaller than the full cache, since only tags are duplicated).
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] Benefit: avoids \textbf{structural hazard} between processor accesses and snooping.
+\end{itemize}
+Without snoop tags, high-performance multiprocessors would suffer \textbf{pipeline stalls} just from coherence traffic.
+
+\highspace
+In summary, snoopy coherence requires frequent tag lookups. To avoid interfering with the CPU's own cache access, systems use \textbf{duplicate ``snoop tags''}. This is a small hardware trick, but \textbf{essential} for performance in bus-based coherence systems.

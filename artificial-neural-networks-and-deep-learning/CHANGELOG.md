@@ -12,3 +12,4 @@
 - add `Introduction to Deep Learning`
   - add `Machine Learning Foundations`
     - add `Machine Learning Paradigms`
+      - add `Supervised Learning`

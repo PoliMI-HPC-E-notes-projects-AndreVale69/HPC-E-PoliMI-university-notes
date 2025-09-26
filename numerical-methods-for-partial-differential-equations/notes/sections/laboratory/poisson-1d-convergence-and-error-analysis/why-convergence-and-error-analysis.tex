@@ -1,0 +1,41 @@
+\subsection{Poisson 1D: Convergence \& Error Analysis}
+
+\subsubsection{Why Convergence \& Error Analysis?}
+
+In the previous laboratory (page \pageref{subsection: FEM for Poisson 1D}) we built a \textbf{finite element solver} for the 1D Poisson problem. At that stage, the solver could generate a mesh, assemble the stiffness matrix, impose boundary conditions, solve the linear system, and output results. However, having code that ``runs'' is not enough: we must ask ourselves whether it is \textbf{mathematically correct}. This is where the second lab (this section) comes into play.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Verification vs. Validation}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Verification} asks: ``\emph{are we solving the equations correctly?}''. It focuses on the \textbf{implementation of the numerical method}. We want to ensure that our FEM discretization of Poisson's equation converges at the rates predicted by theory.
+    \item \important{Validation} asks: ``\emph{are we solving the correct equations?}''. This concerns the \textbf{mathematical model}. For example, is Poisson's equation with Dirichlet boundary conditions the right physical model for heat diffusion in a bar?
+\end{itemize}
+This lab is entirely about \textbf{verification}, not validation. Our task is to prove that the FEM code correctly implements the Galerkin formulation.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Method of Manufactured Solutions (MMS)}}
+\end{flushleft}
+In practice, we rarely know the exact solution to a PDE. To verify convergence, however, we need one. The \definition{Method of Manufactured Solutions (MMS)} provides a systematic way:
+\begin{enumerate}
+    \item \textbf{Choose a smooth exact solution} $u_{\text{ex}}(x)$, even arbitrarily (e.g. $u_{\text{ex}}(x) = \sin(2\pi x)$).
+    \item \textbf{Derive the forcing term} $f(x)$ by plugging $u_{\text{ex}}$ into the PDE:
+    \begin{equation*}
+        -u_{\text{ex}}''(x) = f(x)
+    \end{equation*}
+    For the sine example, this gives $f(x) = 4\pi^2\sin(2\pi x)$.
+    \item Impose \textbf{boundary conditions} consistent with $u_{\text{ex}}(0)$ and $u_{\text{ex}}(1)$.
+\end{enumerate}
+By construction, $u_{\text{ex}}$ is the exact solution of the PDE we feed to our solver. We can then compute the numerical error $u_h - u_{\text{ex}}$ and verify the theoretical convergence rates.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not use trivial ``patch tests''?}}
+\end{flushleft}
+A \definition{Patch test} is a very simple verification check used in structural mechanics and early FEM development. The idea: choose a problem whose exact solution belongs \textbf{exactly to the finite element space} $V_{h}$. For example, if we use linear finite element ($r=1$), take $u_{\text{ex}}(x) = a x + b$. Since the finite element basis can represent this function exactly, the solver should reproduce $u_{\text{ex}}$ with \textbf{zero error} (up to machine precision). While useful, patch tests do \textbf{not} tell us whether our solver converges at the right rates for general functions:
+\begin{itemize}
+    \item With $u_{\text{ex}}\in V_h$, we always get zero error, independent of mesh size.
+    \item Therefore, we learn nothing about the \emph{approximation properties} of our FEM code.
+\end{itemize}
+That is why here we go beyond patch tests, we choose \textbf{Manufactured solutions that are not in the FE space}. These produce a nonzero error that decrease as $h \to 0$. Measuring that decrease is what confirms convergence.

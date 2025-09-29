@@ -1,0 +1,145 @@
+\subsubsection{MSI protocol: Finite-State Machine (FSM)}
+
+\definitionWithSpecificIndex{MSI}{MSI Protocol}{} \textbf{is a cache coherence protocol} designed for \textbf{snooping systems} (bus-based multiprocessors). It specifies \textbf{how each cache block behaves}, depending on:
+\begin{enumerate}
+    \item Its \textbf{current state} (\code{Modified}, \code{Shared}, \code{Invalid});
+    \item A \textbf{local CPU request};
+    \item Or a \textbf{bus request} from another processor.
+\end{enumerate}
+
+\begin{remarkbox}[: Cache Block]
+    Our cache (L1, L2, etc.) is divided into \textbf{blocks} (a.k.aa cache lines). The typical size is 32-128 bytes and each block holds the data from a contiguous memory region. For every block, the cache also keeps \textbf{metadata}:
+    \begin{itemize}
+        \item \textbf{Tag} (to know \emph{which} address is cached).
+        \item \textbf{Valid bit} (does this block hold useful data?).
+        \item \textbf{Dirty bit} (has this block been modified and not written back?).
+        \item And in multiprocessors: \important{Coherence state bits} (M, S, I).
+    \end{itemize}
+\end{remarkbox}
+
+\highspace
+Each cache block in our private cache is controlled by a \textbf{small Finite-State Machine (FSM)}\footnote{%
+    A \definition{Finite-State Machine (FSM)} is a model of computation made of: (1) a \textbf{finite set of states} (e.g., M, S, I); (2) a \textbf{current state} (at any given moment, the system is in exactly one state); (3) a set of \textbf{event/inputs} (e.g., CPU read/write, bus read/write, etc.); (4) a set of \textbf{rules (transaction)} that say how to move from one state to another based on the current state and the input event.
+}. Stimuli come from \textbf{two sources}:
+\begin{itemize}
+    \item \textbf{The CPU attached to this cache} (local read, local write, called ``\emph{CPU events}'').
+    \item \textbf{The snooping bus} (read miss, write miss, invalidate placed on the bus, called ``\emph{bus events}'').
+\end{itemize}
+The FSM tracks the coherence state of the block:
+\begin{itemize}
+    \item \important{M - Modified}. The cache has the \textbf{only copy}, and it's \textbf{dirty} (different from memory). Must write back to memory before eviction.
+    \item \important{S - Shared}. The cache has a \textbf{clean copy}, \hl{identical to memory}. Other caches may also have it.
+    \item \important{I - Invalid}. The cache does not have a valid copy of the block.
+\end{itemize}
+Each arrow in the diagram corresponds to:
+\begin{equation*}
+    \text{stimulus} \rightarrow \text{(possible bus action)} \rightarrow \text{new state}
+\end{equation*}
+
+\newpage
+
+\begin{remarkbox}[: Read/Write Hit vs Miss]
+    \begin{itemize}
+        \item \important{Read Hit}. The processor requests a block that is \textbf{already in the cache}. Data returned immediately, no bus/memory access.
+        \item \important{Read Miss}. The processor requests a block that is \textbf{not in the cache}. Cache issues a \textbf{bus read} to fetch the block from memory or another cache.
+        \item \important{Write Hit}. The processor writes to a block \textbf{present in the cache}.
+        \begin{itemize}
+            \item With \textbf{write-back}, only cache updated, state may change.
+            \item With \textbf{write-through}, cache and memory updated simultaneously.
+        \end{itemize}
+        \item \important{Write Miss}. The processor writes to a block \textbf{not in the cache}. Cache issues a \textbf{bus write} (write miss) to fetch the block, possibly invalidating others, then performs the write.
+    \end{itemize}
+\end{remarkbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{fire} \textbf{What triggers transitions?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{CPU requests}
+    \begin{itemize}
+        \item \important{\emph{Read hit}}: no state change (stay in M or S).
+        \item \important{\emph{Write hit in M}}: just update locally. Because we are in M, we are the only owner, so no bus action needed.
+        \item \important{\emph{Write hit in S}}: must broadcast an \textbf{invalidate} so others drop their copies, then move to M.
+        \item \important{\emph{Read/Write miss}}: place a request (read miss or write miss) on the bus. If we were in I, we move to S (read miss) or M (write miss). If we were in S, we remain in S.
+    \end{itemize}
+    \item \textbf{Snooped bus requests}
+    \begin{itemize}
+        \item If another core issues a \important{\emph{read miss}} to a block we have in M $\to$ we must supply data and downgrade to S. Because we are supplying data, we must do a \textbf{write-back} so memory or requester has updated data.
+        \item If another core issues a \important{\emph{write miss/invalidate}} to a block we have in S or M $\to$ we must invalidate (go to I).
+    \end{itemize}
+\end{itemize}
+
+\begin{examplebox}[: Transitions]
+    Let's walk through a few ``\emph{how do we change state}'' cases:
+    \begin{itemize}
+        \item \textbf{Invalid} $\to$ \textbf{Shared}: We get a CPU \emph{read miss}. We fetch data from memory (or another cache) via the bus. End state $=$ S.
+        \item \textbf{Shared} $\to$ \textbf{Modified}: CPU does a \emph{write hit}. Must place \emph{invalidate} on bus so all other sharers drop their copies. Then upgrade to M. At this point, \hl{we are the only owner of a dirty copy}, all others are I.
+        \item \textbf{Modified} $\to$ \textbf{Shared}: Another processor issues a \emph{read miss} for that block. We supply the data (write-back), and we downgrade from M to S.
+        \begin{flushleft}
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{So, do we write back to memory?}}
+        \end{flushleft}
+        \textbf{It depends on the implementation of the snooping system}, but the MSI definition requires that once a line is in \textbf{S (shared)} it is \textbf{clean} (identical to memory). So when we go from M (modified) $\to$ S (shared), the dirty copy in M must be ``cleaned'' somehow:
+        \begin{enumerate}
+            \item \textbf{Write-back to memory (simple but slower)}\footnote{Note: this is the most common type of MSI on exams.}. On the \emph{read miss} from another processor, we flush the block to memory. Memory is now up-to-date. Both us and the requester hold the line in S (shared).
+            \item \textbf{Cache-to-cache transfer (common in practice, less in theory)}. Instead of updating memory, we \emph{directly forward} the data to the requester. Both us and the requester enter S (shared).
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Buw wait, memory is now stale. How can S mean ``identical to memory''?}} In real protocols, the bus guarantees that \textbf{the data supplied to the requester is the correct one}. After the transfer, the line is marked as ``clean'' in both caches, and from then on it behaves as if memory had the latest version. Some systems even update memory in the background, but it's not strictly necessary as long as one clean copy exists.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{However, if we don't write to the memory, but instead just forward it over the bus, the memory will still be stale!}} That's fine because the guarantee of coherence (page \pageref{subsection: Why Cache Coherence}) means that \emph{at least one cache has the correct clean copy}. If later all shared copies are evicted, \textbf{one of them will write back to memory} before discarding, so memory is eventually updated.
+
+            \textbf{Coherence guarantees inter-cache correctness}, not ``\emph{memory is always the truth}''. In fact, in multiprocessors with write-back caches, \textbf{memory is often stale}. As long as the protocol ensures that no processor uses stale data, correctness is maintained. Since memory doesn't always have the updated value, the MSI and MESI protocols (covered in the next chapter) ensure that caches communicate and that no processor ever sees stale memory.
+        \end{enumerate}
+        \item \textbf{Modified} $\to$ \textbf{Invalid}: Another processor issues a \emph{write miss}. We must supply our dirty data (since memory is stale): we put the block on the bus, and this can go to \textbf{memory} (write-back, so it becomes updated). Finally, drop our copy. 
+        \item \textbf{Shared} $\to$ \textbf{Invalid}: Another processor issues a \emph{write miss} or \emph{invalidate}. We simply drop our copy, no write-back needed since we are clean (identical to memory).
+    \end{itemize}
+\end{examplebox}
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[shorten >=1pt,node distance=5cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+        \node[state,initial]    (I)                             {\code{I}};
+        \node[state]            (M) [right=6cm of I]            {\code{M}};
+        \node[state]            (S) [below=of $(I)!0.5!(M)$]    {\code{S}};
+
+        % --- local triggers (straight edges)
+        \path[->]
+            (M) edge [loop above]                 node {Read/Write Hit} ()
+            (S) edge [loop above]                 node {Read Hit} ()
+            (S) edge [bend right=80]              node [below right] {Write Hit*} (M)
+            (I) edge [bend right=80]              node [below left]  {Read Miss**} (S)
+            (I) edge                              node [below]       {Write Miss***} (M);
+
+        % --- snooped bus requests (wavy edges)
+        \path
+            (M) edge [bus, bend left]             node [above left]  {\textcolor{Red3}{\emph{Read Miss}}} (S)
+            (M) edge [bus, bend right]            node [above]       {\textcolor{Red3}{\emph{Write Miss/Inv.}}} (I)
+            (S) edge [bus, bend left]             node [above right] {\textcolor{Red3}{\emph{Write Miss/Inv.}}} (I)
+            (S) edge [bus, loop below]            node [below]       {\textcolor{Red3}{\emph{Read Miss}}} ();
+    \end{tikzpicture}
+    \caption{\definition{MSI Protocol: Finite-State Machine (FSM)}. The asterisk (*) indicates that on a \emph{write hit in S}, we must broadcast an \emph{invalidate} on the bus so all other caches drop their copies. The red wavy arrows indicate bus events (snooped requests from other processors). Instead, the straight arrows indicate local CPU events. The double asterisk (**) indicates that on a \emph{read miss from I}, we fetch data from memory via the bus. The triple asterisk (***) indicates that on a \emph{write miss from I}, we fetch data from memory via the bus, and we must also invalidate other caches that may have a copy.}
+    \label{fig: msi-finite-state-machine}
+\end{figure}
+
+Some notes about the diagram (Figure \ref{fig: msi-finite-state-machine}):
+\begin{itemize}
+    \item There are no accepting/final states because the system runs continuously as the program executes, responding to events forever.
+    \item Not all transitions are drawn:
+    \begin{itemize}
+        \item Read/Write Hit in I is not possible because we don't have the block locally.
+        \item Read/Write Miss in M and S are not possible because we already have the block.
+    \end{itemize}
+    \item There is bus traffic on some transitions, but not all. The \hl{local CPU events} that cause bus traffic are:
+    \begin{itemize}
+        \item (*) S $\to$ M (broadcast \emph{Invalidate}).
+        \item (**) I $\to$ S (bus \emph{Read Miss}, because data comes from memory).
+        \item (***) I $\to$ M (bus \emph{Write Miss}, because data comes from memory and we must invalidate others).
+    \end{itemize}
+    \item Obviously, the \hl{snooped bus events} always cause bus traffic because they originate from the bus itself. These are:
+    \begin{itemize}
+        \item M $\to$ S on a \emph{Read Miss} from another core. We must supply the up-to-date data (write-back). Our line becomes clean and shared.
+        \item M $\to$ I on a \emph{Write Miss} or explicit \emph{Invalidate} from another core. We must supply the up-to-date data (since memory is stale), then drop our copy.
+        \item S $\to$ I on a \emph{Write Miss} or \emph{Invalidate} from another core. We are clean, so no data is supplied, just invalidate.
+        \item S $\to$ S on a \emph{Read Miss} from another core. No state change, we remain shared. If memory or another cache supplies the data, we just stay in $S$.
+    \end{itemize}
+    \item The \hl{write-back} to memory occurs only when we go from M $\to$ S or M $\to$ I, because in both cases we are supplying our dirty data to either memory or another cache. In all other transitions, no write-back is needed.
+\end{itemize}

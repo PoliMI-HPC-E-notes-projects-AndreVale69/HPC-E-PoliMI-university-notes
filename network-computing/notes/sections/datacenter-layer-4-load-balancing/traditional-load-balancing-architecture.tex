@@ -1,0 +1,48 @@
+\subsection{Traditional LB Architecture}
+
+Traditionally, load balancers are place to different layers of the network stack. The most common stack in datacenters is composed by 3 layers:
+\begin{itemize}
+    \item \important{Application-Level LB (Layer 7)}. It works at the \textbf{application layer} (e.g., HTTP, HTTPS). It terminates the client request and inspects the \textbf{application data} (like HTTP headers, cookies, or URLs). It then decides which backend server will serve the request. For example, a client sends a \code{GET} for a \code{mp4} video; the load balancer parses the HTTP request and forwards it to the most appropriate server (e.g., one with available cache or CPU).
+
+    This gives very fine-grained control, but also means the LB must parse and understand application protocols (heavier processing).
+
+    
+    \item \important{Transport-Level LB (Layer 4)}. It works at the \textbf{transport layer} (TCP/UDP). Looks at \textbf{five-tuple headers} (\code{src/dst} IP, \code{src/dst} port, \code{protocol}). Ensures \textbf{connection affinity}, all packets from the same TCP connection go to the same server. It achieves a balance between \textbf{efficiency} and \textbf{correctness} (avoid reordering, preserve session state). For example, a client opens a TCP connection to VIP; the L4 load balancer decides ``all packets from this TCP connection go to server X''.
+    
+    This is the sweet spot for datacenter load balancing: scalable, connection-aware, and lightweight compared to L7.
+    
+    
+    \item \important{Network-Level LB (Layer 3)}. It works at the \textbf{IP layer}. Balances traffic based on \textbf{IP packets} without looking deeper. The common approach is \textbf{ECMP (Equal-Cost Multi-Path)}, hash on IP headers to spread flows across multiple servers (page \pageref{subsection: Equal Cost Multi Path (ECMP)}). For example, a client sends traffic to a VIP (Virtual IP); the network load balancer forwards packets of each flow to one backend server's real IP.
+    
+    Simpler and more scalable than application Load Balancers, but less flexibility since it doesn't inspect application data.
+\end{itemize}
+Putting it together, we get a Multi-Layer Architecture. In a traditional Cloud Load Balancing design we have (when a client sends a request):
+\begin{enumerate}
+    \item \textbf{Internet}, traffic enters the datacenter through a \textbf{VIP}.
+    \item \textbf{L3 Load Balancer (Network)}, decides which \emph{rack or server group} should handle the packets (IP-based).
+    \item \textbf{L4 Load Balancer (Transport)}, ensures all packets of the same TCP/\break UDP flow are forwarded to the same server.
+    \item \textbf{L7 Load Balancer (Application)}, inside the server cluster, may further dispatch the request to the correct \textbf{application instance} (e.g., web server, cache, microservice).
+    \item \textbf{Servers}, the final application processes the request.
+\end{enumerate}
+\textbf{L3 comes first} because it's the coarsest, simplest routing decision (based on IP). \textbf{L4 refines} by handling connection affinity (ensuring one TCP flow doesn't get split). \textbf{L7 is last} because it requires deep packet inspection (HTTP headers, cookies, etc.), which is expensive and usually one done closer to the server.
+
+\highspace
+\begin{examplebox}[: Airport Travel Analogy]
+    Analogy: Airport Passenger Flow as Datacenter Load Balancing.
+    \begin{itemize}
+        \item \textbf{Layer 3 - Network LB (IP Packets)} $\rightarrow$ \textbf{Terminals}. Imagine the airport has \textbf{several terminals}. When a passenger (packet) arrives, the airport system decides \emph{which terminal} they should enter. The decision is simple because is based on flight destination (like ECMP based on IP hash). The system \textbf{spreads the crowd evenly}, but doesn't know anything about the passenger's ticket details (application semantics). So, the role of this LB is coarse-grained distribution.
+
+        \textcolor{Red2}{\faIcon{times} \textbf{Limitation:}} Passengers belonging to the same group could be split into different terminals (just like flows that get split badly).
+
+
+        \item \textbf{Layer 4 - Transport LB (TCP connections)} $\rightarrow$ \textbf{Gates}. Inside each terminal, the airport must assign passengers to the \textbf{correct gate}. All passengers on the \emph{same flight} (same TCP connection/flow) must go to the \textbf{same gate}, otherwise, the flight won't depart correctly. The assignment is more precise than at the terminal level and keeps groups (flows) consistent. So, the role of this LB is ensures all packets of the same TCP connection go to the same server.
+        
+        \textcolor{Green3}{\faIcon{check} \textbf{Benefit:}} Prevents packet reordering (like ensuring a family travels together).
+
+
+        \item \textbf{Layer 7 - Application LB (HTTP requests)} $\rightarrow$ \textbf{Seats}. Once at the gate, each passenger is direct to their \textbf{specific seat} in the airplane. The decision depends on details like \emph{ticket class}, \emph{row number}, or \emph{meal preference} (HTTP headers, cookies, URLs). This level understands the \textbf{application semantics} and makes the \textbf{most fine-grained decisions}. So, the role of this LB is directs specific requests within the application.
+        
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-off:}} Very smart but resource-heavy (the LB has t ``look into the ticket'' for each passenger).
+    \end{itemize}
+    The combination ensures the airport (datacenter) runs \textbf{efficiently, fairly, and predictably}, even with millions of passengers (packets) arriving per day.
+\end{examplebox}

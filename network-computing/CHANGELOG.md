@@ -16,6 +16,7 @@
 
 - add `Datacenter Layer 4 Load Balancing`
   - add `Introduction`
+  - add `Traditional LB Architecture`
 
 --------------------
 

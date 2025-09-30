@@ -21,6 +21,7 @@ Each version follows the Conventional Commits structure. For more information on
 - add `Poisson 1D: Convergence & Error Analysis`
   - add `Why Convergence & Error Analysis?`
   - add `Problem Setup for MMS`
+  - add `What changes from the first Poisson 1D solver`
 
 --------------------
 

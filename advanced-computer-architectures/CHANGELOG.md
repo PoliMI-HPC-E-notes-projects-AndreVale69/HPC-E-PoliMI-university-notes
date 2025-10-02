@@ -45,6 +45,7 @@
     - add `MESI Protocol`
   - add `Directory-Based Protocols`
     - add `Basics`
+    - add `Message Types`
 
 --------------------
 

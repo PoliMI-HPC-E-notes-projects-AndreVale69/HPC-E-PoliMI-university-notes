@@ -16,3 +16,4 @@
       - add `Unsupervised Learning`
       - add `Reinforcement Learning`
   - add `Towards Deep Learning`
+  - add `Modern Pattern Recognition (Pre-DL)`

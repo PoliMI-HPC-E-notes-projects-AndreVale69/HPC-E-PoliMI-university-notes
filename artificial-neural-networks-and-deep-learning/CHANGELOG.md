@@ -15,3 +15,4 @@
       - add `Supervised Learning`
       - add `Unsupervised Learning`
       - add `Reinforcement Learning`
+  - add `Towards Deep Learning`

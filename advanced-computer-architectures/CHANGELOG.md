@@ -43,6 +43,8 @@
     - add `Write-invalidate vs write-update (bandwidth vs latency)`
     - add `MSI Protocol: Finite-State Machine (FSM)`
     - add `MESI Protocol`
+  - add `Directory-Based Protocols`
+    - add `Basics`
 
 --------------------
 

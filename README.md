@@ -26,7 +26,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <th>More</th>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2023/2024<br>2024/2025</td>
         <td>Advanced Computer Architectures</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=154207" target="_blank">Silvano Cristina</a></td>

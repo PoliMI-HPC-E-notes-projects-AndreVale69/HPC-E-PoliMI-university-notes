@@ -46,6 +46,7 @@
   - add `Directory-Based Protocols`
     - add `Basics`
     - add `Message Types`
+    - add `Walkthroughs on a 4-node system`
 
 --------------------
 

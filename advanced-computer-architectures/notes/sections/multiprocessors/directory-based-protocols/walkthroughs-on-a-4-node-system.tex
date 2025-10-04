@@ -1,0 +1,451 @@
+\subsubsection{Walkthroughs on a 4-node system}
+
+Let's consider a 4-node system with nodes \texttt{N0}, \texttt{N1}, \texttt{N2}, and \texttt{N3}. Each node has its own cache and local memory. We will walk through a series of operations to illustrate how a directory-based cache coherence protocol works in this system.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{info-circle} \textbf{Preliminary Setup}}
+\end{flushleft}
+We assume the following \textbf{initial conditions}:
+\begin{itemize}
+    \item We assume 4 nodes: \texttt{N0}, \texttt{N1}, \texttt{N2}, and \texttt{N3}.
+    \item Each node has its own Processor (P), Cache (C), Main Memory (MM), and Directory (D).
+    \item Physical address space is \textbf{statically partitioned} among the nodes, so each block has a \textbf{Home Node}.
+    \item The directory entry at the Home Node contains:
+    \begin{itemize}
+        \item The \textbf{state} of the block: U (uncached), S (shared), or M (modified).
+        \item \textbf{Sharer list} / \textbf{Owner bits}: vector marking which nodes hold copies.
+    \end{itemize}
+\end{itemize}
+So we only walk through the protocol for a single block, say block \texttt{B0}, which is mapped to \texttt{N0} (i.e., \texttt{N0} is the Home Node for block \texttt{B0}).
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/directory-based-protocol-3.pdf}
+    \caption{4-node system with directory-based cache coherence protocol. Each node (\texttt{N0}, \texttt{N1}, \texttt{N2}, \texttt{N3}) has its own Processor (\texttt{P0}, \texttt{P1}, \texttt{P2}, \texttt{P3}), Cache (\texttt{C0}, \texttt{C1}, \texttt{C2}, \texttt{C3}), Main Memory (\texttt{MM0}, \texttt{MM1}, \texttt{MM2}, \texttt{MM3}), and Directory (\texttt{D0}, \texttt{D1}, \texttt{D2}, \texttt{D3}). The directory at each node keeps track of the state and sharers/owner of each block.}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{info-circle} \textbf{Uncached State (U)}}
+\end{flushleft}
+The block is not cached in any node (uncached state). The directory entry at \texttt{N0} for block \texttt{B0} is:
+\begin{itemize}
+    \item \textbf{State}: U
+    \item \textbf{Sharer list}: $[0, 0, 0, 0]$ (no sharers)
+\end{itemize}
+\begin{equation*}
+    \texttt{B0} \; | \; \text{State: U} \; | \; \text{Sharers:} \, \left[0, 0, 0, 0\right]
+\end{equation*}
+From here, we can consider the following scenarios:
+\begin{itemize}
+    \item \important{Read Miss from \texttt{N1}}:
+    \begin{enumerate}
+        \item \texttt{N1} (Local) sends a request (\texttt{ReadMiss}) to \texttt{N0} (Home) for block \texttt{B0}.
+        \begin{gather*}
+            \text{Local } (\texttt{N1}) \xrightarrow{\texttt{ReadMiss}} \text{Home } (\texttt{N0}) \\[.3em]
+            \texttt{ReadMiss}(\texttt{ProcID: 1, Addr: B0})
+        \end{gather*}
+
+        \item Home sends data from memory (because the data are not cached) to \texttt{N1} (\texttt{DataValueReply}).
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{DataValueReply}} \text{Local } (\texttt{N1})
+            \\[.3em]
+            \texttt{DataValueReply}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Directory (at \texttt{N0}) updates its state to S and adds \texttt{N1} to the sharer list.
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: S} \; | \; \text{Sharers:} \, \left[0, 1, 0, 0\right]
+        \end{equation*}
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+            \node[state,initial]    (N1)                            {\important{\texttt{N1}}};
+            \node[state]            (N0)    [right=of N1]           {\important{\texttt{N0}}};
+            \node[state]            (N0_2)  [below=1cm of N0]     {\important{\texttt{N0}}};
+            \node[state]            (N0_3)  [below=1cm of N1]     {\important{\texttt{N1}}};
+
+            \path[->]
+                (N1)    edge        node [above]    {\texttt{ReadMiss}(\texttt{ProcID: 1, Addr: B0})}   (N0)
+                (N0_2)  edge        node [above]    {\texttt{DataValueReply}(\texttt{Data: B0})}        (N0_3);
+
+            \path
+                (N0)    edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_2);
+            
+            \node[left=2cm of N1] (step1) {\textbf{1)}};
+            \node[left=2cm of N0_3] (step2) {\textbf{2)}};
+
+            \draw[thick,rounded corners] 
+                ($(step1.north west)+(-0.25,0.35)$) rectangle ($(N0_2.south east)+(0.5,-0.35)$);
+        \end{tikzpicture}
+    \end{figure}
+    The effect is that \texttt{N1} now has a shared copy of block \texttt{B0}. However, the memory copy is still valid.
+
+
+    \item \important{Write Miss from \texttt{N2}}:
+    \begin{enumerate}
+        \item \texttt{N2} (Local) sends a request (\texttt{WriteMiss}) to \texttt{N0} (Home) for block \texttt{B0}.
+        \begin{gather*}
+            \text{Local } (\texttt{N2}) \xrightarrow{\texttt{WriteMiss}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{WriteMiss}(\texttt{ProcID: 2, Addr: B0})
+        \end{gather*}
+
+        \item Home sends block from memory (because the data are not cached) to \texttt{N2} (\texttt{DataValueReply}). It also sends \texttt{Invalidate} messages to all sharers (in this case, no one has it, so no invalidates are sent).
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{DataValueReply}} \text{Local } (\texttt{N2})
+            \\[.3em]
+            \texttt{DataValueReply}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Directory (at \texttt{N0}) updates its state to M and sets \texttt{N2} as the owner:
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: M} \; | \; \text{Sharers:} \, \left[0, 0, 1, 0\right] \; | \; \text{Owner: } \texttt{N2}
+        \end{equation*}
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+            \node[state,initial]    (N2)                            {\important{\texttt{N2}}};
+            \node[state]            (N0)    [right=of N2]           {\important{\texttt{N0}}};
+            \node[state]            (N0_2)  [below=1cm of N0]     {\important{\texttt{N0}}};
+            \node[state]            (N2_2)  [below=1cm of N2]     {\important{\texttt{N2}}};
+
+            \path[->]
+                (N2)    edge    node [above]    {\texttt{WriteMiss}(\texttt{ProcID: 2, Addr: B0})}  (N0)
+                (N0_2)  edge    node [above]    {\texttt{DataValueReply}(\texttt{Data: B0})}        (N2_2);
+
+            \path
+                (N0)    edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_2);
+            
+            \node[left=2cm of N2] (step1) {\textbf{1)}};
+            \node[left=2cm of N2_2] (step2) {\textbf{2)}};
+
+            \draw[thick,rounded corners] 
+                ($(step1.north west)+(-0.25,0.35)$) rectangle ($(N0_2.south east)+(0.5,-0.35)$);
+        \end{tikzpicture}
+    \end{figure}
+    The effect is that \texttt{N2} now has exclusive ownership of block \texttt{B0} in Modified state. The memory copy is now stale.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{info-circle} \textbf{Shared State (S)}}
+\end{flushleft}
+The block is cached in one (or more) node(s) in Shared state. Continuing from the scenario above, the directory entry at \texttt{N0} for block \texttt{B0} is:
+\begin{itemize}
+    \item State: S
+    \item Sharer list: $[0, 1, 0, 0]$ (only \texttt{N1} has a copy)
+\end{itemize}
+\begin{equation*}
+    \texttt{B0} \; | \; \text{State: S} \; | \; \text{Sharers:} \, \left[0, 1, 0, 0\right]
+\end{equation*}
+From here, we can consider the following scenarios:
+\begin{itemize}
+    \item \important{Read Miss from \texttt{N2}}:
+    \begin{enumerate}
+        \item \texttt{N2} (Local) sends a request (\texttt{ReadMiss}) to \texttt{N0} (Home) for block \texttt{B0}.
+        \begin{gather*}
+            \text{Local } (\texttt{N2}) \xrightarrow{\texttt{ReadMiss}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{ReadMiss}(\texttt{ProcID: 2, Addr: B0})
+        \end{gather*}
+
+        \item Home sends data from memory (because the data are not cached) to \texttt{N2} (\texttt{DataValueReply}).
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{DataValueReply}} \text{Local } (\texttt{N2})
+            \\[.3em]
+            \texttt{DataValueReply}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Directory (at \texttt{N0}) updates its sharer list to include \texttt{N2}.
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: S} \; | \; \text{Sharers:} \, \left[0, 1, 1, 0\right]
+        \end{equation*}
+    \end{enumerate}
+
+    \newpage
+
+    \begin{figure}[!htp]
+        \centering
+        \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+            \node[state,initial]    (N2)                            {\important{\texttt{N2}}};
+            \node[state]            (N0)    [right=of N2]           {\important{\texttt{N0}}};
+            \node[state]            (N0_2)  [below=1cm of N0]     {\important{\texttt{N0}}};
+            \node[state]            (N2_2)  [below=1cm of N2]     {\important{\texttt{N2}}};
+
+            \path[->]
+                (N2)    edge    node [above]    {\texttt{ReadMiss}(\texttt{ProcID: 2, Addr: B0})}  (N0)
+                (N0_2)  edge    node [above]    {\texttt{DataValueReply}(\texttt{Data: B0})}        (N2_2);
+
+            \path
+                (N0)    edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_2);
+            
+            \node[left=2cm of N2] (step1) {\textbf{1)}};
+            \node[left=2cm of N2_2] (step2) {\textbf{2)}};
+
+            \draw[thick,rounded corners] 
+                ($(step1.north west)+(-0.25,0.35)$) rectangle ($(N0_2.south east)+(0.5,-0.35)$);
+        \end{tikzpicture}
+    \end{figure}
+    The effect is that both \texttt{N1} and \texttt{N2} now have shared copies of block \texttt{B0}. The memory copy is still valid.
+
+    \item \important{Write Miss from \texttt{N2}}:
+    \begin{enumerate}
+        \item \texttt{N2} (Local) sends a request (\texttt{WriteMiss}) to \texttt{N0} (Home) for block \texttt{B0}.
+        \begin{gather*}
+            \text{Local } (\texttt{N2}) \xrightarrow{\texttt{WriteMiss}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{WriteMiss}(\texttt{ProcID: 2, Addr: B0})
+        \end{gather*}
+        \item Home sends \texttt{Invalidate} messages to all sharers (in this case, \texttt{N1}) to invalidate their copies.
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{Invalidate}} \text{Remote } (\texttt{N1})
+            \\[.3em]
+            \texttt{Invalidate}(\texttt{Addr: B0})
+        \end{gather*}
+        \item \texttt{N1} (Remote) invalidates its copy of block \texttt{B0} and sends an acknowledgment back to Home.
+        \begin{gather*}
+            \text{Remote } (\texttt{N1}) \xrightarrow{\texttt{Ack}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{Ack}(\texttt{Addr: B0})
+        \end{gather*}
+        \item After receiving all acknowledgments, Home sends data from memory to \texttt{N2} (\texttt{DataValueReply}).
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{DataValueReply}} \text{Local } (\texttt{N2})
+            \\[.3em]
+            \texttt{DataValueReply}(\texttt{Data: B0})
+        \end{gather*}
+        \item Directory (at \texttt{N0}) updates its state to M and sets \texttt{N2} as the owner, removing all other sharers.
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: M} \; | \; \text{Sharers:} \, \left[0, 0, 1, 0\right] \; | \; \text{Owner: } \texttt{N2}
+        \end{equation*}
+    \end{enumerate}
+
+    \newpage
+
+    \begin{figure}[!htp]
+        \centering
+        \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+            % 1
+            \node[state,initial]    (N2)                            {\important{\texttt{N2}}};
+            \node[state]            (N0)    [right=of N2]           {\important{\texttt{N0}}};
+            % 2
+            \node[state]            (N0_2)  [below=1cm of N0]       {\important{\texttt{N0}}};
+            \node[state]            (N1)    [below=1cm of N2]       {\important{\texttt{N1}}};
+            % 3
+            \node[state]            (N1_2)  [below=1cm of N1]       {\important{\texttt{N1}}};
+            \node[state]            (N0_3)  [below=1cm of N0_2]     {\important{\texttt{N0}}};
+            % 4
+            \node[state]            (N0_4)  [below=1cm of N0_3]     {\important{\texttt{N0}}};
+            \node[state]            (N2_2)  [below=1cm of N1_2]     {\important{\texttt{N2}}};
+
+            \path[->]
+                (N2)    edge    node [above]    {\texttt{WriteMiss}(\texttt{ProcID: 2, Addr: B0})}  (N0)
+                (N0_2)  edge    node [above]    {\texttt{Invalidate}(\texttt{Addr: B0})}            (N1)
+                (N1_2)  edge    node [above]    {\texttt{Ack}(\texttt{Addr: B0})}                   (N0_3)
+                (N0_4)  edge    node [above]    {\texttt{DataValueReply}(\texttt{Data: B0})}        (N2_2);
+
+            \path
+                (N0)    edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_2)
+                (N1)    edge [bus]  node [left]  {\textcolor{Red3}{\faIcon{cog}}} (N1_2)
+                (N0_3)  edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_4);
+                
+            \node[left=2cm of N2] (step1) {\textbf{1)}};
+            \node[left=2cm of N1] (step2) {\textbf{2)}};
+            \node[left=2cm of N1_2] (step3) {\textbf{3)}};
+            \node[left=2cm of N2_2] (step4) {\textbf{4)}};
+
+            \draw[thick,rounded corners] 
+                ($(step1.north west)+(-0.25,0.35)$) rectangle ($(N0_4.south east)+(0.5,-0.35)$);
+        \end{tikzpicture}
+    \end{figure}
+    The effect is that \texttt{N2} now has a copy of block \texttt{B0} in Modified state. The memory copy is now stale, and \texttt{N1} no longer has a valid copy.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{info-circle} \textbf{Modified State (M)}}
+\end{flushleft}
+The block is cached in one node in Modified state. Let's assume the directory entry at \texttt{N0} for block \texttt{B0} is:
+\begin{itemize}
+    \item State: M
+    \item Sharer list: $[0, 1, 0, 0]$ (only \texttt{N1} has a copy)
+\end{itemize}
+\begin{equation*}
+    \texttt{B0} \; | \; \text{State: M} \; | \; \text{Sharers:} \, \left[0, 1, 0, 0\right] \; | \; \text{Owner: } \texttt{N1}
+\end{equation*}
+From here, we can consider the following scenarios:
+\begin{itemize}
+    \item \important{Read Miss from \texttt{N2}}:
+    \begin{enumerate}
+        \item \texttt{N2} (Local) sends a request (\texttt{ReadMiss}) to \texttt{N0} (Home) for block \texttt{B0}.
+        \begin{gather*}
+            \text{Local } (\texttt{N2}) \xrightarrow{\texttt{ReadMiss}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{ReadMiss}(\texttt{ProcID: 2, Addr: B0})
+        \end{gather*}
+
+        \item Home sends a \texttt{Fetch} request to the owner (\texttt{N1}) to get the data, because the owner (\texttt{N1}) has the most up-to-date copy and it is in Modified state (only one owner in M state).
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{Fetch}} \text{Remote } (\texttt{N1})
+            \\[.3em]
+            \texttt{Fetch}(\texttt{Addr: B0})
+        \end{gather*}
+
+        \item \texttt{N1} (Remote) sends the data to Home (\texttt{N0}, \texttt{Data Write-Back}), and the owner (\texttt{N1}) transitions from Modified to Shared state because it must supply the data but can keep a read-only copy.
+        \begin{gather*}
+            \text{Remote } (\texttt{N1}) \xrightarrow{\texttt{Data Write-Back}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{Data Write-Back}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Home sends data to \texttt{N2} (\texttt{DataValueReply}). It is important to note that Home does not change the state to Modified because \texttt{N2} is only requesting read access. The state would change to Modified only if \texttt{N2} requested write access (via \texttt{WriteMiss}).
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{DataValueReply}} \text{Local } (\texttt{N2})
+            \\[.3em]
+            \texttt{DataValueReply}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Directory (at \texttt{N0}) updates its sharer list to include \texttt{N2}. The state becomes Shared (S) because now there are multiple sharers.
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: S} \; | \; \text{Sharers:} \, \left[0, 1, 1, 0\right]
+        \end{equation*}
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+            % 1
+            \node[state,initial]    (N2)                            {\important{\texttt{N2}}};
+            \node[state]            (N0)    [right=of N2]           {\important{\texttt{N0}}};
+            % 2
+            \node[state]            (N0_2)  [below=1cm of N0]       {\important{\texttt{N0}}};
+            \node[state]            (N1)    [below=1cm of N2]       {\important{\texttt{N1}}};
+            % 3
+            \node[state]            (N1_2)  [below=1cm of N1]       {\important{\texttt{N1}}};
+            \node[state]            (N0_3)  [below=1cm of N0_2]     {\important{\texttt{N0}}};
+            % 4
+            \node[state]            (N0_4)  [below=1cm of N0_3]     {\important{\texttt{N0}}};
+            \node[state]            (N2_2)  [below=1cm of N1_2]     {\important{\texttt{N2}}};
+
+            \path[->]
+                (N2)    edge    node [above]    {\texttt{ReadMiss}(\texttt{ProcID: 2, Addr: B0})}   (N0)
+                (N0_2)  edge    node [above]    {\texttt{Fetch}(\texttt{Addr: B0})}                 (N1)
+                (N1_2)  edge    node [above]    {\texttt{Data Write-Back}(\texttt{Addr: B0})}       (N0_3)
+                (N0_4)  edge    node [above]    {\texttt{DataValueReply}(\texttt{Data: B0})}        (N2_2);
+
+            \path
+                (N0)    edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_2)
+                (N1)    edge [bus]  node [left]  {\textcolor{Red3}{\faIcon{cog}}} (N1_2)
+                (N0_3)  edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_4);
+                
+            \node[left=2cm of N2] (step1) {\textbf{1)}};
+            \node[left=2cm of N1] (step2) {\textbf{2)}};
+            \node[left=2cm of N1_2] (step3) {\textbf{3)}};
+            \node[left=2cm of N2_2] (step4) {\textbf{4)}};
+
+            \draw[thick,rounded corners] 
+                ($(step1.north west)+(-0.25,0.35)$) rectangle ($(N0_4.south east)+(0.5,-0.35)$);
+        \end{tikzpicture}
+    \end{figure}
+    The effect is that both \texttt{N1} and \texttt{N2} now have shared copies of block \texttt{B0}. The memory copy is now stale, but \texttt{N1} and \texttt{N2} have valid copies; \texttt{N1} has the most up-to-date data.
+
+
+    \item \important{Write Miss from \texttt{N2}}:
+    \begin{enumerate}
+        \item \texttt{N2} (Local) sends a request (\texttt{WriteMiss}) to \texttt{N0} (Home) for block \texttt{B0}.
+        \begin{gather*}
+            \text{Local } (\texttt{N2}) \xrightarrow{\texttt{WriteMiss}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{WriteMiss}(\texttt{ProcID: 2, Addr: B0})
+        \end{gather*}
+
+        \item Home sends a \texttt{Fetch/Invalidate} request to the owner (\texttt{N1}) to get the data and invalidate its copy, because the owner (\texttt{N1}) has the most up-to-date copy and it is in Modified state (only one owner in M state). The combination of \texttt{Fetch} and \texttt{Invalidate} is used because \texttt{N2} is requesting write access.
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{Fetch/Inv}} \text{Remote } (\texttt{N1})
+            \\[.3em]
+            \texttt{Fetch/Inv}(\texttt{Addr: B0})
+        \end{gather*}
+
+        \item \texttt{N1} (Remote) sends the data to Home (\texttt{N0}, \texttt{Data Write-Back}) and invalidates its copy, transitioning from Modified to Uncached state.
+        \begin{gather*}
+            \text{Remote } (\texttt{N1}) \xrightarrow{\texttt{Data Write-Back}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{Data Write-Back}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Home sends data to \texttt{N2} (\texttt{DataValueReply}). Now, Home changes the state to Modified because \texttt{N2} is requesting write access and will become the new owner.
+        \begin{gather*}
+            \text{Home } (\texttt{N0}) \xrightarrow{\texttt{DataValueReply}} \text{Local } (\texttt{N2})
+            \\[.3em]
+            \texttt{DataValueReply}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Directory (at \texttt{N0}) updates its state to M and sets \texttt{N2} as the owner, removing all other sharers.
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: M} \; | \; \text{Sharers:} \, \left[0, 0, 1, 0\right] \; | \; \text{Owner: } \texttt{N2}
+        \end{equation*}
+    \end{enumerate}
+    \begin{figure}[!htp]
+        \centering
+        \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+            % 1
+            \node[state,initial]    (N2)                            {\important{\texttt{N2}}};
+            \node[state]            (N0)    [right=of N2]           {\important{\texttt{N0}}};
+            % 2
+            \node[state]            (N0_2)  [below=1cm of N0]       {\important{\texttt{N0}}};
+            \node[state]            (N1)    [below=1cm of N2]       {\important{\texttt{N1}}};
+            % 3
+            \node[state]            (N1_2)  [below=1cm of N1]       {\important{\texttt{N1}}};
+            \node[state]            (N0_3)  [below=1cm of N0_2]     {\important{\texttt{N0}}};
+            % 4
+            \node[state]            (N0_4)  [below=1cm of N0_3]     {\important{\texttt{N0}}};
+            \node[state]            (N2_2)  [below=1cm of N1_2]     {\important{\texttt{N2}}};
+
+            \path[->]
+                (N2)    edge    node [above]    {\texttt{WriteMiss}(\texttt{ProcID: 2, Addr: B0})}  (N0)
+                (N0_2)  edge    node [above]    {\texttt{Fetch/Inv}(\texttt{Addr: B0})}             (N1)
+                (N1_2)  edge    node [above]    {\texttt{Data Write-Back}(\texttt{Addr: B0})}       (N0_3)
+                (N0_4)  edge    node [above]    {\texttt{DataValueReply}(\texttt{Data: B0})}        (N2_2);
+
+            \path
+                (N0)    edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_2)
+                (N1)    edge [bus]  node [left]  {\textcolor{Red3}{\faIcon{cog}}} (N1_2)
+                (N0_3)  edge [bus]  node [right] {\textcolor{Red3}{\faIcon{cog}}} (N0_4);
+                
+            \node[left=2cm of N2] (step1) {\textbf{1)}};
+            \node[left=2cm of N1] (step2) {\textbf{2)}};
+            \node[left=2cm of N1_2] (step3) {\textbf{3)}};
+            \node[left=2cm of N2_2] (step4) {\textbf{4)}};
+
+            \draw[thick,rounded corners] 
+                ($(step1.north west)+(-0.25,0.35)$) rectangle ($(N0_4.south east)+(0.5,-0.35)$);
+        \end{tikzpicture}
+    \end{figure}
+    The effect is that \texttt{N2} now has a copy of block \texttt{B0} in Modified state. The memory copy is now stale, and \texttt{N1} no longer has a valid copy.
+
+
+    \newpage
+
+
+    \item \important{Eviction at the Owner (Replacement)}:
+    \begin{enumerate}
+        \item \texttt{N1} (Remote, Owner) decides to evict block \texttt{B0} from its cache (e.g., due to cache replacement policy).
+
+        \item \texttt{N1} sends a \texttt{Data Write-Back} message to Home (\texttt{N0}) to write back the updated data of block \texttt{B0}.
+        \begin{gather*}
+            \text{Remote } (\texttt{N1}) \xrightarrow{\texttt{Data Write-Back}} \text{Home } (\texttt{N0})
+            \\[.3em]
+            \texttt{Data Write-Back}(\texttt{Data: B0})
+        \end{gather*}
+
+        \item Home (at \texttt{N0}) receives the write-back data and updates memory with latest data.
+
+        \item Directory (at \texttt{N0}) updates its state to U and clears the sharer list and owner bits, as no node now has a valid copy. However, the memory copy is now up-to-date.
+        \begin{equation*}
+            \texttt{B0} \; | \; \text{State: U} \; | \; \text{Sharers:} \, \left[0, 0, 0, 0\right]
+        \end{equation*}
+    \end{enumerate}
+    The effect is that block \texttt{B0} is now uncached in all nodes, and the memory copy is up-to-date. The directory reflects that no node has a valid copy.
+\end{itemize}

@@ -1,0 +1,114 @@
+\subsubsection{Directory FSM and Invariants}
+
+A directory-based protocol can be described using a \textbf{finite state machine (FSM)} that captures the \textbf{states of cache lines and the transitions between these states based on various events} (e.g., read miss, write miss, invalidate, etc.). The FSM helps in understanding how the directory manages coherence among multiple caches in a multiprocessor system.
+
+\highspace
+Each block of memory (at its Home node) has three possible states in the directory:
+\begin{itemize}
+    \item \textbf{Uncached (U)}: Block not present in any cache. Memory up-to-date.
+    \item \textbf{Shared (S)}: One or more caches have clean copies. Memory up-to-date.
+    \item \textbf{Modified (M)}: Exactly one cache has a dirty copy. Memory stale.
+\end{itemize}
+We describe this FSM \textbf{from the Home directory's perspective}, which tracks the state of each block and manages requests from other caches.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[shorten >=1pt,node distance=6cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+        \node[state,initial] (U) {\code{U}};
+        \node[state] (S) [right=of U] {\code{S}};
+        \node[state] (M) [below=4.5cm of $(U)!0.5!(S)$] {\code{M}};
+
+        % --- local triggers (straight edges)
+        \path[->]
+            (U)     edge                   node {\code{ReadMiss}} (S)
+            (U)     edge [bend right=100]  node [left] {\code{WriteMiss}} (M)
+            (S)     edge [loop]            node [above] {\code{ReadMiss}} ()
+            (S)     edge [bend left=25]    node [left] {\code{WriteMiss}} (M)
+            (M)     edge [bend right=100]  node [right] {\code{ReadMiss}} (S)
+            (M)     edge [loop below]      node [below] {\code{WriteMiss}} ()
+            (M)     edge [bend left=25]    node [right] {\code{DataWriteBack}} (U);
+    \end{tikzpicture}
+    \caption{Directory FSM with states Uncached (U), Shared (S), and Modified (M). Transitions are triggered by events such as \code{ReadMiss}, \code{WriteMiss}, and \code{DataWriteBack}.}
+    \label{fig:directory-fsm}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{State Transitions}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{From \important{Uncached (U)}}:
+    \begin{itemize}
+        \item $\code{U} \to \code{S}$. On \code{ReadMiss}: Transition to \code{Shared (S)}.
+        \begin{itemize}
+            \item The directory sends the \textbf{data to the requesting cache} and updates its state to \code{S}.
+            \item The \textbf{cache} is \textbf{added} to the \textbf{sharer list}.
+            \item The data is read from memory because no cache has it (see page \hqpageref{sec:walkthroughs:read-miss-n1} for more details).
+        \end{itemize}
+        \item $\code{U} \to \code{M}$. On \code{WriteMiss}: Transition to \code{Modified (M)}.
+        \begin{itemize}
+            \item The directory sends an \textbf{invalidate} message to all eventual sharers, grants ownership to the requesting cache, and updates its state to \code{M}.
+            \item The \textbf{cache} is \textbf{added} to the \textbf{sharer list}.
+            \item The data is read from memory because no cache has it (see page \hqpageref{sec:walkthroughs:write-miss-n2} for more details).
+        \end{itemize}
+    \end{itemize}
+
+    \item \textbf{From \important{Shared (S)}}:
+    \begin{itemize}
+        \item $\code{S} \to \code{S}$. On \code{ReadMiss}: Remain in \code{Shared (S)}.
+        \begin{itemize}
+            \item The directory sends the \textbf{data to the requesting cache} without changing the state.
+            \item The \textbf{cache} is \textbf{added} to the \textbf{sharer list}.
+            \item The data is read from one of the caches that already has it (see page \hqpageref{sec:walkthroughs:read-miss-n2} for more details).
+        \end{itemize}
+        \item $\code{S} \to \code{M}$. On \code{WriteMiss}: Transition to \code{Modified (M)}.
+        \begin{itemize}
+            \item The directory sends \textbf{invalidate messages to all other caches} holding the block.
+            \item \textbf{Grants ownership to the requesting} cache.
+            \item Updates its state to \code{M}.
+            \item Send the data to the requesting cache (see page \hqpageref{sec:walkthroughs:write-miss-n2} for more details).
+        \end{itemize}
+    \end{itemize}
+
+    \item \textbf{From \important{Modified (M)}}:
+    \begin{itemize}
+        \item $\code{M} \to \code{S}$. On \code{ReadMiss}: Transition to \code{Shared (S)}.
+        \begin{itemize}
+            \item Send a \textbf{request to the current owner cache} for the data.
+            \item The owner cache \textbf{sends the data} to the requesting cache and \textbf{downgrades} its state to \code{S}.
+            \item The directory \textbf{updates the sharer list} to include both caches and changes its state to \code{S}.
+            \item The \textbf{memory copy remains stale}, but both caches have valid copies (see page \hqpageref{sec:walkthroughs:read-miss-n2-from-modefied} for more details).
+        \end{itemize}
+        \item $\code{M} \to \code{M}$. On \code{WriteMiss}: Remain in \code{Modified (M)}.
+        \begin{itemize}
+            \item Send a \textbf{request to the current owner cache} for the data and to \textbf{invalidate} its copy.
+            \item The owner cache \textbf{sends the data} to the requesting cache and \textbf{invalidates} its copy.
+            \item The directory \textbf{updates the sharer list} to include only the requesting cache (the new owner) and remains in state \code{M}.
+            \item The \textbf{memory copy remains stale}, but the requesting cache has the most up-to-date data (see page \hqpageref{sec:walkthroughs:write-miss-n2-from-modified} for more details).
+        \end{itemize}
+        \item $\code{M} \to \code{U}$. On \code{DataWriteBack}: Transition to \code{Uncached (U)}.
+        \begin{itemize}
+            \item The owner cache \textbf{sends the updated data back to memory}.
+            \item The directory \textbf{clears the sharer list} and updates its state to \code{U}.
+            \item This occurs when the owner cache evicts the block (see page \hqpageref{sec:walkthroughs:eviction-owner} for more details).
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Invariants}}
+\end{flushleft}
+To ensure the correctness of the directory-based cache coherence protocol, several invariants must be maintained. These are \textbf{conditions that must always hold true} regardless of the sequence of operations performed on the caches and memory. The key invariants for a directory-based protocol are:
+\begin{enumerate}
+    \item \important{Single owner invariant}: At most one cache can have a block in Modified (M).
+    \item \important{Memory freshness invariant}:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] If state $=$ S or U $\to$ memory is up-to-date.
+        \item[\textcolor{Red2}{\faIcon{times}}] If state $=$ M $\to$ memory is stale.
+    \end{itemize}
+    \item \important{Sharer set invariant}: The sharer list must accurately reflect all nodes with cached copies.
+    \item \important{Owner membership invariant}: If a block is M $\to$ the owner must appear in the sharer/owner bits (only one).
+    \item \important{State-transition correctness}: All state changes occur only via defined message exchanges (\code{ReadMiss}, \code{DataValueReply}, \code{Invalidate}, \code{Fetch},\break \code{Fetch/Inv}, \code{Data Write-Back}).
+    \item \important{Atomicity of updates}: The directory must process one request at a time for a given block (serialization).
+\end{enumerate}

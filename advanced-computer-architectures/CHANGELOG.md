@@ -47,6 +47,7 @@
     - add `Basics`
     - add `Message Types`
     - add `Walkthroughs on a 4-node system`
+    - add `Directory FSM and Invariants`
 
 --------------------
 

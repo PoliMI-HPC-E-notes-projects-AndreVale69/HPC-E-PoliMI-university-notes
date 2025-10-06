@@ -1,0 +1,70 @@
+\subsection{Key Design Questions}
+
+Designing a multiprocessor is a \textbf{multi-dimensional problem}: Hardware architects must balance \textbf{scalability} (network, memory placement, coherence protocols) with \textbf{programmability} (shared vs. message passing); Software (algorithms, compilers) and hardware (networks, caches) must co-design to extract parallelism and hide communication latency.
+
+\begin{itemize}
+    \item \important{\emph{How many processors?}}
+    \begin{itemize}
+        \item Small-scale: 2-8 cores (single bus, simple cache snooping, UMA).
+        \item Medium-scale: 8-32 cores (banked shared caches, interconnects like crossbars, NUMA).
+        \item Large-scale: hundreds/thousands (NUMA, DSM, or message passing).
+        \item Choice depends on target workload: servers, embedded, HPC, etc.;
+    \end{itemize}
+    \item \important{\emph{How powerful are processors?}}
+    \begin{itemize}
+        \item Use few \textbf{complex/out-of-order cores} vs. many \textbf{simple/in-order cores} (as in IBM Blue Gene).
+        \item Trade-off: single-thread performance vs. parallel throughput.
+        \item Efficiency (performance per watt) is critical at large scales.
+    \end{itemize}
+    \item \important{\emph{How to connect processors?}}
+    \begin{itemize}
+        \item \textbf{Bus}: cheap, simple, but scales poorly (saturation at $\approx 36$ processors).
+        \item \textbf{Interconnection networks}: rings, meshes, crossbars, hypercubes; each with cost/performance trade-offs.
+        \item Network choice determines bandwidth, latency, and scalability.
+    \end{itemize}
+    \item \important{\emph{How do processors share data?}}
+    \begin{itemize}
+        \item \textbf{Shared memory model}: implicit via loads/stores $\rightarrow$ natural but coherence needed.
+        \item \textbf{Message passing model}: explicit send/receive $\rightarrow$ simpler hardware, but harder programming.
+        \item Both are ``Turing complete''\footnote{%
+            A system (programming language, machine model, computational paradigm) is called \definition{Turing complete} if it can compute \textbf{anything that is computable} in principle, i.e. anything that a \emph{Turing machine} can compute. \definition{Turing Machine} is an abstract mathematical model of computation, invented by Alan Turing, consisting of an infinite tape (memory), a head that reads/writes symbols, and a set of rules (program). It captures the essence of algorithmic computation. An example of turing complete are C, Python, Java. If a model can simulate a Turing machine, then it is ``as powerful'' as any other general-purpose computer; it can compute every computable function (given enough time and memory, \definition{Turing Completeness}).
+        } and can simulate each other. Even if they feel very different (implicit vs. explicit communication), each can be used to implement the other. So from a \emph{theoretical} standpoint, neither is more ``expressive''. The real difference is \textbf{practicality}: performance, programmability, and ease of reasoning. If a model is Turing complete, we know we can write any algorithm in it; So, choosing shared memory vs. message passing does not limit \emph{what} can be computed, only \emph{how}.
+    \end{itemize}
+    \item \important{\emph{Where to place physical memory?}}
+    \begin{itemize}
+        \item \textbf{Centralized memory (UMA)}: uniform access, easy for programmers, but bottlenecked.
+        \item \textbf{Distributed memory (NUMA)}: scalable, but non-uniform latency.
+        \item Choice depends on processor count and workload locality.
+    \end{itemize}
+    \item \important{\emph{How do processors cooperate and coordinate?}}
+    \begin{itemize}
+        \item Synchronization primitives (locks, barriers, atomic operations).
+        \item Key bottleneck: synchronization costs can limit scalability.
+    \end{itemize}
+    \item \important{\emph{How to program processors?}}
+    \begin{itemize}
+        \item Multiprogramming (many independent jobs).
+        \item Shared memory (threads).
+        \item Message passing (MPI processes).
+        \item Data-parallel/SPMD (bulk synchronous phases).
+        \item Programming model influences ease of use vs. scalability.
+    \end{itemize}
+    \item \important{\emph{How to maintain cache coherence?}}
+    \begin{itemize}
+        \item Caches reduce contention and latency but introduce \emph{coherence problems}.
+        \item \textbf{Snooping protocols}: work on small-scale SMPs.
+        \item \textbf{Directory protocols}: scalable solution for large NUMA systems.
+    \end{itemize}
+    \item \important{\emph{How to maintain memory consistency?}}
+    \begin{itemize}
+        \item Defines the \emph{order} in which writes become visible across processors.
+        \item Sequential consistency (simple but slow) vs. relaxed models (complex but efficient).
+    \end{itemize}
+    \item \important{\emph{How to evaluate system performance?}}
+    \begin{itemize}
+        \item Scalability: speedup vs. $\#$ processors (Amdahl's Law, Gustafson's Law).
+        \item Latency of communication (local vs remote).
+        \item Bandwidth (network, memory).
+        \item Performance/watt, cost/performance ratio.
+    \end{itemize}
+\end{itemize}

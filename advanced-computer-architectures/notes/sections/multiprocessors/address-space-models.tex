@@ -1,0 +1,55 @@
+\subsection{Address-Space Models}
+
+An \definition{Address Space} is the set of memory addresses that a processor can use in its instructions. For example, when a CPU executes \texttt{LOAD R1, [0x1000]}, the value \texttt{0x1000} refers to an address in \emph{its} address space. Different processors may or may not share the same address space.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Address-Space Models in Multiprocessors}}
+\end{flushleft}
+In multiprocessors, the key question is: ``do all processors share one global address space, or does each processor have its own private one?''
+\begin{itemize}
+    \item \definition{Shared Address Space} (\definition{Shared Memory Model}). All processors see \textbf{one single logical memory}. Any processor can load/store from any address. A variable \texttt{X} at address \texttt{0x2000} is the same for all processors. So communication is \textbf{implicit}. If CPU A writes \texttt{X = 5}, CPU B can later just read \texttt{X}, no explicit ``send'' is required. Programs look similar to uniprocessor programs, just with multiple threads. Example of programming models: Pthreads, OpenMP.
+
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Ease of programming}}: programmers just use variables and loads/stores.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Dynamic \& irregular patterns}}: works well when communication structure is unpredictable.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Lower latency for small items}}: implicit communication avoids message overhead.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Compiler friendliness}}: compilers can optimize with familiar memory model.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Hardware caching}}: caches can automatically reduce remote traffic.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Hardware complexity}}: building scalable, coherent shared memory is \emph{hard}.
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Synchronization overhead}}: locks/barriers needed.
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Data placement control}}: programmer has little control over where shared data is cached, which may hurt NUMA performance.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \definition{Private Address Spaces} (\definition{Message Passing Model}). Each processor has its \textbf{own separate memory space}. Processor A's \texttt{0x2000} is not the same as Processor B's \texttt{0x2000}. No direct loads/stores across processors. So communication must be \textbf{explicit}. To share data, CPU A must \textbf{send a message} to CPU B. For example: \texttt{MPI\_Send()} and \texttt{MPI\_Recv()} in MPI. Example of programming models: MPI, Erlang actors.
+
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Simple hardware}}: no need for cache coherence protocols.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Explicit communication}}: programmer knows \emph{when} and \emph{how much} data is transferred.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Natural synchronization}}: every send/receive acts as synchronization.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Data placement control}}: programmer decides what data goes where.
+            \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Fault isolation}}: easier in clusters (looser coupling).
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Harder programming model}}: must structure program around explicit messages.
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Higher latency for fine-grain sharing}}: sending small items has overhead.
+            \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{More effort}}: programmer bears responsibility for decomposing and distributing data.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+The chosen model matters because it affects how \textbf{easy it is to program} and how \textbf{difficult it is to build the hardware}:
+\begin{itemize}
+    \item Shared memory: easier for programmers, harder for hardware (needs cache coherence).
+    \item Message passing: easier hardware, harder for programmers (must structure program explicitly).
+\end{itemize}
+Both models can express any algorithm (they're Turing complete), but the \textbf{trade-offs} in \textbf{latency, control, and scalability} are different.

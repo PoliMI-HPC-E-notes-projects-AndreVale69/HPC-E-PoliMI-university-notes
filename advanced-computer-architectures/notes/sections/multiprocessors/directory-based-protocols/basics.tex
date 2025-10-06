@@ -1,0 +1,74 @@
+\subsection{Directory-Based Protocols}
+
+\subsubsection{Basics}
+
+The \definition{Directory-Based Protocol} is a cache coherence protocol that \hl{uses a centralized directory to keep track of the state of each memory block in a multiprocessor system}. The directory maintains information about which caches have copies of each memory block and their states (e.g., modified, shared, invalid).
+
+\highspace
+Unlike snooping protocols (which rely on broadcast), directory protocols \textbf{store the sharing state of each memory block in a single, well-defined location}, called \important{directory}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{folder-open} \textbf{What is the Directory?}}
+\end{flushleft}
+The \textbf{directory is hardware}, not an OS software structure. It is a \textbf{table maintained in hardware} inside the \textbf{memory controller of each node}. We can think of it as a \textbf{metadata} attached to each memory block.
+
+\highspace
+In a \textbf{Distributed Shared-Memory (DSM)} system (more common in scalable multiprocessors), each memory module has its \textbf{own directory} stored next to it. So if a block resides in memory node \texttt{N0}, the directory for that block is in node \texttt{N0}'s memory controller.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/directory-based-protocol-2.pdf}
+    \caption{Directory-Based Protocol Overview from slides \cite{course-slides-polimi}.}
+\end{figure}
+
+\newpage
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{img/directory-based-protocol.pdf}
+    \caption{Directory-Based Protocol Overview from the book \cite{hennessy2017computer}.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is stored in the Directory?}}    
+\end{flushleft}
+The directory keeps track of the \textbf{state of each memory block} and which nodes have cached copies of it. Directory keeps track of:
+\begin{itemize}
+    \item The \important{coherence state} of the block (Uncached, Shared, Modified):
+    \begin{itemize}
+        \item \textbf{U (Uncached)}: No cache has a copy of the block. Only the memory copy is valid (up-to-date).
+        \item \textbf{S (Shared)}: One or more caches may have it in read-only mode (because they issued a read request). Memory copy is still valid (\textbf{up-to-date}).
+        \item \textbf{M (Modified)}: One cache has a read-write copy of the block (the owner). Memory copy is \textbf{stale} (out-of-date).
+    \end{itemize}
+    These are conceptually analogous to the states in the MSI protocol (page \pageref{fig: msi-finite-state-machine}), but tracked centrally\footnote{%
+        With ``\emph{centrally}'' we mean that the directory has a global view of the state of each block, whereas in a distributed cache system, each cache would need to manage its own state independently.
+    } in the directory rather than in each cache.
+
+    \item A \important{sharer list}. It is usually implemented as a \textbf{bit vector} (one bit per node). If the bit node \emph{i} is \texttt{1}, it means node \emph{i}'s cache currently has a valid \textbf{shared copy} of that block. If the bit is \texttt{0}, node \emph{i} does not cache that block.
+    \begin{itemize}
+        \item \textbf{U state (Uncached)}: sharer list is all zeros.
+        \item \textbf{S state (Shared)}: sharer list may have several bits set to \texttt{1}.
+        \item \textbf{M state (Modified)}: sharer list will have exactly one bit set to \texttt{1} (the owner).
+    \end{itemize}
+
+    \item The \important{owner} of the block (if it is in the \emph{Modified} state).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Since the owner field is filled only in the Modified state, and the share list contains only one bit set to 1 in the Modified state, why do we need both?}} From a pure information theory point of view, the owner field is redundant. However, having a \textbf{dedicated owner field can simplify and speed up} certain operations, such as identifying the owner quickly without scanning the sharer list. This can be particularly useful in large systems where efficiency is critical.
+\end{itemize}
+So, in a DSM system, \hl{each node has its own local memory and a directory that tracks all the blocks physically mapped to that memory}. For example, the node \texttt{N0} has a directory that tracks all the blocks physically stored in its local memory and keeps track of which nodes have cached copies of those blocks.
+
+\highspace
+This allows \textbf{point-to-point messaging} (no broadcast), which is essential for scalability in large multiprocessor systems (DSM, page \pageref{sec:DSM}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{users} \textbf{Roles of Nodes}}
+\end{flushleft}
+In a directory-based protocol, nodes can take on different roles based on their interaction with memory blocks. For nodes that participate in a coherence transaction, we have \textbf{three roles}:
+\begin{itemize}
+    \item[\important{\faIcon{home}}] \important{Home Node (H)}: the node that \textbf{``owns'' the memory block} (fixed by the physical address mapping). Stores both the \textbf{block in memory} and its \textbf{directory entry}. All requests for this block must eventually pass through its directory.
+    \item[\important{\faIcon{location-arrow}}] \important{Local Node (L)}: the node where the \textbf{request originates}. For example, CPU at node \texttt{N2} issues a read miss, then its cache controller is the local requester.
+    \item[\important{\faIcon{globe}}] \important{Remote Node (R)}: a node that \textbf{already has a cached copy} of thee block. (either \emph{Shared} or \emph{Modified}). If the copy is \emph{Modified}, the most updated value resides there (not in the home memory), but the home directory knows which node is the owner and can request the updated value from it.
+\end{itemize}
+Obviously, for a given transaction, a node can take on multiple roles. For example, the local requester can also be a home node if it is requesting a block that it owns.

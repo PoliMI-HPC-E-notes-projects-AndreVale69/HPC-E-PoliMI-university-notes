@@ -18,6 +18,7 @@
   - add `Introduction`
   - add `Traditional LB Architecture`
   - add `Real-World Deployments`
+  - add `Design Space`
 
 --------------------
 

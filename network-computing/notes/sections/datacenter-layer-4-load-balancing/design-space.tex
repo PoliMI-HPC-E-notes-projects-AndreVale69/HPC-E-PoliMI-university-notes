@@ -1,0 +1,252 @@
+\subsection{Design Space}
+
+At this point, we know \emph{what} a L4 load balancer does, they distribute traffic across many backend servers while keeping per-connection consistency.
+
+\highspace
+Now we ask the deeper question: \emph{How can we design an L4 load balancer that is \textbf{efficient}, \textbf{fair}, \textbf{scalable}, and \textbf{persistent}?}
+\begin{itemize}
+    \item \textbf{Efficiency}: handle packets at line rate with minimal latency and CPU cost.
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Why it matters}}: The LB must not become a bottleneck for millions of concurrent flows.
+
+
+    \item \textbf{Fairness}: spread load evenly across servers (avoid hotspots).
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Why it matters}}: Prevents some backends from overloading while others sit idle.
+    
+    
+    \item \textbf{Scalability}: support a huge number of servers and flows.
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Why it matters}}: Enables datacenter-scale operation ($10^5$-$10^6$ servers).
+    
+    
+    \item \textbf{Persistence (Connection Affinity)}: packets of the same flow always go to the same backend.
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Why it matters}}: Ensures TCP correctness, no packet reordering, no broken sessions.
+\end{itemize}
+In short, we want the LB to be \emph{fast}, \emph{fair}, \emph{scalable}, and \emph{consistent}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Load Balancing Policies}}
+\end{flushleft}
+L4 load balancers can make decisions in different ways, depending on how much state they maintain and what information they use. Some common policies include:
+\begin{itemize}
+    \item \important{Round-Robin (stateful counter)}: Maintain a counter \texttt{i} that cycles through the server list. For each \textbf{new connection}, choose backend $=$ \texttt{server[i]}, then increment \texttt{i} (modulo number of servers).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}: Simple, easy to implement, ensures even distribution if all connections are similar.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}: Stateless per-packet, breaks connection affinity if applied to every packet. Also, doesn't consider load variation (some servers may be slow or busy).
+    \end{itemize}
+    This is \textbf{good for flow-level dispatch}, \textbf{bad for packet-level dispatch} (because packets of one connection could go to different servers).
+
+
+    \item \important{Hash-based (stateless deterministic)}: Compute a \textbf{hash} on packet header fields, typically the 5-tuple:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \text{h} & = & \texttt{hash}\left(\texttt{src\_IP}, \texttt{src\_port}, \texttt{dst\_IP}, \texttt{dst\_port}, \texttt{protocol}\right) \\[.3em]
+            \text{backend} & = & \text{h} \mod N \quad \text{(where $N$ is number of servers)}
+        \end{array}
+    \end{equation*}
+    Each packet of a given TCP flow produces the same hash, always same backend.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}: Stateless but preserves connection affinity. Easy to scale across multiple Load Balancers (deterministic decision).
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}: Not perfectly fair, hash imbalance can cause some servers to get more flows. When number of backends changes, many flows per remapped (hash churn).
+
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What is hash churn?}} When a server is added or removed, the \textbf{modulo operation changes}, causing many existing \textbf{flows} to be \textbf{remapped to different backends}, breaking connection affinity.
+    \end{itemize}
+    This is the method used in \textbf{Google's Maglev} and \textbf{ECMP routing}.
+
+
+    \item \important{Stateful per-flow mapping}: Maintain an explicit mapping table:
+    \begin{equation*}
+        \text{(5-tuple)} \rightarrow \text{backend server}
+    \end{equation*}
+    The first packet of a new connection triggers a decision (e.g., round-robin or weighted), and all subsequent packets look up this table. It is a sort of \textbf{flow cache}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pros}}: Perfect persistency and flexibility.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Cons}}: Needs huge memory for millions of flows (e.g., NAT tables). Hard to replicate state across multiple LBs. Potential bottleneck if table lookups are slow.
+    \end{itemize}
+    Used by \textbf{NAT-based systems} like \textbf{Alibaba's} or \textbf{Ananta (Azure)}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Persistency and Connection Affinity}}
+\end{flushleft}
+When we connect to a website, for example:
+\begin{equation*}
+    \text{Client} \rightarrow \text{VIP} = \texttt{203.0.113.10} (\text{example.com})
+\end{equation*}
+Behind that VIP there might be \textbf{hundreds of backend servers}:
+\begin{equation*}
+    \texttt{10.0.1.1}, \;\texttt{10.0.1.2}, \;\texttt{10.0.1.3}, \dots
+\end{equation*}
+A \textbf{Layer 4 load balancer} must decide \emph{which backend} will handle our connection. This decision must be taken carefully, because datacenters are large and dynamic: many load balancers instances (distributed LBs), servers added/removed frequently, VIPs shared across multiple racks. So packets from the same TCP connection may reach \textbf{different LBs}. If each LB picks a random backend, we break connection affinity. We need to ensure two properties:
+\begin{itemize}
+    \item \definition{Connection Affinity} (\textbf{Local Property}): \hl{All packets of the same connection (flow) must go to the same backend server}. It is mandatory for TCP correctness, otherwise connections would fail.
+
+    \begin{examplebox}[: Connection Affinity]
+        Client opens TCP connection. LB decides ``this flow goes to \texttt{10.0.1.3} backend''. Every packet in that connection \underline{must} go to \texttt{10.0.1.3} or else the TCP state breaks.
+    \end{examplebox}
+
+
+    \item \definition{Persistency} (\textbf{Global Property}): \hl{the same connection (or flow) is always mapped to the same backend, even if other conditions change} (e.g., another LB instance, restart, or network rehash). It ensures that the \textbf{same flow always maps to the same backend}, regardless of which LB instance handles it, temporary restarts, scaling events, hash table updates, etc.
+
+    \begin{examplebox}[: Persistency]
+        We have two load balancer instances: $\text{LB}_1$ and $\text{LB}_2$. Due to ECMP routing, different packets of the same TCP flow might hit different LBs:
+        \begin{itemize}
+            \item $\text{LB}_{1}$ sees the first \texttt{SYN} packet, and chooses backend \texttt{10.0.1.3}.
+            \item $\text{LB}_{2}$ later receives data packets.
+        \end{itemize}
+        To preserve \textbf{persistency}, $\text{LB}_{2}$ must make \textbf{the same decision} (\texttt{10.0.1.3}), even though it didn't see the initial \texttt{SYN} packet. So, persistency means determinism across time and devices.
+    \end{examplebox}
+\end{itemize}
+If we have \textbf{persistency}, then automatically each connection is mapped deterministically to the same backend, so \textbf{connection affinity} is also satisfied. But we can have \textbf{affinity without persistency} if only one LB handles the flow (it keeps packets consistent \emph{locally}, but another LB might choose differently).
+\begin{equation*}
+    \text{Persistency} \implies \text{Connection Affinity}
+\end{equation*}
+
+\highspace
+\begin{examplebox}[: Analogy]
+    Think of a \textbf{hotel}:
+    \begin{itemize}
+        \item \textbf{Connection Affinity}: Once a guest (flow) checks into room 312, they keep the same room for their stay (same server for all packets).
+        \item \textbf{Persistency}: If the hotel has multiple front desks (LBs), no matter which desk the guest checks in at, they should always be assigned room 312 (same server across LBs).
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{How can we guarantee persistence and connection affinity?}}
+\end{flushleft}
+There are two main approaches:
+\begin{itemize}
+    \item \important{Per-flow state (stateful)}. On the first packet (\texttt{SYN}), the LB chooses a backend (e.g., using round-robin, weighted). It stores a mapping in a table:
+    \begin{equation*}
+        \left(
+            \texttt{src\_IP},\, \texttt{src\_port},\, \texttt{dst\_IP},\, \texttt{dst\_port},\, \texttt{protocol}
+        \right) \rightarrow \texttt{backend\_id}
+    \end{equation*}
+    Every subsequent packet is looked up in that table.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Perfect affinity and persistency.
+        \item[\textcolor{Red2}{\faIcon{times}}] Heavy memory usage and synchronization if multiple LBs exist.
+    \end{itemize}
+    Used by \textbf{NAT-based} and \textbf{TCP-terminating} systems (Alibaba, Azure).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Is this approach the same as the stateful, per-flow mapping policy?}} They are \textbf{related}, but not the same thing. A \textbf{policy} tells us \emph{what choice to make}; a \textbf{mapping} tells us \emph{how to remember or reapply that choice}. A \textbf{load balancing policy} decides \emph{which backend to pick} for a new flow. A \textbf{stateful mapping} remembers that decision to enforce \emph{connection affinity and persistency} across packets.
+
+
+    \item \important{Deterministic function (stateless)}. The LB computes:
+    \begin{equation*}
+        \texttt{backend} = \texttt{hash}\left(\text{5-tuple}\right) \mod N
+    \end{equation*}
+    Where $N$ is the number of backends (servers). Every packet of that connection hashes to the same backend automatically.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] No state needed.
+        \item[\textcolor{Green3}{\faIcon{check}}] Works across multiple LBs (same hash function, all get same result).
+        \item[\textcolor{Red2}{\faIcon{times}}] Slight imbalance if hash is uneven.
+        \item[\textcolor{Red2}{\faIcon{times}}] When $N$ changes, many flow are remapped (unless consistent hashing is used).
+    \end{itemize}
+    Used by \textbf{Google's Maglev}, \textbf{ECMP routing}, and \textbf{DSR-based systems}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Persistency with cluster changes}}
+\end{flushleft}
+Even if the load balancer guarantees persistency and connection affinity for ongoing flows, \textbf{changes in the cluster}, such as adding or removing servers, can break these guarantees. If we use a simple \textbf{hash-based deterministic function} like:
+\begin{equation*}
+    \texttt{backend} = \texttt{hash}\left(\text{5-tuple}\right) \mod N
+\end{equation*}
+Then every time $N$ (the number of servers) changes, the modulo result changes for \emph{all} flows. \textcolor{Red2}{\faIcon{exclamation-triangle}} This causes \textbf{hash churn}, where many \hl{ongoing flows are suddenly remapped to different backends}, breaking persistence. \textcolor{Green3}{\faIcon{check}} To avoid this, we use \textbf{consistent hashing}:
+\begin{itemize}
+    \item It changes the mapping of only a small subset of flows when servers are added or removed.
+    \item Existing flows stay mapped to their original backends.
+    \item This preserves \textbf{persistence} even in a \textbf{dynamic cluster}.
+\end{itemize}
+Consistent hashing provides \emph{stable}, \emph{persistent mappings} across server pool changes, avoiding massive remapping of connections.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Consistent Hashing: Deep Dive}}
+\end{flushleft}
+We already saw that a \textbf{naive hash function} like:
+\begin{equation*}
+    \text{backend} = \text{hash(5-tuple)} \mod N
+\end{equation*}
+Breaks persistence when the number of servers $N$ changes. If one server is added or removed, the modulo value changes for almost \textbf{all} hashes. Every existing connection might be remapped to a new backend. This causes \textbf{connection churn}, destroying persistency for active flows.
+
+\highspace
+\definition{Consistent Hashing} is a technique that minimizes remapping when the set of servers changes. It aims to make the system \textbf{resilient to membership changes}: when servers are added or removed, \textbf{only a small subset of flows} are remapped to different backends, while all others stay on the same one. Instead of directly tying the hash function to the \textbf{number of servers} $N$, we tie it to a \textbf{continuous identifier space}: a ``hash ring''.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is a hash ring?}}
+\begin{enumerate}
+    \item Imagine a circular space (0 to $2^{32}-1$ for a 32-bit hash), representing all possible hash values.
+    \item Each \textbf{server} is assigned one or more positions on this ring, using a hash of its ID or IP address.
+    \item Each \textbf{flow (connection)} also hashes to a point on the same ring.
+\end{enumerate}
+Now, to find the backend for a flow:
+\begin{itemize}
+    \item Move \textbf{clockwise} on the ring until we find the first server.
+    \item That server handles the flow.
+\end{itemize}
+This guarantees that each server owns a ``slice'' of the ring (roughly uniform if servers are many). When a server joins or leaves, only its adjacent slide changes, then only flows in that region get remapped.
+
+\begin{examplebox}[: How we find a backend (the rule)]
+    Suppose we have 3 servers: \texttt{S1}, \texttt{S2}, \texttt{S3}. We have a circular space of all possible hash values (0 to 99). Each server is assigned a position on the ring by hashing its ID:
+    \begin{itemize}
+        \item \texttt{S1} $\rightarrow$ 10
+        \item \texttt{S2} $\rightarrow$ 50
+        \item \texttt{S3} $\rightarrow$ 80
+    \end{itemize}
+    Now, each \textbf{flow} also hashes to a number between 0 and 99. For example:
+    \begin{itemize}
+        \item Flow \code{F1} hashes to 5 $\rightarrow$ assigned to backend \texttt{S1} (first server clockwise, value 10).
+        \item Flow \code{F2} hashes to 47 $\rightarrow$ assigned to backend \texttt{S2} (first server clockwise, value 50).
+        \item Flow \code{F3} hashes to 70 $\rightarrow$ assigned to backend \texttt{S3} (first server clockwise, value 80).
+        \item Flow \code{F4} hashes to 90 $\rightarrow$ assigned to backend \texttt{S1} (wraps around, first server clockwise is 10).
+    \end{itemize}
+    So, each server handles the interval between its predecessor and itself on the ring:
+    \begin{itemize}
+        \item \texttt{S1} handles [81-10]
+        \item \texttt{S2} handles [11-50]
+        \item \texttt{S3} handles [51-80]
+    \end{itemize}
+\end{examplebox}
+
+\begin{examplebox}[: What happens when a server joins or leaves?]
+    Let's add a new server, \code{S4} at position 60:
+    \begin{itemize}
+        \item \texttt{S1} at 10
+        \item \texttt{S2} at 50
+        \item \texttt{S4} at 60 (new)
+        \item \texttt{S3} at 80
+    \end{itemize}
+    Now only \textbf{flows that hash between 50 and 60} move, those that previously belonged to \code{S3} now go to \code{S4}. \textbf{All other flows stay exactly where they were}. That's the magic of consistent hashing: the mapping is \emph{consistent} before and after changes, only flows in the new server's interval are remapped.
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Why it's ``fair'' and scalable}}
+\end{flushleft}
+If we place servers randomly on the ring, each gets roughly the same share of the space (and thus same amount of traffic). \hl{With many servers, this becomes statically uniform}. To avoid unevenness, we \textbf{add virtual nodes}: each physical \textbf{server is assigned multiple positions on the ring}. This smooths out distribution, making it more uniform. For example:
+\begin{itemize}
+    \item \texttt{S1} $\rightarrow$ 10, 30, 70
+    \item \texttt{S2} $\rightarrow$ 50, 90
+    \item \texttt{S3} $\rightarrow$ 20, 60, 80
+\end{itemize}
+This way, each server gets multiple slices of the ring, balancing load better. Consistent hashing scales well: adding or removing servers only affects a small portion of the ring, so most flows remain stable. It works efficiently even with thousands of servers and millions of flows.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Summary}}
+\end{flushleft}
+\begin{itemize}
+    \item L4 load balancers must be \textbf{efficient}, \textbf{fair}, \textbf{scalable}, and \textbf{persistent}.
+    \item Common \textbf{load balancing policies} include round-robin, hash-based, and stateful per-flow mapping.
+    \item \textbf{Connection affinity} ensures all \textbf{packets of a flow go to the same backend}; \textbf{persistency} ensures the \textbf{same flow always maps to the same backend}, even across LBs and changes.
+    \item \textbf{Consistent hashing} provides a way to \textbf{maintain persistency} even when servers are added or removed, minimizing remapping of existing flows.
+    \item By \textbf{using a hash ring and virtual nodes}, consistent hashing achieves fair load distribution and scalability.
+\end{itemize}

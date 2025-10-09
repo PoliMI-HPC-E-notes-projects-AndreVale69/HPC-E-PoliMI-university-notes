@@ -1,0 +1,111 @@
+\subsection{Physical Memory Organization}
+
+This is about \textbf{where memory is physically placed} in a multiprocessor system, and how access latency behaves.
+
+\begin{itemize}
+    \item \important{Centralized Memory: UMA (Uniform Memory Access)}. \definition{UMA (Uniform Memory Access)} refers to multiprocessor systems where \textbf{all processors share a single centralized physical memory} with the \textbf{same access latency and bandwidth}, regardless of which processor initiates the access. These systems are also called \definition{Symmetric Multiprocessors (SMPs)} or \definition{Centralized Shared-Memory Multiprocessors}.
+    
+    \textcolor{Green3}{\faIcon{tools} \textbf{Architectural Properties}}
+    \begin{itemize}
+        \item \textbf{Centralized memory}: Memory is physically located in one place (often a set of banks connected by a shared bus or crossbar). Each processor connects to this memory through an interconnect.
+        \item \textbf{Uniform latency}: Any processor accessing any memory location experiences the same access time (hence \textbf{uniform}). This makes programming easier: developers don't need to care whether data is ``local'' or ``remote''.
+        \item \textbf{Cache hierarchy}: Usually, each core has private L1/L2 caches. Sometimes, a shared L3 cache sits before the main memory (especially in multicore chips). Cache coherence (future topics) mechanisms (snooping protocols) are required, since multiple processors can access the same memory.
+    \end{itemize}
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.65\textwidth]{img/uma-polimi.pdf}
+        \caption{The \textbf{UMA system} was presented during the course. This should be familiar because it could happen on the exam.\cite{course-slides-polimi}}
+    \end{figure}
+
+    \newpage
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.9\textwidth]{img/uma.pdf}
+        \caption{This is the \textbf{UMA system} picture taken from the Hennessy \& Patterson book.\cite{hennessy2017computer} In our opinion, it is more realistic because it shows processors and private caches, sometimes with a shared last-level cache (L3) before memory. It is slightly busier, but it captures the modern SMP organization.}
+    \end{figure}
+    
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{UMA Advantages}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Simplicity in programming}}: no need to optimize data placement across nodes.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Shared-memory model}}: natural for many applications, easy to port sequential code.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Lower software complexity}}: the OS and programmer can assume a uniform view of memory.
+    \end{itemize}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{UMA Limitations}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Scalability bottleneck}}: as the number of processors increases, the single shared memory (and interconnect bus) can't provide enough bandwidth.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Contention}}: multiple processors trying to access memory simultaneously can saturate the interconnect.
+        \item[\textcolor{Red2}{\faIcon{times}}] Typically limited to $\approx 32$ processors in classic SMP designs.
+    \end{itemize}
+
+
+    \newpage
+
+
+    \item \important{Distributed Memory: NUMA (Non-Uniform Memory Access)}. \definition{NUMA (Non-Uniform Memory Access)} is a multiprocessor organization where \textbf{memory is physically distributed across nodes}, but logically forms a \textbf{single shared address space} (DSM, Distributed\break Shared Memory). Access time to memory depends on whether the data resides in the \textbf{local memory} of the processor's node or in a \textbf{remote node}. In other words:
+    \begin{itemize}
+        \item \textbf{Local Memory Access}: fast (low latency).
+        \item \textbf{Remote Memory Access}: slower (high latency).
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Architectural Properties}}
+    \begin{itemize}
+        \item \textbf{Distributed physical memory}: Each node:
+        \begin{equation*}
+            \text{node} = \text{Processor(s)} + \text{private caches} + \text{local memory module}
+        \end{equation*}
+        All nodes are connected through an \textbf{interconnection network}\break (mesh, torus, crossbar, etc.). The union of all local memories is one global shared address space.
+        \item \textbf{Non-uniform latency}: If \texttt{P0} accesses data in \texttt{MM0} (its own memory), latency is low. If \texttt{P0} accesses data in \texttt{MM3} (remote memory), it must cross the interconnect, so latency is higher. Hence, \emph{non-uniform} memory access times.
+        \item \textbf{Cache coherence}: Since it is still a shared-memory system, caches must remain coherent. Centralized snooping does not scale, so\break NUMA systems typically use \textbf{directory-based protocols} to track which caches hold copies of which memory blocks.
+    \end{itemize}
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.65\textwidth]{img/numa-polimi.pdf}
+        \caption{The \textbf{NUMA system} was presented during the course. This should be familiar because it could happen on the exam.\cite{course-slides-polimi}}
+    \end{figure}
+
+    \newpage
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/numa.pdf}
+        \caption{This is the \textbf{NUMA system} picture taken from the Hennessy \& Patterson book.\cite{hennessy2017computer}}
+    \end{figure}
+    
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{NUMA Advantages}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Scalability}}: avoids the single bottleneck of centralized UMA memory. Systems can scale to dozens or hundreds of cores/nodes.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{High bandwidth}}: each memory module provides additional aggregate bandwidth.
+    \end{itemize}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{NUMA Limitations}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Complex programming}}: performance depends on data placement. If data is not local, performance may degrade.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{More complex hardware}}: requires scalable interconnection and directory-based cache coherence.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Orthogonality with Address Space}}
+\end{flushleft}
+\textbf{Address-space model} (shared vs. private) and \textbf{physical memory organization} (centralized vs. distributed) are \textbf{orthogonal dimensions}. We can have:
+\begin{itemize}
+    \item \textbf{Shared address space $+$ Centralized physical memory (UMA)}. Classic SMP.
+    \item \textbf{Shared address space $+$ Distributed physical memory (NUMA)}. Distributed Shared Memory (DSM, cc-NUMA).
+    \item \textbf{Private address spaces $+$ Centralized memory}. Rare, but possible in small message-passing systems.
+    \item \textbf{Private address spaces $+$ Distributed memory}. Clusters, large-scale MPI machines.
+\end{itemize}
+Orthogonal means that the two concepts are \textbf{independent dimensions}. We can \textbf{combine them freely}: choosing one does not force the other. The two ``axes'' are:
+\begin{enumerate}
+    \item \textbf{Address-space model}
+    \begin{itemize}
+        \item \emph{Shared address space}: all processors see the same addresses (e.g., UMA, DSM).
+        \item \emph{Private address spaces}: each processor has its own local space (message passing).
+    \end{itemize}
+    \item \textbf{Physical memory organization}
+    \begin{itemize}
+        \item \emph{Centralized memory}: one big memory block (UMA).
+        \item \emph{Distributed memory}: divided among nodes (NUMA, clusters).
+    \end{itemize}
+\end{enumerate}

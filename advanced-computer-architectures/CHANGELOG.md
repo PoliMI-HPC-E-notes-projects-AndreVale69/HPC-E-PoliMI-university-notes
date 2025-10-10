@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.0.0](#v100)
 - [v0.15.0](#v0150)
 - [v0.14.0](#v0140)
 - [v0.13.0](#v0130)
@@ -17,6 +18,36 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.0.0
+
+- add `Multiprocessors`
+  - add `What is a multiprocessor?`
+  - add `Key Design Questions`
+  - add `From single bus to interconnection networks`
+  - add `Network performance metrics`
+  - add `Classic Multiprocessor Topologies`
+  - add `Address-Space Models`
+  - add `Physical Memory Organization`
+  - add `Small-scale multicores`
+  - add `Distributed Shared Memory`
+  - add `Distributed-memory clusters`
+  - add `Communication/Programming Models`
+  - add `Why caches matter`
+  - add `Why Cache Coherence?`
+  - add `Snooping (bus-based) Protocols`
+    - add `Snoopy bus idea, broadcast, and scalability limits`
+    - add `Practicalities: duplicate tag to avoid stalling the core`
+    - add `Write-invalidate vs write-update (bandwidth vs latency)`
+    - add `MSI Protocol: Finite-State Machine (FSM)`
+    - add `MESI Protocol`
+  - add `Directory-Based Protocols`
+    - add `Basics`
+    - add `Message Types`
+    - add `Walkthroughs on a 4-node system`
+    - add `Directory FSM and Invariants`
 
 --------------------
 

@@ -1,0 +1,73 @@
+\subsection{Why caches matter}
+
+This is an introductory section, the details come later.
+
+\highspace
+In modern CPUs, main memory is \textbf{too slow} relative to processor speed. Caches reduce \textbf{average memory access latency} and increase \textbf{effective bandwidth}. In multiprocessors, each core has \textbf{private caches} (L1, L2) and possibly a shared L3. Caches allow parallel performance, but also introduce \textbf{new problems} when data is shared across cores.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The cache problem in multiprocessors}}
+\end{flushleft}
+When multiple processors \textbf{share memory}:
+\begin{itemize}
+    \item Each may \textbf{cache copies} of the same memory block.
+    \item If one processor updates its cached copy, others may see an \textbf{old value}.
+    \item Without extra mechanisms, this breaks the \textbf{shared-memory programming model}.
+\end{itemize}
+This problem is called \definition{Cache Coherence problem}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{balance-scale} \textbf{Coherence vs. Consistency}}
+\end{flushleft}
+In a multiprocessor, there are \textbf{two different correctness problems} when using caches:
+\begin{enumerate}
+    \item \textbf{\emph{What value do we get when we read a single variable that multiple processors are updating?}} This is the cache coherence problem (see above).
+    \item \textbf{\emph{In what order do we see writs to different variables from other processors?}} This is the \definition{Memory Consistency problem}.
+\end{enumerate}
+They sound similar, but they control \textbf{different dimensions of correctness}.
+\begin{itemize}
+    \item \important{Cache Coherence}: the \textbf{scope} is a single memory location. It ensures:
+    \begin{enumerate}
+        \item \textbf{Write propagation}: all processors eventually see the most recent value of a variable.
+        \item \textbf{Write serialization}: all processors see writes to that variable in the same order.
+    \end{enumerate}
+    For example, \texttt{P0} writes \texttt{X = 1}. Later, \texttt{P1} reads \texttt{X}. \textbf{Coherence guarantees} that \texttt{P1} eventually sees 1, not some stale old value.
+ 
+    \item \important{Memory Consistency}: the \textbf{scope} is the ordering of operations across multiple memory locations. Defines \emph{when} the result of a write by one processor becomes visible to others. Determines the rules for \textbf{ordering of loads and stores} across addresses. For example, \texttt{P0} executes:
+    \begin{lstlisting}
+A = 1;
+B = 2;\end{lstlisting}
+    \texttt{P1} executes:
+    \begin{lstlisting}
+print(B);
+print(A);\end{lstlisting}
+    But if \texttt{P1} sees \texttt{B = 2}, must it also see \texttt{A = 1}? Some consistency models (like sequential consistency) say yes, instead weaker models (like relaxed consistency) may allow no.
+
+    So even if the system is \textbf{coherent}, without consistency rules we don't know \emph{when} other processors see writes, or in what order.
+\end{itemize}
+Note that memory consistency is important; otherwise, programs could behave unpredictably due to instruction reordering, buffering, or weak memory ordering.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Protocol Families for Cache Coherence}}
+\end{flushleft}
+When multiple processors have caches, we need a \textbf{protocol} to keep all copies of memory blocks consistent. Two big families exist, depending on the hardware organization:
+\begin{itemize}
+    \item \important{Snooping Protocols}. Used in \textbf{small-scale SMP/UMA} with a \textbf{shared bus}. Each cache controller ``snoops'' (listens) to the bus for transactions (read, write). If another core writes to a block, snooping ensures invalidation or update of local copies. It scales poorly because broadcasting traffic grows with the number of cores.
+    \item \important{Directory Protocols}. Used in \textbf{large-scale DMS/NUMA} systems with interconnect networks. A \textbf{directory} (kept alongside each memory block) tracks which caches hold copies. Only the relevant caches are notified on writes. Scales better than snooping (no broadcast).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Cache Coherence protocols: Invalidate vs. Update}}
+\end{flushleft}
+The Invalidate and Update protocols are two \textbf{cache coherence protocols}. They ensure that \textbf{all processors see a consistent view of memory when caches hold copies of the same block}. These protocols \textbf{define what happens when one processor writes to a block that may exist in multiple caches}.
+
+\highspace
+Despite being cache coherence protocols, the invalidate and update protocols define the \textbf{coherence policy of the caches}. The snooping and directory protocols, on the other hand, define the \textbf{hardware organization} (bus versus scalable network).
+\begin{itemize}
+    \item \important{Invalidate Protocols}. When one processor writes to a block, all \textbf{other cached copies} are \textbf{invalidated}. Other processors no longer trust their copy; they must fetch a fresh copy from memory (or from the writer) if they need it later. For example, \texttt{P0} and \texttt{P1} both cache \texttt{X = 0}. \texttt{P0} writes \texttt{X = 1}. Protocol sends ``invalidate'', then \texttt{P1}'s copy of \texttt{X} becomes \emph{invalid}. If \texttt{P1} later reads \texttt{X}, it must fetch the new value.
+    \item \important{Update Protocols}. When one processor writes to a block, the \textbf{new value is immediately sent} to all caches that hold a copy. Everyone's copy is updated in place, so no invalidations. For example, \texttt{P0} and \texttt{P1} both cache \texttt{X = 0}. \texttt{P0} writes \texttt{X = 1}. Protocol sends ``update'', then \texttt{P1}'s cached copy is changed to \texttt{1}. If \texttt{P1} later reads \texttt{X} later, it already has the correct value.
+\end{itemize}

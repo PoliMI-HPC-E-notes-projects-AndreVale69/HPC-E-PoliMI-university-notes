@@ -39,3 +39,72 @@ A \definition{Patch test} is a very simple verification check used in structural
     \item Therefore, we learn nothing about the \emph{approximation properties} of our FEM code.
 \end{itemize}
 That is why here we go beyond patch tests, we choose \textbf{Manufactured solutions that are not in the FE space}. These produce a nonzero error that decrease as $h \to 0$. Measuring that decrease is what confirms convergence.
+
+\highspace
+\begin{deepeningbox}[: Method of Manufactured Solutions (MMS)]
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{The problem we want to solve.}} For example, take the Poisson problem:
+    \begin{equation*}
+        -u''(x) = f(x), \quad x \in (0,1), \qquad u(0)=u(1)=0
+    \end{equation*}
+    Normally, we \textbf{don't know} $u(x)$, and we use FEM to approximate it numerically. But if we want to \emph{check our FEM code}, we need to know what the \textbf{exact} $u(x)$ is, so we can measure the error ($u - u_h$). That's \hl{the purpose of MMS}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does MMS work?}} Instead of starting from $f(x)$ and trying to \emph{find} $u(x)$, we \textbf{reverse the logic}.
+    \begin{enumerate}
+        \item \important{Choose any smooth, convenient function $u_{\text{ex}}(x)$}. For example:
+        \begin{equation*}
+            u_{\text{ex}}(x) = \sin(2\pi x)
+        \end{equation*}
+        We can compute all its derivatives easily.
+
+        \item \important{Plug it into the PDE to \emph{manufacture} the corresponding $f(x)$}. Take the PDE operatore, here $-\dfrac{\partial^{2}}{\partial x^{2}}$, and apply it to $u_{\text{ex}}$:
+        \begin{equation*}
+            f(x) = -u_{\text{ex}}''(x) = 4\pi^{2} \sin(2\pi x)
+        \end{equation*}
+        Now we have constructed an artificial right-hand side $f(x)$.
+
+        \item \important{Build the boundary conditions consistently}. For Dirichlet BCs, set:
+        \begin{equation*}
+            u(0) = u_{\text{ex}}(0) = 0, \quad u(1) = u_{\text{ex}}(1) = 0
+        \end{equation*}
+        And this works for us since $\sin(0)=\sin(2\pi)=0$.
+
+        \item \important{Solve the \emph{manufactured} PDE with our FEM code}. Our FEM solver does not know the ``trick''. It just solves:
+        \begin{equation*}
+            -u_{h}''(x) = f(x), \quad x \in (0,1), \qquad u_h(0)=u_h(1)=0
+        \end{equation*}
+        Since $f$ was built \emph{exactly} from $u_{\text{ex}}$, the exact solution of this PDE is indeed $u_{\text{ex}}(x)$ itself.
+    \end{enumerate}
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why isn't it magic?}} We are not giving a function and asking the code to ``return'' it. Instead, we are \emph{creating} a problem whose solution we \textbf{already know}:
+    \begin{enumerate}
+        \item \textbf{Constructing a full PDE} whose analytic solution we know.
+        \item \textbf{Feeding the PDE} (through its forcing term $f$ and BCs) to our FEM solver.
+        \item \textbf{Comparing} the numerical result $u_{h}$ with our known $u_{\text{ex}}$
+    \end{enumerate}
+    So the ``black box'' isn't guessing $u_{\text{ex}}$; it's solving a PDE that was \emph{designed} so that $u_{\text{ex}}$ is its exact solution.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why did we choose $u_{\text{ex}}$ outside the FEM space?}} Because if $u_{\text{ex}}$ were representable exactly (e.g. a linear function for linear FE), the FEM would reproduce it perfectly for any mesh, giving zero error and no convergence information. By picking $u_{\text{ex}}$ that is \textbf{not} in the  finite element space, like a sine, the solver can only approximate it. When we refine the mesh, $u_{h} \to u_{\text{ex}}$, and the error decreases at a predictable rate:
+    \begin{equation*}
+        \left| u - u_{h} \right|_{L^2} = O\left(h^{r+1}\right) \qquad
+        \left| u - u_{h} \right|_{H^1} = O\left(h^{r}\right)
+    \end{equation*}
+    We can then measure these rates and verify that the implementation behaves as theory predicts.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{book} \textbf{Analogy}}. In a similar way, when testing a sorting algorithm, we might generate random lists of numbers (the ``manufactured input'') and know the expected sorted output. We then run the algorithm and compare its output to our known correct result. The algorithm isn't ``magically'' producing the sorted list; it's being tested against a case where we already know the answer. Think of MMS like a \textbf{unit test} for our numerical solver.
+
+    \begin{center}
+        \begin{tabular}{@{} p{15em} p{15em} @{}}
+            \toprule
+            In programming & In PDE verification \\
+            \midrule
+            We create a function \code{f()} and check if its output matches what we expect. & We create a PDE (with known $u_{\text{ex}}$) and check if the solver approximates it with the right accuracy. \\[.5em]
+            The test is artificial, not a real-world case. & MMS PDE is artificial, not physical, but mathematically consistent. \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+
+    In summary, MMS is a systematic way to create test problems with known solutions, allowing us to verify that our numerical methods are implemented correctly and converge as expected.
+\end{deepeningbox}

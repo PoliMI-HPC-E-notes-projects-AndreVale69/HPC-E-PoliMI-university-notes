@@ -1,0 +1,253 @@
+\subsubsection{Non-smooth manufactured case}
+
+Until now, our exact solution:
+\begin{equation*}
+    u_{\text{ex}}(x) = \sin\left(2\pi x\right)
+\end{equation*}
+Is \textbf{infinitely smooth}, meaning that it has derivatives of all orders, and they are all continuous. This is a very nice property, but \hl{it is not always the case in real-world problems}. That's the ideal case, it satisfies the theoretical assumptions under which FEM gives optimal convergence rates:
+\begin{equation*}
+    e_{L^2} = \mathcal{O}(h^{p+1}), \quad e_{H^1} = \mathcal{O}(h^p)
+\end{equation*}
+Where $p$ is the polynomial degree of the basis functions. But in the real world (and in advanced numerical analysis), \textbf{many PDEs have solutions that are not perfectly smooth}, for example: corners in the domain, material interfaces, singular loads, cracks, etc. In those cases, the solution is continuous but not differentiable everywhere. This is called a \textbf{non-smooth solution}. In such cases, the question is: \hl{\emph{what happens to our convergence rates then?}} That's what the ``non-smooth manufactured solution'' experiment tests.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Constructing the non-smooth manufactured solution}}
+\end{flushleft}
+The \textbf{non-smooth case} is constructed by defining a block of code in the \code{Poisson1D.hpp} file, in the \code{ForcingTerm} and \code{ExactSolution} classes. The code is:
+\begin{lstlisting}[language=C++]
+// Set to 1 for smooth case (points 3 and 4),
+// 0 for non-smooth case (point 5).
+#define SMOOTH_CASE 0
+
+// ...
+
+class ForcingTerm : public Function<dim>
+    {
+    public:
+        // Constructor.
+        ForcingTerm() = default;
+        
+        // Evaluation.
+        virtual double value(const Point<dim> &p,
+            const unsigned int /*component*/ = 0) const override
+        {
+#if SMOOTH_CASE
+            // Points 3 and 4; smooth case.
+            return 4.0 * M_PI * M_PI * std::sin(2.0 * M_PI * p[0]);
+#else
+            // Point 5; non-smooth case.
+            if (p[0] < 0.5)
+                return 0.0;
+            return -std::sqrt(p[0] - 0.5);
+#endif
+        }
+    };
+
+class ExactSolution : public Function<dim>
+    {
+    public:
+        // Constructor.
+        ExactSolution() {}
+
+        // Evaluation.
+        virtual double value(
+            const Point<dim> &p,
+            const unsigned int /*component*/ = 0
+        ) const override
+        {
+#if SMOOTH_CASE
+            // Points 3 and 4; smooth case.
+            return std::sin(2.0 * M_PI * p[0]);
+#else
+            // Point 5; non-smooth case.
+            if (p[0] < 0.5)
+                return A * p[0];
+            return A * p[0] + 4.0 / 15.0 * std::pow(p[0] - 0.5, 2.5);
+#endif
+        }
+
+        virtual Tensor<1, dim> gradient(
+            const Point<dim> &p,
+            const unsigned int /*component*/ = 0
+        ) const override
+        {
+            Tensor<1, dim> result;
+
+            // Points 3 and 4; smooth case.
+#if SMOOTH_CASE
+            result[0] = 2.0 * M_PI * std::cos(2.0 * M_PI * p[0]);
+#else
+            // Point 5; non-smooth case.
+            if (p[0] < 0.5)
+                result[0] = A;
+            else
+                result[0] = A + 2.0 / 3.0 * std::pow(p[0] - 0.5, 1.5);
+#endif
+
+            return result;
+        }
+
+        static constexpr double A = -4.0 / 15.0 * std::pow(0.5, 2.5);
+    };\end{lstlisting}
+This defines the \textbf{piecewise right-hand side} $f(x)$ corresponding to the \textbf{non-smooth exact solution} $u_{\text{ex}}(x)$:
+\begin{equation*}
+    f(x) = \begin{cases}
+        0, & x < 0.5 \\
+        -\sqrt{x - 0.5}, & x \geq 0.5
+    \end{cases}
+    \quad\quad
+    u_{\text{ex}}(x) = \begin{cases}
+        A x, & x < 0.5 \\
+        A x + \frac{4}{15} (x - 0.5)^{2.5}, & x \geq 0.5
+    \end{cases}
+\end{equation*}
+Where $A = -\frac{4}{15} (0.5)^{2.5}$ is a constant ensuring continuity at $x = 0.5$. This solution is continuous everywhere, but its first derivative is not continuous at $x = 0.5$ (it has a \textbf{corner} there). This is a typical example of a non-smooth solution.
+
+\highspace
+We have wrap the block of code in a \textbf{preprocessor directive}:
+\begin{lstlisting}[language=C++]
+#define SMOOTH_CASE 0
+// ...
+#if SMOOTH_CASE
+    // Smooth case code
+#else
+    // Non-smooth case code
+#endif\end{lstlisting}
+Setting \code{SMOOTH\_CASE} to 1 \textbf{activates the smooth case} (points 3 and 4), while setting it to 0 \textbf{activates the non-smooth case} (point 5). This allows us to easily switch between the two cases by changing a single line of code.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Running the non-smooth case}}
+\end{flushleft}
+Now, instead of the smooth $u_{\text{ex}}(x) = \sin(2\pi x)$, we're solving the piecewise 2.5-power function defined above. Using the same \code{main} function as before, we can run the simulation for various mesh sizes and polynomial degrees. After running the simulations, we obtain the following error tables for both the smooth and non-smooth cases:
+\begin{itemize}
+    \item \textbf{Smooth case}:
+    \begin{lstlisting}
+     h            L2              H1        
+0.1000    - 1.0028e-03    - 6.5007e-02    - 
+0.0500 1.00 1.2590e-04 2.99 1.6319e-02 1.99 
+0.0250 1.00 1.5754e-05 3.00 4.0840e-03 2.00 
+0.0125 1.00 1.9698e-06 3.00 1.0213e-03 2.00 
+0.0063 1.00 2.4624e-07 3.00 2.5533e-04 2.00 
+0.0031 1.00 3.0781e-08 3.00 6.3835e-05 2.00\end{lstlisting}
+
+    \item \textbf{Non-smooth case}:
+    \begin{lstlisting}
+     h            L2              H1        
+0.1000    - 1.3069e-05    - 3.7084e-04    - 
+0.0500 1.00 4.1481e-06 1.66 1.0101e-04 1.88 
+0.0250 1.00 1.4392e-06 1.53 2.7295e-05 1.89 
+0.0125 1.00 5.0736e-07 1.50 7.3559e-06 1.89 
+0.0063 1.00 1.7930e-07 1.50 1.9895e-06 1.89 
+0.0031 1.00 6.3388e-08 1.50 5.4447e-07 1.87\end{lstlisting}
+\end{itemize}
+Each \textbf{row} corresponds to one \textbf{mesh refinement}. For a given $N$, the program computes $h = \frac{1}{N+1}$, then measures the $L^2$ and $H^1$ errors between the numerical solution and the exact solution.:
+\begin{itemize}
+    \item Column \code{h}: mesh size (distance between nodes).
+    \item Column \code{L2}: absolute $L^2$ error, $\left\| u - u_{h} \right\|_{L^2}$.
+    \item Column \code{H1}: absolute $H^1$ error, $\left\| u - u_{h} \right\|_{H^1}$.
+    \item Numbers between errors: \textbf{empirical convergence rate} (computed with \texttt{ConvergenceTable::reduction\_rate\_log2}).
+\end{itemize}
+Each line compares current and previous refinement:
+\begin{equation*}
+    \text{rate} = \dfrac{\log\left(e_{\text{prev}} \div e_{\text{curr}}\right)}{\log\left(h_{\text{prev}} \div h_{\text{curr}}\right)}
+\end{equation*}
+Because our $h$ halves each time, this is essentially a base-2 logarithm of the error reduction:
+\begin{equation*}
+    \text{rate} = \log_{2}\left(\dfrac{e_{\text{prev}}}{e_{\text{curr}}}\right)
+\end{equation*}
+For example, in the smooth case, the second line is:
+\begin{lstlisting}
+0.0500 1.00 1.2590e-04 2.99 1.6319e-02 1.99\end{lstlisting}
+Where:
+\begin{itemize}
+    \item $h = 0.0500$: the current mesh size.
+    \item First \code{1.00} is the ratio between current and previous $h$ values (always 2 refinement, printed as reference).
+    \item \code{1.2590e-04}: the current $L^2$ error.
+    \item \code{2.99}: the empirical convergence rate for the $L^2$ error, computed as:
+    \begin{equation*}
+        \text{rate}_{L^2} = \log_{2}\left(\dfrac{1.0028 \times 10^{-3}}{1.2590 \times 10^{-4}}\right) \approx 2.99
+    \end{equation*}
+    \item \code{1.6319e-02}: the current $H^1$ error.
+    \item \code{1.99}: the empirical convergence rate for the $H^1$ error, computed as:
+    \begin{equation*}
+        \text{rate}_{H^1} = \log_{2}\left(\dfrac{6.5007 \times 10^{-2}}{1.6319 \times 10^{-2}}\right) \approx 1.99
+    \end{equation*}
+\end{itemize}
+The $H^1$ and $L^2$ errors respect the theoretical convergence rates for quadratic elements ($r=2$):
+\begin{equation*}
+    e_{H^{1}} = O\left(h^{r}\right) = O\left(h^{2}\right), \quad e_{L^{2}} = O\left(h^{r+1}\right) = O\left(h^{3}\right)
+\end{equation*}
+The steady values of approximately 2 and 3 for the $H^1$ and $L^2$ errors, respectively, confirm that our numerical solution converges to the exact solution at the expected rates as the mesh is refined.
+
+\highspace
+In the \textbf{non-smooth case}:
+\begin{itemize}
+    \item $H^{1}$ rate stabilizes around \textbf{1.88} (slightly below 2).
+    \item $L^{2}$ rate stabilizes around \textbf{1.5-1.6} (well below 3).
+\end{itemize}
+This indicates that our solver is \textbf{still converging}, but slower. The observed rates reflect \textbf{reduced regularity} of the exact solution due to the corner at $x=0.5$.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What changes in convergence behavior?}}
+\end{flushleft}
+Now the solution is less regular because it has a \textbf{kink} (corner) in the curvature (second derivative discontinuity) at $x=0.5$. Theory tells us that:
+\begin{itemize}
+    \item For $H^1$ norm, the convergence rate is limited by the solution's regularity:
+    \begin{equation}
+        \left\| u - u_h \right\|_{H^1} \le C \, h^{\min\left(r, s-1\right)}
+    \end{equation}
+    Where $s$ is the \textbf{regularity of the exact solution} and $r$ is the \textbf{polynomial degree of the finite element space}. Here, $s \approx 2.5$ (since the solution is piecewise $C^{2.5}$), so:
+    \begin{equation*}
+        \min\left(r, s-1\right) = \min\left(2, 1.5\right) = 1.5
+    \end{equation*}
+    Thus, we expect the $H^1$ error to converge at a rate of about 1.5, which aligns with our observed rate of approximately 1.88 (slightly better due to mesh alignment with the kink).
+
+    \item For $L^2$ norm, the convergence rate is typically one order higher than that of the $H^1$ norm:
+    \begin{equation}
+        \left\| u - u_h \right\|_{L^2} \le C \, h^{\min\left(r+1, s\right)}
+    \end{equation}
+    Here, $\min\left(r+1, s\right) = \min\left(3, 2.5\right) = 2.5$. Therefore, we expect the $L^2$ error to converge at a rate of about 2.5, which is consistent with our observed rate of approximately 1.5-1.6 (slightly lower due to the kink).
+\end{itemize}
+In summary, the \hl{presence of a corner in the exact solution reduces its regularity}, which in turn lowers the convergence rates of our finite element solver. While we still achieve convergence, the rates are slower than in the smooth case, demonstrating the impact of solution regularity on numerical performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this matters}}
+\end{flushleft}
+Understanding how solution regularity affects convergence rates is crucial. This experiment teaches a \textbf{core finite element principle}: \hl{increasing the polynomial degree $r$ improve accuracy \textbf{only if} the solution is smooth enough}. If the solution has low regularity (e.g., corners, singularities), the \textbf{error is dominated by those singular regions}, and no matter how high $r$ is, we won't reach the ideal convergence rate. \textcolor{Green3}{\faIcon{question-circle} \textbf{And what can we do about it?}} Several strategies exist:
+\begin{itemize}
+    \item \textbf{Mesh refinement}: Use finer meshes near singularities to better capture solution behavior.
+    \item \textbf{Adaptive methods}: Dynamically refine the mesh based on error estimates.
+    \item \textbf{Special basis functions}: Employ enriched or singular basis functions that can better represent non-smooth features.
+\end{itemize}
+These techniques help mitigate the impact of low regularity and improve overall solution accuracy.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Key takeaways}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Solution regularity matters}: The \hl{smoothness} of the exact solution directly \hl{influences} the \hl{convergence} rates of finite element methods.
+    \item \textbf{Non-smooth solutions converge slower}: Solutions with \hl{corners or singularities} lead to \hl{reduced convergence rates}, as observed in the non-smooth manufactured case.
+    \item \textbf{Empirical rates confirm theory}: The observed convergence rates align with theoretical predictions based on solution regularity.
+    \item \textbf{Practical implications}: In real-world problems, where solutions are often non-smooth, understanding and addressing these effects is crucial for effective numerical simulations.
+\end{itemize}
+
+\highspace
+The output of the convergence driver should look like this: 
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd#file-output-non-smooth-txt}{\texttt{output-non-smooth.txt}}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd#file-output-non-smooth-txt}
+\end{center}
+
+\noindent
+The source code is available at:
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd}{Source code}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd}
+\end{center}

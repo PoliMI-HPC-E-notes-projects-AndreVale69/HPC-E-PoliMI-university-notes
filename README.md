@@ -115,6 +115,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="numerical-methods-for-partial-differential-equations">Course Details</a></li>
             <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.4.0</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NM4PDE-labs">Lab Codes</a></li>
         </ul></td>
     </tr>
     <tr>

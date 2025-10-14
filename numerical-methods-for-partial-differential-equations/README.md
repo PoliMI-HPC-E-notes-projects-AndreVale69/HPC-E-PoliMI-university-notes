@@ -14,6 +14,10 @@ In the [CHANGELOG](CHANGELOG.md) file you can see the changes made to each versi
 
 For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
+## Laboratory Code
+
+All the code used in the laboratory sessions is available in the dedicated [repository](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NM4PDE-labs). It contains the code for the labs and the instructions to run them.
+
 ## Course Syllabus
 
 According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=837285&__pj0=0&__pj1=990dfee5d74f45541b9409e99ff475f2):

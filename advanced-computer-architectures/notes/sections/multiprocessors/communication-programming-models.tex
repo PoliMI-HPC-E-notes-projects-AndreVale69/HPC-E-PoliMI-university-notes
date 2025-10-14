@@ -1,0 +1,152 @@
+\subsection{Communication/Programming Models}
+
+When we program for parallel machines, we need a \textbf{model} that defines:
+\begin{itemize}
+    \item \textbf{\emph{How processors communicate}}:
+    \begin{itemize}
+        \item Do they exchange data via a common shared memory?
+        \item Or do they send explicit messages?
+        \item Or do they all run the same program on different pieces of data?
+    \end{itemize}
+    \item \textbf{\emph{How programmers express parallelism}}:
+    \begin{itemize}
+        \item What primitives and abstractions they use (threads, send/recv, barriers, etc.).
+    \end{itemize}
+\end{itemize}
+In other words, a \definition{Communication/Programming Model} is the \textbf{software-level abstraction} that maps onto the underlying \textbf{hardware organization}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The simplest model: Shared-Memory}}
+\end{flushleft}
+The \definition{Shared-Memory Model} is the simplest one, processors communicate via \textbf{shared variables} in a common address space, using loads/stores $+$ synchronization.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{microchip}}] \textcolor{Green3}{\textbf{Hardware}}
+    \begin{itemize}
+        \item Multiple processors/cores all access the \textbf{same global address space} (UMA or NUMA).
+        \item Any processor can read/write any memory location.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{book}}] \textcolor{Green3}{\textbf{Programming model}}
+    \begin{itemize}
+        \item Processes/threads communicate \textbf{implicitly} by accessing shared variables.
+        \item Example: if Thread 0 writes \texttt{x = 42}, Thread 1 can later read \texttt{x} from memory.
+        \item Synchronization is done via \textbf{locks, semaphores, barriers, atomic operations} to avoid race conditions.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{code}}] \textcolor{Green3}{\textbf{Frameworks}}
+    \begin{itemize}
+        \item \textbf{OpenMP} (compiler pragmas for parallel loops).
+        \item POSIX threads (\texttt{pthreads}).
+        \item Java/C\# threads.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Natural and easy for programmers used to sequential programming.
+        \item[\textcolor{Green3}{\faIcon{check}}] No need to explicitly send messages, just share variables.
+        \item[\textcolor{Green3}{\faIcon{check}}] Good for small- to medium-scale multiprocessors (SMPs, multicores).
+    \end{itemize}
+    \newpage
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Scalability bottleneck}: cache coherence traffic grows with core count.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Data placement issues}: in NUMA systems, memory might be local or remote $\rightarrow$ programmer must sometimes optimize placement for performance.
+        \item[\textcolor{Red2}{\faIcon{times}}] Synchronization overhead can reduce parallel efficiency.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{industry} \textbf{The Message-Passing Model}}
+\end{flushleft}
+In the \definition{Message-Passing Model}, processes communicate via \textbf{explicit messages} rather than shared memory. It scales extremely well, but shifts responsibility to the programmer. Used in \textbf{distributed-memory clusters} with MPI as the standard tool.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{microchip}}] \textcolor{Green3}{\textbf{Hardware}}
+    \begin{itemize}
+        \item Each processor (or node) has its \textbf{own private memory}.
+        \item There is \textbf{no global address space}, so one process cannot directly load/store data from another process's memory.
+        \item Nodes are connected via a \textbf{network} (Ethernet, InfiniBand, custom HPC interconnect).
+    \end{itemize}
+    This is the model used in \textbf{distributed-memory clusters}.
+    \item[\textcolor{Green3}{\faIcon{code}}] \textcolor{Green3}{\textbf{Programming side}}
+    \begin{itemize}
+        \item Communication is \textbf{explicit}: processes must use primitives like \texttt{send} and \texttt{receive}.
+        \item A process cannot just ``look'' at another's variables, it must request them.
+        \item Typical flow:
+        \begin{itemize}
+            \item Process A: \texttt{MPI\_Send(data, dest=B)}
+            \item Process B: \texttt{MPI\_Recv(data, source=A)}
+        \end{itemize}
+        \item Larger groups use \textbf{collective operations}: broadcast, scatter/\break gather, reduce, barriers.
+    \end{itemize}
+    The most widely used library is \textbf{MPI (Message Passing Interface)}.
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Scalability}: works for thousands of nodes, and no coherence problem since memories are private.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Data locality control}: programmer decides explicitly what data to send, when, and where. It avoids hidden memory-traffic surprises.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Fault isolation}: each node is independent; one node crash doesn't kill the whole memory system.
+    \end{itemize}
+    \newpage
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{More complex programming}: must carefully partition data\break among processes, and must explicitly coordinate all communication.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Communication overhead}: network latency and bandwidth are much worse than local memory.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Synchronization cost}: processes may need to wait for each other at send/receive points.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{The Data-Parallel Model}}
+\end{flushleft}
+The core idea of the \definition{Data-Parallel Model} is \textbf{data-parallelism}: perform the \textbf{same operation} simultaneously on \textbf{different elements of a large dataset}. All processors execute the \textbf{same program}, but on \textbf{different portions of the data}. This is why it's also called \definition{SPMD (Single Program, Multiple Data)}.
+
+\highspace
+\begin{examplebox}[: Data-Parallel Model]
+    If we want to add two vectors \texttt{A} and \texttt{B} of length 1000, each processor works on a different slice:
+    \begin{itemize}
+        \item Proc: indices 0-249
+        \item Proc: indices 250-499
+        \item Proc: indices 500-749
+        \item Proc: indices 750-999
+    \end{itemize}
+    Each runs the \textbf{same addition loop}, just on its own chunk.
+\end{examplebox}
+
+\highspace
+Data-parallel programs often follow \textbf{bul-synchronous phases}:
+\begin{enumerate}
+    \item \textbf{Local computation}: each processor works on its local data independently.
+    \item \textbf{Global communication / synchronization}: processors exchange results or synchronize via a barrier.
+    \item Next phase begins.
+\end{enumerate}
+This model was formalized by Leslie Valiant as the \definitionWithSpecificIndex{BSP Model (Bulk-\break Synchronous Parallel)}{BSP Model (Bulk-Synchronous Parallel)}{}.
+
+\highspace
+\begin{examplebox}[: Hardware and Programming frameworks]
+    Some hardware examples:
+    \begin{itemize}
+        \item \textbf{SIMD/vector machines}: each instruction applies to multiple data elements at once.
+        \item \textbf{GPUs today}: CUDA / OpenCL launch thousands of threads that all run the same kernel on different data elements.
+        \item \textbf{Multicore CPUs} with OpenMP pragmas like \texttt{\#pragma omp parallel for}: each thread runs the same loop on different iterations.
+        \item \textbf{Distributed systems}: MapReduce or Spark frameworks apply the same function across partitions of big datasets.
+    \end{itemize}
+    Some programming frameworks: CUDA, OpenCL, OpenMP, and MPI.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Advantages}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Simplicity}: one program, replicated everywhere.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{High scalability}: works well if the dataset is large and can be evenly split.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Hardware efficiency}: GPUs and vector units thrive on data-\break parallel workloads.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Disadvantages}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Load balancing}: if one processor gets more work than others, all must wait at the synchronization point.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Synchronization bottlenecks}: bulk barriers can slow down if\break stragglers exist.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Limited applicability}: best suited for regular, array-like computations (linear algebra, ML, scientific simulations). Harder for irregular data structures (e.g., trees, graphs).
+    \end{itemize}
+\end{itemize}

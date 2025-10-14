@@ -1,0 +1,153 @@
+\subsection{Distributed Shared Memory}\label{sec:DSM}
+
+\definition{Distributed Shared Memory (DSM)} is a multiprocessor architecture where \textbf{physical memory} is \textbf{distributed} among nodes (each node has its own local memory), but the system provides a \textbf{global shared address space}, so any processor can address any memory location transparently. This is also called \definition{Cache-Coherent NUMA (CC-NUMA)}:
+\begin{itemize}
+    \item ``Distributed'': physical location of memory.
+    \item ``Shared'': logical single address space for programming.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{UMA Problem}}
+\end{flushleft}
+In \textbf{UMA SMP}, all processors are connected to a \textbf{single centralized memory}. One memory controller, one set of DRAMs, and access latency is the same for everyone. The main problem is that it doesn't scale. Having too many processors causes too much contention on one memory system.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{DSM / NUMA idea}}
+\end{flushleft}
+To scale, designers spread memory \textbf{physically}. Each node has:
+\begin{itemize}
+    \item \textbf{Processor(s)} (with caches).
+    \item \textbf{Local memory module} (part of the global memory).
+\end{itemize}
+All nodes are linked by an \textbf{interconnection network}. So instead of a single huge memory, the total memory is \textbf{partitioned} and attached to nodes.
+
+\highspace
+Now, if memory is physically distributed, how do we still let programmers think it is \emph{one shared memory}? That's where DSM gives the \textbf{illusion}. Using a \textbf{global shared address space}, any core can issue a load/store to any address. The system (hardware $+$ OS) automatically decides:
+\begin{itemize}
+    \item If the address belongs to its \textbf{local memory} (fast).
+    \item If the address belongs to a \textbf{remote node}, so the request travels over the interconnect to that node's memory (slow).
+\end{itemize}
+This is why it's called \textbf{Distributed Shared Memory} (\emph{distributed} physically, \emph{shared} logically).
+
+\highspace
+\begin{examplebox}[: Distributed Shared Memory Analogy]
+    Imagine a \textbf{university library system}:
+    \begin{itemize}
+        \item Every faculty (node) has its \textbf{own local library} (memory).
+        \item All libraries together form the \textbf{global catalog} (shared address space).
+        \newpage
+        \item A student (processor) can request \emph{any} book (address).
+        \begin{itemize}
+            \item If the book is in their faculty's library, \textbf{local access} (fast).
+            \item If the book is in another faculty, request goes over the campus shuttle (interconnect) to fetch it, \textbf{remote access} (slower).
+        \end{itemize}
+    \end{itemize}
+    To ensure everyone has the latest version of a book (cache coherence), the \textbf{central catalog} (directory) tracks who borrowed which copy.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Properties}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Non-uniform memory access (NUMA)}:
+    \begin{itemize}
+        \item Access to \textbf{local memory} (same node) is fast.
+        \item Access to \textbf{remote memory} (different node) is slower.
+        \item Latency depends on the distance over the interconnect.
+    \end{itemize}
+    \item \important{Single global address space}:
+    \begin{itemize}
+        \item Programmers can use \textbf{load/store instructions} without worrying about where memory physically resides.
+        \item The hardware/OS ensures that references are routed correctly.
+    \end{itemize}
+    \item \important{Scalability}:
+    \begin{itemize}
+        \item Because memory is distributed, the system avoids the bottleneck of a single centralized memory controller (as in UMA SMPs).
+        \item Larger multiprocessors (8-32 cores or 100s of cores in modern servers) rely on DSM.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{folder-open} \textbf{Why Directory-based protocols?}}
+\end{flushleft}
+In small SMPs ($\le 8$ cores), coherence is handled by \textbf{snooping}: every cache ``listens'' to a shared bus. But in DSM/NUMA there is \textbf{no single shared bus}, instead, there is a scalable interconnection network. Also, \textbf{broadcast snooping would not scale} (too much traffic, too many cores). The solution is \textbf{directory-based protocols}.
+\begin{itemize}
+    \item A \textbf{directory} keeps track of which caches have a copy of each memory block.
+    \item Stored alongside each memory block (in the local memory module).
+    \item When a block is read or written, the directory is updated, and only the relevant caches are notified.
+\end{itemize}
+This avoids global broadcasts.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Role of the interconnect}}
+\end{flushleft}
+The \textbf{interconnection network} ties everything together. Responsibilities:
+\begin{itemize}
+    \item \textbf{Data movement}: transfer cache lines between nodes.
+    \item \textbf{Directory lookups}: route coherence requests to the memory module that ``owns'' a block.
+    \item \textbf{Scalability}: provide enough bandwidth/low latency for dozens of nodes.
+\end{itemize}
+Topologies used: Crossbar (small systems), 2D mesh, torus, fat-tree, and often implemented as a Network-on-Chip (NoC) for chip multiprocessors.
+
+\begin{takeawaysbox}[: Important Concepts of Distributed Shared Memory Chapter]
+    In this box, we will address some common questions about this topic. In particular, what does it mean that the memory is shared physically but not logically? Why and how can programmers not see this difference? 
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What does \emph{global shared address space} mean?}}
+    \end{flushleft}
+    Imagine in a single-processor system: memory is a \textbf{linear array of addresses} (\texttt{0x0000} … up to max). In a multiprocessor with \textbf{DSM}, we want to \textbf{preserve this illusion}:
+    \begin{itemize}
+        \item Every processor sees \textbf{the same set of addresses}.
+        \item Address \texttt{0x1000} always refers to the \emph{same logical location} for all processors, no matter which node owns it physically.
+    \end{itemize}
+    In DSM, the hardware and OS cooperate so that any load/store instruction can be applied to \emph{any address} in that global space.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How is this built if memory is distributed?}}
+    \end{flushleft}
+    Physical memory is \textbf{partitioned across nodes}:
+    \begin{itemize}
+        \item Node 0 ``owns'' addresses \texttt{0x0000} $\rightarrow$ \texttt{0x0FFF}.
+        \item Node 1 ``owns'' addresses \texttt{0x1000} $\rightarrow$ \texttt{0x1FFF}.
+        \item Node 2 ``owns'' addresses \texttt{0x2000} $\rightarrow$ \texttt{0x2FFF}.
+        \item ... and so on.
+    \end{itemize}
+    Each node's memory controller is responsible for its \textbf{portion} of the global space. If a processor in Node 0 accesses address \texttt{0x2200}:
+    \begin{enumerate}
+        \item Its cache misses $\rightarrow$ request goes to the interconnect.
+        \item The interconnect routes the request to \textbf{Node 2}, because Node 2 owns the range \texttt{0x2000}-\texttt{0x2FFF}.
+        \item Node 2's memory module returns the data.
+    \end{enumerate}
+    So it's \textbf{transparent to the programmer} because they don't care where data is physically located.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why should a processor ever access \emph{remote} memory?}}
+    \end{flushleft}
+    Because \textbf{parallel programs share data}. Some examples:
+    \begin{itemize}
+        \item \textbf{Shared data structures}: Suppose Node 0 initializes an array. Later, Node 1 must process part of it. Even if that part resides in Node 0's memory, Node 1 can access it via DSM.
+        \item \textbf{Synchronization variables}: Locks, semaphores, and barriers must be visible to all processors. A lock variable in Node 3's memory must be accessible by Node 0 when it tries to acquire the lock.
+        \item \textbf{Work distribution}: In scientific simulations, the global domain (e.g., a 3D grid of cells) is spread across nodes. But some computations require reading/writing data from neighbors in another node.
+    \end{itemize}
+    If no processor could access remote memory, it wouldn't be ``shared memory'' anymore; it would be pure \textbf{message passing}.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not just use private memory (clusters, next section)?}}
+    \end{flushleft}
+    In message-passing clusters, the programmer must \textbf{manually orchestrate communication} (e.g., MPI):
+    \begin{itemize}
+        \item Node 0 does \texttt{send(array, Node 1)}.
+        \item Node 1 does \texttt{receive(array, Node 0)}.
+    \end{itemize}
+    In DSM/CC-NUMA, the \textbf{hardware handles this automatically}. A simple load/store suffices. This makes DSM \textbf{much easier to program}, at the cost of more complex hardware.
+\end{takeawaysbox}
+
+\noindent
+In conclusion, DSM provides a global shared address space by mapping each physical memory partition into one big address map. Any processor can issue a load/store to any address and the system routes the request to the right node. This allows transparent sharing of data structures and synchronization variables, without explicit message passing.

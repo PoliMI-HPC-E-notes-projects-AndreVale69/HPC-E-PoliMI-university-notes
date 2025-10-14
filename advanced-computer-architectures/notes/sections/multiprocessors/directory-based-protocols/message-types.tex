@@ -1,0 +1,93 @@
+\subsubsection{Message Types}\label{sec:directory-protocols:message-types}
+
+In this section, we provide the ``\emph{vocabulary}'' of directory protocols: the set of messages nodes exchange to enforce coherence.
+
+\highspace
+Directory-based protocols are \textbf{message-oriented} (unlike snooping, which is broadcast-based). Each coherence event is handled by \textbf{explicit request and response messages} between Local, Home, and Remote nodes. The main message types are:
+\begin{itemize}
+    \item \important{ReadMiss}: A Local node sends this message to the Home node to request read access to a cache block that is not present in its local cache.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Local cache (requester).
+        \item[\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Home directory (where the block is located).
+        \item[\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Processor ID and address of the requested block.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Purpose}}: Add requester (processor ID) to the \textbf{sharer list} and supply data back to the requester.
+    \end{itemize}
+
+
+    \item \important{DataValueReply}: The Home node sends this message to the Local node in response to a \emph{ReadMiss} request, providing the requested data, or to a \emph{WriteMiss} request if the block is in the Modified state.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Home directory (or Remote, if block is Modified).
+        \item[\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Local cache (requester).
+        \item[\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Data of the requested block.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Purpose}}: Supply data to the requester.
+    \end{itemize}
+
+
+    \item \important{Invalidate}: Two forms, depending on who sends it:
+    \begin{itemize}
+        \item Sent by the Local node to the Home node to invalidate all shares of a block when it requests write access (via \emph{WriteMiss}).
+        \begin{itemize}
+            \item [\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Local cache (requester).
+            \item [\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Home directory.
+            \item [\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Address of the block to be invalidated.
+        \end{itemize}
+        \item Sent by the Home node to Remote nodes to \textbf{invalidate} their \textbf{copies} of a block when a Local node requests write access (via \emph{WriteMiss}).
+        \begin{itemize}
+            \item [\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Home directory.
+            \item [\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Remote caches (sharers).
+            \item [\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Address of the block to be invalidated.
+        \end{itemize}
+    \end{itemize}
+    Here, the \textbf{common purpose} is to remove stale shared copies so a requester can become exclusive owner. The Local node sends the initial invalidate request to the Home node, which then forwards it to all Remote nodes that have a copy of the block.
+
+    \newpage
+
+    \item \important{Fetch}: The Home node sends this message to a Remote node that has the block in the Modified state (the owner), requesting it to send the updated data back to the Home node.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Home directory.
+        \item[\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Remote cache (owner).
+        \item[\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Address of the block to be fetched.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Purpose}}: Satisfy a \emph{ReadMiss} when memory is stale.
+    \end{itemize}
+    The effect of this message is that the Remote node passes from \emph{Modified} to \emph{Shared} state, as it must supply the data to the Home node but can keep a read-only copy.
+
+
+    \item \important{Fetch/Invalidate (Fetch/Inv)}: The Home node sends this message to a Remote node that has the block in the Modified state (the owner), requesting it to send the updated data back to the Home node and invalidate its copy. It is the combination of \emph{Fetch} and \emph{Invalidate}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Home directory.
+        \item[\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Remote cache (owner).
+        \item[\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Address of the block to be fetched and invalidated.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Purpose}}: Satisfy a \emph{WriteMiss} when memory is stale.
+    \end{itemize}
+    The effect of this message is that the Remote node passes from \emph{Modified} to \emph{Uncached} state, as it must supply the data to the Home node and invalidate its copy. Also, the requester will become the new owner (Modified state).
+
+
+    \item \important{Data Write-Back}: A Remote node sends this message to the Home node to write back the updated data of a block it owns (in Modified state) when it is evicted from its cache.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{arrow-right}}] \textcolor{Green3}{\textbf{Source}}: Remote cache (owner).
+        \item[\textcolor{Green3}{\faIcon{arrow-left}}] \textcolor{Green3}{\textbf{Destination}}: Home directory.
+        \item[\textcolor{Green3}{\faIcon{file-alt}}] \textcolor{Green3}{\textbf{Content}}: Address and updated data of the block being written back.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Purpose}}: Update memory and directory state when a block is\break evicted.
+    \end{itemize}
+    This message ensures that the Home node has the most recent data and can update the directory accordingly.
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l p{10em} @{}}
+        \toprule
+        Message                     & Source $\to$ Destination  & Purpose \\
+        \midrule
+        \textbf{ReadMiss}           & Local $\to$ Home          & Request block on \emph{read miss} \\[.3em]
+        \textbf{DataValueReply}     & Home/Remote $\to$ Local   & Return block data \\[.3em]
+        \textbf{Invalidate}         & Home $\to$ Remotes        & Invalidate stale copies \\[.3em]
+        \textbf{Fetch}              & Home $\to$ Owner          & Get block back for \emph{read miss} \\[.3em]
+        \textbf{Fetch/Inv}          & Home $\to$ Owner          & Get block back $+$ invalidate (\emph{write miss}) \\[.3em]
+        \textbf{Data Write-Back}    & Remote $\to$ Home         & Return dirty block to memory \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of Directory-Based Protocol Message Types.}
+\end{table}
+
+\highspace
+The key insight is that \textbf{all coherence actions are explicitly managed through these messages}, allowing for precise control over cache states and memory consistency in a distributed environment. Each message type serves a specific role in maintaining coherence, ensuring that all nodes have a consistent view of memory. Despite the \textbf{snooping protocols being more intuitive} due to their broadcast nature, \textbf{directory-based} protocols offer \textbf{better scalability and efficiency} in large multiprocessor systems by avoiding unnecessary broadcasts and reducing contention on the memory bus.

@@ -1,0 +1,390 @@
+\subsubsection{What changes from the first Poisson 1D solver}
+
+The PDE and solver skeleton are \textbf{the same} as in the first Poisson 1D solver lab. The second laboratory adds a \textbf{verification layer} on top of the existing solver, to check that the numerical solution is correct and converges to the exact solution as the mesh is refined. This verification layer is based on the \textbf{Method of Manufactured Solutions (MMS)}, (see Section \ref{sec:problem-setup-for-mms}, page \pageref{sec:problem-setup-for-mms}).
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{New capability in \code{Poisson1D}: computing errors}}
+\end{flushleft}
+We extend the header file \code{Poisson1D.hpp} with the declaration of a new method:
+\begin{lstlisting}[language=C++]
+double compute_error(const VectorTools::NormType &norm_type) const;\end{lstlisting}
+This method performs \textbf{a-posteriori error evaluation} against a \textbf{known exact solution} (MMS). The implementation is in \code{Poisson1D.cpp}:
+\begin{lstlisting}[language=C++]
+double Poisson1D::compute_error(
+    const VectorTools::NormType &norm_type
+) const
+{
+    // The error is an integral,
+    // and we approximate that integral using a quadrature formula.
+    // To make sure we are accurate enough,
+    // we use a quadrature formula with one node more than
+    // what we used in assembly.
+    const QGauss<dim> quadrature_error = QGauss<dim>(r + 2);
+
+    // First we compute the norm on each element,
+    // and store it in a vector.
+    Vector<double> error_per_cell(mesh.n_active_cells());
+    VectorTools::integrate_difference(
+        dof_handler,
+        solution,
+        ExactSolution(),
+        error_per_cell,
+        quadrature_error,
+        norm_type
+    );
+
+    // Then, we add out all the cells.
+    const double error = VectorTools::compute_global_error(
+        mesh, error_per_cell, norm_type
+    );
+
+    return error;
+}\end{lstlisting}
+\begin{itemize}
+    \item It integrates the element-wise error using \code{deal.II}'s
+    \begin{center}
+        \code{VectorTools::integrate\_difference(...)}
+    \end{center}
+    then collapses to a global norm with
+    \begin{center}
+        \code{VectorTools::compute\_global\_error(...)}
+    \end{center}
+    This yields either the $L^{2}$ or $H^{1}$ norm of the error, depending on the input argument \code{norm\_type}. Later we will see how to use this method in the convergence analysis.
+    \item For accuracy, it uses a \textbf{richer quadrature} than assembly (we choose \code{QGauss(r+2)}), so the \textbf{integration of the error} does not become the bottleneck.
+    
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why richer quadrature?}} The error is the difference between the numerical solution and the exact solution. The numerical solution is a polynomial of degree $r$ (the FE degree), while the exact solution is generally not a polynomial. Therefore, the error is not a polynomial of degree $r$, but a more complex function. \hl{To accurately integrate this function, we need a quadrature that can handle higher-degree polynomials}. Using \hl{\texttt{QGauss(r+2)} ensures that we can accurately capture the behavior of the error function}, leading to more reliable error estimates. Indeed, with \code{QGauss(r+2)}, $n = r+2$, we can exactly integrate polynomials of degree up to $2n-1 = 2(r+2)-1 = 2r + 3$, which is sufficient for our purposes.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why isn't the integration of errors the bottleneck?}} In numerical methods, the accuracy of error estimation is crucial for assessing the quality of the solution. If the quadrature used for integrating the error is not sufficiently accurate, it can lead to significant discrepancies in the error estimates. By using a richer quadrature like \code{QGauss(r+2)}, we ensure that the \textbf{integration process is precise enough to capture the nuances of the error function}. This \hl{prevents the integration step from becoming a limiting factor in the overall accuracy of the error estimation}, allowing us to trust the results of our convergence analysis.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does this method exist?}} In numerical simulations, especially when solving PDEs, it is essential to assess the accuracy of the computed solution. The \code{compute\_error} method provides a systematic way to quantify the difference between the numerical solution and a known exact solution (from MMS). It lets us to \textbf{quantify} whether the method achieves the \textbf{theoretical convergence rates}:
+    \begin{itemize}
+        \item $\left\|u - u_h\right\|_{L^2} = O\left(h^{r+1}\right)$ for the $L^2$ norm;
+        \item $\left\|u - u_h\right\|_{H^1} = O\left(h^{r}\right)$ for the $H^1$ norm.
+    \end{itemize}
+    Implementation note: \code{ExactSolution::value(...)} and \code{ExactSolution::gradient(...)} must be consistent, because
+    \begin{center}
+        \code{VectorTools::integrate\_difference(...)}
+    \end{center}
+    Uses both to compute the $L^2$ and $H^1$ norms of the error.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Modifications to Forcing Term and Exact Solution}}
+\end{flushleft}
+To implement the Method of Manufactured Solutions (MMS), we need to modify the forcing term class to correspond to a known exact solution. Also, we need to implement the exact solution class. These changes are necessary to verify the correctness of our numerical solution.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why change the \code{ForcingTerm}?}} In the first Poisson 1D solver lab, the forcing term was a simple constant function defined as:
+    \begin{lstlisting}[language=C++, caption={Original Forcing Term}]
+class ForcingTerm : public Function<dim>
+{
+public:
+    // Constructor.
+    ForcingTerm() : Function<dim>() {}
+
+    // Evaluation.
+    virtual double value(
+        const Point<dim> &p,
+        const unsigned int /*component*/ = 0
+    ) const override
+    {
+        if (p[0] <= 1.0 / 8 || p[0] > 1.0 / 4.0) 
+            return 0.0;
+        else 
+            return -1.0;
+    }
+};\end{lstlisting}
+    Where $-1.0$ in the interval $(\frac{1}{8}, \frac{1}{4}]$ and $0.0$ elsewhere. This choice was arbitrary and did not correspond to any specific exact solution.
+    
+    For MMS, we need a forcing term that corresponds to our chosen exact solution. We select a manufactured solution (e.g., $u(x) = \sin(\pi x)$) and derive the corresponding forcing term using the Poisson equation $-u''(x) = f(x)$. This ensures that our numerical solution can be verified against a known exact solution (see Section \ref{sec:problem-setup-for-mms}, page \pageref{sec:problem-setup-for-mms}). The modified \code{ForcingTerm} class is:
+    \begin{lstlisting}[language=C++, caption={Modified Forcing Term for MMS}]
+class ForcingTerm : public Function<dim>
+{
+public:
+    // Constructor.
+    ForcingTerm() : Function<dim>() {}
+
+    // Evaluation.
+    virtual double value(
+        const Point<dim> &p,
+        const unsigned int /*component*/ = 0
+    ) const override
+    {
+        return 4.0 * M_PI * M_PI * std::sin(2.0 * M_PI * p[0]);
+    }
+};\end{lstlisting}
+    This corresponds to the forcing term derived from the manufactured solution $u(x) = \sin(2\pi x)$:
+    \begin{equation*}
+        f(x) = -u''(x) = 4\pi^2 \sin(2\pi x)
+    \end{equation*}
+
+
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why add the \code{ExactSolution} class?}} The \code{ExactSolution} class is introduced to provide a reference solution against which we can compare our numerical solution. This class \textbf{implements the exact solution and its gradient}, which are essential for computing the error norms. The implementation is as follows:
+    \begin{lstlisting}[language=C++, caption={Exact Solution Class for MMS}]
+// Exact solution.
+class ExactSolution : public Function<dim>
+{
+    public:
+    // Constructor.
+    ExactSolution() {}
+
+    // Evaluation.
+    virtual double
+    value(
+        const Point<dim> &p,
+        const unsigned int /*component*/ = 0) const override
+    {
+      // Points 3 and 4.
+      return std::sin(2.0 * M_PI * p[0]);
+    }
+
+    // Gradient evaluation.
+    // deal.II requires this method to return a Tensor
+    // (not a double), i.e. a dim-dimensional vector.
+    // In our case, dim = 1, so that the Tensor will in
+    // practice contain a single number.
+    // Nonetheless, we need to return an object
+    // of type Tensor.
+    virtual Tensor<1, dim>
+    gradient(
+        const Point<dim> &p,
+        const unsigned int /*component*/ = 0) const override
+    {
+      Tensor<1, dim> result;
+
+      // Points 3 and 4.
+      result[0] = 2.0 * M_PI * std::cos(2.0 * M_PI * p[0]);
+
+      return result;
+    }
+
+    static constexpr double A = -4.0 / 15.0 * std::pow(0.5, 2.5);
+};\end{lstlisting}
+    This class provides the exact solution $u(x) = \sin(2\pi x)$ (in \code{value(...)}) and its gradient $u'(x) = 2\pi \cos(2\pi x)$ (in \code{gradient(...)}). The gradient value is returned as a \code{Tensor<1, dim>} because \code{deal.II} requires this format for gradient evaluations, even in 1D where it effectively behaves like a vector with a single component.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does \code{Tensor} mean?}} A \textbf{tensor} is a generalization of scalars (rank 0), vectors (rank 1), and matrices (rank 2) to arbitrary rank. It's the natural object for representing quantities in continuum mechanics, PDEs, and FEM:
+    \begin{itemize}
+        \item \textbf{Rank 0 tensor}: scalar field value $u(x)$;
+        \item \textbf{Rank 1 tensor}: vector quantity, e.g. gradient 2D $\nabla u = \left(\partial_x u, \partial_y u\right)$;
+        \item \textbf{Rank 2 tensor}: matrix quantity, e.g. stress tensor, Jacobian of a mapping.
+        \item \textbf{Higher-rank tensors}: more complex relationships in advanced applications, e.g. elasticity, electromagnetism, etc.
+    \end{itemize}
+    In \code{deal.II}, the \code{Tensor<rank, dim>} is a \textbf{template class} representing a tensor of given rank in \code{dim} dimensions. For example:
+    \begin{itemize}
+        \item \code{Tensor<0, dim>} is just a scalar (like \code{double});
+        \item \code{Tensor<1, dim>} is a vector of length \code{dim} (like \code{std::array<double, dim>});
+        \item \code{Tensor<2, dim>} is a \code{dim x dim} matrix.
+    \end{itemize}
+    So when we compute the \textbf{gradient of a scalar field} in \code{dim} dimensions, we get a \textbf{rank-1 tensor} \code{Tensor<1, dim>}.
+    \begin{itemize}
+        \item In 1D, this is essentially a vector with one entry (the derivative $\partial_x u$);
+        \item In 2D, it's a vector with two entries (the partial derivatives $\partial_x u$ and $\partial_y u$);
+        \item In 3D, it's a vector with three entries (the partial derivatives $\partial_x u$, $\partial_y u$, and $\partial_z u$).
+    \end{itemize}
+\end{itemize}
+
+\begin{remarkbox}[: Gradient]
+    The \definition{Gradient} of a scalar field $u(x)$ in 1D is simply its derivative:
+    \begin{equation*}
+        \nabla u(x) = \frac{\partial u}{\partial x}
+    \end{equation*}
+    In higher dimensions, the gradient is a vector of partial derivatives. For example, in 2D, the gradient is:
+    \begin{equation*}
+        \nabla u(x, y) = \begin{bmatrix}
+            \frac{\partial u}{\partial x} \\[.5em]
+            \frac{\partial u}{\partial y}
+        \end{bmatrix} = \left( \dfrac{\partial u}{\partial x}, \dfrac{\partial u}{\partial y} \right)
+    \end{equation*}
+    And in 3D, it's: 
+    \begin{equation*}
+        \nabla u(x,y,z) = \begin{bmatrix}
+            \frac{\partial u}{\partial x} \\[.5em]
+            \frac{\partial u}{\partial y} \\[.5em]
+            \frac{\partial u}{\partial z}
+        \end{bmatrix} = \left( \dfrac{\partial u}{\partial x}, \dfrac{\partial u}{\partial y}, \dfrac{\partial u}{\partial z} \right)
+    \end{equation*}
+    The gradient points in the direction of the steepest increase of the function and its magnitude indicates how steep that increase is.
+\end{remarkbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{New capability in \code{main}: convergence driver}}
+\end{flushleft}
+The \code{main.cpp} (or \code{lab-02.cpp}) file is modified to turn the solver into a \textbf{convergence driver}. A convergence driver \textbf{runs the solver} multiple times on a sequence of refined meshes, \textbf{computes the errors}, and \textbf{estimates the convergence rates}.
+\begin{lstlisting}[language=C++, caption={\code{main.cpp} for convergence analysis}]
+#include <deal.II/base/convergence_table.h>
+
+#include <fstream>
+#include <iostream>
+#include <vector>
+
+#include "Poisson1D.hpp"
+
+int main(int /*argc*/, char * /*argv*/[])
+{
+    ConvergenceTable table;
+
+    const std::vector<unsigned int> N_values = {
+        9, 19, 39, 79, 159, 319
+    };
+    const unsigned int              degree   = 2;
+
+    std::ofstream convergence_file("convergence.csv");
+    convergence_file << "h,eL2,eH1" << std::endl;
+
+    for (const unsigned int &N : N_values)
+    {
+        Poisson1D problem(N, degree);
+
+        problem.setup();
+        problem.assemble();
+        problem.solve();
+        problem.output();
+
+        const double h        = 1.0 / (N + 1.0);
+        const double error_L2 = problem.compute_error(
+            VectorTools::L2_norm
+        );
+        const double error_H1 = problem.compute_error(
+            VectorTools::H1_norm
+        );
+
+        table.add_value("h", h);
+        table.add_value("L2", error_L2);
+        table.add_value("H1", error_H1);
+        convergence_file << h << "," << error_L2
+                         << "," << error_H1 << std::endl;
+    }
+
+    table.evaluate_all_convergence_rates(ConvergenceTable::reduction_rate_log2);
+
+    table.set_scientific("L2", true);
+    table.set_scientific("H1", true);
+
+    table.write_text(std::cout);
+
+    return 0;
+}\end{lstlisting}
+The key changes are:
+\begin{itemize}
+    \item \code{ConvergenceTable table;} A helper class to store and analyze convergence data. \code{ConvergenceTable} is part of \code{deal.II}'s base module that \textbf{simplifies the collection and presentation of convergence results}. For example, it can automatically compute convergence rates based on the errors and mesh sizes provided.
+
+
+    \item \important{Mesh ladder \code{N\_values = \{9, 19, 39, 79, 159, 319\}}} A vector of\break mesh sizes (number of elements) to run the solver on. This creates a sequence of increasingly refined meshes for convergence analysis. They are taken from lab instructions (``\emph{with polynomial degree $r = 1$, solve the Poisson 1D problem, with finite elements, setting $N + 1 = 10, 20, 40, 80, 160,$\break $320$}''). Since our 1D mesh has $N+1$ elements, the \textbf{mesh size} is:
+    \begin{equation*}
+        h = \dfrac{1}{N+1} \in \left\{\dfrac{1}{10}, \dfrac{1}{20}, \dfrac{1}{40}, \dfrac{1}{80}, \dfrac{1}{160}, \dfrac{1}{320}\right\}
+    \end{equation*}
+    Each step \textbf{halves $h$} is essential for estimating convergence rates.
+
+
+    \item \important{Fix the polynomial degree \code{degree = 2}} The polynomial degree of the finite element basis functions is fixed to $r=2$ (quadratic elements). This choice affects the expected convergence rates:
+    \begin{itemize}
+        \item $L^2$ norm: $O(h^{r+1}) = O(h^{3})$;
+        \item $H^1$ norm: $O(h^{r}) = O(h^{2})$.
+    \end{itemize}
+    We can later rerun the convergence analysis with different polynomial degrees to observe how the rates change.
+
+
+    \item \important{CSV for plotting}
+    \begin{lstlisting}[language=C++]
+std::ofstream convergence_file("convergence.csv");
+convergence_file << "h,eL2,eH1" << std::endl;\end{lstlisting}
+    We create a CSV file to store the mesh size and errors for external plotting. The header row defines the columns: \code{h} (mesh size), \code{eL2} ($L^2$ error), and \code{eH1} ($H^1$ error). Each iteration appends a new row with the current mesh size and computed errors:
+    \begin{lstlisting}[language=C++]
+convergence_file << h << "," << error_L2 << "," << error_H1 << std::endl;\end{lstlisting}
+    This file can be used later for plotting convergence graphs using tools like Python's \code{Matplotlib} or Excel.
+
+
+    \item \important{Loop over meshes, solve, compute the errors and store in table}
+    \begin{lstlisting}[language=C++]
+for (const unsigned int &N : N_values)
+{
+    Poisson1D problem(N, degree);
+    problem.setup();
+    problem.assemble();
+    problem.solve();
+    problem.output();
+
+    const double h        = 1.0 / (N + 1.0);
+    const double error_L2 = problem.compute_error(
+        VectorTools::L2_norm
+    );
+    const double error_H1 = problem.compute_error(
+        VectorTools::H1_norm
+    );
+
+    table.add_value("h", h);
+    table.add_value("L2", error_L2);
+    table.add_value("H1", error_H1);
+    convergence_file << h << "," << error_L2 << "," << error_H1 << std::endl;
+}\end{lstlisting}
+    For each mesh size in \code{N\_values}, we:
+    \begin{itemize}
+        \item Instantiate a new \code{Poisson1D} object with the current number of elements and fixed polynomial degree.
+        \item Call the full solver pipeline: \code{setup()}, \code{assemble()}, \code{solve()}, and \code{output()}.
+
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why call \code{output()} here?}} Calling \code{output()} within the loop allows us to generate and save the solution for each mesh size. This is \textbf{useful for visual inspection of how the solution improves with mesh refinement}. It also provides a \textbf{record of the numerical solutions corresponding to each level of mesh refinement}, which can be valuable for debugging and analysis.
+        \item Compute the mesh size $h$ and the errors in $L^2$ and $H^1$ norms using the new \code{compute\_error(...)} method.
+        \item Store the mesh size and errors in the \code{ConvergenceTable} for later analysis.
+        \item Append the results to the CSV file for external plotting.
+    \end{itemize}
+    The constant \code{h = 1.0 / (N + 1.0)} computes the mesh size based on the number of elements. This is crucial for convergence analysis, as we need to know how the error behaves as $h$ decreases. About the errors, we call:
+    \begin{itemize}
+        \item \code{problem.compute\_error(VectorTools::L2\_norm)} to compute the $L^2$ norm of the error;
+        \item \code{problem.compute\_error(VectorTools::H1\_norm)} to compute the $H^1$ norm of the error.
+    \end{itemize}
+
+
+    \item \important{Compute $\log_2$ convergence rates}
+    \begin{lstlisting}[language=C++]
+table.evaluate_all_convergence_rates(ConvergenceTable::reduction_rate_log2);
+table.set_scientific("L2", true);
+table.set_scientific("H1", true);
+table.write_text(std::cout);\end{lstlisting}
+    After collecting all the data, we call \code{evaluate\_all\_convergence\_rates\break (...)} to \textbf{compute the convergence rates} based on the errors and mesh sizes. We use \code{ConvergenceTable::reduction\_rate\_log2} to get the rates in base 2, which is standard in numerical analysis. The \code{set\_scientific\break (...)} calls format the error values in scientific notation for better readability. Finally, \code{write\_text(...)} outputs the convergence table to the console, showing the mesh sizes, errors, and estimated convergence rates.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a convergence driver?}}
+\end{flushleft}
+A \definition{convergence driver} is a program or script that \textbf{systematically tests a numerical method by solving a problem on a series of increasingly refined meshes}. The goal is to observe how the error between the numerical solution and the exact solution decreases as the mesh is refined, thereby estimating the convergence rates of the method. Key features of a convergence driver include:
+\begin{itemize}
+    \item \textbf{Mesh Refinement}: It runs the solver on a sequence of meshes with decreasing mesh sizes (e.g., halving the mesh size at each step).
+    \item \textbf{Error Computation}: It computes the error norms (e.g., $L^2$, $H^1$) between the numerical solution and a known exact solution (from MMS).
+    \item \textbf{Convergence Rate Estimation}: It analyzes how the errors decrease with mesh refinement to estimate the convergence rates, which can be compared against theoretical predictions.
+    \item \textbf{Data Collection and Presentation}: It collects the results in a structured format (e.g., tables, CSV files) for easy analysis and visualization.
+\end{itemize}
+By automating this process, a convergence driver helps verify the correctness and efficiency of numerical methods, ensuring they perform as expected in practice.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What we should expect from the convergence analysis?}}
+\end{flushleft}
+When we run the convergence driver, we should expect to see the following results in the output convergence table:
+\begin{itemize}
+    \item \textbf{Decreasing Errors}: As the mesh is refined (i.e., as $h$ decreases), the errors in both the $L^2$ and $H^1$ norms should decrease. This \hl{indicates that the numerical solution is converging to the exact solution}.
+    \item \textbf{Convergence Rates}: The estimated convergence rates should align with the theoretical predictions based on the polynomial degree $r$ of the finite element basis functions:
+    \begin{itemize}
+        \item For the $L^2$ norm, we expect a convergence rate of approximately $r + 1$. For example, with $r = 2$, we expect a rate of about $3$.
+        \item For the $H^1$ norm, we expect a convergence rate of approximately $r$. For example, with $r = 2$, we expect a rate of about $2$.
+    \end{itemize}
+    \item (Tip) \textbf{Scientific Notation}: The errors should be presented in scientific notation for better readability, especially as they become very small with mesh refinement.
+    \item \textbf{Consistency}: The \hl{results should be consistent across different runs of the convergence driver}, indicating that the numerical method is stable and reliable.
+\end{itemize}
+If the observed convergence rates match the theoretical expectations, it validates the correctness of the implementation and the effectiveness of the numerical method. If there are discrepancies, it may indicate issues in the implementation or the need for further investigation into the numerical method's properties.
+
+\highspace
+The output of the convergence driver should look like this: 
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd#file-output-smooth-txt}{\texttt{output-smooth.txt}}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd#file-output-smooth-txt}
+\end{center}
+
+\noindent
+The source code is available at:
+\begin{center}
+    \href{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd}{Source code}
+    \hspace{1em}
+    \qrcode{https://gist.github.com/AndreVale69/08f1b087ab991b1bc70fdd99b77f02dd}
+\end{center}

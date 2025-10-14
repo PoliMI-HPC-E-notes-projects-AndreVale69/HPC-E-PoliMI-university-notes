@@ -23,6 +23,13 @@ Each version follows the Conventional Commits structure. For more information on
 
 --------------------
 
+### v1.2.1
+
+- [PR #2](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/pull/2) fix(numerical-linear-algebra): typo in BiCGSTAB
+- First contribution: [@emiliodallatorre](https://github.com/emiliodallatorre)
+
+--------------------
+
 ### v1.2.0
 
 - add `Exams`

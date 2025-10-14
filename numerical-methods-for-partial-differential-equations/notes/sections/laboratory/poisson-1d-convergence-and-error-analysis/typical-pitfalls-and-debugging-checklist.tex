@@ -1,0 +1,151 @@
+\subsubsection{Typical pitfalls \& debugging checklist}
+
+Let's make a quick recap of what we have done so far. When we test a finite element code, like our 1D Poisson solver, we usually \textbf{don't know the true analytic solution} of a real PDE. So to \textbf{verify} that the implementation is mathematically correct and that the convergence rates match theory, we \emph{manufacture} a problem where we \textbf{force} the analytical solution to be known. This is called the \textbf{\emph{Method of Manufactured Solutions (MMS)}}, which we discussed in detail on page \hqpageref{sec:mms}.
+
+\highspace
+The MMS consists of start from a function $u_{\text{ex}}(x)$ of our choice that is sufficiently smooth, simple and easy to differentiate, and we \emph{pretend} it's the exact solution of the PDE. Then, we \textbf{compute the right-hand side} $f(x)$ and \textbf{the boundary conditions} that make this $u_{\text{ex}}$ solve the PDE \emph{exactly}. For the 1D Poisson problem with constant diffusion coefficient, this means:
+\begin{equation*}
+    -\left(\mu u'\right)' = f \quad \text{in } \left(0, 1\right), \qquad u(0) = u(1) = 0,
+\end{equation*}
+And $\mu = 1$ for simplicity. We pick a manufactured (exact) solution $u_{\text{ex}}(x)$, for example:
+\begin{equation*}
+    u_{\text{ex}}(x) = \sin(2 \pi x)
+\end{equation*}
+Compute its second derivative:
+\begin{equation*}
+    u_{\text{ex}}'(x) = 2 \pi \cos(2 \pi x), \qquad u_{\text{ex}}''(x) = -4 \pi^2 \sin(2 \pi x)
+\end{equation*}
+Then, we plugo into the PDE:
+\begin{equation*}
+    -\left(\mu u'\right)' = -\left(\cancelto{1}{\mu} u'\right)' = -u_{\text{ex}}''(x) = 4 \pi^2 \sin(2 \pi x)
+\end{equation*}
+So the \textbf{source term} $f(x)$ is:
+\begin{equation*}
+    f(x) = 4 \pi^2 \sin(2 \pi x)
+\end{equation*}
+And this guarantees that our chosen $u_{\text{ex}}(x)$ solves the PDE. Also, since $u_{\text{ex}}(0) = \sin(0) = 0$ and $u_{\text{ex}}(1) = \sin(2 \pi) = 0$, we can use \textbf{homogeneous Dirichlet boundary conditions}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bug} \textbf{Bug Catchers: Diagnostic Method (Computes Error in Different Norms)}}
+\end{flushleft}
+The \code{compute\_error} function is the \textbf{diagnostic} part of our solver. It doesn't change the solution, it \emph{measures} how good the solution is. So, when our numerical results don't match the expected convergence rates, this function is the first place where \textbf{bugs reveal themselves}.
+\begin{itemize}
+    \item \important{Rates don't match theory}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{bug}}] \textbf{Symptom}: with $r=1$ we expect $e_{L^2} = O(h^2)$ and $e_{H^1} = O(h)$, but we get something else.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Likely causes \& tests}
+        \begin{itemize}
+            \item \textbf{Wrong BCs applied} $\to$ Error flat near boundaries dominates (the error is not decreasing as $h \to 0$). Mistakes in boundary conditions result in poor convergence rates.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} Plot $u_{h}$ and $u_{\text{ex}}$ near boundaries; if they don't match, fix \code{apply\_boundary\_values} or boundary ids.
+
+
+            \item \textbf{Non-geometric refinement} ($h$ not halving) $\to$ rates meaningless. If the mesh is not refined uniformly, the computed $h$ may not reflect the actual element sizes, leading to incorrect rate calculations.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Use $N+1 = 10, 20, 40, 80, 160$ nodes for uniform meshes; check mesh size $h$ halves each time. If not, fix mesh generation.
+
+            
+            \item \textbf{Under-integration in \texttt{compute\_error}} $\to$ polluted norms. If the quadrature rule used to compute the error is not sufficiently accurate, it can lead to incorrect error estimates.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Increase quadrature order in \code{compute\_error} and see if results change. If they do, fix quadrature rule using $r+2$ points for $r$-th order elements.
+
+
+            \item \textbf{$H1$ gradient mismatch} (exact gradient not derivative of exact solution) $\to$ wrong $H^1$ error. If the gradient used in the $H^1$ error computation does not match the derivative of the exact solution, the error will be incorrect.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} Re-derive $u_{\text{ex}}'(x)$ and check it matches the code. If not, fix gradient computation.
+
+
+            \item \textbf{Solver tolerance too lose} $\to$ algebraic error contaminates asymptotics. If the linear solver does not converge sufficiently, the solution will have an additional error component that can affect convergence rates.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Tighten relative solver tolerance so linear solver error $\ll$ discretization error. Then rates reflect FE theory.
+        \end{itemize}
+    \end{itemize}
+    However, in general, the theory reference values are:
+    \begin{equation*}
+        \left|
+            u - u_h
+        \right|_{H^{1}} = O(h^{r}), \quad
+        \left\|
+            u - u_h
+        \right\|_{L^{2}} = O(h^{r+1})
+    \end{equation*}
+    where $r$ is the polynomial degree of the finite element space. This is true for \hl{smooth solutions}. For \hl{non-smooth solutions}, the rates may be lower, depending on the regularity of the solution (other rules apply, see \hqpageref{sec:non-smooth-manufactured-case}).
+
+    \item \important{$H^1$ rate looks right, $L^2$ rate is off}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{bug}}] \textbf{Symptom}: $H^1$ rate is $O(h^r)$ as expected, but $L^2$ rate is not $O(h^{r+1})$.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Likely causes \& tests}
+        \begin{itemize}
+            \item \textbf{We computed only the $H1$ seminorm} $\to$ $L^2$ norm not computed. If the $L^2$ norm is not computed correctly, it can lead to incorrect convergence rates.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} Confirm we call \code{compute\_error(L2\_norm)} and use \code{QGauss(r+2)}. If not, fix it.
+
+
+            \item \textbf{Exact value ok, exact gradient wrong (or viceversa)} $\to$ one norm correct, other wrong. If the exact solution and its gradient are not consistent, it can lead to one norm being correct while the other is wrong.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} If gradient is wrong, $H^1$ collapses first; if value part mis-specified, $L^2$ collapses first. Check both. If one is wrong, fix it.
+
+
+            \item \textbf{Non-smooth exact solution test (reduced regularity)} $\to$ lower $L^2$ rate. If the exact solution is not smooth enough, it can lead to reduced convergence rates. It is not a bug, but a feature of the problem and the deterioration is \textbf{expected}.
+        \end{itemize}
+    \end{itemize}
+
+    \item \important{$L^2$ rate looks right, $H^1$ rate is off}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{bug}}] \textbf{Symptom}: $L^2$ rate is $O(h^{r+1})$ as expected, but $H^1$ rate is not $O(h^{r})$.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Likely causes \& tests}
+        \begin{itemize}
+            \item \textbf{\code{ExactSolution::gradient()} wrong} $\to$ $H^1$ error wrong. If the gradient function does not return the correct gradient, it can lead to incorrect $H^1$ error estimates. It is a very common bug.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} Print sample values of \code{value()} and \code{gradient()} for a few points and compare with hand formulas. If gradient is wrong, fix it.
+
+
+            \item \textbf{$H1$ ``norm'' vs ``seminorm'' confusion} $\to$ wrong rate. If the $H^1$ error is computed as a seminorm (only gradient part) instead of a full norm (value and gradient), it can lead to incorrect convergence rates.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} Check if \code{compute\_error} computes seminorm or full norm. If seminorm, fix it to compute full norm.
+        \end{itemize}
+    \end{itemize}
+
+    \item \important{Rates oscillate step-to-step}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{bug}}] \textbf{Symptom}: rates jump around, not smooth convergence.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Likely causes \& tests}
+        \begin{itemize}
+            \item \textbf{Not actually halving $h$} or mixing meshes that don't scale by 2 $\to$ rates meaningless. If the mesh is not refined uniformly, the computed $h$ may not reflect the actual element sizes, leading to incorrect rate calculations.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Enforce uniform refinement; use $N \to 2N$ nodes each step. Check mesh size $h$ halves each time. If not, fix mesh generation.
+
+
+            \item \textbf{Quadrature order changed} between runs or adaptive output interfering $\to$ inconsistent errors. If the quadrature rule changes between runs, it can lead to inconsistent error estimates.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Fix quadrature order in \code{compute\_error} to $r+2$ points for $r$-th order elements.
+
+
+            \item \textbf{Algebraic solver not converged} on certain meshes (tolerance hit/iteration limit) $\to$ inconsistent errors. If the linear solver does not converge sufficiently on certain meshes, it can lead to inconsistent error estimates.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Check solver residual per mesh; if needed, precondition or tighten tolerance.
+        \end{itemize}
+    \end{itemize}
+
+    \item \important{Errors stop decreasing (plateau)}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{bug}}] \textbf{Symptom}: errors flatten out, no more decrease with refinement.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Likely causes \& tests}
+        \begin{itemize}
+            \item \textbf{Quadrature order too low} $\to$ integration error dominates. If the quadrature rule used to compute the error is not sufficiently accurate, it can lead to a plateau in the error.
+            
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Fix quadrature order in \code{compute\_error} to $r+2$ points for $r$-th order elements.
+
+
+            \item \textbf{Round-off / Solver tolerance} dominates at small $h$ $\to$ algebraic error dominates. If the linear solver does not converge sufficiently, the solution will have an additional error component that can affect convergence rates.
+
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{Fix:}} Tighten relative solver tolerance so linear solver error discretization error.
+
+
+            \item \textbf{Manufactured data not implemented consistently} (e.g., $f(x)$ not matching $u_{\text{ex}}$) $\to$ error floor. If the source term or boundary conditions do not match the manufactured solution, it can lead to a plateau in the error.
+
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Test:}} Numerically evaluate the strong residual $-u_{\text{ex}}'' - f$ at a few points; it should be close to zero for MMs choices (like $\sin(2 \pi x)$). If not, fix $f(x)$ or $u_{\text{ex}}$.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}

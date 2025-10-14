@@ -103,7 +103,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=300134&aa=2024&n_docente=Antonietti%20Paola%20Francesca&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Antonietti Paola Francesca</a></td>
         <td><ul>
             <li><a href="numerical-linear-algebra">Course Details</a></li>
-            <li><a href="numerical-linear-algebra/notes/numerical-linear-algebra.pdf">PDF v1.2.0</a></li>
+            <li><a href="numerical-linear-algebra/notes/numerical-linear-algebra.pdf">PDF v1.2.1</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NLA-challenges">Challenges</a></li>
         </ul></td>
     </tr>
@@ -114,7 +114,8 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=986&aa=2024&n_docente=Quarteroni%20Alfio%20Maria&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Quarteroni Alfio Maria</a></td>
         <td><ul>
             <li><a href="numerical-methods-for-partial-differential-equations">Course Details</a></li>
-            <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.3.0</a></li>
+            <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.4.0</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NM4PDE-labs">Lab Codes</a></li>
         </ul></td>
     </tr>
     <tr>

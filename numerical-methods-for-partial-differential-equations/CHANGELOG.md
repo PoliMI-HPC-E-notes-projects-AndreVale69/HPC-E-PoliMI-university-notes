@@ -24,6 +24,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `What changes from the first Poisson 1D solver`
   - add `Non-smooth manufactured case`
   - add `Typical pitfalls & debugging checklist`
+  - add `Extensions: Function Parser`
 
 --------------------
 

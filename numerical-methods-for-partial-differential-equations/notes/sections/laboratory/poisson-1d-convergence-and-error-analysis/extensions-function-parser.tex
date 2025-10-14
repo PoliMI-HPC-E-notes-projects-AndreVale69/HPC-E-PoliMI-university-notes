@@ -1,0 +1,211 @@
+\subsubsection{Extensions: \texttt{FunctionParser}}
+
+In the first labs, the \textbf{source term} $f(x)$, \textbf{diffusion coefficient} $\mu(x)$, \textbf{boundary data} $g(x)$, the \textbf{FE degree} $r$, and the \textbf{mesh size} $N$ were all \textbf{hard-coded} in the source code of the solver. That makes every change require recompilation, which is fine for learning, but \emph{terrible} for real applications.
+
+\highspace
+To fix that, we use two \code{deal.II} tools:
+\begin{enumerate}
+    \item \texttt{ParameterHandler} that reads numerical or textual parameters from a \texttt{.prm} file;
+    \item \texttt{FunctionParser} that interprets analytic expressions at runtime, so $f(x)$, $\mu(x)$, etc. can be written as formulas.
+\end{enumerate}
+Together, they separate \textbf{code (solver logic)} from \textbf{data (problem definition)}, the same philosophy as industrial-grade FEM frameworks.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Implementation outline}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Declare expected parameters}. This part tells to \code{deal.II} which parameters to expect, their type (integer, double, string, etc.), and default values. This is done in a dedicated function, e.g., \code{declare\_parameters()}. It is a sort of \textbf{schema} for the input file. In our case, we declare:
+    \begin{lstlisting}[language=C++]
+void declare_parameters() {
+    prm.declare_entry(
+        "mu", "1.0", Patterns::Anything(),
+        "Diffusion coefficient mu(x)"
+    );
+    prm.declare_entry(
+        "f", "4*pi*pi*sin(2*pi*x)", Patterns::Anything(),
+        "Right-hand side f(x)"
+    );
+    prm.declare_entry(
+        "exact_solution", "sin(2*pi*x)", Patterns::Anything(),
+        "Exact solution (for error computation)"
+    );
+    prm.declare_entry(
+        "degree", "1", Patterns::Integer(1, 5),
+        "Polynomial degree of FE_Q<1>"
+    );
+    prm.declare_entry(
+        "N", "10", Patterns::Integer(2),
+        "Number of subintervals"
+    );
+}\end{lstlisting}
+    Each \code{declare\_entry} gives: the key name (as in the \texttt{.prm} file), a default value, a pattern to validate the input (e.g., integer between 1 and 5), and a short description.
+
+
+    \item \important{Read parameters from file}. Once the schema is defined, we can read the actual values from a \texttt{.prm} file, e.g., \texttt{input.prm}. The best place to do this is in the constructor of the \code{Poisson1D} class:
+    \begin{lstlisting}[language=C++]
+explicit Poisson1DExt(const std::string &filename) {
+    declare_parameters();
+    prm.parse_input(filename);
+    mu_expr = prm.get("mu");
+    f_expr = prm.get("f");
+    N = prm.get_integer("N");
+    r = prm.get_integer("degree");
+}\end{lstlisting}
+    Here, \code{parse\_input} reads the file and checks it against the schema (automatically!). Then, we retrieve the values with \code{get} or \code{get\_integer}. To save these values, we need to declare some member variables:
+    \begin{lstlisting}[language=C++,mathescape=true]
+// Discretization parameters
+unsigned int N; // N+1 elements
+unsigned int r; // polynomial degree
+
+ParameterHandler prm;
+
+// Parsed expressions; initialized in setup()
+std::string mu_expr, f_expr, exact_solution_expr;
+
+// $\textcolor{codegreen}{\mu}$(x) - diffusion coefficient
+FunctionParser<dim> mu_function;
+// f(x) - forcing term
+FunctionParser<dim> rhs_function;
+// u(x) - exact solution (for error computation)
+FunctionParser<dim> exact_solution_function;\end{lstlisting}
+    Note the \code{ParameterHandler prm} object to manage parameters, the\break strings to hold the parsed expressions (what we read from the file), and the \code{FunctionParser} objects to evaluate them. These \code{FunctionParser} objects are the same concept as \code{Function} objects, but they can be initialized at runtime with a string expression. So they correspond exactly to: \code{DiffusionCoefficient diffusion\_coefficient} and \code{ForcingTerm forcing\_term}.
+
+
+    \item \important{Build the runtime functions}. The \code{FunctionParser} objects need to be initialized with the expressions read from the file. This is done in the \code{setup()} function, after reading the parameters:
+    \begin{lstlisting}[language=C++]
+void Poisson1DExt::setup()
+{
+    printf("===============================================\nSetup started\n");
+
+    // Parse the functions
+    {
+        const std::string vars = "x";  // variables used in expressions
+
+        const std::map<std::string,double> constants = {
+            {"pi", numbers::PI},
+            // (optional synonyms)
+            {"PI", numbers::PI}, {"Pi", numbers::PI}
+        };
+
+        mu_function.initialize(vars, mu_expr, constants);
+        rhs_function.initialize(vars, f_expr, constants);
+        exact_solution_function.initialize(vars, exact_solution_expr, constants);
+    }
+
+    // Create the mesh.
+    // ...
+}\end{lstlisting}
+    Here, we define the variable names used in the expressions (just \code{"x"} for 1D), and a map of constants (e.g., \code{pi}). Precisely, the vars string lists the names of the independent variables that can be used in the expressions, while the constants map defines named constants that can be used in the expressions.
+    
+    For example, if we use \code{"x"} as the variable and define \code{"pi"} as a constant, we can write expressions like \code{"sin(pi*x)"} in the input file; it will be interpreted as $\sin(\pi x)$.
+    
+    Finally, the \code{initialize()} method sets up each \code{FunctionParser} with the variable names, the expression string, and the constants. At this point, we can use \code{mu\_function}, \code{rhs\_function}, and \code{exact\_solution\_function} just like any other \code{Function} object (like \code{DiffusionCoefficient}, \code{ForcingTerm}, and \code{ExactSolution} before).
+
+
+    \item \important{Use the runtime functions}. The rest of the code remains mostly unchanged. We just need to replace the old hard-coded functions with the new \code{FunctionParser} objects. For example, in \code{assemble()}:
+    \begin{lstlisting}[language=C++]
+void Poisson1DExt::assemble()
+{
+    printf("===============================================\nAssembly the linear system\n");
+
+    // ...
+
+    for (const auto &cell : dof_handler.active_cell_iterators())
+    {
+        // ...
+        for (unsigned int q = 0; q < n_q; ++q)
+        {
+            for (unsigned int i = 0; i < dofs_per_cell; ++i)
+            {
+                for (unsigned int j = 0; j < dofs_per_cell; ++j)
+                {
+                    // use mu_function
+                    cell_matrix(i, j) += mu_function.value(
+                        fe_values.quadrature_point(q))
+                        * fe_values.shape_grad(i, q)
+                        * fe_values.shape_grad(j, q)
+                        * fe_values.JxW(q);
+                }
+
+                // use rhs_function not forcing_term!
+                cell_rhs(i) += rhs_function.value(
+                        fe_values.quadrature_point(q)
+                    ) *
+                    fe_values.shape_value(i, q) *
+                    fe_values.JxW(q);
+
+            }
+        }
+        // ...
+    }
+
+    // ...
+}\end{lstlisting}
+    And in \code{compute\_error}:
+    \begin{lstlisting}[language=C++]
+double
+Poisson1DExt::compute_error(const VectorTools::NormType &norm_type) const
+{
+    const QGauss<dim> quadrature_error = QGauss<dim>(r + 2);
+
+    Vector<double> error_per_cell(mesh.n_active_cells());
+    VectorTools::integrate_difference(dof_handler,
+                                      solution,
+                                      // use parsed exact sol
+                                      exact_solution_function,
+                                      error_per_cell,
+                                      quadrature_error,
+                                      norm_type);
+
+    const double error = VectorTools::compute_global_error(
+        mesh, error_per_cell, norm_type
+    );
+
+    return error;
+}\end{lstlisting}
+
+
+    \item \important{Create the input file}. Finally, we need to create a \texttt{.prm} file with the actual parameters and expressions. For example, \texttt{poisson1d-9.prm}:
+    \begin{lstlisting}[language=prm]
+set mu = 1.0
+set f = 4*pi*pi*sin(2*pi*x)
+set exact_solution = sin(2*pi*x)
+set degree = 2
+set N = 9\end{lstlisting}
+    It corresponds to the same problem as before, but now we can change $f(x)$, $\mu(x)$, $N$, and $r$ without touching the source code. Here, an example of main file with all the prm files; the goal is to simulate the smooth manufactured solution $u(x) = \sin(2\pi x)$ with different meshes and polynomial degrees obtaining the same results of the hard-coded version:
+    \begin{center}
+        \href{https://gist.github.com/AndreVale69/53f6ebdecb3a6aba218c28a74c50d5c8}{\faIcon{download} main.cpp} \hspace{1em} \qrcode{https://gist.github.com/AndreVale69/53f6ebdecb3a6aba218c28a74c50d5c8}
+    \end{center}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{And what about non-smooth functions?}}
+\end{flushleft}
+The powerful \code{FunctionParser} can \textbf{handle piecewise definitions using the} \code{if} \textbf{construct}, because it is based on the \href{https://muparser.beltoforion.de/}{\texttt{muParser} library} (a fast math expression parser). For example, for the non-smooth manufactured solution (page \pageref{sec:non-smooth-manufactured-case}):
+\begin{equation*}
+    f(x) = \begin{cases}
+        0, & x < 0.5 \\
+        -\sqrt{x - 0.5}, & x \geq 0.5
+    \end{cases}
+    \quad\quad
+    u_{\text{ex}}(x) = \begin{cases}
+        A x, & x < 0.5 \\
+        A x + \frac{4}{15} (x - 0.5)^{2.5}, & x \geq 0.5
+    \end{cases}
+\end{equation*}
+we can write in the \texttt{.prm} file:
+\begin{lstlisting}[language=prm]
+# Non-smooth case
+set mu = 1.0
+set f = if(x<0.5, 0.0, -sqrt(x-0.5))
+set exact_solution = if(x<0.5, (-4.0 / 15.0 * pow(0.5, 2.5)) * x, (-4.0 / 15.0 * pow(0.5, 2.5)) * x + 4.0 / 15.0 * pow(x - 0.5, 2.5))
+set degree = 2
+set N = 9\end{lstlisting}
+Note the use of \code{if(condition, value\_if\_true, value\_if\_false)} and \texttt{pow\break (base, exponent)} functions. We could also define a constant for $A$:
+\begin{equation*}
+    A = -\frac{4}{15} (0.5)^{2.5}
+\end{equation*}
+In the \code{constants} map in \code{setup()}, to make the expression cleaner, but this is left as an exercise to the reader.   

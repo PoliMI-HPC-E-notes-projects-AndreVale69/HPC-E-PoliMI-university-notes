@@ -19,3 +19,4 @@
   - add `Modern Pattern Recognition (Pre-DL)`
   - add `What is Deep Learning after all?`
   - add `What's Behind Deep Learning?`
+  - add `Summary`

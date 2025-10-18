@@ -11,6 +11,9 @@
 
 - add `From Perceptrons to FNNs`
   - add `Historical Context`
+  - add `The Perceptron`
+    - add `Who Invented It?`
+    - add `Mathematical Model & Logical Operations`
 
 --------------------
 

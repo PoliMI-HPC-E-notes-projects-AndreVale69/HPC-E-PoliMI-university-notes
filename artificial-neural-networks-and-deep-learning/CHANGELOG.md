@@ -14,6 +14,7 @@
   - add `The Perceptron`
     - add `Who Invented It?`
     - add `Mathematical Model & Logical Operations`
+    - add `Hebbian Learning Rule`
 
 --------------------
 

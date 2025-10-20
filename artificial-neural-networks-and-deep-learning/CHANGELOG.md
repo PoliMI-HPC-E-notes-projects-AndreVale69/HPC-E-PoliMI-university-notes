@@ -22,6 +22,7 @@
     - add `Activation Functions`
       - add `Linear`
       - add `Sigmoid`
+      - add `Hyperbolic Tangent (tanh)`
 
 --------------------
 

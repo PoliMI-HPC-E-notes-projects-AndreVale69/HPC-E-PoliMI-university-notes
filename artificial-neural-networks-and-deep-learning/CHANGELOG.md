@@ -19,6 +19,9 @@
     - add `Boolean Operators & Linear Separability`
   - add `Feed-Forward Neural Networks (FNNs)`
     - add `Architecture`
+    - add `Activation Functions`
+      - add `Linear`
+      - add `Sigmoid`
 
 --------------------
 

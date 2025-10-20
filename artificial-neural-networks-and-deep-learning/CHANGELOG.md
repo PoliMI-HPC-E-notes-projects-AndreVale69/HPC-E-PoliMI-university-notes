@@ -16,6 +16,7 @@
     - add `Mathematical Model & Logical Operations`
     - add `Hebbian Learning Rule`
     - add `Perceptron as Linear Classifier`
+    - add `Boolean Operators & Linear Separability`
 
 --------------------
 

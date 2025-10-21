@@ -1,0 +1,161 @@
+\paragraph{Multi-Class Classification}
+
+When we want the network to choose \textbf{one label among many}, for example to classify images of handwritten digits (0, 1, 2, $\dots$, 9), we need the model to output a \textbf{vector of probabilities}, one for each possible class. For example, if the model is 70\% sure that the image is a 3, 20\% sure it is an 8, and 10\% sure it is a 5, the output vector should be:
+\begin{equation*}
+    \hat{y} = \begin{bmatrix}
+        0 \\
+        0 \\
+        0 \\
+        0.7 \\
+        0 \\
+        0.1 \\
+        0 \\
+        0.2 \\
+        0 \\
+        0
+    \end{bmatrix}
+\end{equation*}
+Where each entry corresponds to the predicted probability of each class (from 0 to 9). To achieve this, exists two main techniques: \textbf{one-hot encoding} for the labels and the \textbf{softmax activation function} for the output layer.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How we represent targets: One-Hot Encoding}}
+\end{flushleft}
+\definition{One-Hot Encoding} is a simple way to represent \textbf{categorical variables}\break (things that take one of several discrete values, like \emph{color}, \emph{day of week}, or \emph{class label}) in a numerical format that a neural network can understand.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{The problem it solves.}} Neural networks work only with \textbf{numbers}, not words or symbols. So if our categories are, for example, \emph{cat}, \emph{dog}, and \emph{bird}, we can't feed them directly into the network. We must convert each category into a \textbf{numeric vector}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{How it works.}} The \naive approach would be to assign each category a unique integer (e.g., $\emph{cat} = 0$, $\emph{dog} = 1$, $\emph{bird} = 2$). But this is \textbf{misleading}, because the network would think that \emph{bird} (2) is somehow ``bigger'' or ``twice'' a ``dog'' (1). That numerical relationship is meaningless and these categories have no inherent order. Instead, we create a \textbf{binary vector} for each class (category), where:
+\begin{itemize}
+    \item The position corresponding to that class is set to 1 (``\textbf{hot}'').
+    \item All other positions are set to 0 (``\textbf{cold}'').
+\end{itemize}
+So for our example with three categories, the one-hot encoded vectors would be:
+\begin{multicols}{3}
+    \begin{itemize}
+        \item \emph{cat} $\rightarrow$ $\left[1, 0, 0\right]$
+        \item \emph{dog} $\rightarrow$ $\left[0, 1, 0\right]$
+        \item \emph{bird} $\rightarrow$ $\left[0, 0, 1\right]$
+    \end{itemize}
+\end{multicols}
+
+\noindent
+Each vector is called \textbf{one-hot vector} because exactly \textbf{one element is ``hot''} (1) and all others are ``cold'' (0).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How we get probabilities: Softmax Activation Function}}
+\end{flushleft}
+The \definition{Softmax Activation Function} takes a vector of arbitrary real numbers (called \emph{logits}) and turns it into a \textbf{probability distribution}, i.e. a vector of positive numbers that \textbf{sum to 1}:
+\begin{equation}
+    \text{softmax}(a_{i}) = \dfrac{e^{a_{i}}}{\displaystyle \sum_{j=1}^{K} e^{a_{j}}}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $a_{i}$ is the $i$-th \textbf{element of the input vector} (logits).
+    \item $K$ is the total \textbf{number of classes}.
+    \item $e$ is the base of the natural logarithm (neperian constant).
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Intuition.}} Each neuron in the output layer produces a \textbf{score}: a real number that can be positive, negative, or large. Softmax converts these scores into \textbf{relative probabilities} that express how confident the network is about each class:
+\begin{itemize}
+    \item Large $a_i$ $\rightarrow$ large $e^{a_i}$ $\rightarrow$ \textbf{high} probability.
+    \item Small $a_i$ $\rightarrow$ small $e^{a_i}$ $\rightarrow$ \textbf{low} probability.
+\end{itemize}
+The exponential function $e^{a_i}$ magnifies differences between scores, so the biggest score gets \emph{much more weight}, but every class still receives a small share.
+
+\begin{examplebox}
+    Suppose the output layer of a neural network produces the following logits for a 3-class classification problem:
+    \begin{equation*}
+        a = \begin{bmatrix}
+            2.0 \\
+            1.0 \\
+            0.1
+        \end{bmatrix}
+    \end{equation*}
+    To convert these logits into probabilities using the softmax function, we first compute the exponentials:
+    \begin{equation*}
+        e^{a} = \begin{bmatrix}
+            e^{2.0} \\
+            e^{1.0} \\
+            e^{0.1}
+        \end{bmatrix} \approx \begin{bmatrix}
+            7.389 \\
+            2.718 \\
+            1.105
+        \end{bmatrix}
+    \end{equation*}
+    Next, we sum these exponentials:
+    \begin{equation*}
+        S = 7.389 + 2.718 + 1.105 \approx 11.212
+    \end{equation*}
+    Finally, we compute the softmax probabilities:
+    \begin{equation*}
+        \text{softmax}(a) = \begin{bmatrix}
+            \dfrac{7.389}{11.212} \\[1.2em]
+            \dfrac{2.718}{11.212} \\[1.2em]
+            \dfrac{1.105}{11.212}
+        \end{bmatrix} \approx \begin{bmatrix}
+            0.659 \\
+            0.242 \\
+            0.099
+        \end{bmatrix}
+    \end{equation*}
+    Thus, the output probabilities for the three classes are approximately 65.9\%, 24.2\%, and 9.9\%, respectively. The network is most confident that the input belongs to class 1.
+\end{examplebox}
+
+\noindent
+Softmax acts like a ``\textbf{competition}'' between neurons:
+\begin{itemize}
+    \item Each output neuron tries to \textbf{``win''} by having the highest score.
+    \item The exponentials amplify the differences, making the highest score dominate.
+    \item The normalization (dividing by the sum) ensures all probabilities add up to 1.
+\end{itemize}
+This is why it's called ``softmax'': it produces a \textbf{soft} version of the \textbf{maximum} function, where the highest score gets the most weight, but all classes still receive some probability (unlike a hard max which would assign 100\% to the highest and 0\% to all others).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Putting it all together}}
+\end{flushleft}
+In a \textbf{K-class classification} problem, the network's final layer has:
+\begin{itemize}
+    \item \textbf{K output neurons}, one for each class.
+    \item Each neuron produces a \textbf{logit} ($a_i$) an unnormalized score.
+    \item The \textbf{softmax function} converts these logits into a \textbf{probability distribution} over the $K$ classes:
+    \begin{equation*}
+        \hat{y}_i = \text{softmax}(a_i) = \dfrac{e^{a_i}}{\displaystyle \sum_{j=1}^{K} e^{a_j}}
+    \end{equation*}
+\end{itemize}
+So the network outputs a probability distribution over classes, all $y_{i}$ are between 0 and 1, and they sum to 1. However, to train the network effectively, we also need a suitable loss function that works well with this setup (about training, we will discuss it later, but for now, let's focus on the loss function). This is where \textbf{Categorical Cross-Entropy (CCE)} comes into play.
+
+\highspace
+The \definition{Categorical Cross-Entropy (CCE)} loss function measures how close the predicted probability distribution $\hat{y}$ is to the true one-hot distribution $\mathbf{t}$:
+\begin{equation}
+    \text{CCE}(\mathbf{t}, \hat{y}) = - \sum_{i=1}^{K} t_{i} \cdot \log(\hat{y}_{i})
+\end{equation}
+Because only the true class has $t_{i} = 1$ (all others are 0), this simplifies to:
+\begin{equation}
+    \text{CCE}(\mathbf{t}, \hat{y}) = - \log(\hat{y}_{c})
+\end{equation}
+Where:
+\begin{itemize}
+    \item $c$ is the \textbf{index of the true class}.
+    \item $y_{c}$ is the \textbf{predicted probability for the true class}.
+\end{itemize}
+This means CCE penalizes the model when it assigns a low probability to the true class, encouraging it to predict higher probabilities for the correct class during training.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why Softmax and CCE work well together?}} The combination of Softmax and CCE is powerful because:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Softmax produces a valid probability distribution}, which is exactly what CCE needs to compute the loss.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{CCE} focuses the learning on \textbf{maximizing the probability of the true class}, which aligns perfectly with the goal of classification tasks.
+    \item[\textcolor{Green3}{\faIcon{check}}] The \textbf{gradients} computed from CCE with respect to the logits are well-behaved, making training more stable and efficient. The drivative of CCE combined with Softmax is the following:
+    \begin{equation}
+        \dfrac{\partial \, \left(\text{CCE}\right)}{\partial \, a_{i}} = \hat{y}_{i} - t_{i}
+    \end{equation}
+    This means the gradient is simply the difference between the \textbf{predicted probability} and the \textbf{true label}, which is \textbf{easy to compute} and interpret.
+\end{itemize}
+This synergy makes Softmax $+$ CCE the \textbf{standard choice for multi-class classification problems in neural networks}. It is a generalization of the Sigmoid $+$ BCE setup used for binary classification, extending the same principles to handle multiple classes effectively.

@@ -26,6 +26,7 @@
     - add `Output Layer`
       - add `Regression`
       - add `Binary Classification`
+      - add `Multi-Class Classification`
 
 --------------------
 

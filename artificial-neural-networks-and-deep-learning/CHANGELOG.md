@@ -27,6 +27,7 @@
       - add `Regression`
       - add `Binary Classification`
       - add `Multi-Class Classification`
+    - add `Neural Networks as Universal Approximators`
 
 --------------------
 

@@ -1,0 +1,141 @@
+\paragraph{Binary Classification}
+
+In \textbf{binary classification}, the task is to decide \textbf{two possible outcomes}, for example \textit{spam} vs \textit{not spam} in email filtering, or \textit{disease} vs \textit{no disease} in medical diagnosis. The \textbf{output} of the network is typically a single neuron that produces a value between 0 and 1, representing the \textbf{probability} of one of the classes:
+\begin{equation*}
+    \mathcal{P}\left(y=1 \, \mid \, x\right) \in \left[0, 1\right]
+\end{equation*}
+That is, ``\emph{how likely is this input to belong to class 1?}'' The other class's probability can be derived as:
+\begin{equation*}
+    \mathcal{P}\left(y=0 \, \mid \, x\right) = 1 - \mathcal{P}\left(y=1 \, \mid \, x\right)
+\end{equation*}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{The output function}}
+\end{flushleft}
+At the output layer, we typically have:
+\begin{itemize}
+    \item \textbf{1 neuron}, because we only need one value (the probability of class 1).
+    \item The \textbf{activation function} is usually the \textbf{sigmoid function} (or sometimes the \textbf{tanh function}), which maps any real-valued number into the range (0, 1), making it suitable for probability estimation.
+\end{itemize}
+The \textbf{sigmoid function} is defined as:
+\begin{equation*}
+    \sigma(z) = \frac{1}{1 + e^{-z}}
+\end{equation*}
+Or the \textbf{tanh function}:
+\begin{equation*}
+    \tanh(z) = \frac{e^{z} - e^{-z}}{e^{z} + e^{-z}}
+\end{equation*}
+Despite tanh outputting values in the range $(-1, 1)$, it can be scaled to (0, 1) for probability interpretation:
+\begin{itemize}
+    \item $f(a) > 0 \Rightarrow$ class 1
+    \item $f(a) < 0 \Rightarrow$ class 0
+\end{itemize}
+It's sometimes preferred due to its zero-centered output, which can help with optimization. However, the \textbf{sigmoid} function is \textbf{more commonly used} in binary classification tasks.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Typical network setup for binary classification}}
+\end{flushleft}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{25em} @{}}
+        \toprule
+        \textbf{Component} & \textbf{Example} \\
+        \midrule
+        Hidden layers   & Several, with nonlinear activations (e.g., ReLU, tanh). \\[.3em]
+        Output layer    & One neuron (for single output) with \textbf{sigmoid activation}. \\[.3em]
+        Loss function   & \textbf{Binary Cross-Entropy (log loss)}. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+\begin{deepeningbox}[: Binary Cross-Entropy (BCE, Log Loss)]
+    The goal in \textbf{binary classification} is to predict the \emph{probability} that an input belongs to class 1, given by our network's sigmoid output:
+    \begin{equation*}
+        \hat{y} = f(a) = \dfrac{1}{1 + e^{-a}} \quad \in (0, 1)
+    \end{equation*}
+    The true label $t$ is:
+    \begin{itemize}
+        \item 1 if the sample belongs to class 1,
+        \item 0 if it belongs to class 0.
+    \end{itemize}
+    The \definition{Binary Cross-Entropy (BCE, Log Loss)} loss function measures the difference between the predicted probabilities $\hat{y}$ and the true labels $t$. It is defined as:
+    \begin{equation}
+        \text{BCE}\left(t, \hat{y}\right) = L = - \dfrac{1}{N} \cdot \displaystyle\sum_{i=1}^{N} \left[
+            t_i \cdot \ln\left(\hat{y}_i\right) + \left(1 - t_i\right) \cdot \ln\left(1 - \hat{y}_i\right)
+        \right]
+    \end{equation}
+    Let's understand each term:
+    \begin{itemize}
+        \item $N$ is the number of samples in the dataset.
+        \item $t_i$ is the true label for sample $i$ (0 or 1, since it's binary classification).
+        \item $\hat{y}_i$ is the predicted probability for sample $i$ (output of the sigmoid).
+        \item $\ln\left(\hat{y}_i\right)$ \textbf{penalizes} the model when it \textbf{predicts a low probability for the true class} (when $t_i = 1$).
+        \item $\ln\left(1 - \hat{y}_i\right)$ \textbf{penalizes} the model when it \textbf{predicts a high probability for the false class} (when $t_i = 0$).
+        \item If the true label is 1 ($t_i = 1$), the loss simplifies to $- \ln\left(\hat{y}_i\right)$. The model is \textbf{penalized} when it predicts a \textbf{small} probability for class 1.
+        \item If the true label is 0 ($t_i = 0$), the loss simplifies to $- \ln\left(1 - \hat{y}_i\right)$. The model is \textbf{penalized} when it predicts a \textbf{large} probability for class 1.
+    \end{itemize}
+    So, \textbf{the closer the prediction is to the truth, the smaller the loss}.
+
+    \highspace
+    \begin{examplebox}[: BCE Calculation Example]
+        Let's consider a simple example with 4 samples:
+
+        \begin{center}
+            \begin{tabular}{@{} c c c @{}}
+                \toprule
+                \textbf{Sample} & \textbf{True Label ($t$)} & \textbf{Predicted Probability ($\hat{y}$)} \\
+                \midrule
+                1 & 1 & 0.9 \\
+                2 & 0 & 0.2 \\
+                3 & 1 & 0.4 \\
+                4 & 0 & 0.6 \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+        Now, we calculate the BCE loss for each sample:
+
+        \begin{itemize}
+            \item Sample 1: $\left[1 \cdot \ln(0.9) + (1 - 1) \cdot \ln(1 - 0.9)\right] = \ln(0.9) \approx -0.105$
+            \item Sample 2: $\left[0 \cdot \ln(0.2) + (1 - 0) \cdot \ln(1 - 0.2)\right] = \ln(0.8) \approx -0.223$
+            \item Sample 3: $\left[1 \cdot \ln(0.4) + (1 - 1) \cdot \ln(1 - 0.4)\right] = \ln(0.4) \approx -0.916$
+            \item Sample 4: $\left[0 \cdot \ln(0.6) + (1 - 0) \cdot \ln(1 - 0.6)\right] = \ln(0.4) \approx -0.916$
+        \end{itemize}
+
+        Finally, we compute the average BCE loss over all samples:
+        \begin{equation*}
+            L = -\dfrac{1}{4} (-0.105 - 0.223 - 0.916 - 0.916) = -\dfrac{-2.16}{4} = 0.54
+        \end{equation*}
+
+        So, the BCE loss for this example is approximately \textbf{0.54}. This indicates that the model's predictions are not very accurate, as a lower loss value indicates better performance.
+    \end{examplebox}
+
+    \highspace
+    Cross-Entropy comes from \textbf{information theory}. It measures the \textbf{difference between two probability distributions}:
+    \begin{itemize}
+        \item The true distributions of the labels (0 or 1).
+        \item The predicted distributions from the model (probabilities between 0 and 1).
+    \end{itemize}
+    Minimizing BCE is equivalent to \textbf{maximizing the likelihood} of our data under the model's predictions. So \hl{we'are training the network to output probabilities that match the true labels as closely as possible}.
+
+    \begin{center}
+        \includegraphics[width=\textwidth]{img/fnns/bce.pdf}
+    \end{center}
+
+    The loss is \textbf{asymmetric}: wrong confident predictions get punished exponentially.
+    \begin{itemize}
+        \item Red curve ($t=1$): Loss is low when predicted probability $\hat{y}$ is close to 1 (correct and confident), and high when $\hat{y}$ is close to 0 (incorrect).
+        \item Blue curve ($t=0$): Loss is low when predicted probability $\hat{y}$ is close to 0 (correct and confident), and high when $\hat{y}$ is close to 1 (incorrect).
+    \end{itemize}
+    Finally, BCE is \textbf{differentiable}, which is essential for training neural networks using gradient-based optimization methods. Its derivative with respect to $a$ (the input to the sigmoid) is:
+    \begin{equation}
+        \frac{\partial L}{\partial a} = \hat{y} - t = f(a) - t
+    \end{equation}
+    This derivative is used in backpropagation to update the network's weights during training.
+
+    \highspace
+    In summary, \textbf{Binary Cross-Entropy} is the standard loss function for binary classification tasks in neural networks, effectively measuring the discrepancy between predicted probabilities and true binary labels, and guiding the training process to improve model performance. In simple words, it asks: ``\emph{how surprise would I be if the model's predicted probability were true?}'' The less surprised (closer to 1 for correct class), the smaller the loss; the more surprised (model confident but wrong), the larger the penalty.
+\end{deepeningbox}

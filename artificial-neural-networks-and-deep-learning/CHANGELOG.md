@@ -25,6 +25,7 @@
       - add `Hyperbolic Tangent (tanh)`
     - add `Output Layer`
       - add `Regression`
+      - add `Binary Classification`
 
 --------------------
 

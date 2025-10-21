@@ -23,6 +23,8 @@
       - add `Linear`
       - add `Sigmoid`
       - add `Hyperbolic Tangent (tanh)`
+    - add `Output Layer`
+      - add `Regression`
 
 --------------------
 

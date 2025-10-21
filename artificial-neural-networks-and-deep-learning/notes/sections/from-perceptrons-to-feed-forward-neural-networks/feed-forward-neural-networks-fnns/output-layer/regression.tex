@@ -50,3 +50,98 @@ A typical neural network for regression tasks has the following structure:
         \bottomrule
     \end{tabular}
 \end{table}
+
+\begin{deepeningbox}[: Mean Squared Error (MSE)]
+    When our network predicts continuous values (like prices, temperatures, voltages, etc.), we need a way to measure \textbf{how far the predictions are from the real targets}. That's what a \textbf{loss function} does: it quantifies the prediction error. The \definition{Mean Squared Error (MSE)} is the most common one for regression tasks:
+    \begin{equation}
+        \text{MSE} = \dfrac{1}{N} \cdot \displaystyle\sum_{i=1}^{N} \left(y_{i} - t_{i}\right)^2
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $N$ is the number of data points (samples).
+        \item $y_{i}$ is the predicted value for the $i$-th sample.
+        \item $t_{i}$ is the true (target) value for the $i$-th sample.
+    \end{itemize}
+    The term $\left(y_{i} - t_{i}\right)^2$ is the \textbf{error} (difference between prediction and truth), and we \textbf{square} it to make all errors positive (avoid cancellation) and to penalize \textbf{larger mistakes more strongly} (e.g., an error of 10 counts 100 times more than an error of 1). Then we \textbf{average} over all samples to get the mean error per prediction.
+
+    \highspace
+    So MSE measures how ``spread out'' our predictions are around the true values. A \textbf{lower MSE} means our model is doing a better job at predicting the continuous target variable.
+
+    \begin{examplebox}[: Example of MSE calculation]\label{ex:mse-calculation}
+        Suppose we have the following regression model:
+        \begin{center}
+            \begin{tabular}{@{} c | c | c | c | c @{}}
+                \toprule
+                Sample & $t_i$ & $y_i$ & $y_i - t_i$ & Squared Error \\
+                \midrule
+                1   & 2 & 3 & $+1$  & 1 \\[.3em]
+                2   & 5 & 4 & $-1$  & 1 \\[.3em]
+                3   & 6 & 8 & $+2$  & 4 \\[.3em]
+                4   & 3 & 2 & $-1$  & 1 \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+        To compute the MSE:
+        \begin{align*}
+            \text{MSE} = \dfrac{1}{4} \cdot \left(1 + 1 + 4 + 1\right) = \dfrac{1}{4} \cdot 7 = 1.75
+        \end{align*}
+        So the Mean Squared Error for this model is 1.75, indicating the average squared difference between the predicted and true values.
+    \end{examplebox}
+
+    About derivations, it is important to note that MSE is \textbf{differentiable}, which is crucial for training neural networks using gradient-based optimization methods (we will cover this in detail later). The derivative of MSE with respect to the predictions $y_i$ is:
+    \begin{equation}
+        \dfrac{\partial \, \text{MSE}}{\partial \, y_i} = \dfrac{2}{N} \cdot \left(y_i - t_i\right)
+    \end{equation}
+    So, the weight updates are proportional to how wrong each prediction is. It means, large errors produce larger gradients, leading to bigger adjustments in the weights during training, which helps the model learn more effectively.
+
+    \highspace
+    In summary, MSE tells us \textbf{how far off our predictions are on average}. It's like saying ``\emph{how wrong am I, squared and averaged?}'' The squaring heavily punishes big mistakes, making MSE ideal when we care about precision in regression tasks.
+\end{deepeningbox}
+
+\highspace
+\begin{deepeningbox}[: Mean Absolute Error (MAE)]
+    The \definition{Mean Absolute Error} measures the \textbf{average absolute distance} between predicted and true values:
+    \begin{equation}
+        \text{MAE} = \dfrac{1}{N} \cdot \displaystyle\sum_{i=1}^{N} \left|y_{i} - t_{i}\right|
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $N$ is the number of data points (samples).
+        \item $y_{i}$ is the predicted value for the $i$-th sample.
+        \item $t_{i}$ is the true (target) value for the $i$-th sample.
+    \end{itemize}
+    Unlike MSE, which \emph{squares} the difference, MAE simply takes the \textbf{absolute value} of the error. That means:
+    \begin{itemize}
+        \item Every error contributes proportionally to its magnitude (no squaring).
+        \item Large errors don't explode quadratically, they contribute linearly.
+    \end{itemize}
+    So MAE measures the \textbf{average size of the mistakes}, regardless of direction.
+
+    \highspace
+    \begin{examplebox}[: Example of MAE calculation]
+        Using the same predictions as before (from Example on page \pageref{ex:mse-calculation}), to compute the MAE:
+        \begin{align*}
+            \text{MAE} = \dfrac{1}{4} \cdot \left(1 + 1 + 2 + 1\right) = \dfrac{1}{4} \cdot 5 = 1.25
+        \end{align*}
+        So the Mean Absolute Error for this model is 1.25, indicating the average absolute difference between the predicted and true values. Compared to MSE, MAE gives a more direct sense of the average error magnitude without squaring.
+    \end{examplebox}
+
+    Regarding derivations, the MAE is \textbf{not differentiable} at points where the prediction equals the target (i.e., $y_i = t_i$) because of the absolute value function. However, we can use the \textbf{subgradient} for optimization:
+    \begin{equation}
+        \dfrac{\partial \left|x\right|}{\partial x} = \begin{cases}
+            +1 & \text{if } x > 0 \\[.5em]
+            -1 & \text{if } x < 0 \\[.5em]
+            \text{undefined (but taken as 0)} & \text{if } x = 0
+        \end{cases}
+    \end{equation}
+    So gradient updates from MAE are \textbf{constant in magnitude}. They don't depend on how far the prediction is from the truth. That's why MAE can converge slower but more robustly, especially in the presence of outliers (which can heavily skew MSE).
+
+    \highspace
+    In summary, MAE tells us \textbf{how many units off my predictions are on average}, while MSE punishes larger errors more severely:
+    \begin{itemize}
+        \item \textbf{MSE} tries to \textbf{minimize variance}, forces the model to avoid large mistakes aggressively.
+        \item \textbf{MAE} tries to \textbf{minimize average error}, focuses on overall robustness.
+    \end{itemize}
+    If our data has \textbf{outliers} (e.g., occasional very wrong samples), MAE is less distorted by them because it doesn't exaggerate their impact.
+\end{deepeningbox}

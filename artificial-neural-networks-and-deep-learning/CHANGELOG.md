@@ -30,6 +30,7 @@
     - add `Neural Networks as Universal Approximators`
     - add `Learning and Optimization`
       - add `Supervised Learning and Training Dataset`
+      - add `Error Minimization and Loss Function`
 
 --------------------
 

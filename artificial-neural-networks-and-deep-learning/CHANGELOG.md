@@ -28,6 +28,8 @@
       - add `Binary Classification`
       - add `Multi-Class Classification`
     - add `Neural Networks as Universal Approximators`
+    - add `Learning and Optimization`
+      - add `Supervised Learning and Training Dataset`
 
 --------------------
 

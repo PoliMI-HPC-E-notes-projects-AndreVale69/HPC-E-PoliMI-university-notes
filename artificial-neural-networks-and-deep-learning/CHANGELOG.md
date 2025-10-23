@@ -31,6 +31,7 @@
     - add `Learning and Optimization`
       - add `Supervised Learning and Training Dataset`
       - add `Error Minimization and Loss Function`
+      - add `Gradient Descent Basics`
 
 --------------------
 

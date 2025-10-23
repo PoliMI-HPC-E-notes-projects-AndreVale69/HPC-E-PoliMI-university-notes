@@ -64,6 +64,69 @@ This vector, the \textbf{gradient} of $E$ at $w$, points in the direction of \te
         \text{new param} = \text{old param} - \text{(some learning rate)} \times \text{(some form of gradient)}
     \end{equation*}
     The only difference is \emph{how} the gradient or learning rate is computed or adjusted. It is a sort of \textbf{DNA of learning} in neural networks.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{brain} \textbf{The Neural Network Case}}
+    \end{flushleft}
+    The previous definition is \textbf{general}, and it doesn't care whether $w$ is one number, a list or a tensor of weights inside a neural network. However, sice we are in the context of neural networks, let's introduce some notation specific to them.
+
+    In a neural network, $w$ isn't just one parameter vector (one weight vector), but rather a \textbf{collection of all weights and biases across all layers}:
+    \begin{equation}
+        w = \left\{
+            w_{ij}^{(l+1)}, w_{ij}^{(l+2)}, \ldots, w_{ij}^{(L)}, \,
+            b_{i}^{(l+1)}, b_{i}^{(l+2)}, \ldots, b_{i}^{(L)}
+        \right\}
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $L$ is the \textbf{total number of layers in the network}.
+        \item Each $w_{ij}^{(l)}$ is the weight connecting neuron $j$ in layer $l-1$ to neuron $i$ in layer $l$:
+        \begin{center}
+            \begin{tikzpicture}[>=stealth, every node/.style={font=\small}, every path/.style={->, shorten >=1pt, shorten <=1pt}]
+                % Source layer (l-1) with ellipses to indicate generality
+                \node[circle, draw] (N1) at (0,0.5)    {$a_{1}^{(l-1)}$};
+                \node[circle, draw] (N2) at (0,-1.2) {$a_{2}^{(l-1)}$};
+                \node at (0,-2.4) {$\vdots$};
+                \node[circle, draw] (Nj) at (0,-3.6) {$a_{j}^{(l-1)}$};
+                \node at (0,-4.8) {$\vdots$};
+                \node[circle, draw] (Nn) at (0,-6) {$a_{n}^{(l-1)}$};
+
+                % Target layer l with ellipses
+                \node[circle, draw, minimum size=0.9cm] (M1) at (5,-1.2) {$a_{1}^{(l)}$};
+                \node at (5,-2.4) {$\vdots$};
+                \node[circle, draw, minimum size=0.9cm] (Mi) at (5,-3.6) {$a_{i}^{(l)}$};
+                \node at (5,-4.8) {$\vdots$};
+                \node[circle, draw, minimum size=0.9cm] (Mm) at (5,-6) {$a_{m}^{(l)}$};
+
+                % faint generic connections to show full connectivity
+                \draw[->, gray, opacity=0.8, bend left=12]  (N1) to node[sloped, above] {$w_{11}^{(l)}$} (M1);
+                \draw[->, gray, opacity=0.8]                  (N2) to node[sloped, above] {$w_{12}^{(l)}$} (M1);
+                \draw[->, gray, opacity=0.8, bend right=12]  (Nn) to node[pos=0.3, sloped, above] {$w_{1n}^{(l)}$} (M1);
+
+                \draw[->, gray, opacity=0.8, bend left=8]   (N1) to node[pos=0.4, sloped, above] {$w_{1m}^{(l)}$} (Mm);
+                \draw[->, gray, opacity=0.8]                  (N2) to node[pos=0.30, sloped, above] {$w_{2m}^{(l)}$} (Mm);
+                \draw[->, gray, opacity=0.8]   (Nn) to node[sloped, above] {$w_{nm}^{(l)}$} (Mm);
+
+                % highlighted connection showing the general index i,j
+                \draw[->, thick] (Nj) to node[midway, above] {$\;w_{ij}^{(l)}\;$} (Mi);
+            \end{tikzpicture}
+        \end{center}
+        \item Each $b_{i}^{(l)}$ is the bias for neuron $i$ in layer $l$.
+    \end{itemize}
+    The \textbf{gradient} $\nabla E(w)$ then contains the partial derivatives of the loss function with respect to \textbf{each individual weight and bias} in the network:
+    \begin{equation}
+        \nabla E(w) = \left\{
+            \dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} , \,
+            \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}}
+        \right\}
+    \end{equation}
+    The \textbf{core learning rule} still applies, but now we update \textbf{each weight and bias} individually:
+    \begin{equation}
+        w_{ij}^{(l)} \leftarrow w_{ij}^{(l)} - \eta \,\dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} \quad \text{and} \quad
+        b_{i}^{(l)} \leftarrow b_{i}^{(l)} - \eta \,\dfrac{\partial \, E}{\partial \, b_{i}^{(l)}}
+    \end{equation}
+    This is how \textbf{gradient descent} is applied in the context of training neural networks.
 \end{definitionbox}
 
 \begin{flushleft}
@@ -88,11 +151,16 @@ Intuitively, gradient descent works as follows:
         \quad \Rightarrow \quad
         w_{1} = w_{0} - \eta \,\nabla E(w_{0})
     \end{equation*}
-    Then, the new weights $w_{1}$ should yield a \textbf{lower loss} $E(w_{1}) < E(w_{0})$.
+    Then, the new weights $w_{1}$ should yield a \textbf{lower loss} $E(w_{1}) < E(w_{0})$. If we were on a neural network, we would update \textbf{all weights and biases} similarly:
+    \begin{equation*}
+        w_{ij}^{(l)} \leftarrow w_{ij}^{(l)} - \eta \,\dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}}
+        \quad , \quad
+        b_{i}^{(l)} \leftarrow b_{i}^{(l)} - \eta \,\dfrac{\partial \, E}{\partial \, b_{i}^{(l)}}
+    \end{equation*}
     \item Repeat until: the gradient becomes small (close to zero), or we reach a maximum number of iterations.
 \end{enumerate}
 
-\highspace
+\noindent
 \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Convergence Speed}} \textbf{and} \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{False Positives}}. The speed at which gradient descent converges to the minimum depends on:
 \begin{itemize}
     \item The \textbf{shape} of the loss function (e.g., steepness, curvature). It strongly affects how gradient descent behaves:

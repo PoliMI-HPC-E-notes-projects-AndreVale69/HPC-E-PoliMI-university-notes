@@ -33,6 +33,7 @@
       - add `Error Minimization and Loss Function`
       - add `Gradient Descent Basics`
       - add `Backpropagation (Conceptual Introduction)`
+    - add `Maximum Likelihood Estimation (MLE)`
 
 --------------------
 

@@ -1,0 +1,81 @@
+\subsection{Measuring Generalization}
+
+When we train a neural network, we typically monitor the \textbf{training loss} (i.e., how well the model predicts the training data). However, a \textbf{low training error} does \emph{not} necessarily mean that our model is generalizing well to unseen data.
+\begin{enumerate}
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{The model has \emph{seen} the training data.}} The model's parameters were \textbf{directly optimized} to minimize that same error. So it's like asking a student to re-solve the same exercises used in the exam preparation. Success there tells us \emph{nothing} about their ability to handle new ones.
+    \begin{equation*}
+        E_{\text{train}} = \text{Empirical Risk (on known data)}
+    \end{equation*}
+    \begin{equation*}
+        E_{\text{test}} = \text{True Risk (on unseen data)}
+    \end{equation*}
+
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Optimism bias.}} Since the model \emph{learned from} those points, the estimate of performance on that data is \textbf{optimistically biased}, it always looks better than reality.
+    \begin{equation*}
+        E_{\text{train}} \leq E_{\text{test}}
+    \end{equation*}
+    Always true for flexible models that can overfit the training data. The more complex the model, the stronger the bias (the model can fit noise, artificially lowering training error $E_{\text{train}}$).
+    
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Example.}} Imagine fitting a very flexible polynomial to noisy data:
+    \begin{itemize}
+        \item With degree 1 (linear), training error is high (underfitting).
+        \item With degree 15, training error goes to zero, but the curve oscillates widly. Test error on unseen data is huge (overfitting).
+    \end{itemize}
+    That's why we cannot rely on training error $E_{\text{train}}$ to assess generalization. It \textbf{doesn't measure generalization}, only memorization of training data.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.9\textwidth]{img/neural-networks-and-overfitting/measuring-generalization.pdf}
+    \end{figure}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to measure generalization?}}
+\end{flushleft}
+To correctly \textbf{measure generalization}, we must evaluate on data the model \textbf{has never seen during training}. This is done by \textbf{dataset splitting}. We divide the available dataset $D$ into disjoint subsets:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | p{17em} | l @{}}
+        \toprule
+        Set & Purpose & Size \\
+        \midrule
+        \textbf{Training set}   & Learn model parameters (weights, biases).  & During training. \\[.3em]
+        \textbf{Validation set} & Tune hyperparameters, monitor overfitting. & During training. \\[.3em]
+        \textbf{Test set}       & Asses final generalization performance.    & After training. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+The goal is:
+\begin{equation*}
+    \begin{array}{rcl}
+        \text{Training data} & \rightarrow & \text{Model fitting} \\
+        \text{Validation data} & \rightarrow & \text{Model selection} \\
+        \text{Test data} & \rightarrow & \text{Model assessment} \\
+    \end{array}
+\end{equation*}
+This ensures that the \textbf{test error} $E_{\text{test}}$ is an \textbf{unbiased estimate} of the model's true generalization performance on unseen data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Okay, but how to split the data?}}
+\end{flushleft}\index{Hold-Out Method}
+The most common approach is \definition{Random Subsampling} (or Hold-Out Method):
+\begin{enumerate}
+    \item Randomly \textbf{shuffle} the \textbf{dataset} $D$.
+    \item Randomly \textbf{split} our \textbf{dataset} into three disjoint subsets, for example:
+    \begin{itemize}
+        \item 70\% for training,
+        \item 15\% for validation,
+        \item 15\% for testing.
+    \end{itemize}
+    \item \textbf{Train} on the training set.
+    \item \textbf{Tune} on the validation set.
+    \item \textbf{Evaluate} once on the test set.
+\end{enumerate}
+Because of the randomness in sampling, we often repeat the split several times (with different seeds) and \textbf{average} the results to reduce bias. This process is, of course, automated using libraries like \texttt{scikit-learn} (Python), not done manually.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Use Stratified Sampling.}} Imagine we have a dataset for binary classification with 90\% of class A and 10\% of class B. That means 90\% of our data are Class A and only 10\% are Class B (\textbf{class imbalance}). If we randomly split our dataset into training and test sets (say, 80\% training, 20\% test), there's a \textbf{risk} that one of the splits contains \emph{almost no examples of Class B}. To avoid this, we use \definition{Stratified Sampling}, which ensures that \textbf{each subset (train, validation and test) preserves the same class properties as the original dataset}. In our example, both training and test sets would have approximately 90\% of Class A and 10\% of Class B, maintaining the class distribution. 

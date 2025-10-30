@@ -12,6 +12,7 @@
 
 - add `Neural Networks and Overfitting`
   - add `Universal Approximation Theorem`
+  - add `Model Complexity`
 
 --------------------
 

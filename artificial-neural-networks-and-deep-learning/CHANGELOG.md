@@ -34,6 +34,7 @@
       - add `Gradient Descent Basics`
       - add `Backpropagation (Conceptual Introduction)`
     - add `Maximum Likelihood Estimation (MLE)`
+    - add `Perceptron Learning Algorithm`
 
 --------------------
 

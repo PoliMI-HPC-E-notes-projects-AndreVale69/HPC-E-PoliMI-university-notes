@@ -14,6 +14,7 @@
   - add `Universal Approximation Theorem`
   - add `Model Complexity`
   - add `Measuring Generalization`
+  - add `Terminology Clarifications`
 
 --------------------
 

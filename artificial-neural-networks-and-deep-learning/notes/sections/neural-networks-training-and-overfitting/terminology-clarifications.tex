@@ -1,0 +1,70 @@
+\subsection{Terminology Clarifications}
+
+In the context of neural networks and deep learning, certain terms are often used interchangeably or may have nuanced meanings depending on the context. Here are some clarifications on commonly used terminology:
+\begin{itemize}
+    \item \definition{Training Dataset}. Let's start from the whole thing we have available to us. The \textbf{training dataset} (sometimes called the \emph{available dataset}) is the \hl{complete collection of samples we can access for building and evaluating our model}. It contains all our labeled examples:
+    \begin{equation*}
+        \mathcal{D} = \left\{\left(x_i, t_i\right)\right\}_{i=1}^{N}
+    \end{equation*}
+    But we will \textbf{not} train our model on all of them at once. We'll split them into smaller subsets with different purposes.
+
+    \item \definition{Training Set}. The \textbf{training set} is the portion of the \hl{data used to \textbf{fit the model parameters}} (i.e., to adjust the weights and biases so that the network learns patterns). It is \hl{used during backpropagation and gradient descent}. The loss computed on this set is called the \textbf{training loss} and drives weight updates. Performance on this set tells us if the model is \emph{learning}, but \textbf{not if it generalizes well}.
+    \begin{equation*}
+        E_{\text{train}} = \dfrac{1}{N_{\text{train}}} \sum_{i=1}^{N_{\text{train}}} \left(t_{i} - f\left(x_i; w\right)\right)^{2}
+    \end{equation*}
+    We \emph{can} monitor the training loss over epochs to see if the model is converging, but it's not sufficient to decide if the model is ``good'' (we'll soon use validation for that).
+
+    \item \definition{Validation Set}. The \textbf{validation set} is used to \textbf{evaluate and tune} the model \emph{during} training, without directly affecting the weights. It's like a ``preview'' of how the model will perform on new data. The main purposes of the validation set are:
+    \begin{itemize}
+        \item Selecting \textbf{hyperparameters} (like learning rate, number of neurons, regularization, dropout rate, etc.).
+        \item Performing \textbf{early stopping} (detecting overfitting by monitoring validation loss).
+        \item Comparing different model architectures.
+    \end{itemize}
+    We typically compute a \textbf{validation loss} or \textbf{validation accuracy} after each epoch:
+    \begin{equation*}
+        E_{\text{val}} = \dfrac{1}{N_{\text{val}}} \sum_{i=1}^{N_{\text{val}}} \left(t_{i} - f\left(x_i; w\right)\right)^{2}
+    \end{equation*}
+    When validation error starts increasing while training error decreases, it's a sign of \textbf{overfitting}.
+
+    \item \definition{Test Set}. The \textbf{test set} is used \emph{only once}, at the very end, to obtain an \textbf{unbiased estimate of the models generalization performance}. It acts as a \emph{simulation of the real world}: the model has never seen these samples during training or validation. No gradient updates or hyperparameter tuning should be done based on test set performance. Its purpose is \textbf{final assessment} only.
+    \begin{equation*}
+        E_{\text{test}} = \dfrac{1}{N_{\text{test}}} \sum_{i=1}^{N_{\text{test}}} \left(t_{i} - f\left(x_i; w\right)\right)^{2}
+    \end{equation*}
+    After we've looked at the test performance, we should not go back and tune hyperparameters, otherwise the test set stops being ``unseen'' data, and our estimate becomes optimistically biased.
+
+    \item \important{Golden Rule}: Always keep the test set completely separate until the very end. Use training and validation sets for model development, and only use the test set for final evaluation. So, \hl{never use validation/test data to update model weights.}
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[
+        font=\sffamily\small,
+        >=Latex,
+        node distance=10mm,
+        box/.style={draw, rounded corners, thick, align=center, minimum width=24mm, minimum height=9mm},
+        lab/.style={align=center}
+    ]
+        % Top row
+        \node[box] (train) {Training\\Set};
+        \node[box, right=14mm of train] (val) {Validation\\Set};
+        \node[box, right=14mm of val] (test) {Test\\Set};
+
+        % Labels below + arrows
+        \node[lab, below=6mm of train] (ltrain) {Learn weights\\(fit model)};
+        \node[lab, below=6mm of val] (lval) {Tune hyperparams\\+ Early stopping};
+        \node[lab, below=6mm of test] (ltest) {Final eval\\(no retraining)};
+
+        \draw[->, thick] (train.south) -- (ltrain.north);
+        \draw[->, thick] (val.south)   -- (lval.north);
+        \draw[->, thick] (test.south)  -- (ltest.north);
+
+        % Outer container with title
+        \node[
+            draw, rounded corners, thick, inner sep=5mm,
+            fit=(train)(val)(test)(ltrain)(lval)(ltest),
+            label={[yshift=2mm]above:Training Dataset (Available Data)}
+        ] (container) {};
+    \end{tikzpicture}
+    \caption{Visualization of the relationships between training, validation, and test sets within the overall training dataset.}
+    \label{fig:terminology-clarifications-dataset-split}
+\end{figure}

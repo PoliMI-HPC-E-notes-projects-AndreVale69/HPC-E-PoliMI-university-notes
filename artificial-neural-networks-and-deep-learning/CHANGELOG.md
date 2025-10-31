@@ -19,6 +19,7 @@
     - add `Hold-Out Validation`
     - add `Leave-One-Out Cross-Validation (LOOCV)`
     - add `K-Fold Cross-Validation`
+    - add `Nested Cross-Validation`
 
 --------------------
 

@@ -15,6 +15,8 @@
   - add `Model Complexity`
   - add `Measuring Generalization`
   - add `Terminology Clarifications`
+  - add `Cross-Validation Techniques`
+    - add `Hold-Out Validation`
 
 --------------------
 

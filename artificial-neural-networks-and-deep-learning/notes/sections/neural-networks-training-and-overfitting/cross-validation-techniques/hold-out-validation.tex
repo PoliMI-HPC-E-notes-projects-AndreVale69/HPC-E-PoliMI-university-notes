@@ -1,0 +1,85 @@
+\subsection{Cross-Validation Techniques}
+
+\definition{Cross-Validation} is the use of the \textbf{training dataset} to both: train the model (\emph{parameter fitting} and \emph{model selection}), and \textbf{estimate its error on new data}. In other words, we don't need a separate external test dataset for every trial, we can reuse the available data intelligently (e.g., part for training, part for checking generalization).
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Main Idea.}} Instead of holding out a single fixed portion (like in the simple \emph{hold-out} method), cross-validation systematically \textbf{rotates} which samples are used for training and which for validation. Each sample eventually acts as validation data once and training data many times. Thus, we can:
+\begin{itemize}
+    \item \textbf{Train multiple models} on different training subsets;
+    \item \textbf{Validate} each on the complementary subset;
+    \item \textbf{Average the validation errors} to get a more robust estimate of the model's true performance on unseen data.
+\end{itemize}
+It is especially useful when the dataset is limited, as it maximizes the use of available data for both training and validation. However, other techniques (like hold-out, LOOCV, K-Fold) are specific implementations of cross-validation with different trade-offs in terms of bias, variance, and computational cost. In the following, we explore some of these techniques.
+
+\newpage
+
+\subsubsection{Hold-Out Validation}
+
+The \definition{Hold-Out Validation} (or \definition{Hold-Out Method}) is the simplest form of cross-validation. It consists of dividing the available dataset into \textbf{two or three subsets}, each serving a specific role in training, tuning, and evaluating the model. This method provides a first, practical way to test the \textbf{inductive hypothesis}, that a model performing well on unseen data will also generalize to future examples (page \pageref{def:inductive-hypothesis}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How it works?}}
+\end{flushleft}
+In the typical \textbf{three-way split}, we start from the \textbf{training dataset}, i.e., all the data we can use to develop the model, we then split it into disjoint subsets:
+\begin{itemize}
+    \item \textbf{Training Set}: This subset is used to \textbf{parameter fitting}, i.e., to train the model by adjusting its weights based on the input-output pairs.
+    \item \textbf{Validation Set}: This subset is used to \textbf{model selection}, i.e., to evaluate different model configurations (e.g., architectures, hyperparameters) and select the best one based on its performance on this set.
+    \item \textbf{Test Set} (hold-out): This subset is used to \textbf{model assessment}, i.e., to provide an unbiased evaluation of the final model's performance on unseen data after training and validation are complete.
+\end{itemize}
+The steps are as follows:
+\begin{enumerate}
+    \item \important{Divide} the available dataset into training and validation (and possibly test) sets.
+    \item \important{Train} the neural networks using only the training set.
+    \item \important{Validate} periodically on the validation set to monitor generalization:
+    \begin{itemize}
+        \item Tune hyperparameters (e.g., learning rate, architecture) based on validation performance.
+        \item Apply \emph{early stopping} if validation error starts to increase (indicating overfitting).
+    \end{itemize}
+    \item \important{Assess} the final model on the hold-out test set (data not seen during training) to estimate its true generalization error.
+\end{enumerate}
+The hold-out validation gives an estimate of how well the model performs on \emph{unseen data} by simulating future inputs using the reserved portion of the dataset. It's essentially a ``\textbf{miniature deployment test}'' performed before real-world use.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Risks and Limitations}}
+\end{flushleft}
+While hold-out validation is straightforward and easy to implement, it has some limitations. The main risk is that \textbf{hold-out validation can be biased} depending on how the data are split:
+\begin{enumerate}
+    \item \important{Non-representative sampling}
+    \begin{itemize}
+        \item The validation set may not accurately reflect the data distribution.
+        \item The estimated generalization error may be too optimistic or too pessimistic.
+    \end{itemize}
+
+    \item \important{Small datasets}
+    \begin{itemize}
+        \item If we hold out too many samples, there are too few left for training.
+        \item If we hold out too few, the validation estimate becomes noisy and unreliable.
+    \end{itemize}
+
+    \item \important{Unbalanced classes (classification case)}
+    \begin{itemize}
+        \item If the classes are not represented equally in the training and validation sets, the model may not learn to generalize well across all classes.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Solution:}} use \textbf{stratified sampling} (page \pageref{def:stratified-sampling}) to maintain class proportions in each subset.
+    \end{itemize}
+
+    \item \important{Single split variability}
+    \begin{itemize}
+        \item A different random split can yield a different result.
+        \item The error estimate depends too much on ``which data'' ended up in the validation set.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Solution:}}  Later, we will see more robust techniques (like \textbf{K-Fold Cross-Validation}) that mitigate this issue by averaging results over multiple splits.
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When to use Hold-Out Validation?}}
+\end{flushleft}
+Hold-out validation is most appropriate when:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] When the \textbf{dataset is large enough} to afford separate training, validation and test sets without sacrificing training data. With large enough we mean at least a few thousand samples.
+    \item[\textcolor{Green3}{\faIcon{check}}] When we want \textbf{fast model evaluation} without the computational overhead of more complex cross-validation methods (only one training phase).
+    \item[\textcolor{Green3}{\faIcon{check}}] When small fluctuations in the validation split are not expected to significantly affect the model selection process.
+\end{itemize}

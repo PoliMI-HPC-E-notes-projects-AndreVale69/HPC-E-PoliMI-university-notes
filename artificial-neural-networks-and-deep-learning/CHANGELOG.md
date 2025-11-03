@@ -20,6 +20,8 @@
     - add `Leave-One-Out Cross-Validation (LOOCV)`
     - add `K-Fold Cross-Validation`
     - add `Nested Cross-Validation`
+  - add `Preventing Overfitting`
+    - add `Early Stopping`
 
 --------------------
 

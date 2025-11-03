@@ -1,0 +1,87 @@
+\subsubsection{Early Stopping}
+
+During training, the \textbf{training error} keeps decreasing as the model learns to fit the training data better and better. However, at some point, the \textbf{validation error} starts to increase again, indicating that the model is beginning to overfit the training data (as we saw in \autoref{fig:training-validation-error-curve} on \autopageref{fig:training-validation-error-curve}). That's the signature of \textbf{overfitting}: the model is still improving on the training data, but getting worse on unseen data.
+
+\highspace
+The first and simplest method to prevent overfitting is \textbf{early stopping}. The idea is very straightforward: we stop the training process \textbf{right before} the validation error starts to rise.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-line} \textbf{Monitoring Validation Error}}
+\end{flushleft}
+To apply early stopping, we need to monitor both:
+\begin{itemize}
+    \item The \textbf{training error/loss} $E_{\text{train}}(k)$ (measures how well the network fits the training data).
+    \item The \textbf{validation error/loss} $E_{\text{val}}(k)$ (measures how well it generalizes to unseen data).
+\end{itemize}
+Where $k$ is the current training iteration (or epoch). So, during training, at each iteration (epoch) $k$, we look for the \textbf{epoch} $\boldsymbol{k}_{\boldsymbol{ES}}$ (Early Stopping iteration) that minimizes the validation error:
+\begin{equation*}
+    E_{\text{val}}(k) \text{ is minimal} \implies k = k_{ES}
+\end{equation*}
+Once we find $k_{ES}$, we stop training and use the model parameters (weights and biases) from that iteration for our final model.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Stopping Criteria (iteration $k_{ES}$)}}
+\end{flushleft}
+\begin{definitionbox}[: Early Stopping]
+    \definition{Early Stopping} is a regularization technique that prevents overfitting by \textbf{monitoring the validation error during training} and \textbf{halting the learning process when the error begins to increase}.
+
+    \highspace
+    The stopping iteration $k_{ES}$ is defined as the epoch where the validation error $E_{\text{val}}(k)$ is minimized. Formally:
+    \begin{equation}
+        k_{ES} = \underset{k}{\text{argmin}} \; E_{\text{val}}(k)
+    \end{equation}
+    It marks the point of \textbf{best generalization}; beyond it, the network starts fitting noise rather than signal.
+
+    \highspace
+    By interrupting training at $k_{ES}$, the model parameters remain close to their optimal generalizing values, providing an \textbf{online estimate of the true generalization error}. With ``\emph{online estimate}'', we mean that we can assess the model's performance on unseen data without needing a separate test set at this stage; ``\emph{online}'' refers to the fact that this evaluation happens during the training process itself.
+\end{definitionbox}
+
+\highspace
+However, simply stopping at the first sign of validation error increase can be problematic due to random fluctuations (noise) in the validation curve. So, in practice, we implement a more robust strategy. We usually use a \textbf{patience window} to avoid stopping too early due to random noise in the validation curve. The \definition{Patience Window} (or \definition{Patience Parameter}) defines \textbf{how many epochs} the training process should \textbf{wait after the last improvement in validation error} before deciding to stop. In other words, we don't stop immediately when $E_{\text{val}}(k)$ increases once; instead, we wait for a few epochs to see if it improves again (since small fluctuations can occur due to noise).
+
+\highspace
+\begin{examplebox}[: Early Stopping with Patience Window]
+    Imagine this simplified validation loss curve during training (table values):
+    \begin{center}
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            \textbf{Epoch} & \textbf{Validation Loss} & \textbf{Improvement?} \\
+            \midrule
+            $\dots$ & $\dots$ & $\dots$ \\
+            10  & 0.40  & \textcolor{Green3}{\faIcon{check}} improvement \\[.3em]
+            11  & 0.38  & \textcolor{Green3}{\faIcon{check}} improvement \\[.3em]
+            12  & 0.37  & \textcolor{Green3}{\faIcon{check}} improvement \\[.3em]
+            13  & 0.375 & \textcolor{Red2}{\faIcon{times}} slightly worse \\[.3em]
+            14  & 0.373 & \textcolor{Green3}{\faIcon{check}} improvement \\[.3em]
+            15  & 0.376 & \textcolor{Red2}{\faIcon{times}} worse again \\[.3em]
+            16  & 0.379 & \textcolor{Red2}{\faIcon{times}} worse \\[.3em]
+            17  & 0.382 & \textcolor{Red2}{\faIcon{times}} worse \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    Suppose we set a \textbf{patience window of 2 epochs}, the algorithm will stop after \textbf{epoch 17}, because it waited for 2 epochs after the last improvement (epoch 14) and saw no new decrease in validation loss. If we had set a patience of 4 epochs, it would have waited until epoch 19 before stopping.
+\end{examplebox}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Be careful: it's a heuristic!}} Early stopping with a \emph{patience window} is \textbf{not mathematically guaranteed} to find the optimal epoch $k_{ES}$; we might stop a few epochs \textbf{too early} or \textbf{too late}, depending on noise, random initialization, learning rate, and other hyperparameters. In formal terms, it doesn't \emph{guarantee} the true optimum, but it approximates a \textbf{local minimum in the generalization curve}, which is what we really want in practice. The local minimum corresponds to a model that generalizes well without overfitting, even if it's not the absolute best possible model.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Online Estimation of Generalization Error}}
+\end{flushleft}
+The Early Stopping method can be viewed as an \textbf{online estimation of the true generalization error}, because we continuously track the validation loss as the network learns, and the shape of that curve tells us when the model begins to overfit. So, we use validation data to \textbf{approximate the true test error dynamically} without needing to retrain multiple times. Thus, early stopping is like a \textbf{built-in regularizer}: it doesn't change the loss function, but limits training to the ``sweet spot'' where generalization is maximal. Where ``online'' means that this estimation happens during the training process itself, rather than after training is complete.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}} \textbf{and} \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Simple \& efficient}: no modification to loss or architecture
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Automatic}: modern frameworks can monitor and stop automatically.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Improves generalization} without additional parameters.
+    \item[\textcolor{Red2}{\faIcon{times}}] Requires a \textbf{validation set}, which reduces training data slightly.
+    \item[\textcolor{Red2}{\faIcon{times}}] Works best when validation loss is smooth (less noisy).
+    \item[\textcolor{Red2}{\faIcon{times}}] The ``patience'' value and monitoring metric must be chosen carefully.
+\end{itemize}

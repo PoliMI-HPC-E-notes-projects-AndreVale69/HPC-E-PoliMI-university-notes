@@ -27,6 +27,7 @@
     - add `Dropout (Stochastic Regularization)`
   - add `Tips & Tricks`
     - add `Activation Function Saturation`
+    - add `ReLU and Variants`
 
 --------------------
 

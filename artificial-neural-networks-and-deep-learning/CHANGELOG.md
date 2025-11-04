@@ -22,6 +22,7 @@
     - add `Nested Cross-Validation`
   - add `Preventing Overfitting`
     - add `Early Stopping`
+    - add `Hyperparameter Tuning`
 
 --------------------
 

@@ -23,6 +23,7 @@
   - add `Preventing Overfitting`
     - add `Early Stopping`
     - add `Hyperparameter Tuning`
+    - add `Weight Decay (L2 Regularization)`
 
 --------------------
 

@@ -1,0 +1,79 @@
+\subsubsection{Activation Function Saturation}\label{sec:activation-function-saturation}
+
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem:}} During backpropagation (\autopageref{sec:backpropagation-conceptual-introduction}), the \textbf{gradient} must flow backward through all layers. If it becomes \textbf{very small} ($\approx 0$) in some layer, early layers \textbf{stop learning}. This is known as the \definition{Vanishing Gradient Problem} (or \definition{Zero-Gradient Problem}) and it happens when the \textbf{activation function saturates}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``saturation'' mean?}}
+\end{flushleft}
+An \textbf{activation function} takes a neuron's input (weighted sum $z = w^{T} x + b$) and produces a non-linear output $g(z)$. For instance:
+\begin{itemize}
+    \item The \textbf{sigmoid} function $g(z) = \frac{1}{1 + e^{-z}}$
+    \item The \textbf{tanh} function $g(z) = \tanh(z)$
+\end{itemize}
+Now, both are \textbf{S-shaped} (see \autoref{fig:sigmoid-activation-function}, \autopageref{fig:sigmoid-activation-function}), tey flatten for large positive or negative $z$ values:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c c c @{}}
+        \toprule
+        $z$ range & sigmoid $g(z)$ & tanh $g(z)$ & Derivative $g'(z)$ \\
+        \midrule
+        Very negative & $\approx 0$ & $\approx -1$ & $\approx 0$ \\
+        Near zero & $\approx 0.5$ & $\approx 0$ & $\approx 0.25$ (sigmoid), $\approx 1$ (tanh) \\
+        Very positive & $\approx 1$ & $\approx 1$ & $\approx 0$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+When $\left|z\right|$ is large, the \textbf{output saturates} (flattens) and the \textbf{derivative} $g'(z)$ becomes \textbf{very small} ($\approx 0$).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{And why zero gradient is a disaster?}}
+\end{flushleft}
+Let's review the backpropagation. In any neural network trained with gradient descent, each parameter (weight or bias) is updated according to the \textbf{core learning rule} (\autoref{eq:gradient-descent-neural-network-update}, \autopageref{eq:gradient-descent-neural-network-update}):
+\begin{equation*}
+    w_{ij}^{(l)} \leftarrow w_{ij}^{(l)} - \eta \,\dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} \quad \text{and} \quad
+    b_{i}^{(l)} \leftarrow b_{i}^{(l)} - \eta \,\dfrac{\partial \, E}{\partial \, b_{i}^{(l)}}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\eta$ is the learning rate.
+    \item $\dfrac{\partial E}{\partial w_{ij}^{(l)}}$ and $\dfrac{\partial E}{\partial b_{i}^{(l)}}$ are the gradients of the loss $E$ with respect to the weights and biases.
+\end{itemize}
+Each derivative is computed using the \textbf{chain rule} in backpropagation. For a neuron $i$ in layer $l$, we have:
+\begin{equation*}
+    \dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} = \dfrac{\partial \, E}{\partial \, y} \cdot \dfrac{\partial \, y}{\partial \, a_{i}^{(l)}} \cdot \dfrac{\partial \, a_{i}^{(l)}}{\partial \, w_{ij}^{(l)}}
+    \qquad
+    \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}} = \dfrac{\partial \, E}{\partial \, y} \cdot \dfrac{\partial \, y}{\partial \, a_{i}^{(l)}} \cdot \dfrac{\partial \, a_{i}^{(l)}}{\partial \, b_{i}^{(l)}}
+\end{equation*}
+
+\newpage
+
+\noindent
+Where:
+\begin{itemize}
+    \item $y$ is the output of the network.
+    \item $a_{i}^{(l)} = g\left(z_{i}^{(l)}\right)$ is the activation of neuron $i$ in layer $l$.
+    \item $z_{i}^{(l)} = \displaystyle\sum_{k} w_{ik}^{(l)} a_{k}^{(l-1)} + b_{i}^{(l)}$ is the weighted input to neuron $i$ in layer $l$.
+\end{itemize}
+The critical term here is $\dfrac{\partial \, y}{\partial \, a_{i}^{(l)}}$, which involves the derivative of the activation function $g'\left(z_{i}^{(l)}\right)$. If the activation function \textbf{saturates}, its derivative becomes almost zero: $g'\left(z_{i}^{(l)}\right) \approx 0$. This leads to:
+\begin{equation*}
+    \dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} \approx 0 \quad \text{and} \quad \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}} \approx 0
+\end{equation*}
+As a result, the weight and bias updates become negligible:
+\begin{equation*}
+    w_{ij}^{(l)} \leftarrow w_{ij}^{(l)} - \eta \cdot 0 = w_{ij}^{(l)}
+    \quad \text{and} \quad
+    b_{i}^{(l)} \leftarrow b_{i}^{(l)} - \eta \cdot 0 = b_{i}^{(l)}
+\end{equation*}
+So the weight and bias remain unchanged, effectively \textbf{halting learning} in that layer (neuron effectively \textbf{stops learning}).
+
+\highspace
+Also, the \textbf{problem is not local}, it \textbf{propagates backward}! For a neuron in layer $l-1$, its gradient depends on the next layer:
+\begin{equation*}
+    \delta_{j}^{(l-1)} = g'(z_{j}^{(l-1)}) \sum_{i} w_{ij}^{(l)} \delta_{i}^{(l)}
+\end{equation*}
+If the next layer has small derivatives ($g'(z_{j}^{(l-1)}) \approx 0$) due to saturation, then $\delta_{j}^{(l-1)}$ also becomes very small, causing the same issue in layer $l-1$. This \textbf{cascading effect} can lead to \textbf{vanishing gradients} throughout the network, because \textbf{gradients shrink exponentially} as they are propagated backward through multiple layers with saturated activations.

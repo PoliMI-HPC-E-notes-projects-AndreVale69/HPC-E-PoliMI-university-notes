@@ -26,6 +26,7 @@
     - add `Weight Decay (L2 Regularization)`
     - add `Dropout (Stochastic Regularization)`
   - add `Tips & Tricks`
+    - add `Activation Function Saturation`
 
 --------------------
 

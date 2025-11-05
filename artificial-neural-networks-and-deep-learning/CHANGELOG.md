@@ -31,6 +31,7 @@
     - add `Weight Initialization`
     - add `Batch Normalization`
     - add `Mini-Batch Training`
+    - add `Learning Rate Scheduling`
 
 --------------------
 

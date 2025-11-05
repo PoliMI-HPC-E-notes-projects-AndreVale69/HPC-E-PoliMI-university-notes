@@ -30,6 +30,7 @@
     - add `ReLU and Variants`
     - add `Weight Initialization`
     - add `Batch Normalization`
+    - add `Mini-Batch Training`
 
 --------------------
 

@@ -28,6 +28,7 @@
   - add `Tips & Tricks`
     - add `Activation Function Saturation`
     - add `ReLU and Variants`
+    - add `Weight Initialization`
 
 --------------------
 

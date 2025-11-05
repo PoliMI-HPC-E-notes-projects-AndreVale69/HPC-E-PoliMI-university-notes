@@ -1,0 +1,152 @@
+\subsubsection{Batch Normalization}\label{sec:batch-normalization}
+
+When training deep networks, \textbf{each layer's input distribution keeps changing} as previous layers update their weights. This phenomenon is called \textbf{internal covariate shift}.
+
+\highspace
+In machine learning, the \definition{Internal Covariate Shift} (or simply \definition{Covariate Shift}) happens when the \textbf{distribution or input data} changes between training and testing. For example, we train a model to detect cats using bright studio photos; then we test it on dark or outdoor photos. The model struggles because $P_{train}(X) \neq P_{test}(X)$, even though the task (detect cats) remains the same. That's the \textbf{classic covariate shift} problem: a change in the \emph{input feature distribution} that forces the model to adapt to new data patterns. In a deep neural network, every layer has its own \emph{inputs}, and those inputs come from the \textbf{previous layer's outputs}, which are \emph{constantly changing} as training proceeds. So, while the external dataset stays the same, the \textbf{internal data} (the activations flowing between layers) keeps shifting its distribution during training. This is what we call \textbf{internal covariate shift}, and it is called ``\emph{internal}'' because it happens \emph{within} the network itself, not just between training and testing datasets.
+
+\highspace
+In simple terms, every time earlier layers update their weights, the \emph{input distribution} to later layers changes. This means that from the perspective of layer $l$:
+\begin{itemize}
+    \item At iteration 1, its input $z^{(l)}$ might have mean $=0$ and variance $=1$.
+    \item At iteration 100, the same input might have mean $=3$ and variance $=10$.
+\end{itemize}
+So layer $l$ is constantly trying to adapt to a \textbf{moving target} distribution, its own input is unstable.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is internal covariate shift a problem?}} Neural networks assume (implicitly) that the distribution of each layer's inputs stays within a ``reasonable'' range. But if these distributions shift too much:
+\begin{itemize}
+    \item Neurons may enter the \textbf{saturated region} of activation functions (like sigmoid or tanh), leading to \textbf{vanishing gradients}.
+    \item Gradient flow becomes unstable, making optimization \textbf{slower} and more \textbf{difficult}.
+    \item Convergence slows down dramatically, requiring \textbf{smaller learning rates} and careful initialization.
+\end{itemize}
+In other words, internal covariate shift makes training \textbf{harder and slower}, because every layer must re-learn how to operate each time the layers before it change.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Batch Normalization}}
+\end{flushleft}
+Since covariate shift arises from changing input distributions, the solution is to \textbf{stabilize these distributions}. This is where \definition{Batch Normalization (BN)} comes in. Introduced by Sergey Ioffe and Christian Szegedy in 2015 \cite{ioffe2015batch}, BN fixes this problem by \textbf{re-centering and re-scaling} each layer's input at every training step, so that:
+\begin{equation}
+    \mathbb{E}\left[z^{(l)}\right] = 0 \quad \text{and} \quad \mathrm{Var}\left[z^{(l)}\right] = 1
+\end{equation}
+Where $z^{(l)}$ is the input to layer $l$, $\mathbb{E}$ is the expectation (mean), and $\mathrm{Var}$ is the variance. That means the input distribution to each layer remains stable, even as earlier layers' weights keep evolving. So layer $l$ can focus on learning \emph{useful transformation}, not on constantly re-adjusting to a changing scale or mean.
+
+\highspace
+Formally, let's denote the pre-activations of a neuron as $z_i^{(l)}$ for the $i$-th example in a batch of size $m$. Batch Normalization performs the following steps during training:
+\begin{enumerate}
+    \item \important{Compute the \emph{batch mean}}:
+    \begin{equation}
+        \mu_B = \dfrac{1}{m} \sum_{i=1}^{m} z_i^{(l)}
+    \end{equation}
+    Where $\mu_B$ is the mean of the pre-activations over the batch.
+
+    \item \important{Compute the \emph{batch variance}}:
+    \begin{equation}
+        \sigma_B^2 = \dfrac{1}{m} \sum_{i=1}^{m} \left(z_i^{(l)} - \mu_B\right)^2
+    \end{equation}
+    Where $\sigma_B^2$ is the variance of the pre-activations over the batch.
+
+    \item \important{\emph{Normalize} each activation}:
+    \begin{equation}
+        \hat{z}_i^{(l)} = \dfrac{z_i^{(l)} - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}}
+    \end{equation}
+    Where $\hat{z}_i^{(l)}$ is the normalized activation, and $\varepsilon$ is a small constant added for numerical stability, preventing division by zero. After this step, the normalized activations $\hat{z}_i^{(l)}$ have mean 0 and variance 1 across the batch. But, since this step \textbf{destroys} the original mean and variance information of $z$, we need to add a way to \textbf{restore} it if needed.
+
+    \item \important{\emph{Scale and shift} with learnable parameters}:
+    \begin{equation}
+        y_i^{(l)} = \gamma \hat{z}_i^{(l)} + \beta
+    \end{equation}
+    Where $y_i^{(l)}$ is the final output of the Batch Normalization layer, and $\gamma$ and $\beta$ are learnable \textbf{parameters that allow the network to restore the original distribution if needed}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{If Batch Normalization forces every layer to have mean 0 and variance 1, how can the two parameters $\gamma$ and $\beta$ possibly recover the \emph{original} distribution? Isn't the information lost?}} Normalization helps stability, but what if a neuron \emph{needs} its activations to be, say: shifted up (mean $=2$) or spread wider (variance $=9$)? If we stop at pure normalization we'd \textbf{limit the representational power} of the layer, because every neuron would have to operate under the same fixed scale $1$ and mean $0$. That's where the learnable parameters $\gamma$ and $\beta$ come in:
+    \begin{itemize}
+        \item $\gamma$ (scale) allows the network to \textbf{stretch or compress} the normalized activations, effectively controlling the variance.
+        \item $\beta$ (shift) allows the network to \textbf{move} the normalized activations up or down, effectively controlling the mean.
+    \end{itemize}
+    This lets the network \textbf{relearn any affine transformation} of the normalized values.
+
+    \begin{examplebox}[: Restoring Original Distribution with $\gamma$ and $\beta$]
+        Suppose before normalization a neuron had:
+        \begin{equation*}
+            \mu_{\text{orig}} = 2, \quad \sigma_{\text{orig}} = 3
+        \end{equation*}
+        After normalization, the activations have:
+        \begin{equation*}
+            \hat{z}_i^{(l)} = \dfrac{z_i - 2}{3} \quad \Rightarrow \quad \mathbb{E}[\hat{z}] = 0, \quad \mathrm{Var}[\hat{z}] = 1
+        \end{equation*}
+        Then, if the network learns:
+        \begin{equation*}
+            \gamma = 3, \quad \beta = 2
+        \end{equation*}
+        The final output becomes:
+        \begin{equation*}
+            y_i^{(l)} = 3 \cdot \hat{z}_i^{(l)} + 2 = 3 \cdot \dfrac{z_i - 2}{3} + 2 = z_i
+        \end{equation*}
+        Thus, the original distribution is perfectly restored!
+    \end{examplebox}
+\end{enumerate}
+So the full Batch Normalization transformation can be summarized as:
+\begin{equation}
+    y_i^{(l)} = \mathrm{BN}\left(z_i^{(l)}\right) = \gamma \cdot \dfrac{z_i^{(l)} - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}} + \beta
+\end{equation}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When to apply Batch Normalization?}}
+\end{flushleft}
+\textbf{During training}, Batch Normalization is applied \textbf{inside the forward pass of the network}, right after the linear transformation (affine operation) and before the activation function. Formally, for layer $l$:
+\begin{equation*}
+    z^{(l)} = W^{(l)} a^{(l-1)} + b^{(l)}
+\end{equation*}
+Batch Normalization acts as:
+\begin{equation*}
+    \text{BN: } \hat{z}^{(l)} = \dfrac{z^{(l)} - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}} \quad \text{then} \quad y^{(l)} = \gamma \hat{z}^{(l)} + \beta
+\end{equation*}
+And then:
+\begin{equation*}
+    a^{(l)} = g\left(y^{(l)}\right) \quad \text{where } g \text{ is the activation function (e.g., ReLU, sigmoid)}
+\end{equation*}
+So the order is typically \textbf{Linear $\rightarrow$ Batch Norm $\rightarrow$ Activation}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What about during inference (testing)?}}
+\end{flushleft}
+During \textbf{inference (testing)}, the model process \textbf{one example at a time} (or a few), not large batches. Therefore, computing ``batch statistics'' doesn't make sense anymore because a single sample doesn't have a meaningful mean or variance. Instead, we use \textbf{running estimates} (a.k.a. \emph{moving averages}) of mean and variance that were computed during training. Specifically:
+\begin{enumerate}
+    \item \important{Running averages during training}. As we train, we maintain running estimates of the mean and variance for each layer:
+    \begin{equation}
+        \mu_{\text{running}} = (1 - \alpha) \mu_{\text{running}} + \alpha \mu_B
+    \end{equation}
+    \begin{equation}
+        \sigma_{\text{running}}^2 = (1 - \alpha) \sigma_{\text{running}}^2 + \alpha \sigma_B^2
+    \end{equation}
+    Where $\alpha$ is a small constant (e.g., $0.1$) that controls the update rate. These running estimates capture the overall distribution of activations over the entire training set.
+
+    \item \important{At inference (testing)}. At inference, Batch Normalization uses these \textbf{``frozen'' running estimates} instead of batch statistics:
+    \begin{equation*}
+        y_i^{(l)} = \gamma \cdot \dfrac{z_i^{(l)} - \mu_{\text{running}}}{\sqrt{\sigma_{\text{running}}^2 + \varepsilon}} + \beta
+    \end{equation*}
+    These are constants, no mini-batch dependence, no randomness. This ensures that the model's behavior is consistent and stable during inference.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits of Batch Normalization}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Stabilizes training}: Keeps activations in non-saturating range, reducing vanishing/exploding effects.
+    \item \textbf{Allows higher learning rates}: Because activations are normalized, large updates won't blow up the model.
+    \item \textbf{Regularization effect}: Adds small noise (due to batch statistics), improving generalization.
+    \item \textbf{Reduces sensitivity to initialization}: Training becomes less dependent on perfect Xavier/He settings.
+    \item \textbf{Improves convergence speed}: Layers adapt faster because their inputs are more predictable.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/neural-networks-and-overfitting/batch-normalization.pdf}
+    \caption{Batch Normalization normalizes layer inputs to stabilize training. Before BN, each training batch has a very different distribution (different mean \& variance, top plot). After BN (during training), each batch is independently normalized to roughly the same mean and variance — stable inputs for the next layer (middle plot). At inference (testing), the model uses the running averages of mean and variance collected during training, producing a fixed and consistent normalization for new unseen data (bottom plot).}
+\end{figure}

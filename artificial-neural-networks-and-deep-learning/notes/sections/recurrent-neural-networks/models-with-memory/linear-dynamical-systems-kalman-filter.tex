@@ -1,0 +1,144 @@
+\subsubsection{Linear Dynamical Systems and the Kalman Filter}\label{sec:lds-kalman-filter}
+
+A \definition{Linear Dynamical System (LDS)} is a \emph{state-space model} that represents how a system evolves over time using \textbf{linear equations}. It assumes that there's a hidden internal state $\mathbf{h}_t$ that evolves dynamically and generates the observed outputs $\mathbf{y}_t$. It's the mathematical backbone behind: signal tracking, control systems, robotics, and time-series forecasting (before RNNs took over). Formally, an LDS is defined by two main equations:
+\begin{align}
+    \text{State Equation:} \quad & \mathbf{h}_t = \mathbf{A} \mathbf{h}_{t-1} + \mathbf{B} \mathbf{x}_t + \mathbf{w}_t \\
+    \text{Observation Equation:} \quad & \mathbf{y}_t = \mathbf{C} \mathbf{h}_t + \mathbf{v}_t
+\end{align}
+\begin{itemize}
+    \item $\mathbf{h}_t$ is the \textbf{hidden} (latent) \textbf{state} at time $t$.
+    \item $\mathbf{x}_t$ is the \textbf{input} (control) at time $t$.
+    \item $\mathbf{y}_t$ is the \textbf{observed output} at time $t$.
+    \item $\mathbf{A}$ is the \textbf{state transition matrix} that defines \hl{how the hidden state evolves}.
+    \item $\mathbf{B}$ is the \textbf{control input matrix} that defines \hl{how inputs affect the hidden state}.
+    \item $\mathbf{C}$ is the \textbf{observation matrix} that \hl{maps the hidden state to the observed output}.
+    \item $\mathbf{w}_t$ and $\mathbf{v}_t$ are \textbf{process} and \textbf{observation noise}, typically assumed to be Gaussian with zero mean.
+\end{itemize}
+All matrices ($\mathbf{A}$, $\mathbf{B}$, $\mathbf{C}$) are constant over time, making the system linear and time-invariant. Furthermore, the \textbf{noise} terms $\mathbf{w}_t$ and $\mathbf{v}_t$ are usually modeled as \textbf{Gaussian} distributions.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{State Estimation Problem}}
+\end{flushleft}
+The \emph{state estimation problem} poses a particular challenge in linear dynamical systems. Let's start with the basic situation. We have a \textbf{system that evolves in time}, like:
+\begin{equation*}
+    h_t = A h_{t-1} + B x_t + w_t
+\end{equation*}
+And we can \textbf{observe} something related to it:
+\begin{equation*}
+    y_t = C h_t + v_t
+\end{equation*}
+But here's the catch: we \textbf{don't get to see the hidden state $h_t$ directly}. Instead, we only observe $y_t$, which is a noisy version of $h_t$. So the \definition{State Estimation Problem} is: \emph{Given the observations $y_1, y_2, \ldots, y_t$ up to time $t$, how can we estimate the hidden state $h_t$?}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Mathematically, the equation looks solvable, so \emph{why} can't we just compute $h_t$ directly?}} The \textbf{fundamental issue} is that we \textbf{don't know the initial state $h_0$}. Without knowing $h_0$, we can't accurately compute $h_t$ for any $t > 0$. This uncertainty about the initial state propagates through time, making it impossible to determine the exact value of $h_t$ just from the equations.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why not just set $h_0 = 0$ or $1$ and move on? After all, it's the start and there's no past.}} While it's true that we can choose an initial value for $h_0$, this choice is essentially a \textbf{guess}. The problem is that this \textbf{guess may be far from the true initial state}, leading to significant errors in estimating $h_t$ as time progresses. The uncertainty in $h_0$ means that our estimates of $h_t$ will always carry some level of uncertainty, which is why we need methods like the Kalman filter to help us estimate the hidden states more accurately over time. For example, in \autoref{fig:kalman-filter-wrong-initial-state}, we see how a bad initial guess can lead to poor estimates if the initial uncertainty is low.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/recurrent-neural-networks/kalman-filter-wrong-initial-state.pdf}
+    \caption{A comparison of Kalman filter performance with different initial uncertainty levels. The top plot shows the filter's ability to recover the true state when starting with high uncertainty about the initial state ($P_0=25$). The bottom plot illustrates how low initial uncertainty ($P_0=0.25$) can lead to poor estimates when the initial guess is incorrect, causing the filter to trust the wrong initial state too much.}
+    \label{fig:kalman-filter-wrong-initial-state}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Solution: The Kalman Filter}}
+\end{flushleft}
+To tackle the state estimation problem in linear dynamical systems, we use the \definition{Kalman Filter}. The Kalman filter is an \textbf{algorithm} that provides an \textbf{efficient way to estimate the hidden state} $\mathbf{h}_t$ \textbf{over time}, \textbf{even when we don't know the initial state}. The idea is simple. If we don't have the initial state, then we give our \textbf{initial guess a certain degree of uncertainty}, which can be high if we are very unsure about it. Then, as we receive new observations $\mathbf{y}_t$ (at every time step $t$), we \textbf{update our estimate} of the hidden state using a two-step process: 
+\begin{enumerate}
+    \item \important{Prediction Step}. Predict the new state and uncertainty based on the previous estimate:
+    \begin{equation}
+        \begin{cases}
+            \hat{h}_{\left(t \, \mid \, t-1\right)} = A \, \hat{h}_{\left(t-1 \, \mid \, t-1\right)} + B \, x_t \\[.3em]
+            P_{\left(t \, \mid \, t-1\right)} = A \, P_{\left(t-1 \, \mid \, t-1\right)} \, A^{T} + Q
+        \end{cases}
+    \end{equation}
+    \begin{itemize}
+        \item $\hat{h}_{\left(t \, \mid \, t-1\right)}$ is the \textbf{predicted state estimate} at time $t$ given observations up to time $t-1$.
+        \item $P_{\left(t \, \mid \, t-1\right)}$ is the \textbf{predicted estimate covariance} (uncertainty) at time $t$.
+        \item $Q$ is the process \textbf{noise covariance matrix}.
+    \end{itemize}
+    At time $t=0$, we set:
+    \begin{equation*}
+        \begin{cases}
+            \hat{h}_{\left(t \, \mid \, t-1\right)} = A \, \hat{h}_{\left(t-1 \, \mid \, t-1\right)} + B \, x_t \\[.3em]
+            P_{\left(t \, \mid \, t-1\right)} = A \, P_{\left(t-1 \, \mid \, t-1\right)} \, A^{T} + Q
+        \end{cases}
+        \quad
+        \xrightarrow{t=0}
+        \quad
+        \begin{cases}
+            \hat{h}_{\left(0 \, \mid \, -1\right)} = \mu_0 \\
+            P_{\left(0 \, \mid \, -1\right)} = P_0
+        \end{cases}
+    \end{equation*}
+    Where $\mu_0$ is our \textbf{initial guess for the state}, and $P_0$ is the \textbf{initial uncertainty} (covariance) \textbf{associated with that guess}.
+
+
+    \item \important{Update Step}. When the new observation $\mathbf{y}_t$ arrives, we update our state estimate and uncertainty:
+    \begin{equation}
+        \begin{cases}
+            K_t = P_{\left(t \, \mid \, t-1\right)} C^{T} \left( C \, P_{\left(t \, \mid \, t-1\right)} \, C^{T} + R \right)^{-1} \\[.3em]
+            \hat{h}_{\left(t \, \mid \, t\right)} = \hat{h}_{\left(t \, \mid \, t-1\right)} + K_t \left( y_t - C \, \hat{h}_{\left(t \, \mid \, t-1\right)} \right) \\[.3em]
+            P_{\left(t \, \mid \, t\right)} = \left( I - K_t \, C \right) P_{\left(t \, \mid \, t-1\right)}
+        \end{cases}
+    \end{equation}
+    \begin{itemize}
+        \item $K_t$ is the \textbf{Kalman gain}, which determines \hl{how much we trust the new observation versus our prediction}.
+        \item $R$ is the \textbf{observation noise covariance matrix}.
+        \item $\hat{h}_{\left(t \, \mid \, t\right)}$ is the \textbf{updated state estimate} at time $t$ \emph{after} incorporating the observation.
+        \item $P_{\left(t \, \mid \, t\right)}$ is the \textbf{updated estimate covariance} (uncertainty) at time $t$.
+    \end{itemize}
+    At time $t=0$, we set:
+    \begin{equation*}
+        \begin{cases}
+            K_0 = P_{\left(0 \, \mid \, -1\right)} C^{T} \left( C \, P_{\left(0 \, \mid \, -1\right)} \, C^{T} + R \right)^{-1} \\[.3em]
+            \hat{h}_{\left(0 \, \mid \, 0\right)} = \hat{h}_{\left(0 \, \mid \, -1\right)} + K_0 \left( y_0 - C \, \hat{h}_{\left(0 \, \mid \, -1\right)} \right) \\[.3em]
+            P_{\left(0 \, \mid \, 0\right)} = \left( I - K_0 \, C \right) P_{\left(0 \, \mid \, -1\right)}
+        \end{cases}
+    \end{equation*}
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why can't we just set a big uncertainty and let the Kalman filter fix everything fast?}}
+\end{flushleft}
+Setting a large initial uncertainty ($P_0$) allows the Kalman filter to be \textbf{more responsive to new measurements initially}, as it indicates that we are very unsure about our initial state estimate. However, this approach has its \textbf{drawbacks}:
+\begin{itemize}
+    \item \important{Overfitting to Noise}: A very high initial uncertainty can lead the filter to \textbf{overfit to the noise in the early measurements}, resulting in erratic estimates that do not accurately reflect the true state.
+    \item \important{Slower Convergence}: While a high uncertainty allows for rapid adjustments, it can also cause the filter to \textbf{take longer to converge} to a stable estimate, especially if the measurements are noisy. Due to the high uncertainty, the \textbf{filter may oscillate significantly} before settling down.
+    \item \important{Instability}: In some cases, an excessively high initial uncertainty can lead to \textbf{numerical instability in the filter's calculations}, particularly in the computation of the Kalman gain.
+\end{itemize}
+Therefore, while a large initial uncertainty can be beneficial in certain scenarios, it is crucial to balance it with the characteristics of the system and the expected noise levels to ensure optimal performance of the Kalman filter. Let's see how different settings of process noise ($Q$) and observation noise ($R$) affect the Kalman filter's performance:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textbf{High Process Noise $Q$ and Low Observation Noise $R$}: The filter tends to trust the measurements more, leading to rapid adjustments in the state estimate. This can be beneficial when the system is highly dynamic, but it may also result in \textbf{overfitting to noisy measurements}.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/recurrent-neural-networks/kalman-filter-compare-measurement-trusting-large-q_-small-r.pdf}
+        \caption{Kalman filter performance with high process noise ($Q$) and low observation noise ($R$). The filter quickly adapts to measurements but may overfit to noise.}
+    \end{figure}
+
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textbf{Balanced Process and Observation Noise ($Q$ and $R$)}: The filter strikes a balance between trusting the model predictions and the measurements. This setting is often ideal for many applications, as it allows the filter to adapt to changes while maintaining stability.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/recurrent-neural-networks/kalman-filter-compare-balanced-moderate-q_-moderate-r.pdf}
+        \caption{Kalman filter performance with balanced process and observation noise ($Q$ and $R$). The filter effectively balances predictions and measurements.}
+    \end{figure}
+
+    \item[\textcolor{DarkOrange3}{\faIcon{balance-scale}}] \textbf{Low Process Noise $Q$ and High Observation Noise $R$}: The filter relies more on the model predictions, leading to smoother estimates. This is useful when the system is relatively stable, but it may result in slower adaptation to actual changes in the state.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/recurrent-neural-networks/kalman-filter-compare-model-trusting-small-q_-large-r.pdf}
+        \caption{Kalman filter performance with low process noise ($Q$) and high observation noise ($R$). The filter produces smoother estimates but may adapt slowly to changes.}
+    \end{figure}
+
+    \item \textbf{Kalman Gain $K_t$ Behavior}: The Kalman gain adjusts dynamically based on the noise characteristics. A higher gain indicates more trust in the measurements, while a lower gain indicates more trust in the model predictions.
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/recurrent-neural-networks/kalman-filter-compare-gain.pdf}
+        \caption{Kalman gain ($K_t$) behavior under different noise covariance settings. The gain reflects the filter's trust in measurements versus predictions.}
+    \end{figure}
+\end{itemize}

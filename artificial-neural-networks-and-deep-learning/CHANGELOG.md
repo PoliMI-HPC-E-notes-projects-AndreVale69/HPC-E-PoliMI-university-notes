@@ -18,6 +18,7 @@
     - add `Feed-Forward Extensions: TDNNs`
   - add `Models with Memory`
     - add `Hidden State Dynamics and Outputs`
+    - add `Linear Dynamical Systems (LDS) and Kalman Filter`
 
 --------------------
 

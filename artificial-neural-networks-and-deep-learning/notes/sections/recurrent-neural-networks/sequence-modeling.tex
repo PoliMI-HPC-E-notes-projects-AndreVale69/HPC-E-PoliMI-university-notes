@@ -1,0 +1,124 @@
+\subsection{Sequence Modeling}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Static vs Dynamic Datasets}}
+\end{flushleft}
+Until now, all the models we have seen (Perceptron, Feed-Forward, etc.) assumed \textbf{static datasets}, i.e., each input $\mathbf{x}_{n}$ is \textbf{independent} from the others:
+\begin{equation*}
+    \mathbf{x}_{n} = \left[x_1, x_2, \dots, x_I\right] \xrightarrow{\text{produces}} \hat{y}_n = f\left(\mathbf{x}_{n}; \theta\right)
+\end{equation*}
+This means that the network \textbf{does not know any notion of time} or order of the inputs. Each sample is processed as a separate point in the dataset. However, \textbf{many real-world problem are sequential}, for example:
+\begin{itemize}
+    \item Speech recognition (audio signal is a sequence of sound waves)
+    \item Stock price prediction (time series data)
+    \item Text generation (sequence of words or characters)
+    \item Human motion capture (sequence of body poses over time)
+\end{itemize}
+These require \textbf{dynamic datasets}, where:
+\begin{equation*}
+    \mathbf{X} = \left[\mathbf{x}_0, \mathbf{x}_1, \dots, \mathbf{x}_T\right]
+\end{equation*}
+Represents \textbf{a temporal sequence} rather than independent samples. Here, each observation $\mathbf{x}_t$ depends on the past:
+\begin{equation*}
+    \mathbf{x}_t = f\left(\mathbf{x}_{t-1}, \mathbf{x}_{t-2}, \dots\right)
+\end{equation*}
+Thus, a model must \textbf{remember or integrate information} across time.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{clock} \textbf{From Fixed Inputs to Temporal Sequences}}
+\end{flushleft}
+Now that we have established the difference between \emph{static} and \emph{dynamic}\break datasets, \emph{how can we adapt our models to process sequences?} In a \textbf{feed-forward neural network (FNN)}, the computation is:
+\begin{equation*}
+    \hat{y} = f\left(\mathbf{x}; \mathbf{W}\right)
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\mathbf{x} \in \mathbb{R}^{I}$ is a fixed-size input vector where $I$ is the number of features.
+    \item $\mathbf{W}$ are the model parameters (weights and biases).
+    \item $f(\cdot)$ is a non-linear function (the neural network activation functions).
+    \item $\hat{y}$ is the output prediction.
+\end{itemize}
+Every sample is processed \textbf{independently}, the network ``sees'' no link between sample $\mathbf{x}_n$ and $\mathbf{x}_{n+1}$. But in sequential data, we have \textbf{temporal sequences}:
+\begin{equation*}
+    \mathbf{X} = \left[\mathbf{x}_0, \mathbf{x}_1, \dots, \mathbf{x}_T\right]
+\end{equation*}
+Each vector $\mathbf{x}_t$ is not isolated and depends on what came before. A key point to note is that the \textbf{current observation} $x_t$ \textbf{only has meaning when considered in the context of the past}. For example, in language modeling, the word ``bank'' can refer to a financial institution or the side of a river, depending on the preceding words. Therefore, to effectively model sequences, we need architectures that can \textbf{capture temporal dependencies} and \textbf{retain information} from previous time steps. To handle sequences, we define a \textbf{temporal model}:
+\begin{equation}
+    \hat{y}_t = f\left(x_t, x_{t-1}, \dots, x_0\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\hat{y}_t$ is the output prediction at time $t$.
+    \item $f(\cdot)$ is a function that considers (``remembers'') the current input $x_t$ and all previous inputs $x_{t-1}, \dots, x_0$.
+\end{itemize}
+In vector form, this corresponds to an \textbf{ordered sequence of inputs and outputs}:
+\begin{equation*}
+    \mathbf{x} = \left[x_0, x_1, \dots, x_T\right] \quad \mathbf{Y} = \left[y_0, y_1, \dots, y_T\right]
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why fixed Networks fail.}} The first attempt to fix this problem could be to use a \textbf{fixed feed-forward network} that reuse knowledge from one input to the next. However, this approach has several limitations:
+\begin{itemize}
+    \item There is no explicit mechanism to store \textbf{context} or \textbf{memory} of previous inputs.
+    \item Parameters are shared across time, but \textbf{activations do not carry over} from one time step to the next.
+    \item Most importantly, the model is explicitly \textbf{memoryless} and cannot capture temporal correlations beyond the current input.
+\end{itemize}
+If we forced a static Neural Network to handle a sequence, we'd need to \textbf{concatenate all time steps} into a single giant input vector:
+\begin{equation*}
+    \mathbf{x} = \left[x_0, x_1, \dots, x_T\right]
+\end{equation*}
+Which explodes in size and loses flexibility (variable-length sequences can't be handled).
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Idea behind Sequence Modeling.}} We introduce the concept of a \definition{Temporal Dimension} and \definition{State Propagation}. At each time step $t$:
+\begin{enumerate}
+    \item The model takes $x_t$ as input.
+    \item It combines it with \textbf{internal state} $h_{t-1}$ (the memory from the previous time step).
+    \item It produces both:
+    \begin{itemize}
+        \item Output: $y_t$
+        \item New hidden state:
+        \begin{equation}
+            h_t = f_h\left(x_t, h_{t-1}\right)
+        \end{equation}
+    \end{itemize}
+    Where $h_t$ captures information from all previous inputs up to time $t$, and $y_t$ is the prediction based on the current input and the accumulated context.
+\end{enumerate}
+This recursive definition is the core idea of \textbf{Recurrent Neural Networks (RNNs)}: a single model unrolled through time, where the same parameters are used at each time step, but the hidden state allows information to flow across time. It is recursive because the output at time $t$ depends on the output at time $t-1$ through the hidden state, then $t-2$, and so on.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Handling Time Dimension: Temporal Data Representation}}
+\end{flushleft}
+The theory behind sequence modeling requires us to rethink how we represent data. Instead of a single-fixed input space, we now have a \textbf{spatio-temporal space} that includes both \textbf{Feature Dimension} $I$ and \textbf{Time Dimension} $T$. So instead of a single flat vector $\mathbf{x}$, we have a \textbf{sequence}:
+\begin{equation*}
+    \mathbf{X} = \left[\mathbf{x}_0, \mathbf{x}_1, \dots, \mathbf{x}_T\right] \in \mathbb{R}^{I \times (T+1)}
+\end{equation*}
+This means that at every discrete time $t$, we observe:
+\begin{equation*}
+    \mathbf{x}_t = \left[x_{t,1}, \, x_{t,2}, \, \dots, \, x_{t,I}\right]
+\end{equation*}
+Where $x_{t,i}$ is the $i$-th feature at time $t$, and $\mathbf{x}_t$ is a vector of features measured at that time step $t$. Each vector is \textbf{not independent} but part of a sequence where the order matters, and this is the essence of \textbf{sequential modeling}. We can express this dependency as:
+\begin{equation*}
+    P\left(\mathbf{x}_t \mid \mathbf{x}_{t-1}, \mathbf{x}_{t-2}, \dots, \mathbf{x}_0\right)
+\end{equation*}
+This conditional probability captures the idea that the current observation $\mathbf{x}_t$ depends on all previous observations in the sequence.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Types of models}}
+\end{flushleft}
+There are \textbf{different modeling philosophies} for handling memory in sequence data. We can group them into two big categories:
+\begin{itemize}
+    \item \definition{Memoryless Models}. These models \textbf{ignore the internal notion of time}, and treat previous inputs as just \emph{extra inputs}. Two models we will see in the next sections fall into this category:
+    \begin{itemize}
+        \item \textbf{Autoregressive (AR) Models}: Predict the current output based on a fixed number of previous inputs.
+        \item \textbf{Feed-Forward Networks with Time Delays}: Use a sliding window of past inputs as additional features.
+    \end{itemize}
+    
+    \item \definition{Models with Memory}. These models \textbf{explicitly maintain an internal state} that captures information from previous time steps. The main models we will see in the next sections are:
+    \begin{itemize}
+        \item \textbf{Linear Dynamical Systems (LDS)}: Use linear transformations to update the hidden state over time.
+        \item \textbf{Hidden Markov Models (HMMs)}: Use probabilistic transitions between hidden states to model sequences.
+        \item \textbf{Recurrent Neural Networks (RNNs)}: Use non-linear functions to update the hidden state, allowing for complex temporal dependencies.
+    \end{itemize}
+\end{itemize}

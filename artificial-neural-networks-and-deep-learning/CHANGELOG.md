@@ -2,9 +2,17 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.4.0
+
+- add `Recurrent Neural Networks (RNNs)`
+  - add `Sequence Modeling`
 
 --------------------
 

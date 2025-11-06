@@ -15,6 +15,7 @@
   - add `Sequence Modeling`
   - add `Memoryless Models`
     - add `Autoregressive (AR) Models`
+    - add `Feed-Forward Extensions: TDNNs`
 
 --------------------
 

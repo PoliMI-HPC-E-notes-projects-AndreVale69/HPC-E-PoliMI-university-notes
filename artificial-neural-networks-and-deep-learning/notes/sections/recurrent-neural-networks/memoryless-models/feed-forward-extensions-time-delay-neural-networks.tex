@@ -1,0 +1,59 @@
+\subsubsection{Feed-Forward Extensions: TDNNs}\label{sec:feed-forward-extensions-time-delay-neural-networks}
+
+Autoregressive models are \textbf{linear}:
+\begin{equation*}
+    \hat{x}_t = a_1 x_{t-1} + a_2 x_{t-2} + \ldots + a_p x_{t-p}
+\end{equation*}
+They work only if the relationship between past and future is \emph{linear}. But real-world signals (speech, finance, human motion, etc.) are \textbf{nonlinear} and complex. The idea is to replace the simple linear combination with a \textbf{Feed-Forward Neural Network (FNN)} that can learn nonlinear dependencies.
+
+\highspace
+We still use the \textbf{sliding window} of the last $p$ time steps as input:
+\begin{equation*}
+    \mathbb{x}_t = \left[x_{t-1}, x_{t-2}, \ldots, x_{t-p}\right]^T
+\end{equation*}
+But instead of computing a weighted sum, we feed it into a neural network:
+\begin{equation*}
+    \hat{y}_t = f\left(\mathbf{x}_t; \mathbf{W}, \mathbf{b}\right)
+\end{equation*}
+Where $f$ is the neural network function parameterized by weights $\mathbf{W}$ and biases $\mathbf{b}$, and it can include \textbf{one or more hidden layers} with nonlinear activation functions (ReLU, tanh, etc.).
+
+\highspace
+\begin{definitionbox}[: Feed-Forward Time-Delay Neural Network]
+    A \definition{Feed-Forward Time-Delay Neural Network (TDNN)} is a neural network architecture designed for \textbf{sequence modeling}, where the \textbf{input} consists of a \textbf{fixed-size window of past time steps}, and the \textbf{network learns to predict future values based on this context}. TDNNs can capture nonlinear relationships in temporal data by utilizing multiple layers and nonlinear activation functions.
+
+    Mathematically, a TDNN can be represented as:
+    \begin{equation}
+        \begin{aligned}
+            h^{(1)} &= \sigma\left(\mathbf{W}^{(1)} \underbrace{\left[x_{t-1}, x_{t-2}, \dots, x_{t-p}\right]}_{\mathbf{x}_t} + \mathbf{b}^{(1)}\right) \\[.3em]
+            h^{(2)} &= \sigma\left(\mathbf{W}^{(2)} h^{(1)} + \mathbf{b}^{(2)}\right) \\[.3em]
+            &\vdots \\[.3em]
+            \hat{y}_t &= \mathbf{W}^{(L)} h^{(L-1)} + \mathbf{b}^{(L)}
+        \end{aligned}
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $\sigma$ is a \textbf{nonlinear activation function} (e.g., ReLU, tanh).
+        \item $\mathbf{W}^{(l)}$ and $\mathbf{b}^{(l)}$ are the weights and biases for layer $l$.
+        \item $L$ is the total number of layers in the network.
+        \item $h^{(l)}_{t}$ represents the hidden layer activations at layer $l$ and time $t$.
+    \end{itemize}
+    Each time step produces its own prediction based on the \textbf{previous $p$ samples}.
+\end{definitionbox}
+
+\highspace
+\begin{examplebox}[: TDNN for Time Series Prediction]
+    Suppose we want to predict whether the \textbf{temperature} will rise or fall tomorrow. The relation may depend on nonlinear combinations, for example: ``if temperature has been rising for 2 days \textbf{and} humidity is decreasing, then likely it will rise again''. Such behavior cannot be captured by linear AR coefficients, but a neural network can \textbf{learn} this rule through nonlinear layers.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{balance-scale} \textbf{Properties and Limitations}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Nonlinear}: TDNNs can model complex, nonlinear relationships in temporal data. This allows them to capture patterns that linear models cannot.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Still memoryless}: TDNNs do not have an internal state that persists across time steps. \textbf{Each prediction is made solely based on the fixed-size input window}, without retaining information from previous predictions. It is the same limitation as AR models.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Deterministic}: TDNNs produce a single output for a given input window, without modeling uncertainty or variability in predictions. In other words, no stochastic transition or hidden states. This can be a limitation in scenarios where uncertainty is important (e.g., weather forecasting).
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Static structure}: The architecture of a TDNN is fixed once defined, meaning it cannot dynamically adjust its structure based on the input sequence length or complexity. Network must be retrained or resized for different sequence lengths.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Parallelizable}: Each window can be processed independently, allowing for efficient training and inference on modern hardware (GPUs).
+\end{itemize}
+So TDNNs are a step up from linear AR models, adding \textbf{nonlinearity} and \textbf{learned feature extraction}, but they \textbf{still lack the ability to maintain an internal state or model uncertainty over time}. For tasks requiring memory of past states or probabilistic predictions, more advanced architectures like Recurrent Neural Networks (RNNs) or Long Short-Term Memory (LSTM) networks are needed.

@@ -13,6 +13,8 @@
 
 - add `Recurrent Neural Networks (RNNs)`
   - add `Sequence Modeling`
+  - add `Memoryless Models`
+    - add `Autoregressive (AR) Models`
 
 --------------------
 

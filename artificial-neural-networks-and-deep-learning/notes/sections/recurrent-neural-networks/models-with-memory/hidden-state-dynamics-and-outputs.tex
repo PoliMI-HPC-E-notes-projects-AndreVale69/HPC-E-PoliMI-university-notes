@@ -1,0 +1,76 @@
+\subsection{Models with Memory}
+
+\subsubsection{Hidden State Dynamics and Outputs}
+
+So far, our models only saw \textbf{a sliding window} of past data. But what if the dependency extends over \emph{hundreds} of time steps? Keeping all past inputs becomes impossible. Instead of feeding all the history explicitly, we can \textbf{summarize} it in a \textbf{hidden state vector} $\mathbf{h}_t$. That state:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] Evolves over time;
+    \item[\textcolor{Green3}{\faIcon{check}}] Captures everything important about the past;
+    \item[\textcolor{Green3}{\faIcon{check}}] Is sufficient to predict the present or future.
+\end{itemize}
+\begin{equation*}
+    \text{Past Inputs } \left(x_0, x_1, \ldots, x_{t-1}\right) \quad \xrightarrow{\text{compressed into}} \quad \mathbf{h}_{t-1}
+\end{equation*}
+At each time step, the model receives a new input $x_t$ and updates its hidden state $\mathbf{h}_t$ based on the previous state $\mathbf{h}_{t-1}$ and the new input $x_t$:
+\begin{equation*}
+    \mathbf{h}_t = F\left(\mathbf{h}_{t-1}, \mathbf{x}_t\right)
+\end{equation*}
+Finally, the model produces an output $\mathbf{y}_t$ based on the current hidden state $\mathbf{h}_t$:
+\begin{equation*}
+    \mathbf{y}_t = G\left(\mathbf{h}_t\right)
+\end{equation*}
+Since we are in a \textbf{dynamical system} setting, $F$ and $G$ are special functions:
+\begin{itemize}
+    \item $F$ is the \textbf{state transition function}, which defines \hl{how the hidden state evolves over time};
+    \item $G$ is the \textbf{output function}, which defines \hl{how the outputs are generated from the hidden states}.
+    \item $\mathbf{h}_t$ is the \textbf{hidden state} at time step $t$;
+    \item $\mathbf{y}_t$ is the \textbf{output} at time step $t$.
+    \item $\mathbf{x}_t$ is the \textbf{input} at time step $t$.
+\end{itemize}
+The functions $F$ and $G$ can be \textbf{deterministic or stochastic}, \textbf{linear or nonlinear}.
+
+\begin{examplebox}[: Linear Dynamical System (LDS)]
+    If both state transition function $F$ and output function $G$ are linear, we have a \textbf{Linear Dynamical System (LDS)}:
+    \begin{equation*}
+        \begin{cases}
+            \mathbf{h}_t = \mathbf{A} \mathbf{h}_{t-1} + \mathbf{B} \mathbf{x}_t + \mathbf{\omega}_t \\[.3em]
+            \mathbf{y}_t = \mathbf{C} \mathbf{h}_t + \mathbf{\nu}_t
+        \end{cases}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $\mathbf{A}, \mathbf{B}, \mathbf{C}$ are system matrices defined by the model;
+        \item $\mathbf{\omega}_t$ is the process noise (usually Gaussian);
+        \item $\mathbf{\nu}_t$ is the observation noise (usually Gaussian).
+    \end{itemize}
+    This system is widely used in control theory and signal processing:
+    \begin{itemize}
+        \item Evolves linearly in state space;
+        \item Has memory through the matrix $\mathbf{A}$, which defines how past states influence the current state.
+        \item And is \textbf{stochastic}, so uncertainty is tracked explicitly.
+    \end{itemize}
+    If the hidden state $\mathbf{h}_t$ can't be observed directly, we can estimate it using the \textbf{Kalman filter}.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Where is the Memory?}}
+\end{flushleft}
+The memory in these models is encapsulated in the \textbf{hidden state vector} $\mathbf{h}_t$. This vector serves as a \textbf{summary} of all past inputs and states, allowing the model to retain information over time without needing to store the entire history explicitly. So it is a sort of \emph{model's memory} of past events, which influences its current and future behavior. This state can be represented conditionally as (\refeq{eq:sequence-modeling-probability}, \autopageref{eq:sequence-modeling-probability}):
+\begin{equation*}
+    P\left(\mathbf{h}_t \, \mid \, \mathbf{h}_{t-1}, \mathbf{h}_{t-2}, \ldots, \mathbf{h}_0\right)
+\end{equation*}
+But since $\mathbf{h}_{t-1} \sim P\left(\mathbf{h}_{t-1} \, \mid \, \mathbf{h}_{t-2}, \ldots, \mathbf{h}_0\right)$, we can simplify this to:
+\begin{equation*}
+    P\left(\mathbf{h}_t \, \mid \, \mathbf{h}_{t-1}\right) \approx P\left(\mathbf{h}_t \, \mid \, \mathbf{h}_{t-1}, \mathbf{h}_{t-2}, \ldots, \mathbf{h}_0\right)
+\end{equation*}
+This property is known as the \textbf{Markov Property} and is fundamental in the design of models with memory, because it allows us to focus on the most recent state $\mathbf{h}_{t-1}$ to predict the next state $\mathbf{h}_t$, rather than needing to consider the entire history of states. It \hl{lightens the computational load and simplifies the modeling process because we only need to keep track of the current state}, not the entire sequence of past states.
+
+\highspace
+\begin{definitionbox}[: Markov Property]
+    A process satisfies the \definition{Markov Property} if ``the \emph{future} depends \textbf{only} on the \emph{present}, and \textbf{not} directly on the \emph{past} before it''. Formally:
+    \begin{equation}
+        P\left(h_t \, \mid \, h_{t-1}, h_{t-2}, \ldots, h_0\right) = P\left(h_t \, \mid \, h_{t-1}\right)
+    \end{equation}
+    So, once we know th \textbf{current state} $h_{t-1}$, the \textbf{past states} $h_{t-2}, \ldots, h_0$ provide no additional information about the \textbf{future state} $h_t$. All relevant information from the past is \textbf{summarized} inside the current state $h_{t-1}$.
+\end{definitionbox}

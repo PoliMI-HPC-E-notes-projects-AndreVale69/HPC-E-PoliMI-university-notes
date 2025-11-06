@@ -16,6 +16,8 @@
   - add `Memoryless Models`
     - add `Autoregressive (AR) Models`
     - add `Feed-Forward Extensions: TDNNs`
+  - add `Models with Memory`
+    - add `Hidden State Dynamics and Outputs`
 
 --------------------
 

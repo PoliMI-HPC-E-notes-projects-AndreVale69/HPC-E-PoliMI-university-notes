@@ -19,6 +19,7 @@
   - add `Models with Memory`
     - add `Hidden State Dynamics and Outputs`
     - add `Linear Dynamical Systems (LDS) and Kalman Filter`
+    - add `Hidden Markov Models (HMMs)`
 
 --------------------
 

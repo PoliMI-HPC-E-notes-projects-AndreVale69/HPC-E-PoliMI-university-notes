@@ -1,0 +1,343 @@
+\subsubsection{Hidden Markov Models (HMMs)}\label{sec:hidden-markov-models}
+
+In a \textbf{Linear Dynamical System (LDS)} like the Kalman filter, the hidden state $h_t$ was \textbf{continuous} (e.g., a vector of real numbers that evolves over time). But in many real problems, the system evolves through \textbf{discrete modes or categories}, not continuous quantities. For example:
+\begin{itemize}
+    \item A speaker pronouncing \emph{phonemes} (basic sound units) in speech recognition.
+    \item A user switching \emph{behaviors} (e.g., browsing, purchasing) in activity recognition.
+    \item Weather being \emph{sunny}, \emph{rainy}, or \emph{cloudy} in weather modeling (not continuous temperature values).
+\end{itemize}
+So instead of continuous state vectors $h_t \in \mathbb{R}^n$, we have \textbf{discrete hidden states} $h_t \in \{1, 2, \ldots, K\}$ where $K$ is the number of possible hidden states. This leads us to \textbf{Hidden Markov Models (HMMs)}, which are probabilistic models for sequences with discrete hidden states.
+
+\begin{definitionbox}[: Markov Chain]\label{def:markov-chain}
+    A \definition{Markov Chain} is a \textbf{mathematical model} that \emph{implements} the Markov property (\autopageref{def:markov-property}). A Markov chain consists of:
+    \begin{itemize}
+        \item A \textbf{finite or countable set of states}.
+        \item A \textbf{transition matrix}:
+        \begin{equation*}
+            A = \left[a_{ij}\right], \quad a_{ij} = P\left(s_{t} = j \, \mid \, s_{t-1} = i\right)
+        \end{equation*}
+        \item An \textbf{initial state distribution}:
+        \begin{equation*}
+            \pi_{i} = \left[\pi_i\right], \quad \pi_i = P\left(s_0 = i\right)
+        \end{equation*}
+    \end{itemize}
+    A Markov chain \textbf{uses the Markov property} to describe how the state changes over time.
+\end{definitionbox}
+
+\begin{examplebox}[: Weather Model as a Markov Chain]
+    Consider a simple weather model with three states: \emph{Sunny}, \emph{Rainy}, and \emph{Cloudy}. The transition matrix $A$ could be:
+    \begin{equation*}
+        A = \begin{bmatrix}
+            0.8 & 0.1 & 0.1 \\
+            0.4 & 0.5 & 0.1 \\
+            0.3 & 0.3 & 0.4
+        \end{bmatrix}
+    \end{equation*}
+    This means that if today is Sunny, there is an 80\% chance that tomorrow will also be Sunny, a 10\% chance of Rainy, and a 10\% chance of Cloudy. The initial state distribution $\pi$ could be:
+    \begin{equation*}
+        \pi = \begin{bmatrix}
+            0.5 \\
+            0.3 \\
+            0.2
+        \end{bmatrix}
+    \end{equation*}
+    Indicating a 50\% chance of starting in Sunny, 30\% in Rainy, and 20\% in Cloudy. This Markov chain can be used to model and predict weather patterns over time.
+\end{examplebox}
+
+\begin{definitionbox}[: Hidden Markov Model (HMM)]\label{def:hidden-markov-model}
+    A \definition{Hidden Markov Model (HMM)} is a \textbf{probabilistic dynamical system} where:
+    \begin{itemize}
+        \item The system has a sequence of \textbf{hidden states}:
+        \begin{equation*}
+            s_1, s_2, \ldots, s_T, \quad s_t \in \left\{1, 2, \ldots, K\right\}
+        \end{equation*}
+        Which evolve over time according to a \textbf{Markov chain}.
+        \item At each time step, the system produces an \textbf{observation} $y_t$ whose distribution depends \textbf{only on the current hidden state}.
+    \end{itemize}
+    An HMM is fully defined by the triplet:
+    \begin{equation}
+        \lambda = \left(\pi, A, B\right)
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item \textbf{Initial state distribution} $\pi$:
+        \begin{equation}
+            \pi_i = P\left(s_1 = i\right)
+        \end{equation}
+        \item \textbf{State transition probabilities} $A$:
+        \begin{equation}
+            A = \left[a_{ij}\right] \qquad a_{ij} = P\left(s_{t} = j \, \mid \, s_{t-1} = i\right)
+        \end{equation}
+        \item \textbf{Emission probabilities} $B$:
+        \begin{equation}
+            B = \left[b_{j}(k)\right] \qquad b_{j}(k) = P\left(y_t = k \, \mid \, s_t = j\right)
+        \end{equation}
+    \end{itemize}
+\end{definitionbox}
+
+\noindent
+So the Hidden Markov Model defines a \emph{probabilistic process} (stochastic process) with \textbf{two parallel processes} happening simultaneously:
+\begin{enumerate}
+    \item \important{Hidden state sequence}. This is a sequence of \textbf{hidden states}:
+    \begin{equation*}
+        S = \left(s_1, s_2, \ldots, s_T\right) \quad s_t \in \left\{1, 2, \ldots, K\right\}
+    \end{equation*}
+    These states represent what is \emph{really happening} in the system, \underline{but} we \textbf{cannot observe them directly} (state estimation problem). Instead, they are \textbf{latent variables} that we need to infer from the observations. This layer evolves according to the \textbf{Markov Chain}:
+    \begin{equation*}
+        P\left(s_t \, \mid \, s_{t-1}\right) = a_{s_{t-1}, s_t}
+    \end{equation*}
+    \begin{itemize}
+        \item \textbf{Hidden} because we do not observe these states directly.
+        \item \textbf{Markov} because the next state depends only on the current state (Markov property).
+        \item \textbf{Chain} because it is a sequence of states evolving over time.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{DarkOrange3}{\faIcon{exclamation-triangle} \textbf{Markov Assumption on the Hidden States: First-Order Markov Property}}
+    \end{flushleft}
+    The Markov Chain assumes the \textbf{first-order Markov property} for the hidden states:
+    \begin{equation*}
+        P\left(s_t \, \mid \, s_{1}, s_{2}, \ldots, s_{t-1}\right) = P\left(s_t \, \mid \, s_{t-1}\right)
+    \end{equation*}
+    This means that the \textbf{next hidden state} depends \textbf{only on the current one}, not on the entire history of past states. This assumption simplifies the model and makes computations tractable, because the entire history before $s_{t-1}$ is irrelevant once current state $s_{t-1}$ is known. \hl{Without this assumption}, the model would become significantly more complex and harder to work with (\textbf{exponentially many parameters}) because we would need to consider all previous states to predict the next one:
+    \begin{equation*}
+        \text{Without Markov Assumption:} \, \Rightarrow \, P\left(s_t \, \mid \, s_{1}, s_{2}, \ldots, s_{t-1}\right)
+    \end{equation*}
+    
+
+    \item \important{Observation sequence}. This is a sequence of \textbf{observed data}:
+    \begin{equation*}
+        Y = \left(y_1, y_2, \ldots, y_t\right) \quad y_T \in \mathcal{O}
+    \end{equation*}
+    These are the \textbf{actual measurements}, the data we \emph{can} see. Each observation is generated \textbf{from the current hidden state only}:
+    \begin{equation*}
+        P\left(y_t \, \mid \, s_t\right) = b_{s_t}(y_t)
+    \end{equation*}
+    This is called the \textbf{emission probability}, or \textbf{emission model}, because the hidden state \emph{emits} an observation according to this distribution.
+    \begin{itemize}
+        \item \textbf{Observation} because these are the data we actually see.
+        \item \textbf{Generated} because they are produced by the hidden states.
+        \item \textbf{Not Markov} because observations do not have the Markov property; they depend on the hidden states.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{DarkOrange3}{\faIcon{exclamation-triangle} \textbf{Emission Independence Assumption}}
+    \end{flushleft}
+    This is the second crucial assumption of Hidden Markov Models. It states that the \textbf{observation at time $t$ depends only on the current hidden state $s_t$}:
+    \begin{equation*}
+        P\left(y_t \, \mid \, s_{t}, s_{t-1}, \dots, y_{t-1}\right) = P\left(y_t \, \mid \, s_t\right)
+    \end{equation*}
+    This means that once we know the hidden state $s_t$, the observation $y_t$ is conditionally independent of all previous observations and states. In simple terms, the \textbf{observation} at time $t$ (what we really see) depends \textbf{only on the hidden state} at time $t$ (what is really happening), and \textbf{not on previous states or previous observations}. For example, if the hidden state is ``Rainy'', the probability of seeing ``Umbrella'' at time $t$ does not depend on yesterday's weather, yesterday's observation, or any earlier time steps (last week, last month, etc.). The hidden state already contains all needed information. \hl{Without this assumption}, the model would become significantly more complex and harder to work with, as we would need to consider dependencies on all previous states and observations:
+    \begin{equation*}
+        \text{Without Emission Independence:} \, \Rightarrow \, P\left(y_t \, \mid \, s_{t}, s_{t-1}, \dots, y_{t-1}\right)
+    \end{equation*}
+    Instead, the emission independence assumption allows us to \textbf{simplify the model and focus on the relationship between the current hidden state and the current observation}:
+    \begin{equation*}
+        P\left(y_t \, \mid \, s_t\right) = b_{s_t}(y_t)
+    \end{equation*}
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need both assumptions for an HMM to work?}}
+\end{flushleft}
+Because without these assumptions, the probability of a sequence would involve \textbf{all states and all observations interacting} with each other directly. That would make modeling impossible, inference impossible and learning impossible (because the number of parameters would explode combinatorially). Because \textbf{hiddent transitions} and \textbf{observations} are two independent kinds of dependencies, we can \textbf{factor the joint probability} of the entire sequence into manageable parts. Given the two assumptions, the full joint probability of the hidden states and observations can be expressed as:
+\begin{equation}
+    P\left(S, Y\right) = P\left(s_1\right) \cdot \prod_{t=2}^{T} P\left(s_t \, \mid \, s_{t-1}\right) \cdot \prod_{t=1}^{T} P\left(y_t \, \mid \, s_t\right)
+\end{equation}
+\begin{itemize}
+    \item The \textbf{first term} $P\left(s_1\right)$ represents the probability of starting in the initial hidden state.
+    \item The \textbf{first product} multiplies all the state transition probabilities together, capturing how the hidden states evolve over time according to the Markov chain.
+    \item The \textbf{second product} multiplies all the observation emission probabilities together, capturing how each observation is generated from the corresponding hidden state.
+\end{itemize}
+Obviously, this factorization would be \textbf{impossible} without the two assumptions, because we would have to consider all possible dependencies between states and observations across time steps.
+
+\highspace
+\begin{examplebox}[: HMM Analogy: Weather and Activities]
+    Imagine we are trying to infer the weather (hidden states) based on someone's activities (observations). The hidden states could be:
+    \begin{itemize}
+        \item Sunny
+        \item Rainy
+        \item Cloudy
+    \end{itemize}
+    The observations could be:
+    \begin{itemize}
+        \item Going for a walk
+        \item Carrying an umbrella
+        \item Staying indoors
+    \end{itemize}
+    The HMM would model how the weather changes over time (Markov chain) and how each type of weather influences the likelihood of different activities (emission probabilities). By observing the activities, we can infer the most likely sequence of weather conditions. For example, if we see someone carrying an umbrella, we might infer that it is likely Rainy. On the other hand, if we see them going for a walk, it might indicate Sunny weather.
+\end{examplebox}
+
+\highspace
+The model is \textbf{fully specified} by the triplet $\lambda = (\pi, A, B)$:
+\begin{itemize}
+    \item \important{Initial State Distribution} $\pi$ (where we start). It tells us the \textbf{probability that the process starts in each hidden state}:
+    \begin{equation*}
+        \pi_i = P \left(s_1 = i\right)
+    \end{equation*}
+    For example, in a weather model, $\pi$ could represent the probabilities of starting the day as Sunny, Rainy, or Cloudy:
+    \begin{equation*}
+        \pi = \left[0.6, 0.3, 0.1\right]
+    \end{equation*}
+    Where there is a 60\% chance of starting Sunny, 30\% Rainy, and 10\% Cloudy. If we don't know the initial state, we can assume a uniform distribution:
+    \begin{equation*}
+        \pi_i = \frac{1}{K} \quad \forall i
+    \end{equation*}
+    But in real tasks, $\pi$ matters a lot (especially for short sequences).
+
+
+    \item \important{State Transition Matrix} $A$ (how the hidden states evolve over time). It is a $N \times N$ matrix where each entry $a_{ij}$ represents the \textbf{probability of transitioning from hidden state $i$ to hidden state $j$}:
+    \begin{equation*}
+        A = \left[a_{ij}\right] \qquad
+        a_{ij} = P\left(s_{t} = j \, \mid \, s_{t-1} = i\right)
+    \end{equation*}
+    This is the \textbf{Markov Chain} component of the HMM, defining how likely it is to move between different hidden states at each time step.
+
+    For example, in a weather model, $A$ could represent the probabilities of transitioning between Sunny, Rainy, and Cloudy states:
+    \begin{equation*}
+        A = \begin{bmatrix}
+            0.7 & 0.2 & 0.1 \\
+            0.4 & 0.5 & 0.1 \\
+            0.3 & 0.3 & 0.4
+        \end{bmatrix}
+    \end{equation*}
+    Where $a_{12} = 0.2$ means there is a 20\% chance of transitioning from Sunny to Rainy.
+
+
+    \item \important{Emission Probability Matrix} $B$ (given a hidden state, how likely are the observations). It describes the \textbf{probability of each observation given a hidden state}. It is a sort of ``lookup table'' (or mapping) that tells us how likely each observation is for each hidden state:
+    \begin{equation*}
+        B = \left[b_{j}(k)\right] \qquad b_{j}(k) = P\left(y_t = k \, \mid \, s_t = j\right)
+    \end{equation*}
+    It encodes the \textbf{emission model}: hidden states \textbf{emit} observations according to probability distributions.
+
+    For example, in a weather model, $B$ could represent the probabilities of different activities given the weather states:
+    \begin{equation*}
+        B = \begin{bmatrix}
+            0.8 & 0.1 & 0.1 \\  % Sunny
+            0.2 & 0.7 & 0.1 \\  % Rainy
+            0.5 & 0.2 & 0.3     % Cloudy
+        \end{bmatrix}
+    \end{equation*}
+    Where the rows correspond to hidden states (Sunny, Rainy, Cloudy) and the columns correspond to observations (Walk, Umbrella, Indoors). For instance, $b_{1}(1) = 0.8$ means that if the weather is Sunny, there is an 80\% chance of going for a walk.
+\end{itemize}
+So the HMM triplet $\lambda = (\pi, A, B)$ completely defines the model, allowing us to define where the hidden state \textbf{starts} ($\pi$), how it \textbf{evolves} over time ($A$), and how it \textbf{produces observations} ($B$).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Three Fundamental Problems of HMMs}}
+\end{flushleft}
+Hidden Markov Models are powerful, but to use them effectively, we need to solve three fundamental problems:
+\begin{enumerate}
+    \item \important{Evaluation Problem}. Given an HMM $\lambda = (\pi, A, B)$ and an observation sequence $Y = (y_1, y_2, \ldots, y_T)$, compute the probability of the observation sequence:
+    \begin{equation*}
+        P\left(Y \, \mid \, \lambda\right)
+    \end{equation*}
+    This tells us how likely the observed data is under the model. It is useful for model comparison and likelihood estimation.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Forward Algorithm.}} The \textbf{Forward Algorithm} is not covered here, but it efficiently computes this probability using dynamic programming. A general idea is to recursively compute the probabilities of being in each hidden state at each time step, given the observations up to that point.
+
+    \item \important{Decoding Problem}. Given an HMM $\lambda = (\pi, A, B)$ and an observation sequence $Y = (y_1, y_2, \ldots, y_T)$, find the most likely sequence of hidden states $S = (s_1, s_2, \ldots, s_T)$ that could have generated the observations:
+    \begin{equation*}
+        \hat{S} = \arg\max_{S} P\left(S \, \mid \, Y, \lambda\right)
+    \end{equation*}
+    This helps us infer the hidden states from the observed data (e.g., determining the weather sequence from activity observations).
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Viterbi Algorithm.}} The \textbf{Viterbi Algorithm} is explained in detail later.
+
+    \item \important{Learning Problem}. Given an observation sequence $Y = (y_1, y_2, \ldots, y_T)$, estimate the HMM parameters $\lambda = (\pi, A, B)$ that best explain the observed data. This involves finding the model parameters that maximize the likelihood of the observations:
+    \begin{equation*}
+        \lambda^* = \arg\max_{\lambda} P\left(Y \, \mid \, \lambda\right)
+    \end{equation*}
+    This allows us to train the HMM from data.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Baum-Welch Algorithm.}} The \textbf{Baum-Welch Algorithm} (a special case of the Expectation-Maximization, EM, algorithm) is used to iteratively estimate the HMM parameters by maximizing the likelihood of the observed data. It is not covered here, but it involves computing expected counts of transitions and emissions based on the current model, then updating the parameters accordingly.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The Viterbi Algorithm for the Decoding Problem}}
+\end{flushleft}
+The Viterbi algorithm was introduced to address the decoding problem of HMMs. Here, we only explain this algorithm in detail because it is used to demonstrate the limitations of the HMM model and the need for more powerful models, such as RNNs.
+
+\highspace
+First of all, we need to understand why the decoding problem is hard. In an Hidden Markov Model, the \textbf{hidden states} $s_1, s_2, \ldots, s_T$ are not directly observable. Instead, we only see the \textbf{observations} $y_1, y_2, \ldots, y_T$ that are generated from these hidden states. But often, what we really want is \textbf{the hidden states} themselves, because they represent the underlying process we are interested in (e.g., the actual weather conditions, the speaker's phonemes, etc.). So the \definition{Decoding Problem} is about \textbf{finding the most likely sequence of hidden states given the observed data}:
+\begin{equation*}
+    \hat{S} = \arg\max_{S} P\left(S \, \mid \, Y, \lambda\right)
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $S = (s_1, s_2, \ldots, s_T)$ is a candidate sequence of hidden states.
+    \item $Y = (y_1, y_2, \ldots, y_T)$ is the observed sequence.
+    \item $\lambda = (\pi, A, B)$ are the HMM parameters.
+\end{itemize}
+Because there are \textbf{exponentially many} possible hidden state sequences (if there are $K$ hidden states and $T$ time steps, there are $K^T$ possible sequences), we need an efficient algorithm to find the most likely one without enumerating all possibilities. The \definition{Viterbi Algorithm} is the \textbf{efficient dynamic programming algorithm} that solves this problem in \textbf{polynomial time} ($O(T \cdot K^2)$) instead of exponential time ($O(K^T)$).
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Intuition Behind the Viterbi Algorithm.}} Viterbi uses the fact that HMM probabilities factor nicely:
+\begin{equation*}
+    P\left(S, Y\right) = P\left(s_1\right) \cdot \prod_{t=2}^{T} P\left(s_t \, \mid \, s_{t-1}\right) \cdot \prod_{t=1}^{T} P\left(y_t \, \mid \, s_t\right)
+\end{equation*}
+This means that we do not explore all paths, but rather we only keep the \textbf{best partial path} to each state at each time step. \hl{At time $t$, for each possible state, keep the probability of the best path (highest probability) that ends in that state.} So, at each time step, we need two main components:
+\begin{itemize}
+    \item \important{The ``best score'' matrix $\delta$} of size $K \times T$, where $\delta_j(t)$ represents the probability of the most likely path that ends in state $j$ at time $t$:
+    \begin{equation}
+        \delta_j(t) = \max_{s_1, s_2, \ldots, s_{t-1}} P\left(s_1, s_2, \ldots, s_{t-1}, s_t = j, y_1, y_2, \ldots, y_t \, \mid \, \lambda\right)
+    \end{equation}
+
+    \item \important{The ``argmax pointer'' matrix $\psi$} of size $K \times T$, where $\psi_j(t)$ stores the index of the state at time $t-1$ that led to the best path to state $j$ at time $t$:
+    \begin{equation}
+        \psi_j(t) = \arg\max_{i} \left[\delta_i(t-1) \cdot a_{ij}\right]
+    \end{equation}
+    Later, we will use this matrix to backtrack and reconstruct the most likely sequence of hidden states.
+\end{itemize}
+\textcolor{Green3}{\faIcon{tools}} The \textbf{Viterbi algorithm} proceeds in four main steps:
+\begin{enumerate}
+    \item \important{Initialization $t=1$}. For each state $j$ (where a hidden state can be):
+    \begin{equation*}
+        \delta_j(1) = \pi_j \cdot b_j(y_1)
+    \end{equation*}
+    Where $\pi_j$ is the initial probability of starting in state $j$, and $b_j(y_1)$ is the emission probability of observing $y_1$ from state $j$. Also, initialize the pointer:
+    \begin{equation*}
+        \psi_j(1) = 0
+    \end{equation*}
+    That is, there is no previous state at time $1$.
+
+
+    \item \important{Recursion for $t = 2 \dots T$}. We compute matrices $\delta$ and $\psi$ for each state $j$:
+    \begin{equation*}
+        \delta_j(t) = \max_{i} \left[\delta_{t-1}(i) \cdot a_{ij}\right] \cdot b_j(y_t)
+    \end{equation*}
+    This finds the best previous state $i$ that leads to state $j$ at time $t$, multiplies by the transition probability $a_{ij}$ and the emission probability $b_j(y_t)$. We also update the pointer:
+    \begin{equation*}
+        \psi_j(t) = \arg\max_{i} \left[\delta_{t-1}(i) \cdot a_{ij}\right]
+    \end{equation*}
+    This stores the index of the best previous state.
+
+
+    \item \important{Termination}. After filling in the matrices, we find the probability of the best full path:
+    \begin{equation*}
+        P^* = \max_{j} \delta_T(j)
+    \end{equation*}
+    And the final state of the best path:
+    \begin{equation*}
+        s_T^* = \arg\max_{j} \delta_T(j)
+    \end{equation*}
+
+
+    \item \important{Backtracking}. Finally, we reconstruct the most likely sequence of hidden states by backtracking through the pointer matrix $\psi$:
+    \begin{equation*}
+        s_t^* = \psi_{t+1}(s_{t+1}^*) \quad \text{for } t = T-1, T-2, \ldots, 1
+    \end{equation*}
+    This traces back from the final state $s_T^*$ to the initial state $s_1^*$, using the pointers stored in $\psi$.
+\end{enumerate}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/hmm/viterbi_trellis.pdf}
+    \caption{
+        \textbf{Viterbi trellis diagram for a simple Weather to Activities HMM.}
+        Each column is a time step (Walk, Shop, Clean, Clean), each row a hidden state (Sunny, Rainy).
+        The node values ($\delta_t(j)$) are the Viterbi scores: the probability of the \emph{best} path that ends in state $j$ at time $t$.
+        Thin edges show all possible transitions; the thick path highlights the most probable hidden sequence found by Viterbi: Sunny $\to$ Rainy $\to$ Rainy $\to$ Rainy.
+    }
+\end{figure}

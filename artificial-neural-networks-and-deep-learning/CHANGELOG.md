@@ -21,6 +21,8 @@
     - add `Linear Dynamical Systems (LDS) and Kalman Filter`
     - add `Hidden Markov Models (HMMs)`
     - add `Comparison to Deterministic Recurrent Systems`
+  - add `Definition`
+    - add `What is a RNN?`
 
 --------------------
 

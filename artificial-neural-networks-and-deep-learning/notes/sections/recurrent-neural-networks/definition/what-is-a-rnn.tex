@@ -1,0 +1,101 @@
+\subsection{Definition}
+
+\subsubsection{What is a RNN?}
+
+Feed-Forward Networks (FFNs) cannot handle sequences because:
+\begin{itemize}
+    \item They take only \textbf{fixed-size} input vectors.
+    \item They have \textbf{no internal state}, so the \textbf{forget everything} once the forward pass is done.
+\end{itemize}
+To handle temporal data, we need \textbf{a model that keeps track of past information while processing the present}. This requires \textbf{memory}. RNNs introduce memory via \textbf{recurrent connections}, which allow information to persist across time steps.
+
+\highspace
+\begin{definitionbox}[: Recurrent Neural Network (RNN)]
+    A \definition{Recurrent Neural Network (RNN)} is a neural architecture designed to process \textbf{sequences} by maintaining a \textbf{memory} of past inputs through \textbf{recurrent connections}. Formally:
+    \begin{equation}
+        h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $x_t$ is the input at time step $t$.
+        \item $h_t$ is the hidden state (memory) at time step $t$ (\textbf{memory} of the RNN).
+        \item $W_x$ and $W_h$ are weight matrices for input-to-hidden and hidden-to-hidden connections, respectively.
+        \item $b$ is a bias vector.
+        \item $f$ is a non-linear activation function (e.g., tanh, ReLU).
+    \end{itemize}
+    The RNN produces an output $y_t$ at each time step, which can be computed as:
+    \begin{equation}
+        y_t = g\left(W_y \cdot h_t\right)
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $W_y$ is the weight matrix for hidden-to-output connections.
+        \item $g$ is an activation function for the output layer (e.g., softmax for classification).
+    \end{itemize}
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a recurrent connection?}}
+\end{flushleft}
+In a normal neural network layer, the output is computed as:
+\begin{equation*}
+    h = \sigma\left(Wx + b\right)
+\end{equation*}
+Where $h$ is the output, $x$ is the input, $W$ is the weight matrix, $b$ is the bias, and $\sigma$ is an activation function. In a layer with \textbf{recurrent connections}, the output at time step $t$ also depends on the output from the previous time step $t-1$:
+\begin{equation*}
+    h_t = \sigma\left(W_x x_t + W_h h_{t-1} + b\right)
+\end{equation*}
+So, we have a new term $W_h h_{t-1}$ that incorporates information from the previous time step, allowing the network to maintain a form of memory over time. It is called \textbf{recurrent connection} because the output at one time step is fed back into the network as input for the next time step, creating a loop in the network architecture (a link from the \textbf{previous hidden state} back into the computation of the \textbf{current} hidden state). This single recursive connection is what gives the RNN its ``memory''.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the hidden state?}}
+\end{flushleft}
+The \textbf{hidden state} $h_t$ in an RNN is a \textbf{continuous vector} that serves as the network's \textbf{memory} at time step $t$. It is updated at \textbf{every time step} based on the current input $x_t$ and the previous hidden state $h_{t-1}$:
+\begin{equation*}
+    h_t = f\left(h_{t-1}, x_t\right) = \sigma\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+This recovers the structure of \textbf{dynamical systems} (e.g., Kalman filters, HMMs) we saw before, but now the update function is \textbf{learned}, not fixed. It is more flexible and powerful, allowing the RNN to \textbf{capture complex temporal dependencies in the data} (nonlinear relationships, long-term dependencies, etc.).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this gives the RNN memory}}
+\end{flushleft}
+Because every hidden state $h_t$ contains:
+\begin{itemize}
+    \item Information from $h_{t-1}$ (the previous hidden state).
+    \item Which in turn contains information from $h_{t-2}$.
+    \item And so on, back to $h_0$.
+\end{itemize}
+So the RNN hidden state implicitly \textbf{stores a compressed summary of \emph{all previous inputs}}:
+\begin{equation*}
+    h_t = f\left(h_{t-1}, x_{t}\right) = f\left(
+        f\left(h_{t-2}, x_{t-1}\right), x_{t}
+    \right) = 
+    f\left(
+        f\left(
+            f\left(h_{t-3}, x_{t-2}\right), x_{t-1}
+        \right), x_{t}
+    \right) = \ldots
+\end{equation*}
+This recursive structure is the ``memory mechanism'' of RNNs, allowing them to \textbf{retain information over time} and make predictions based on the entire sequence history.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are there two matrices $W_x$ and $W_h$ in the RNN equation?}}
+\end{flushleft}
+We will explore them in the next sections, but we can already clarify their roles here (conceptually). In the RNN equation:
+\begin{equation*}
+    h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+We have two different weight matrices:
+\begin{itemize}
+    \item \important{$W_x$ Input-to-Hidden Weight Matrix}. This matrix transforms the \textbf{current input vector} $x_t$ into the hidden space. In other words, it answers the question: \emph{``how does the current input influence the new memory state?''}. If $x_t$ (the input) has dimension $d_{\text{in}}$ and the hidden state has dimension $d_{h}$, then $W_x$ (the input-to-hidden weight matrix) has shape $(d_h, d_{\text{in}})$. For example, if $x_t$ is a word embedding of size 100 and the RNN hidden state size is 64, then $W_x$ will be a matrix of shape $(64, 100) = 6400$ parameters.
+    
+    
+    \item \important{$W_h$ Hidden-to-Hidden Weight Matrix}. This matrix transforms the \textbf{previous hidden state} $h_{t-1}$ into the new hidden space:
+    \begin{equation*}
+        W_h \cdot h_{t-1}
+    \end{equation*}
+    This is the \textbf{core of memory} in an RNN, as it tells how past information influences the present, it recycles the previous hidden state into the new one and it is applied \textbf{at every time step}. If hidden size is $d_h$, then $W_h$ has shape $(d_h, d_h)$. It is \textbf{square} because it transforms hidden states into hidden states. For example, if the RNN hidden state size is 64, then $W_h$ will be a matrix of shape $(64, 64) = 4096$ parameters.
+\end{itemize}
+In the next section, we will see how these matrices operate when the RNN is unrolled over time (i.e., when we visualize the RNN processing a sequence step by step). This will help clarify their distinct roles in shaping the RNN's memory dynamics.

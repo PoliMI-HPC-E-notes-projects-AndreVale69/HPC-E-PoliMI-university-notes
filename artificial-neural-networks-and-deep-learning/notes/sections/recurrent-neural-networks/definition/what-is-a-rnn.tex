@@ -34,6 +34,7 @@ To handle temporal data, we need \textbf{a model that keeps track of past inform
     \end{itemize}
 \end{definitionbox}
 
+\newpage
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a recurrent connection?}}
 \end{flushleft}
@@ -43,10 +44,11 @@ In a normal neural network layer, the output is computed as:
 \end{equation*}
 Where $h$ is the output, $x$ is the input, $W$ is the weight matrix, $b$ is the bias, and $\sigma$ is an activation function. In a layer with \textbf{recurrent connections}, the output at time step $t$ also depends on the output from the previous time step $t-1$:
 \begin{equation*}
-    h_t = \sigma\left(W_x x_t + W_h h_{t-1} + b\right)
+    h_t = \sigma\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
 \end{equation*}
-So, we have a new term $W_h h_{t-1}$ that incorporates information from the previous time step, allowing the network to maintain a form of memory over time. It is called \textbf{recurrent connection} because the output at one time step is fed back into the network as input for the next time step, creating a loop in the network architecture (a link from the \textbf{previous hidden state} back into the computation of the \textbf{current} hidden state). This single recursive connection is what gives the RNN its ``memory''.
+So, we have a new term $W_h \cdot h_{t-1}$ that incorporates information from the previous time step, allowing the network to maintain a form of memory over time. It is called \textbf{recurrent connection} because the output at one time step is fed back into the network as input for the next time step, creating a loop in the network architecture (a link from the \textbf{previous hidden state} back into the computation of the \textbf{current} hidden state). This single recursive connection is what gives the RNN its ``memory''.
 
+\highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the hidden state?}}
 \end{flushleft}
@@ -54,7 +56,7 @@ The \textbf{hidden state} $h_t$ in an RNN is a \textbf{continuous vector} that s
 \begin{equation*}
     h_t = f\left(h_{t-1}, x_t\right) = \sigma\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
 \end{equation*}
-This recovers the structure of \textbf{dynamical systems} (e.g., Kalman filters, HMMs) we saw before, but now the update function is \textbf{learned}, not fixed. It is more flexible and powerful, allowing the RNN to \textbf{capture complex temporal dependencies in the data} (nonlinear relationships, long-term dependencies, etc.).
+This recovers the structure of \textbf{dynamical systems} (e.g., Kalman filters,\break HMMs) we saw before, but now the update function is \textbf{learned}, not fixed. It is more flexible and powerful, allowing the RNN to \textbf{capture complex temporal dependencies in the data} (nonlinear relationships, long-term dependencies, etc.).
 
 \highspace
 \begin{flushleft}
@@ -81,6 +83,64 @@ This recursive structure is the ``memory mechanism'' of RNNs, allowing them to \
 
 \highspace
 \begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Hidden State as Distributed Memory}}
+\end{flushleft}
+As we have seen, at each time step $t$, the RNN updates:
+\begin{equation*}
+    h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+\begin{itemize}
+    \item $h_{t-1}$ contains \textbf{what the network remembers about the past}.
+    \item $x_t$ injects \textbf{new information from the present}.
+    \item $W_h$ decides \textbf{how strongly past memory is kept}.
+    \item $W_x$ decides \textbf{how strongly new input is incorporated}.
+\end{itemize}
+So the RNN is \textbf{carrying forward a summary of all previous inputs}. This summary is the hidden state vector $h_t$.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``distributed memory'' mean?}} The \hl{memory is not stored in one neuron. Instead, memory is stored across many components of the hidden vector.} Each component of $h_t$:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] Does not represent a human-interpretable concept.
+    \item[\textcolor{Red2}{\faIcon{times}}] Does not store one specific piece of information.
+    \item[\textcolor{Red2}{\faIcon{times}}] Is not binary (not like Hidden Markov Model discrete states).
+\end{itemize}
+Instead, \textbf{memory is encoded across \emph{all dimensions} of the hidden state vector}. This is the same idea as ``distributed representations'' in deep learning: a concept is not stored in a single neuron, but rather it's stored in the \emph{pattern} of activations and memory is encoded in many dimensions simultaneously.
+
+\highspace
+The RNN hidden state is thus a \hl{distributed memory because its information is encoded across all its dimensions}, and \textbf{each neuron extracts different aspects} of this memory through different learned weight projections.
+
+\begin{examplebox}[: Hidden State Analogy]
+    Consider each neuron in the hidden state vector $h_t$ as a \textbf{musician} in an orchestra.
+
+    \highspace
+    Each musician (\textbf{neuron}) has different instruments (\textbf{weights}), different skills (\textbf{non-linearities}), different interpretations (\textbf{activations}), and different roles in the ensemble (\textbf{dimensions of the hidden state}).
+
+    \highspace
+    So although they all read the same sheet music (the \textbf{input sequence}), each musician contributes a unique sound (\textbf{feature}) to the overall performance (\textbf{hidden state}):
+    \begin{itemize}
+        \item The violinist (neuron 1) might focus on melody (\emph{temporal patterns}).
+        \item The percussionist (neuron 2) might emphasize rhythm (\emph{short-term dependencies}).
+        \item The bassist (neuron 3) might provide harmonic support (\emph{long-term context}).
+        \item And so on for all musicians (neurons) in the orchestra (hidden state).
+    \end{itemize}
+    So, same input (sheet music), different roles (neurons), different extracted information (features from memory).
+\end{examplebox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/rnn/hidden-state-weight-matrix.pdf}
+    \caption{Heatmap with 4 different neurons (rows), each extracting different information from the same hidden state vector (columns). The colors indicate the weight magnitudes, showing how each neuron focuses on different parts of the hidden state to extract unique features. Greater weight magnitudes (lighter colors) indicate stronger influence from those hidden state dimensions. This illustrates the concept of \textbf{distributed memory} in RNNs, where each neuron captures different aspects of the overall memory encoded in the hidden state.}
+\end{figure}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/rnn/hidden-state-neurons.pdf}
+    \caption{
+        Line plot of 4 different neurons (lines), each extracting different information from the same hidden state vector (x-axis). The y-values represent the weight magnitudes, showing how each neuron focuses on different parts of the hidden state to extract unique features. So even though \textbf{all neurons receive the same hidden state vector} $h$, they \emph{do different things with it}, they extract different aspects of the stored memory.
+    }
+\end{figure}
+
+\begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are there two matrices $W_x$ and $W_h$ in the RNN equation?}}
 \end{flushleft}
 We will explore them in the next sections, but we can already clarify their roles here (conceptually). In the RNN equation:
@@ -90,8 +150,8 @@ We will explore them in the next sections, but we can already clarify their role
 We have two different weight matrices:
 \begin{itemize}
     \item \important{$W_x$ Input-to-Hidden Weight Matrix}. This matrix transforms the \textbf{current input vector} $x_t$ into the hidden space. In other words, it answers the question: \emph{``how does the current input influence the new memory state?''}. If $x_t$ (the input) has dimension $d_{\text{in}}$ and the hidden state has dimension $d_{h}$, then $W_x$ (the input-to-hidden weight matrix) has shape $(d_h, d_{\text{in}})$. For example, if $x_t$ is a word embedding of size 100 and the RNN hidden state size is 64, then $W_x$ will be a matrix of shape $(64, 100) = 6400$ parameters.
-    
-    
+
+
     \item \important{$W_h$ Hidden-to-Hidden Weight Matrix}. This matrix transforms the \textbf{previous hidden state} $h_{t-1}$ into the new hidden space:
     \begin{equation*}
         W_h \cdot h_{t-1}

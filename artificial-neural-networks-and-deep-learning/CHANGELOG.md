@@ -25,6 +25,8 @@
     - add `What is a RNN?`
     - add `Nonlinear Update Equations with Weights`
     - add `Universal Computation Capability (Hava Siegelmann)`
+  - add `Backpropagation Through Time (BPTT)`
+    - add `RNN unrolling over U time steps`
 
 --------------------
 

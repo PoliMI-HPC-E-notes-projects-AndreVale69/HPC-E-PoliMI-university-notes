@@ -1,0 +1,109 @@
+\subsection{Backpropagation Through Time (BPTT)}
+
+\subsubsection{RNN unrolling over \texorpdfstring{$U$}{U} time steps}
+
+Imagine a normal Feed-Forward Neural Network (FNN):
+\begin{equation*}
+    x \rightarrow \text{[Layer 1]} \rightarrow \text{[Layer 2]} \rightarrow \ldots \rightarrow \text{[Layer N]} \rightarrow y
+\end{equation*}
+Each layer transforms the signal and passes it forward to the next layer. This is \textbf{deep in space} because we have multiple layers stacked vertically (one on top of the other).
+
+\highspace
+Now, instead of stacking layers in space (vertically), we stack the \emph{same} layer \textbf{in time} (horizontally):
+\begin{equation*}
+    \underbrace{\text{RNN cell}}_{t=1} \rightarrow \underbrace{\text{RNN cell}}_{t=2} \rightarrow \ldots \rightarrow \underbrace{\text{RNN cell}}_{t=U}
+\end{equation*}
+That's all unrolling is. \textbf{Each cell is the same network}. It just receives \textbf{different inputs} ($x_1$, $x_2$, $\ldots$, $x_U$) at each time step and the \textbf{previous hidden state} instead of the previous layer's output. So, an RNN is basically \textbf{a small neural network copied over and over along the time axis}, all copies share the same weights and each copy processes one timestep.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is an RNN cell?}} A \textbf{cell} is the \emph{tiny neural network} that computes:
+\begin{equation*}
+    h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+This little network contains:
+\begin{itemize}
+    \item The weight matrix $W_x$ that processes the \textbf{current input} $x_t$;
+    \item The weight matrix $W_h$ that processes the \textbf{previous hidden state} $h_{t-1}$;
+    \item The bias vector $b$;
+    \item The activation function $f$ (e.g., $\tanh$ or ReLU).
+\end{itemize}
+This is the \textbf{entire RNN}. A cell is a function:
+\begin{equation*}
+    \left(x_t, \, h_{t-1}\right) \mapsto h_t
+\end{equation*}
+That's it.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does it mean that ``all cells are the same''?}} It means:
+\begin{itemize}
+    \item They use the \textbf{same weight matrices}, the same $W_x$, $W_h$, and $b$, for every time step.
+    \item They are the \textbf{same function} applied repeatedly over time. The RNN does not create new parameters at each time step; it \textbf{reuses the same ones}.
+\end{itemize}
+In code, an RNN is just a \textbf{for loop} that applies the same function (the RNN cell) to each input in the sequence, passing along the hidden state:
+\begin{lstlisting}[language=Python]
+h = h0  # initial hidden state
+for t in range(U):
+    # same RNN_cell function at each time step
+    h = RNN_cell(x[t], h)\end{lstlisting}
+There is only \textbf{one copy} of $W_x$ and $W_h$ in memory, shared across all time steps. But the loop executes \textbf{multiple times}, so it \emph{looks like} the function is repeated many times. In previous diagrams, we drew \textbf{multiple copies of the cell} to illustrate the unrolling over time, but in reality, it's \textbf{just the same cell being applied repeatedly}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``unroll'' mean?}}
+\end{flushleft}
+It means we create \textbf{U copies} of the RNN cell, one per time step:
+\begin{equation*}
+    \begin{array}{rcl}
+        x_{t-3} \rightarrow & \underbrace{\text{RNN cell}}_{t-3} & \rightarrow h_{t-3} \\[1.4em]
+        x_{t-2} \rightarrow & \underbrace{\text{RNN cell}}_{t-2} & \rightarrow h_{t-2} \\[1.4em]
+        x_{t-1} \rightarrow & \underbrace{\text{RNN cell}}_{t-1} & \rightarrow h_{t-1} \\[1.4em]
+        x_{t}   \rightarrow & \underbrace{\text{RNN cell}}_{t}   & \rightarrow h_{t}
+    \end{array}
+\end{equation*}
+Each cell processes its own input and previous hidden state, producing its own output hidden state. But \textbf{all cells share the same weights}. Unrolling is just a way to visualize how the RNN processes sequences over time. This means:
+\begin{itemize}
+    \item In forward propagation $\to$ every timestep uses the same weights to compute its hidden state.
+    \item In backpropagation $\to$ gradients from all time steps accumulate to update the \emph{same} weights.
+    \item In update rules $\to$ we average (or sum) gradients from all time steps to adjust the shared weights.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why unroll an RNN?}} Unrolling helps us understand how the RNN processes sequences step-by-step. But, more importantly, unrolling is essential for \textbf{training} the RNN using \emph{Backpropagation Through Time (BPTT)}. BPTT requires a DAG (Directed Acyclic Graph) structure to compute gradients, explicit connections between operations, and a clear path for gradients to flow backward through time. The RNN loop must be turned into a \textbf{long chain} before we can apply backpropagation.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Mathematical view of unrolling}}
+\end{flushleft}
+For $U$ time steps, the loss function $E$ depends on the outputs at each time step:
+\begin{equation*}
+    E = \sum_{t=1}^{U} E_t
+\end{equation*}
+Where $E_t$ is the \textbf{loss at time step} $t$. Each output $h_t$ depends on the weights $W_x$, $W_h$, and $b$ shared across all time steps. During backpropagation, we compute the gradients of the loss with respect to the weights:
+\begin{equation*}
+    \frac{\partial E}{\partial W_x} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial W_x}, \quad
+    \frac{\partial E}{\partial W_h} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial W_h}, \quad
+    \frac{\partial E}{\partial b} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial b}
+\end{equation*}
+This means that the \textbf{total gradient for each weight matrix is the sum of the gradients from each time step}. This accumulation is crucial for updating the shared weights during training. Each term depends not just on timestep $t$ but via the recurrence on all previous timesteps:
+\begin{equation*}
+    h_{t-1}, \, h_{t-2}, \, \ldots, \, h_0
+\end{equation*}
+This is why we need to unroll the RNN: to explicitly see how each time step's output depends on all previous time steps, allowing us to compute gradients correctly through time. Also, this is what makes RNN training \textbf{deep in time} (many time steps) rather than deep in space (many layers).
+
+\highspace
+In summary, when training:
+\begin{enumerate}
+    \item \textbf{Choose U}, the number of past steps to backpropagate (full sequence or truncated).
+    \item \textbf{Create U replicas} of the RNN cell in computation graph.
+    \item \textbf{Forward pass}, compute:
+    \begin{equation*}
+        h_{t-U}, \, h_{t-U+1}, \, \ldots, \, h_{t}
+    \end{equation*}
+    With shared weights.
+    \item \textbf{Backward pass}, compute gradients from $t$ down to $t-U$:
+    \begin{equation*}
+        \frac{\partial E}{\partial W_x}, \quad \frac{\partial E}{\partial W_h}, \quad \frac{\partial E}{\partial b}
+    \end{equation*}
+    \item \textbf{Combine all gradients} for shared weights $W_x$, $W_h$, and $b$.
+    \item \textbf{Update} the single shared weight matrices using the combined gradients.
+\end{enumerate}

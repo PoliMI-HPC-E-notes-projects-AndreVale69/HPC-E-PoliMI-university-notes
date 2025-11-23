@@ -24,6 +24,7 @@
   - add `Definition`
     - add `What is a RNN?`
     - add `Nonlinear Update Equations with Weights`
+    - add `Universal Computation Capability (Hava Siegelmann)`
 
 --------------------
 

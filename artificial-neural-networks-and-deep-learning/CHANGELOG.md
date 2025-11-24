@@ -27,6 +27,7 @@
     - add `Universal Computation Capability (Hava Siegelmann)`
   - add `Backpropagation Through Time (BPTT)`
     - add `RNN unrolling over U time steps`
+    - add `Shared weights across time`
 
 --------------------
 

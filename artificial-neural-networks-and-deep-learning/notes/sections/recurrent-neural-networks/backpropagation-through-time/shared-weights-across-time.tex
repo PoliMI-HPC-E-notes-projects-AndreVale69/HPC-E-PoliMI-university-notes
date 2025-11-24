@@ -1,0 +1,130 @@
+\subsubsection{Shared weights across time}
+
+In the previous section, we saw how to unroll an RNN over $U$ time steps, creating $U$ copies of the RNN cell. Now, let's discuss a crucial aspect of RNNs: \textbf{shared weights across time}. Everything in BPTT, vanishing gradients, and even LSTMs depends on this idea, because it allows RNNs to generalize across different time steps in a sequence.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What ``shared across time'' means}}
+\end{flushleft}
+When we unroll an RNN through time:
+\begin{equation*}
+    \begin{array}{rcl}
+        x_1 & \rightarrow & \left[\text{cell}\right]_{1} \rightarrow h_1 \\[.5em]
+        x_2 & \rightarrow & \left[\text{cell}\right]_{2} \rightarrow h_2 \\[.5em]
+        x_3 & \rightarrow & \left[\text{cell}\right]_{3} \rightarrow h_3 \\[.5em]
+        \vdots & & \vdots \\[.5em]
+        x_U & \rightarrow & \left[\text{cell}\right]_{U} \rightarrow h_U
+    \end{array}
+\end{equation*}
+We \emph{draw} multiple RNN cells. But all of them must use the \textbf{same parameters}:
+\begin{itemize}
+    \item Same $W_x$ (input-to-hidden weights);
+    \item Same $W_h$ (hidden-to-hidden weights);
+    \item Same $b$ (biases);
+\end{itemize}
+In the diagram they appear as:
+\begin{equation*}
+    \begin{array}{rcl}
+        W_x^{(1)}, \, W_h^{(1)} & \rightsquigarrow & \left[\text{cell}\right]_{1} \\[.5em]
+        W_x^{(2)}, \, W_h^{(2)} & \rightsquigarrow & \left[\text{cell}\right]_{2} \\[.5em]
+        W_x^{(3)}, \, W_h^{(3)} & \rightsquigarrow & \left[\text{cell}\right]_{3} \\[.5em]
+        \vdots & & \vdots \\[.5em]
+        W_x^{(U)}, \, W_h^{(U)} & \rightsquigarrow & \left[\text{cell}\right]_{U}
+    \end{array}
+\end{equation*}
+But these are \textbf{not} different matrices! They are \textbf{copies} of the same matrices:
+\begin{equation*}
+    W_x^{(1)} = W_x^{(2)} = W_x^{(3)} = \cdots = W_x^{(U)} = W_x
+\end{equation*}
+\begin{equation*}
+    W_h^{(1)} = W_h^{(2)} = W_h^{(3)} = \cdots = W_h^{(U)} = W_h
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why must weights be shared?}}
+\end{flushleft}
+The RNN is a \emph{single} function repeated over time. This means that the recurrence:
+\begin{equation*}
+    h_t = f\left(W_x x_t + W_h h_{t-1} + b\right)
+\end{equation*}
+It is the \textbf{same rule} applied at each time step $t$. If we allowed \hl{different weights at different time steps, the RNN would not be able to generalize across time}, and it would require a separate set of parameters for each time step, leading to an explosion in the number of parameters. Mathematically, this would mean:
+\begin{equation*}
+    \text{Weights not shared} \implies W_x^{(t)}, W_h^{(t)}, b^{(t)} \text{ for each } t = 1, 2, \ldots, U
+\end{equation*}
+Where the number of parameters grows linearly with the number of time steps $U$. This would make training infeasible for long sequences and prevent the model from learning temporal patterns that are consistent across time.
+
+\highspace
+\textcolor{Green3}{\faIcon{check}} Instead, by \textbf{sharing weights}, we ensure that the \textbf{RNN allows the network to learn consistent temporal dynamics}, because the \textbf{same operation is applied again and again over time}, just like the same function is applied to different inputs in a feedforward neural network. This weight sharing is fundamental to the success of RNNs in modeling sequential data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does sharing really mean during training?}}
+\end{flushleft}
+When we unroll for $U$ time steps, each replica accumulates gradients for the \textbf{same parameters}. So the gradient update is:
+\begin{equation*}
+    \dfrac{\partial E}{\partial W_h} = \displaystyle\sum_{t=1}^{U} \dfrac{\partial E_t}{\partial W_h^{(t)}}
+\end{equation*}
+But all these $W_h^{(t)}$ are the \textbf{same matrix} $W_h$. So we:
+\begin{enumerate}
+    \item Accumulate all gradients across time;
+    \item Average (or sum) them;
+    \item Apply the update \emph{once} to the single shared matrix $W_h$.
+\end{enumerate}
+In other words, during backpropagation through time, we \textbf{compute gradients at each time step}, but since the weights are shared, we \textbf{combine these gradients to update the single set of parameters}. This ensures that learning is consistent across all time steps and allows the RNN to effectively capture temporal dependencies in the data.
+
+\highspace
+\begin{examplebox}[: Sharing weights analogy]
+    Imagine we have a single recipe (the RNN cell) that we use to bake multiple cakes (time steps). Each time we bake a cake, we follow the same recipe (shared weights). If we find that the cakes are too sweet, we adjust the recipe once (update shared weights) based on feedback from all the cakes we've baked, rather than changing the recipe for each individual cake. This way, all future cakes benefit from the improved recipe.
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is this critical for vanishing/exploding gradients?}}
+\end{flushleft}
+As we have seen, the vanishing (\autopageref{def:vanishing-gradient-problem}) and exploding (page \hqpageref{def:exploding-gradient-problem}) gradient problems arise during backpropagation through time due to the repeated multiplication of very small or very large gradients. But, \emph{why is RNN weight sharing critical here?}
+
+\highspace
+The key point is that \textbf{the same weights are used at each time step}, so during backpropagation, the gradients are repeatedly multiplied by the same weight matrices $W_h$:
+\begin{equation*}
+    \begin{array}{rcl}
+        h_t & = & f\left(W_h \cdot h_{t-1}\right) \\[.5em]
+        h_{t-1} & = & f\left(W_h \cdot h_{t-2}\right) \\[.5em]
+        h_{t-2} & = & f\left(W_h \cdot h_{t-3}\right) \\[.5em]
+        \vdots & & \vdots \\[.5em]
+        h_1 & = & f\left(W_h \cdot h_0\right)
+    \end{array}
+\end{equation*}
+And during backpropagation, the gradients uses the \textbf{Jacobian} (derivative) of the hidden state with respect to the previous hidden state:
+\begin{equation*}
+    \dfrac{\partial h_t}{\partial h_{t-1}} = W_h^T \cdot f'\left(\cdot\right)
+\end{equation*}
+So going backwards from $T$ to $0$:
+\begin{equation*}
+    \dfrac{\partial h_T}{\partial h_0} = \prod_{t=1}^{T} \dfrac{\partial h_t}{\partial h_{t-1}} = \prod_{t=1}^{T} \left(W_h^T \cdot f'\left(\cdot\right)\right)
+\end{equation*}
+Because the same $W_h$ is used at each time step, the gradients are repeatedly multiplied by the same matrix for $T$ time steps. \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{And here lies the problem}}: since $W_h$ is constant, \hl{if its eigenvalues are less than 1, the gradients will shrink exponentially (vanishing gradients); if they are greater than 1, the gradients will grow exponentially (exploding gradients).} So, this entire phenomenon of vanishing/exploding gradients is \textbf{directly tied to the fact that weights are shared across time} in RNNs.
+
+\begin{remarkbox}[: Why eigenvalues matter]
+    The behavior of repeated matrix multiplications is governed by the eigenvalues of the matrix. If the eigenvalues of $W_h$ are:
+    \begin{itemize}
+        \item \textbf{Less than 1}: The gradients shrink exponentially, leading to vanishing gradients.
+        \item \textbf{Greater than 1}: The gradients grow exponentially, leading to exploding gradients.
+        \item \textbf{Equal to 1}: The gradients remain stable, avoiding both vanishing and exploding issues.
+    \end{itemize}
+    But the real question is: \textbf{\emph{Why eigenvalues matter when multiplying matrices repeatedly?}} Because \textbf{eigenvalues tell us how the matrix stretches or shrinks vectors when repeatedly applied}.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is an eigenvalue?}} For a square matrix $W$, a vector $v$ is an eigenvector if:
+    \begin{equation*}
+        Wv = \lambda v
+    \end{equation*}
+    Meaning that $v$ does not change direction when multiplied by $W$, only its magnitude is scaled by $\lambda$ (the eigenvalue).
+    \begin{itemize}
+        \item $\lambda > 1$: vector grows (stretches)
+        \item $\lambda < 1$: vector shrinks (compresses)
+        \item $\lambda = 1$: vector remains the same length
+        \item $\lambda < 0$: vector flips direction
+    \end{itemize}
+    Thus \textbf{eigenvalues describe the scaling effect of a matrix}.
+\end{remarkbox}

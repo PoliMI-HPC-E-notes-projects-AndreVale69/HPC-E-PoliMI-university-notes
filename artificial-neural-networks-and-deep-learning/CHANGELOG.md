@@ -29,6 +29,7 @@
     - add `RNN unrolling over U time steps`
     - add `Shared weights across time`
     - add `Training Algorithm Steps`
+    - add `Vanishing and Exploding Gradients Limitation`
 
 --------------------
 

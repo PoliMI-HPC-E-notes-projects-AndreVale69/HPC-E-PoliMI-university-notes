@@ -1,0 +1,57 @@
+\subsubsection{Dealing with Gradient Problems}
+
+We have seen and demonstrated how RNNs are prone to the vanishing and exploding gradient problems. To mitigate these issues, several techniques can be employed. Here, we introduce \textbf{three strategies} commonly used to address these gradient problems in RNNs:
+\begin{itemize}
+    \item \important{(Simplest) Using ReLu activation functions}. ReLu (Rectified Linear Unit) activation functions (\autopageref{sec:relu-and-variants}) help mitigate the vanishing gradient problem due to their linear, non-saturating nature for positive inputs. Their derivative is:
+    \begin{equation*}
+        \phi'(z) = 1 \quad \text{for } z > 0
+    \end{equation*}
+    This means the activation derivative does \textbf{not shrink} the gradient, unlike sigmoid (max $0.25$) or tanh (max $1$) functions, which can lead to vanishing gradients over time steps. So with ReLu, the per-step Jacobian looks like:
+    \begin{equation*}
+        \dfrac{\partial h_t}{\partial h_{t-1}} = D_t W_{h} \quad \text{where } D_t = \text{diag}(\phi'(z_t)) \text{ with } \phi'(z_t) \in \left\{0, 1\right\}
+    \end{equation*}
+    This greatly reduces the risk of vanishing gradients, as the derivative is either $0$ or $1$, preventing exponential decay of gradients over time steps.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Suffer \textbf{less} from vanishing gradients.
+        \item[\textcolor{Red3}{\faIcon{times}}] Still can experience \textbf{exploding gradients}, as the weight matrix $W_h$ can still lead to large values.
+        \item[\textcolor{Red3}{\faIcon{times}}] Still \textbf{struggle with long-term dependencies}, as ReLU does not inherently solve this issue.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Train better than sigmoid/tanh} RNNs on many tasks.
+    \end{itemize}
+    ReLU alone \textbf{cannot eliminate vanishing gradient} entirely, because the recurrent matrix $W_h$ is still repeatedly multiplied. The LSTM architecture goes further with \textbf{gate-controlled linear gradients}.
+
+
+    \item \definition{Gradient Clipping}: limiting gradient magnitude (exploding vs. vanishing). When gradients exceed a certain threshold during backpropagation, they are \textbf{scaled down} to prevent instability. This is typically done by:
+    \begin{equation*}
+        g \leftarrow \dfrac{g}{\left\|g\right\|} \cdot \tau \quad \text{if } \left\|g\right\| > \tau
+    \end{equation*}
+    Where $g$ is the gradient vector and $\tau$ is the threshold.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Prevents exploding gradients}, stabilizing training.
+        \item[\textcolor{Red3}{\faIcon{times}}] \textbf{Does not solve vanishing gradients}, so long-term dependencies may still be difficult to learn.
+    \end{itemize}
+
+
+    \item \important{Designing modules to retain long-term dependencies}. The core idea is to create an architecture that:
+    \begin{itemize}
+        \item \textbf{Preserves} gradients over long ranges of time steps.
+        \item \textbf{Does not} repeatedly shrink them.
+        \item Behaves like an \textbf{information highway}.
+        \item Propagates gradients without decay.
+    \end{itemize}
+    This is the entire reason LSTMs were invented. The LSTM (Long Short-Term Memory) architecture introduces \textbf{gates} that control the flow of information and gradients, allowing the network to maintain long-term dependencies effectively:
+    \begin{equation*}
+        c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t
+    \end{equation*}
+    And crucially:
+    \begin{equation*}
+        \dfrac{\partial c_t}{\partial c_{t-1}} = f_t
+    \end{equation*}
+    Where $f_t$ is the \textbf{forget gate}, which can be learned to be close to $1$, allowing gradients to pass through many time steps without vanishing.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Effectively mitigates vanishing gradients}, enabling learning of long-term dependencies.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Also helps with exploding gradients}, as the gating mechanisms can regulate information flow.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Widely used} in practice for sequence modeling tasks.
+        \item[\textcolor{Red3}{\faIcon{times}}] More complex and computationally intensive than standard RNNs.
+    \end{itemize}
+\end{itemize}
+In summary, while ReLU activation functions and gradient clipping can help mitigate gradient problems to some extent, the \hl{LSTM architecture provides a more robust solution for handling long-term dependencies in RNNs} by effectively addressing both vanishing and exploding gradients through its gating mechanisms.

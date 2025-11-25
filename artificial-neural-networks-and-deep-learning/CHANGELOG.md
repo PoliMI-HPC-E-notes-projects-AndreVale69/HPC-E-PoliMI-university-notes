@@ -30,6 +30,7 @@
     - add `Shared weights across time`
     - add `Training Algorithm Steps`
     - add `Vanishing and Exploding Gradients Limitation`
+    - add `Dealing with Gradient Problems`
 
 --------------------
 

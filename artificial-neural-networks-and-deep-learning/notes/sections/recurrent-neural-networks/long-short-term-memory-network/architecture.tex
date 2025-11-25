@@ -1,0 +1,75 @@
+\subsection{Long Short-Term Memory Network (LSTM)}
+
+\begin{definitionbox}[: Long Short-Term Memory Network (LSTM)]
+    A \definition{Long Short-Term Memory Network (LSTM)} is a special type of Recurrent Neural Network (RNN) architecture designed to \textbf{learn long-term dependencies} in sequential data by using an internal memory cell and a system of gates that control how information is stored, forgotten, and exposed.
+
+    \highspace
+    It introduces a \textbf{memory cell state} $C_t$, a \textbf{hidden state} $h_t$, and three multiplicative \textbf{gates} (input, forget, output). These gates allow the network to:
+    \begin{itemize}
+        \item \textbf{Retain information for long periods}.
+        \item \textbf{Protect memory from vanishing gradients}.
+        \item \textbf{Selectively update and reset its internal memory} based on the input sequence.
+    \end{itemize}
+    The key feature of an LSTM is a \textbf{linear, self-recurrent connection} in the cell state (the Constant Error Carousel, CEC), which preserves information without being destroyed by nonlinear activations, allowing gradients to flow across many timesteps.
+\end{definitionbox}
+
+\subsubsection{Architecture}
+
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem.}} Before LSTMs were introduced, (Hochreiter \& Schmidhuber, 1997), training Recurrent Neural Networks (RNNs) was extremely difficult. The core issue was \textbf{not} model capacity (RNNs are Turing complete, Siegelmann \& Sontag, 1995), but rather the \textbf{inability to learn long-term dependencies due to vanishing and exploding gradients} (\autopageref{sec:dealing-with-gradient-problems}).
+
+\highspace
+\textcolor{Green3}{\faIcon{check} \textbf{Solution.}} LSTMs were designed specifically to address this issue. The key innovation of LSTMs is the introduction of \textbf{memory cells} that can maintain information over long periods of time. Each memory cell contains three main components: the \textbf{input gate}, the \textbf{forget gate}, and the \textbf{output gate}. These gates regulate the flow of information into, out of, and within the memory cell.
+
+\highspace
+\textcolor{Green3}{\faIcon{memory} \textbf{How it works.}} Without going into the gate details, which will be covered in the next sections, the \textbf{solution to overcoming vanishing gradients lies in the cell state}, called \textbf{memory cell} $C_t$. A \definition{Memory Cell} is a special \textbf{kind of RNN unit} that \textbf{maintains its state over time}, allowing it to store information for long periods. The cell state is \hl{updated at each time step $t$ based on the input data and the previous cell state}, but crucially, it can also \textbf{retain information without being overwritten}. This is achieved through the use of \textbf{gates} that control the flow of information into and out of the cell state. By carefully regulating these gates, LSTMs can \textbf{preserve gradients during backpropagation}, allowing them to learn long-term dependencies effectively.
+
+\highspace
+Mathematically, the memory cell $C_t$ is a linear self-loop (i.e., it can maintain its value over time)
+\begin{equation*}
+    C_t = C_{t-1} + \text{(some new information)}
+\end{equation*}
+Or more generally:
+\begin{equation}
+    C_t = f_t \cdot C_{t-1} + i_t \cdot \tilde{C}_t
+\end{equation}
+\begin{itemize}
+    \item $f_t$ is the \textbf{forget gate}, which determines how much of the previous cell state $C_{t-1}$ to retain.
+    \item $i_t$ is the \textbf{input gate}, which controls how much new information $\tilde{C}_t$ to add to the cell state.
+    \item $\tilde{C}_t$ is the candidate cell state, which is computed based on the current input and the previous hidden state.
+\end{itemize}
+The crucial part is the connection from $C_{t-1}$ to $C_t$ \textbf{can preserve information without squashing it through a non-linear activation function}, thanks to \textbf{Constant Error Carousel (CEC)}.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Insight.}} The \definition{Constant Error Carousel (CEC)} within the LSTM memory cell is the key mechanism that allows LSTMs to \hl{overcome the vanishing gradient problem}. Created by Sepp Hochreiter in 1997, the CEC is designed to maintain a constant error signal as it propagates through time, enabling the network to learn long-term dependencies effectively. It achieves this by allowing the cell state to \textbf{carry information across many time steps without being altered by non-linear activation functions}, which are typically responsible for diminishing gradients in standard RNNs. It does so through a \textbf{linear self-loop} in the cell state update equation, which allows the gradient to be preserved during backpropagation. This means that the error signal can flow back through many time steps without vanishing, enabling the LSTM to learn from long-term dependencies in the data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{DarkOrange3}{\faIcon{balance-scale} \textbf{Architecture Comparison: RNN vs LSTM}}
+\end{flushleft}
+A classic RNN cell handles input $x_t$ and previous hidden state $h_{t-1}$ to produce the new hidden state $h_t$:
+\begin{equation}
+    h_t = \phi\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation}
+where $\phi$ is a non-linear activation function (e.g., tanh or ReLU). Here, only the hidden state $h_t$ is maintained over time, and the non-linear activation can lead to vanishing gradients. Every update compresses information through $\phi$ and there is \textbf{no mechanism to protect memory}. As a result, both information and gradients \textbf{degrade} over time, and the network suffers from \textbf{vanishing gradients}.
+
+\highspace
+The LSTM cell takes the same inputs as an RNN cell $x_t$ and $h_{t-1}$, but \textbf{crucially} also maintains:
+\begin{itemize}
+    \item A \textbf{cell state} $C_t$ that carries long-term information.
+    \item Three \textbf{gates} (input, forget, output) that regulate information flow.
+\end{itemize}
+Thus, the \textbf{LSTM outputs} both:
+\begin{itemize}
+    \item The \textbf{cell state} $C_t$, which can carry information across many time steps without being squashed by non-linearities:
+    \begin{equation*}
+        C_{t-1} \xrightarrow{\text{linear, gated}} C_t
+    \end{equation*}
+    It indicates what information to \textbf{remember} or \textbf{forget} over time. It is a \hl{long-term memory} and acts like a \textbf{protected memory highway} (Constant Error Carousel) for gradients.
+
+    \item  The \textbf{hidden state} $h_t$, which is similar to the classical RNN, but modulated by the output gate:
+    \begin{equation*}
+        h_{t-1} \xrightarrow{\text{gated } + \text{ nonlinearity}} h_t
+    \end{equation*}
+    It indicates what information to \textbf{output} at the current time step. It is a \hl{short-term representation}.
+\end{itemize}
+The gates in the LSTM cell \textbf{control the flow of information} into and out of both the cell state and hidden state. By regulating what to remember, forget, and output, the LSTM can effectively manage long-term dependencies without suffering from vanishing gradients. The \textbf{cell state $C_t$ provides a direct path for gradients to flow back through time}, preserving information over long sequences, while the hidden state $h_t$ allows for dynamic representation of the current input. This architecture enables LSTMs to learn complex temporal patterns that standard RNNs struggle with.

@@ -31,6 +31,8 @@
     - add `Training Algorithm Steps`
     - add `Vanishing and Exploding Gradients Limitation`
     - add `Dealing with Gradient Problems`
+  - add `Long Short-Term Memory (LSTM) Networks`
+    - add `Architecture`
 
 --------------------
 

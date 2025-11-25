@@ -1,0 +1,97 @@
+\subsubsection{Gates}
+
+Unlike classical RNN that only updates one hidden state $h_t$, an LSTM maintains \textbf{two internal states}: the \textbf{cell state} (long-term memory) $C_t$ and the \textbf{hidden state} (short-term output) $h_t$. The cell state $C_t$ flows horizontally through time with minimal interference. This is the \emph{memory highway} or \textbf{constant error carousel (CEC)}. But the LSTM must decide:
+\begin{itemize}
+    \item What new information to write.
+    \item What old information to forget.
+    \item What part of memory to expose.
+\end{itemize}
+To do this, it uses four components called \textbf{gates}. \hl{Each gate produces a vector of values between 0 and 1 (sigmoid), controlling how information flows through the network}. The interaction of these gates creates an extremely flexible state machine inside the LSTM cell. The three gates and one candidate memory are defined as follows:
+\begin{equation*}
+    h_t = o_t \odot \tanh(C_t) \quad \text{ where } \quad C_t = f_t \odot C_{t-1} + i_t \odot \tilde{C}_t
+\end{equation*}
+\begin{enumerate}
+    \item \definition{Forget gate $f_t$}: Decides what information to discard from the cell state. ``\textbf{\emph{Which information stored in the cell state is no longer relevant?}}''
+    \begin{equation}
+        f_t = \sigma\left(W_f \cdot \left[h_{t-1}, x_t\right] + b_f\right)
+    \end{equation}
+    \begin{itemize}
+        \item $W_f$: Weight matrix for the forget gate.
+        \item $b_f$: Bias vector for the forget gate.
+        \item $\sigma$: Sigmoid activation function.
+        \item $\left[h_{t-1}, x_t\right]$: Concatenation of previous hidden state and current input.
+    \end{itemize}
+    This gate decides \textbf{how much of the previous cell state} $C_{t-1}$ \textbf{should be kept}. It performs \textbf{selective deletion} of information from the long-term memory.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] $f_t \approx 1 \to$ Keep the information.
+        \item[\textcolor{Red2}{\faIcon{times}}] $f_t \approx 0 \to$ Forget the information.
+        \item[\textcolor{DarkOrange3}{\faIcon{balance-scale}}] $f_t \approx 0.5 \to$ Partially forget the information.
+    \end{itemize}
+    It is \textbf{needed} because \textbf{old context} sometimes becomes \textbf{irrelevant}. For example, in language modeling, once we move past a topic, we may want to forget its details: ``\emph{The capital of France is Paris. \textbf{By the way}, the capital of Germany is Berlin}''. Here, the information about France can be forgotten when discussing Germany. It is needed to \textbf{prevent memory saturation} and \textbf{allow adaptation to new contexts}.
+
+    \textcolor{Green3}{\faIcon{check} \textbf{Vanishing Gradient.}} The forget gate is deeply connected to the LSTM's trick for fighting the vanishing gradient problem. We define the gradient flow through the cell state as:
+    \begin{equation*}
+        \begin{aligned}
+            \frac{\partial C_t}{\partial C_{t-1}} &= \frac{\partial}{\partial C_{t-1}}\left(
+                f_t \odot C_{t-1} + i_t \odot \tilde{C}_t
+            \right) \\
+            &= f_t \odot \frac{\partial C_{t-1}}{\partial C_{t-1}} + \frac{\partial (i_t \odot \tilde{C}_t)}{\partial C_{t-1}} \\
+            &= f_t + 0 \\
+            &= f_t
+        \end{aligned}
+    \end{equation*}
+    This means that the gradient of the cell state at time $t$ with respect to the previous cell state at time $t-1$ is exactly the forget gate $f_t$. If $f_t$ is \textbf{close to 1}, the \textbf{gradient flows through unchanged}, \hl{preventing vanishing gradients}. If $f_t$ is \textbf{close to 0}, the \textbf{gradient is blocked}, allowing the network to \hl{forget irrelevant information}. Thus, the forget gate \textbf{actively controls the gradient flows}, enabling the LSTM to maintain long-term dependencies while still being able to adapt and forget when necessary.
+
+
+    \item \definition{Input gate $i_t$}: Decides what new information to add to the cell state. ``\emph{\textbf{How much of the candidate memory $\tilde{C}_t$ should we store in the cell state?}}''
+    \begin{equation}
+        i_t = \sigma\left(W_i \cdot \left[h_{t-1}, x_t\right] + b_i\right)
+    \end{equation}
+    Controls \textbf{how much the candidate memory will influence the cell state}. It \hl{protects the memory from random updates}.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] If $i_t = 0 \to$ No new information is added, ignoring $\tilde{C}_t$.
+        \item[\textcolor{Green3}{\faIcon{check}}] If $i_t = 1 \to$ All new information is added, fully adopting $\tilde{C}_t$.
+    \end{itemize}
+    This gate allows the model to be selective and \textbf{only incorporate relevant new information} into the cell state. Without it, the cell would overwrite its memory at every timestep, which would be catastrophic for long-term dependencies. The input gate is therefore a \textbf{filter} that protects memory from being updated too easily. 
+
+
+    \item \definition{Candidate cell state $\tilde{C}_t$}: Creates new candidate values that could be added to the cell state. It is extremely important because it determines \textbf{what new information is \emph{proposed} to enter the long-term memory}.
+    \begin{equation}
+        \tilde{C}_t = \tanh\left(W_C \cdot \left[h_{t-1}, x_t\right] + b_C\right)
+    \end{equation}
+    This component generates \textbf{potential new information} to be added to the cell state, scaled by the input gate $i_t$. It is a \emph{vector of new information} generated from the current input $x_t$ and the previous short-term state $h_{t-1}$.
+    \begin{itemize}
+        \item It uses \textbf{tanh} to generate values between $-1$ and $1$, \textbf{allowing both positive and negative updates} to the cell state. It also compresses information to a stable range and avoids uncontrolled growth.
+        \item It is \textbf{modulated} later \textbf{by the input gate} $i_t$ to determine how much of this candidate information should actually be written to the cell state.
+    \end{itemize}
+    We can think of $\tilde{C}_t$ as the \textbf{proposed update} to the cell state (long-term memory), which is then filtered by the input gate to ensure only relevant information is added. It works in tandem with the input gate:
+    \begin{itemize}
+        \item The candidate generates \textbf{what} to write.
+        \item The input gate decides \textbf{how much} of that to actually write.
+    \end{itemize}
+
+
+    \item \definition{Output gate $o_t$}: Decides what part of the cell state to output as the hidden state. ``\textbf{\emph{Which part of this memory should we show as our output hidden state $h_t$?}}''
+    \begin{equation}
+        o_t = \sigma\left(W_o \cdot \left[h_{t-1}, x_t\right] + b_o\right)
+    \end{equation}
+    This gate controls \textbf{what portion of the internal memory becomes visible in the hidden state} $h_t$.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] If $o_t = 0 \to$ No information from the cell state is exposed.
+        \item[\textcolor{Green3}{\faIcon{check}}] If $o_t = 1 \to$ All information from the cell state is exposed.
+    \end{itemize}
+    This is important because not all information in the cell state is relevant for the current output. The output gate allows the LSTM to \textbf{selectively reveal} information based on the current context.
+\end{enumerate}
+The \textbf{cell state update} $C_t$ combines the effects of the forget and input gates:
+\begin{equation*}
+    C_t = \underbrace{f_t \odot C_{t-1}}_{\text{Forget old info}} + \underbrace{i_t \odot \tilde{C}_t}_{\text{Add new info}}
+\end{equation*}
+Here, the previous cell state $C_{t-1}$ is scaled by the forget gate $f_t$, determining what to retain, while the candidate cell state $\tilde{C}_t$ is scaled by the input gate $i_t$, determining what new information to add. Finally, the \textbf{hidden state} $h_t$ is computed by applying the output gate $o_t$ to the activated cell state:
+\begin{equation*}
+    h_t = o_t \odot \tanh(C_t)
+\end{equation*}
+It is the \textbf{actual output of the LSTM cell} at time $t$, influenced by both the current cell state and the output gate.
+\begin{itemize}
+    \item $\tanh(C_t)$ transforms the cell state into an output-friendly representation. This operator ensures bounded values (between $-1$ and $1$), stability, good gradient behavior, and non-linearity.
+    \item The output gate $o_t$ filters that representation before exposing it. Allows the LSTM to \textbf{protect memory} while revealing only what is relevant
+\end{itemize}

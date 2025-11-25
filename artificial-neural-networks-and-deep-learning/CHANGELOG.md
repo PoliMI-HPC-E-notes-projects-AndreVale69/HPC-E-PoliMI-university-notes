@@ -33,6 +33,7 @@
     - add `Dealing with Gradient Problems`
   - add `Long Short-Term Memory (LSTM) Networks`
     - add `Architecture`
+    - add `Gates`
 
 --------------------
 

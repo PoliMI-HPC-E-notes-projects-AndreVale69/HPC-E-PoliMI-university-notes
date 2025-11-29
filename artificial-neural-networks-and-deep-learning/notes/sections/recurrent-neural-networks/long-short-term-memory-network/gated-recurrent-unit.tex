@@ -1,0 +1,123 @@
+\subsubsection{Lightweight Alternative: Gated Recurrent Unit (GRU)}
+
+\definition{Gated Recurrent Unit (GRU)} were proposed by Cho et al. (2014) as a \textbf{simplified, faster, and lighter} recurrent architecture that retains much of the power of LSTMs but with fewer parameters and a simpler design.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why GRU?}} \\
+\end{flushleft}
+Long Short-Term Memory (LSTM) networks are powerful but can be computationally intensive due to their complex architecture involving multiple gates and memory cells:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Computationally heavy}, because of multiple matrix multiplications per time step.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Contain 3 gates $+$ memory cell}, leading to more parameters to train.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Have many parameters (4 matrix multiplications per time step)}, which can lead to overfitting on smaller datasets.
+\end{itemize}
+GRUs address these issues by simplifying the architecture while still effectively capturing long-term dependencies in sequential data. Its goal is to:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Reduce computational complexity} by using fewer gates and parameters.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Maintain performance} comparable to LSTMs on many tasks.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Facilitate faster training} and inference times.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Simplify implementation} and tuning due to fewer hyperparameters.
+\end{itemize}
+They do this by merging some gates and eliminating the explicit memory cell found in LSTMs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{GRU Architecture}}
+\end{flushleft}
+GRUs \textbf{do not have a separate cell state} $C_t$ like LSTMs. Instead, they only maintain a \textbf{hidden state} $h_t$, which merges: short-term memory and long-term memory. GRUs use \textbf{two gates} to control the flow of information:
+\begin{enumerate}
+    \item \important{Update Gate $z_t$}. Controls \textbf{how much of the past is kept} and \textbf{how much of the new information is added}.
+    \begin{equation}
+        \begin{bmatrix}
+            i_t \\
+            f_t
+        \end{bmatrix}
+        \quad \xrightarrow{\text{GRU}} \quad
+        z_t = \sigma(W_z \cdot [h_{t-1}, x_t] + b_z)
+    \end{equation}
+    It \textbf{replaces both the input and forget gates} of the LSTM.
+    \begin{itemize}
+        \item $z_t = 1$: use \textbf{only} \underline{new} information, forget everything from the past (like forget gate closed, $0$, and input gate open, $1$).
+        \item $z_t = 0$: keep \textbf{only} \underline{past} information, ignore new input (like forget gate open, $1$, and input gate closed, $0$).
+        \item $0 < z_t < 1$: balance between past and new information.
+    \end{itemize}
+
+
+    \item \important{Reset Gate $r_t$}. Controls \textbf{how much of the previous hidden state to consider when creating new candidate} information. This is similar to the input gate in LSTMs, but it directly influences the candidate hidden state. Similarly, it is computed as:
+    \begin{equation}
+        r_t = \sigma(W_r \cdot [h_{t-1}, x_t] + b_r)
+    \end{equation}
+    \begin{itemize}
+        \item $r_t$ close to 0: ignore past hidden state, focus on new input.
+        \item $r_t$ close to 1: consider past hidden state fully, influence of $h_{t-1}$ is strong.
+    \end{itemize}
+\end{enumerate}
+The number of gates is reduced from 3 in LSTMs to 2 in GRUs, \textbf{simplifying dramatically the architecture}. Also, \hl{GRUs do not have a separate memory cell}; instead, they \textbf{maintain a single hidden state that combines both short-term and long-term memory} ($h_t$). This further reduces the number of parameters and computations required.
+
+\highspace
+The \textbf{final hidden state} $h_t$ in a GRU is computed as:
+\begin{equation}
+    h_t = \left(1 - z_t\right) \odot h_{t-1} + z_t \odot \tilde{h}_t
+\end{equation}
+It interpolates between the previous hidden state, $h_{t-1}$, and the candidate hidden state, $\tilde{h}_t$, weighted by the update gate, $z_t$. Thus, the \textbf{update gate} decides how much past information to retain and how much new information to incorporate. Notably, it \textbf{is the only gate that directly influences the final hidden state}. Instead, the \textbf{reset gate} $r_t$ \textbf{operates when computing the candidate hidden state} $\tilde{h}_t$:
+\begin{equation}
+    \tilde{h}_t = \tanh(W_h \cdot [r_t \odot h_{t-1}, x_t] + b_h)
+\end{equation}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{11em} p{11em} @{}}
+        \toprule
+        \textbf{Feature} & \textbf{LSTM} & \textbf{GRU} \\
+        \midrule
+        Gates & 3 (input, forget, output) & 2 (update, reset) \\[.5em]
+        Memory Cell & Yes ($C_t$) & No (only hidden state $h_t$) \\[.5em]
+        Hidden State & Separate from cell state & Combines short-term and long-term memory \\[.5em]
+        Complexity & Higher & Lower \\[.5em]
+        Parameters & More (4 matrix multiplications per time step) & Fewer (3 matrix multiplications per time step) \\[.5em]
+        Training Speed & Slower & Faster \\[.5em]
+        Performance & Strong on long sequences & Usually comparable to an LSTM, sometimes better on smaller datasets \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between LSTM and GRU architectures.}
+\end{table}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Final thoughts: Is GRU always better than LSTM?}}
+\end{flushleft}
+In short, \textbf{no}, GRU is not the best RNN. In some scenarios, LSTMs may outperform GRUs. They \textbf{do not have the same expressive power} of LSTMs.
+\begin{itemize}
+    \item \important{LSTMs Separate Long-Term and Short-Term Memory}. LSTM has two dedicated components (\textbf{cell state} $C_t$ and \textbf{hidden state} $h_t$) to manage long-term and short-term dependencies separately. Instead, GRU merges them into a single vector. The separation in LSTMs allows to:
+    \begin{itemize}
+        \item Preserve long-term memory in $C_t$ \textbf{without exposing it}.
+        \item Use $h_t$ for short-term, noisy, rapidly-changing representations.
+        \item Control what gets exposed to the next layer (via the output gate).
+    \end{itemize}
+    This separation is \textbf{very powerful}, especially for tasks requiring deep context management, such as language modeling or machine translation.
+
+
+    \item \important{LSTMs Have More Control (More Degrees of Freedom)}. LSTM has \textbf{three gates} (forget, input, output), while GRU has \textbf{two}. This gives LSTMs: more expressiveness, finer control of memory flow, and the ability to decouple ``writing to memory'' from ``exposing memory''. In some tasks, this extra structure provides: better accuracy, more stable long-term learning, and better handling of irregular or sparse signals. In summary, \textbf{with LSTM we can do a more nuanced manipulation of information}.
+
+
+    \item \important{LSTMs Work Better on Very Long Sequences}. Empirically, on tasks requiring \textbf{very long-term dependencies} (hundreds or thousands of time steps), \textbf{LSTMs typically outperform GRUs}. Some examples:
+    \begin{itemize}
+        \item Long text generation.
+        \item Speech sequences longer than several seconds.
+        \item Language models (pre-Transformer era).
+        \item Medical time series with sparse temporal relations.
+        \item Irregular biomechanical signals.
+    \end{itemize}
+    Because the cell state in an LSTM is specifically designed for long-term memory, LSTMs \textbf{tend to retain information better}. 
+    
+    \textbf{GRUs can forget too aggressively} because the update gate merges the input and forget gates. This coupling makes GRUs less flexible in controlling what to remember for long periods.
+    
+
+    \item \important{GRUs Can Underperform When Selective Visibility Matters}. LSTMs have an \textbf{output gate}:
+    \begin{equation*}
+        h_t = o_t \odot \tanh(C_t)
+    \end{equation*}
+    GRUs \textbf{do not}. This means \textbf{GRUs cannot selectively hide memory and it is critical in tasks where certain features need to stay internal and not be exposed to the next layer}.
+\end{itemize}

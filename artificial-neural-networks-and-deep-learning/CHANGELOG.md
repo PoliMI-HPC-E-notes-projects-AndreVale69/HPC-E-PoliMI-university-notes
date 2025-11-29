@@ -34,6 +34,7 @@
   - add `Long Short-Term Memory (LSTM) Networks`
     - add `Architecture`
     - add `Gates`
+    - add `Lightweight Alternative: Gated Recurrent Unit (GRU)`
 
 --------------------
 

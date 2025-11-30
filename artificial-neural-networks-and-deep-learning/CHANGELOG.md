@@ -35,6 +35,7 @@
     - add `Architecture`
     - add `Gates`
     - add `Lightweight Alternative: Gated Recurrent Unit (GRU)`
+    - add `Networks`
 
 --------------------
 

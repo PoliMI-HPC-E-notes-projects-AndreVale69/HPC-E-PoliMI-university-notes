@@ -1,0 +1,76 @@
+\subsubsection{Practical Tips: Initialization \& Conditioning}
+
+This section provides practical tips for initializing and conditioning Long Short-Term Memory (LSTM) networks to enhance their performance and stability during training. We will go through two key recommendations:
+\begin{enumerate}
+    \item \textbf{Bidirectional conditioning (when and why to use BiLSTM)}
+    \item \textbf{Learnable initial states (why initializing $h_0$ and $C_0$ as parameters is better than zeros)}
+\end{enumerate}
+Both points relate directly to improving performance and stability when training LSTM networks.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Bidirectional Networks: Condition on the Full Sequence}}
+\end{flushleft}
+\begin{quote}
+    \important{Practical Tip \#1:} When the entire input sequence is available, a Bidirectional LSTM is usually superior because it conditions each timestep on both past and future information.
+\end{quote}
+This may sound simple on the surface, but it actually encodes one of the most important design principles in sequence modeling: \textbf{context matters}.
+
+\highspace
+In a \textbf{standard LSTM}, the hidden state at time $t$ depends only on all previous inputs $\{x_1, x_2, \ldots, x_t\}$ and the current input $x_t$. But it knows \emph{nothing} about future input $x_{t+1}$, future context or upcoming events. This creates an \textbf{information asymmetry} where our representation of $x_t$ (i.e., $h_t$, the hidden state at time $t$) is only half-aware.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why this is a problem:}} Suppose we want to classify a small window around time $t$. Patterns like anomalies, spikes, movement patterns often depend on: what \emph{just happened} before and what \emph{will happen} after. A unidirectional model only sees the previous points. Instead, a \textbf{Bidirectional LSTM (BiLSTM)} model sees \emph{both sides} of the window. This often gives \emph{significantly} better performance.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{When to use BiLSTM:}} If our application allows us to see the entire sequence before making predictions (e.g., text classification, speech recognition, video analysis), then BiLSTM is usually the better choice. It leverages full context to create richer representations. \textcolor{Red2}{\faIcon{times-circle} \textbf{When not to use BiLSTM:}} However, if we need to make real-time predictions (e.g., online forecasting, live translation), then we must use unidirectional LSTMs since future data is not available.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Learnable Initial States (Initialization as Parameters)}}
+\end{flushleft}
+\begin{quote}
+    \important{Practical Tip \#2:} Instead of initializing the initial hidden state $h_0$ and cell state $C_0$ with fixed constants (like zeros), treat them as trainable parameters and learn them during training.
+\end{quote}
+Every LSTM sequence starts with initial values:
+\begin{itemize}
+    \item Initial \textbf{hidden state} $h_0$
+    \item Initial \textbf{cell state} $C_0$
+\end{itemize}
+These two values define the \textbf{starting memory} of the LSTM \textbf{before it reads the first input $x_1$}. In most implementations, these are simply initialized to zeros:
+\begin{equation*}
+    \textcolor{Red2}{\text{\faIcon{times-circle}}} \quad h_0 = \mathbf{0}, \quad C_0 = \mathbf{0}
+\end{equation*}
+This is the \emph{default} choice, but not the best.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why zero initialization is not ideal:}} Zero initialization has several drawbacks:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Not realistic}. Real sequences rarely ``start from zero memory''. There is almost always some baseline state.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Every sequence starts from the same memory}. Even if our dataset contains very different types of sequences, they all begin with identical $h_0$ and $C_0$. This limits the model's ability to adapt to different contexts right from the start.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Slow convergence}. The model has to learn to build up useful memory from scratch for every sequence, which can slow down training.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Weak signal at early timesteps}. The initial outputs may be weak or uninformative since the model starts with no prior knowledge.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Doesn't encode dataset priors}. If certain patterns are common at the start of sequences, zero initialization fails to capture this prior knowledge.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{The better idea: make $h_0$ and $C_0$ learnable parameters}}. Instead of fixing $h_0$ and $C_0$ to zeros, we can treat them as \textbf{trainable parameters}:
+\begin{equation*}
+    \textcolor{Green3}{\text{\faIcon{check-circle}}} \quad h_0 = \theta_h, \quad C_0 = \theta_C
+\end{equation*}
+Where $\theta_h$ and $\theta_C$ are \textbf{trainable vectors initialized randomly} (e.g., using Xavier or He initialization, \autopageref{sec:xavier-and-he-initialization}). They are optimized like any other weight via backpropagation. This means that the \hl{model learns the best starting hidden state and the best starting cell state for the entire training dataset}. These states become part of the model parameters.
+
+\newpage
+
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits of learnable initial states:}}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Faster convergence}. The model starts with a better prior memory, leading to quicker learning since it doesn't have to build memory from scratch.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Better performance, especially with short sequences}. The model can adapt its initial memory to the dataset, improving accuracy. If sequences are short or medium length, initial state quality affects the entire trajectory more significantly.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Better early-time gradients}. The model produces more informative outputs from the start, enhancing gradient flow. A strong trained initial state provides clearer gradients and more stable backpropagation.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{More expressive temporal priors}. The model can learn common starting patterns in the data. For example, if sequences often start with a certain trend or baseline, the learned initial states can encode this knowledge.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{More robust to noise and variability}. The model can adjust its initial memory to handle different sequence types better, especially when early inputs are noisy or unreliable.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{exclamation-triangle} \textbf{What about overfitting?}} Surprisingly, almost \textbf{no risk of overfitting} arises from learning initial states. Because \textbf{only 2 vectors} are added to the model ($h_0$ and $C_0$), and they are \textbf{extremely small compared to network weights}. Also, they capture global dataset-level priors, not sample-level details. Thus, they help generalization rather than harm it.

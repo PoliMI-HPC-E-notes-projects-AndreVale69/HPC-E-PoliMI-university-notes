@@ -38,6 +38,7 @@
     - add `Networks`
     - add `Multi-layer LSTM`
     - add `Bidirectional LSTM (BiLSTM) Networks`
+    - add `Practical Tips: Initialization & Conditioning`
 
 --------------------
 

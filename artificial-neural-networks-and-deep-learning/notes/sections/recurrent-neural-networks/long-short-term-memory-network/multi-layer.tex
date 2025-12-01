@@ -1,0 +1,194 @@
+\subsubsection{Multi-layer LSTM}
+
+Up until now, we have analyzed \textbf{single-layer LSTMs}, in which one LSTM cell processes the input sequence at each timestep. \autoref{fig:lstm-unrolled-many-to-many} illustrates a many-to-many architecture with outputs at each timestep. This is an example of a single-layer LSTM network in which all LSTM cells share the same parameters across timesteps, but only one LSTM cell processes the input at each timestep.
+
+\highspace
+However, modern deep learning models often use \textbf{multiple stacked recurrent layers}, forming a \textbf{multi-layer LSTM} architecture (or \textbf{deep LSTM}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why go deeper?}}
+\end{flushleft}
+Just like in feedforward networks and CNNs, \textbf{depth increases representational capacity}.
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] In a \emph{single-layer LSTM}, th cell sees only the raw sequence input at each timestep. It must learn both low-level and high-level temporal patterns from this input. This makes \textbf{learning complex patterns more difficult}.
+    \item[\textcolor{Green3}{\faIcon{check}}] In a \emph{multi-layer LSTM}, lower layers can learn \textbf{low-level temporal features} from the raw input, while higher layers can focus on \textbf{high-level temporal abstractions}. So, each layer builds on top of the previous one:
+    \begin{itemize}
+        \item \textbf{Layer 1} learns low-level temporal features from the raw input sequence (e.g., edges in video frames, or phonemes in audio).
+        \item \textbf{Layer 2} learns mid-level temporal patterns from Layer 1's features (e.g., shapes in video frames, or syllables in audio).
+        \item \textbf{Layer 3} learns high-level temporal abstractions from Layer 2's patterns (e.g., objects in video frames, or words in audio).
+    \end{itemize}
+    Stacking layers \textbf{hierarchically organizes information}, just like depth does in CNNs.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How Multi-layer LSTMs work}}
+\end{flushleft}
+In a deep LSTM, we have \textbf{multiple LSTM networks stacked one above the other}. For each timestep $t$:
+\begin{itemize}
+    \item \textbf{Layer 1} receives the raw input $\mathbf{x}^{(t)}$ and processes it through its LSTM cell, producing hidden state $\mathbf{h}_1^{(t)}$ and cell state $\mathbf{c}_1^{(t)}$.
+    \item \textbf{Layer 2} receives Layer 1's hidden state $\mathbf{h}_1^{(t)}$ as input, and processes it through its LSTM cell, producing hidden state $\mathbf{h}_2^{(t)}$ and cell state $\mathbf{c}_2^{(t)}$.
+    \item \textbf{Layer 3} receives Layer 2's hidden state $\mathbf{h}_2^{(t)}$ as input, and processes it through its LSTM cell, producing hidden state $\mathbf{h}_3^{(t)}$ and cell state $\mathbf{c}_3^{(t)}$.
+    \item This continues for however many layers the network has.
+\end{itemize}
+Each layer maintains its own recurrent connections over time, passing its hidden and cell states to the next timestep. The topmost layer produces the final output at each timestep. This architecture allows each layer to learn different levels of temporal features from the input sequence (\textbf{different abstraction levels}).
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[node distance=2.5cm, auto, >=latex,
+        cell/.style={draw, rectangle, rounded corners=3pt, minimum width=1.4cm, minimum height=0.9cm, fill=blue!6},
+        io/.style={font=\footnotesize},
+        arr/.style={->, thick},
+        smallarr/.style={->, >=stealth, thin}
+    ]
+    % --- Column t=1
+    \node[cell] (l1_t1) {$\mathrm{LSTM}_{1}$};
+    \node[cell, above=1.6cm of l1_t1] (l2_t1) {$\mathrm{LSTM}_{2}$};
+    \node[above=1.2cm of l2_t1] (dots_vert) {$\vdots$};
+    \node[cell, above=1.2cm of dots_vert] (lN_t1) {$\mathrm{LSTM}_{N}$};
+
+    % inputs at t=1
+    \node[io, below=0.9cm of l1_t1] (x_t1) {$\mathbf{x}^{(1)}$};
+    \draw[smallarr] (x_t1) -- node[midway, right] {} (l1_t1.south);
+
+    % horizontal arrows (recurrence) will be drawn later per column
+    % vertical arrows between layers at t=1
+    \draw[arr] (l1_t1.north) -- node[midway,right] {$\mathbf{h}_1^{(1)}$} (l2_t1.south);
+    \draw[arr] (l2_t1.north) -- node[midway,right] {$\mathbf{h}_2^{(1)}$} (dots_vert.south);
+    \draw[arr] (dots_vert.north) -- node[midway,right] {$\mathbf{h}_{N-1}^{(1)}$} (lN_t1.south);
+
+    % --- Column t=2
+    \node[cell, right=2cm of l1_t1] (l1_t2) {$\mathrm{LSTM}_{1}$};
+    \node[cell, above=1.6cm of l1_t2] (l2_t2) {$\mathrm{LSTM}_{2}$};
+    \node[above=1.2cm of l2_t2] (dots_vert2) {$\vdots$};
+    \node[cell, above=1.2cm of dots_vert2] (lN_t2) {$\mathrm{LSTM}_{N}$};
+
+    \node[io, below=0.9cm of l1_t2] (x_t2) {$\mathbf{x}^{(2)}$};
+    \draw[smallarr] (x_t2) -- (l1_t2.south);
+
+    % vertical arrows at t=2
+    \draw[arr] (l1_t2.north) -- node[midway,right] {$\mathbf{h}_1^{(2)}$} (l2_t2.south);
+    \draw[arr] (l2_t2.north) -- node[midway,right] {$\mathbf{h}_2^{(2)}$} (dots_vert2.south);
+    \draw[arr] (dots_vert2.north) -- node[midway,right] {$\mathbf{h}_{N-1}^{(2)}$} (lN_t2.south);
+
+    % --- Column t=3
+    \node[cell, right=2cm of l1_t2] (l1_t3) {$\mathrm{LSTM}_{1}$};
+    \node[cell, above=1.6cm of l1_t3] (l2_t3) {$\mathrm{LSTM}_{2}$};
+    \node[above=1.2cm of l2_t3] (dots_vert3) {$\vdots$};
+    \node[cell, above=1.2cm of dots_vert3] (lN_t3) {$\mathrm{LSTM}_{N}$};
+
+    \node[io, below=0.9cm of l1_t3] (x_t3) {$\mathbf{x}^{(3)}$};
+    \draw[smallarr] (x_t3) -- (l1_t3.south);
+
+    % vertical arrows at t=3
+    \draw[arr] (l1_t3.north) -- node[midway,right] {$\mathbf{h}_1^{(3)}$} (l2_t3.south);
+    \draw[arr] (l2_t3.north) -- node[midway,right] {$\mathbf{h}_2^{(3)}$} (dots_vert3.south);
+    \draw[arr] (dots_vert3.north) -- node[midway,right] {$\mathbf{h}_{N-1}^{(3)}$} (lN_t3.south);
+
+    % --- Column t = T (last)
+    \node[cell, right=2cm of l1_t3] (l1_tT) {$\mathrm{LSTM}_{1}$};
+    \node[cell, above=1.6cm of l1_tT] (l2_tT) {$\mathrm{LSTM}_{2}$};
+    \node[above=1.2cm of l2_tT] (dots_vertT) {$\vdots$};
+    \node[cell, above=1.2cm of dots_vertT] (lN_tT) {$\mathrm{LSTM}_{N}$};
+
+    \node[io, below=0.9cm of l1_tT] (x_tT) {$\mathbf{x}^{(T)}$};
+    \draw[smallarr] (x_tT) -- (l1_tT.south);
+
+    % vertical arrows at t=T
+    \draw[arr] (l1_tT.north) -- node[midway,right] {$\mathbf{h}_1^{(T)}$} (l2_tT.south);
+    \draw[arr] (l2_tT.north) -- node[midway,right] {$\mathbf{h}_2^{(T)}$} (dots_vertT.south);
+    \draw[arr] (dots_vertT.north) -- node[midway,right] {$\mathbf{h}_{N-1}^{(T)}$} (lN_tT.south);
+
+    % --- Horizontal recurrence arrows (showing recurrence in each layer)
+    \foreach \a/\b in {1/2,2/3,3/T}{
+        \draw[smallarr] (l1_t\a.east) -- node[midway, above] {$\mathbf{h}_1^{(\a)} ,\, \mathbf{c}_1^{(\a)}$} (l1_t\b.west);
+        \draw[smallarr] (l2_t\a.east) -- node[midway, above] {$\mathbf{h}_2^{(\a)} ,\, \mathbf{c}_2^{(\a)}$} (l2_t\b.west);
+        \draw[smallarr] (lN_t\a.east) -- node[midway, above] {$\mathbf{h}_N^{(\a)} ,\, \mathbf{c}_N^{(\a)}$} (lN_t\b.west);
+    }
+
+    % For column indices that are text nodes (like 1,2,3,T) the loop above uses their names; ensure nodes are named appropriately:
+    % If the automatic numeric names don't match, explicitly draw representative recurrence arrows between t1->t2, t2->t3, t3->tT:
+    \draw[smallarr] (l1_t1.east) -- node[midway, above] {$\mathbf{h}_1^{(1)} ,\, \mathbf{c}_1^{(1)}$} (l1_t2.west);
+    \draw[smallarr] (l1_t2.east) -- node[midway, above] {$\mathbf{h}_1^{(2)} ,\, \mathbf{c}_1^{(2)}$} (l1_t3.west);
+    \draw[smallarr] (l1_t3.east) -- node[midway, above] {$\mathbf{h}_1^{(3)} ,\, \mathbf{c}_1^{(3)}$} (l1_tT.west);
+
+    \draw[smallarr] (l2_t1.east) -- node[midway, above] {$\mathbf{h}_2^{(1)} ,\, \mathbf{c}_2^{(1)}$} (l2_t2.west);
+    \draw[smallarr] (l2_t2.east) -- node[midway, above] {$\mathbf{h}_2^{(2)} ,\, \mathbf{c}_2^{(2)}$} (l2_t3.west);
+    \draw[smallarr] (l2_t3.east) -- node[midway, above] {$\mathbf{h}_2^{(3)} ,\, \mathbf{c}_2^{(3)}$} (l2_tT.west);
+
+    \draw[smallarr] (lN_t1.east) -- node[midway, above] {$\mathbf{h}_N^{(1)} ,\, \mathbf{c}_N^{(1)}$} (lN_t2.west);
+    \draw[smallarr] (lN_t2.east) -- node[midway, above] {$\mathbf{h}_N^{(2)} ,\, \mathbf{c}_N^{(2)}$} (lN_t3.west);
+    \draw[smallarr] (lN_t3.east) -- node[midway, above] {$\mathbf{h}_N^{(3)} ,\, \mathbf{c}_N^{(3)}$} (lN_tT.west);
+
+    % --- Top outputs (from top layer)
+    \node[io, above=0.9cm of lN_t1] (y_t1) {$\mathbf{y}^{(1)}$};
+    \node[io, above=0.9cm of lN_t2] (y_t2) {$\mathbf{y}^{(2)}$};
+    \node[io, above=0.9cm of lN_t3] (y_t3) {$\mathbf{y}^{(3)}$};
+    \node[io, above=0.9cm of lN_tT] (y_tT) {$\mathbf{y}^{(T)}$};
+
+    \draw[smallarr] (lN_t1.north) -- (y_t1.south);
+    \draw[smallarr] (lN_t2.north) -- (y_t2.south);
+    \draw[smallarr] (lN_t3.north) -- (y_t3.south);
+    \draw[smallarr] (lN_tT.north) -- (y_tT.south);
+
+    % --- Legend / annotation: show stacking and per-cell I/O
+    % \node[align=left, right=0.8cm of lN_tT] (annot) {
+    %     \footnotesize
+    %     \begin{tabular}{l}
+    %     Vertical arrows: \\ \quad $\mathbf{h}_{\ell}^{(t)}$ feeds layer $\ell+1$ at same $t$ \\[2pt]
+    %     Horizontal arrows: \\ \quad $\mathbf{h}_{\ell}^{(t-1)},\mathbf{c}_{\ell}^{(t-1)} \rightarrow \mathbf{h}_{\ell}^{(t)},\mathbf{c}_{\ell}^{(t)}$ \\[2pt]
+    %     Bottom input: $\mathbf{x}^{(t)}$ to layer 1 \\ Top output: $\mathbf{y}^{(t)}$ from layer N \\[2pt]
+    %     Stack depth: $N$ layers (you can increase $N$)
+    %     \end{tabular}
+    % };
+
+    % Optional brace showing N layers
+    % \draw[decorate,decoration={brace,amplitude=6pt}, thick] ($(l1_t1.north)+(0.35,0)$) -- ($(lN_t1.south)+(0.35,0)$) node[midway,xshift=1.0cm] {\footnotesize N stacked layers};
+
+    \end{tikzpicture}
+    \captionof{figure}{\textbf{Multi-layer LSTM network architecture unrolled over time}. Each layer processes the hidden state from the layer below at the same timestep, while maintaining its own recurrent connections over time. The bottom layer receives the raw input sequence, and the top layer produces the output sequence. Each layer has its own LSTM cell with separate parameters.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Formal Equations}}
+\end{flushleft}
+We can derive the equations for a multi-layer LSTM by extending the single-layer LSTM equations. For a multi-layer LSTM with $N$ layers, at each timestep $t$, the computations for layer $\ell$ ($1 \leq \ell \leq N$) are as follows:
+\begin{itemize}
+    \item \textbf{Cell update} for layer $\ell$:
+    \begin{equation*}
+        C_{t}^{(\ell)} = f_t^{(\ell)} \odot C_{t-1}^{(\ell)} + i_t^{(\ell)} \odot \tilde{C}_t^{(\ell)}
+    \end{equation*}
+    \item \textbf{Hidden state update} for layer $\ell$:
+    \begin{equation*}
+        h_{t}^{(\ell)} = o_t^{(\ell)} \odot \tanh(C_{t}^{(\ell)})
+    \end{equation*}
+    \item \textbf{Input to layer $\ell$}:
+    \begin{itemize}
+        \item For layer 1 ($\ell = 1$):
+        \begin{equation*}
+            h_{t}^{(0)} = x_t \quad \text{(raw input at timestep } t\text{)}
+        \end{equation*}
+        \item For layers $\ell = 2, \ldots, N$:
+        \begin{equation*}
+            h_{t}^{(\ell-1)} \quad \text{(hidden state from previous layer at timestep } t\text{)}
+        \end{equation*}
+    \end{itemize}
+    \item \textbf{Output from layer $N$} (topmost layer):
+    \begin{equation*}
+        y_t = h_{t}^{(N)} \quad \text{(output at timestep } t\text{)}
+    \end{equation*}
+\end{itemize}
+Weights \textbf{are not shared} between layers but are shared across timesteps within each layer. This allows each layer to learn different temporal features at varying levels of abstraction.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Challenges of Deep LSTMs}}
+\end{flushleft}
+While multi-layer LSTMs offer increased representational capacity, they also introduce challenges:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Vanishing/Exploding Gradients across layers}: Although LSTMs mitigate vanishing gradients over time, stacking many layers can still lead to gradient issues during backpropagation through layers.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Heavy Computational Load}: More layers mean more parameters and computations, leading to longer training times and higher resource consumption.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Overfitting Risk}: Deeper models are more prone to overfitting, especially with limited data.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Training Instability}: Deeper LSTMs can be harder to train effectively, requiring careful tuning of hyperparameters and initialization. 
+\end{itemize}
+To address these challenges, techniques such as \textbf{residual connections}, \textbf{layer normalization}, and \textbf{dropout} are often employed in deep LSTM architectures.

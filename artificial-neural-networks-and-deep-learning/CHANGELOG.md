@@ -36,6 +36,7 @@
     - add `Gates`
     - add `Lightweight Alternative: Gated Recurrent Unit (GRU)`
     - add `Networks`
+    - add `Multi-layer LSTM`
 
 --------------------
 

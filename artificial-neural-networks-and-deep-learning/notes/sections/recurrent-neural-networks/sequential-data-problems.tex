@@ -1,0 +1,354 @@
+\subsection{Sequential Data Problems}
+
+Up to now we mostly considered ``classic'' deep-learning problems where we have a \textbf{fixed-size input} and a \textbf{fixed-size output}, for example an image classification problem where the input is an image of fixed size (e.g., $224 \times 224$ pixels) and the output is a class label (e.g., \emph{cat}, \emph{dog}, etc.). However, many real-world problems involve \textbf{sequential data}, where the input and/or output can vary in length. When dealing with sequential data, we often encounter the following types of problems:
+\begin{itemize}
+    \item[\textcolor{Red3}{\faIcon{book}}] \definition{One-to-One Problems}. It is the \textbf{classic} machine learning setup where we have \textbf{one input}, and we want to predict \textbf{one output}. There is \textbf{no sequence} involved on either side.
+
+    It is the standard supervised learning scenario: $x \to y$. Where $x$ is a fixed-size input (e.g., an image, a feature vector, an audio clip, etc.) and $y$ is a fixed-size output (e.g., a class label, a regression value, etc.). In this setting, the input has \textbf{no temporal dimension}, the output has \textbf{no temporal dimension}, and the mapping from input to output is \textbf{static} (i.e., it does not change over time).
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{What architecture is used in One-to-One problems?}} Any model that takes fixed-size input and produces fixed-size output can be used, such as \textbf{Feed-Forward Neural Networks (FFNs)}, \textbf{Convolutional Neural Networks (CNNs)}, etc.
+
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Architectures that are not used?}} \textbf{Recurrent Neural Networks (RNNs)} and their variants (e.g., LSTMs, GRUs) are generally not used in One-to-One problems, as they are designed to handle sequential data (i.e., data with temporal dependencies).
+
+
+    \item[\textcolor{Red3}{\faIcon{book}}] \definition{One-to-Many Problems}. In this type of problem, the model receives \textbf{one fixed-size input} $x$ and produces a \textbf{sequence} as output: $y_1, y_2, \ldots,\break y_T$. The length of the output sequence may be fixed or variable (stopped by an end-of-sequence token). However, the crucial point is that \textbf{the input is static; the output is a sequence generated step-by-step}. This is the first case in which RNNs/LSTMs/GRUs become necessary. Some examples of One-to-Many problems include:
+    \begin{itemize}
+        \item \textbf{Image Captioning}: Given an image, generate a descriptive caption.
+        \item \textbf{Music Generation}: Given a seed note or chord, generate a sequence of musical notes.
+        \item \textbf{Text Generation}: Given a prompt, generate a sequence of words or sentences.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why RNN/LSTM is needed here?}} Because the output must be generated \emph{sequentially}:
+    \begin{itemize}
+        \item The first output depends on the image.
+        \item The next output depends on:
+        \begin{itemize}
+            \item The image representation.
+            \item The previous output word.
+            \item The internal state of the RNN/LSTM/GRU.
+        \end{itemize}
+    \end{itemize}
+    Only RNNs/LSTMs (or later Transformer) can model this dynamic, autoregressive structure. A feedforward network cannot generate a \emph{sequence} of arbitrary length based on a single input.
+
+    \begin{examplebox}[: Image Captioning]
+        \textbf{Image Captioning} is a classic example of a One-to-Many problem. In this task, the model takes an image as input and generates a descriptive caption as output. The input is a fixed-size image (e.g., $224 \times 224$ pixels), while the output is a sequence of words forming a sentence (e.g., ``A dog playing with a ball in the park''). The length of the caption can vary depending on the content of the image.
+
+        More specifically, an image is processed once (e.g., by a CNN) to obtain a feature vector. Then an RNN/LSTM/GRU \textbf{generates words one at a time}.
+        \begin{enumerate}
+            \item A CNN encodes the image into a feature vector.
+            \item The feature vector is fed to an LSTM as the initial input/hidden state.
+            \item At each timestep, the LSTM outputs \textbf{one word}.
+            \item The sequence continues until an End-Of-Sentence (EOS) token is generated.
+        \end{enumerate}
+        Formally, if $x$ is the input image and $y_t$ is the word generated at timestep $t$, the model learns to predict:
+        \begin{equation*}
+            P\left(y_1, y_2, \ldots, y_T \, \mid \, x\right) = \prod_{t=1}^{T} P\left(y_t \, \mid \, y_1, y_2, \ldots, y_{t-1}, x\right)
+        \end{equation*}
+        Where $T$ is the length of the generated caption, which can vary for different images.
+    \end{examplebox}
+
+
+    \item[\textcolor{Red3}{\faIcon{book}}] \definition{Many-to-One Problems}. In this type of problem, the model receives a \textbf{sequence} as input: $x_1, x_2, \ldots, x_T$, and produces a \textbf{single fixed-size output} $y$. The length of the input sequence may be fixed or variable. However, the crucial point is that \textbf{the input is a sequence; the output is static}. This means the model must ``summarize'' the entire sequence into \textbf{one decision or prediction}. Some examples of Many-to-One problems include:
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How is this solved using RNNs/LSTMs/GRUs?}} THe RNN/LSTM/GRU reads the input sequence one timestep at a time:
+    \begin{equation*}
+        h_t = \text{LSTM}\left(x_t, h_{t-1}\right)
+    \end{equation*}
+    At the \textbf{final timestep} $T$, the hidden state $h_T$ contains a representation of the whole sequence:
+    \begin{equation*}
+        h_T \approx \text{summary of } \left(x_1, x_2, \ldots, x_T\right)
+    \end{equation*}
+    Then the model passes it to a classifier (e.g., a fully connected layer followed by softmax) to produce the final output $y$:
+    \begin{equation*}
+        \hat{y} = g\left(h_T\right) \quad \text{linear } \to \text{ softmax or sigmoid}
+    \end{equation*}
+    This output is the predicted label or value for the entire input sequence.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When does many-to-one occur in practice?}} Besides sentiment analysis, common examples include:
+    \begin{itemize}
+        \item \textbf{Sequence classification}: Classify a time-series (e.g., accelerometer data) into categories (e.g., walking, running, sitting). Classify an audio clip into genres (e.g., rock, jazz, classical). Identify speaker emotions from speech (e.g., happy, sad, angry). Human activity recognition from wearable sensor data (e.g., walking, running, sitting). Fault detection in sensor streams (e.g., normal vs. faulty operation).
+        \item \textbf{Video-level classification}: Classify an entire video into categories (e.g., action recognition, scene classification).
+        \item \textbf{Anomaly detection}: Detect anomalies in sequences (e.g., network traffic, sensor readings).
+    \end{itemize}
+
+
+    \item[\textcolor{Red3}{\faIcon{book}}] \definition{Many-to-Many Problems}. In this type of problem, the model receives a \textbf{sequence} as input: $x_1, x_2, \ldots, x_T$, and produces a \textbf{sequence} as output: $y_1, y_2, \ldots, y_{T'}$. The lengths of the input and output sequences may be fixed or variable. This is \hl{the most general case}, where both the input and output are sequences. Some examples of Many-to-Many problems include:
+    \begin{itemize}
+        \item \textbf{Machine Translation}: Given a sentence in one language, translate it into another language.
+        \item \textbf{Video Captioning}: Given a video, generate a descriptive caption.
+        \item \textbf{Speech Recognition}: Given an audio clip, transcribe it into text.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why isn't a simple RNN enough?}} If we tried to output one word for each input word (i.e., $T' = T$), we would have a \textbf{Many-to-Many with aligned sequences} problem. However, in many real-world applications, the output sequence length $T'$ may differ from the input sequence length $T$ (e.g., translating a short sentence into a longer one). Therefore, \textbf{the model must first understand the entire input sequence, then generate a new sequence}. This motivates the \textbf{encoder-decoder architecture}.
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{tools} \textbf{How does the Encoder-Decoder architecture work?}}
+    \end{flushleft}
+    The architecture works in two main stages:
+    \begin{enumerate}
+        \item \important{Encoder}
+        \begin{itemize}
+            \item Reads the entire input sequence $x_1, x_2, \ldots, x_T$.
+            \item Updates its hidden state at each timestep:
+            \begin{equation*}
+                h_t = \text{LSTM}\left(x_t, h_{t-1}\right)
+            \end{equation*}
+            \item At the end, produces a \textbf{fixed-dimensional representation} (context vector) of the entire input sequence:
+            \begin{equation*}
+                h_T \approx \text{summary of } \left(x_1, x_2, \ldots, x_T\right)
+            \end{equation*}
+        \end{itemize}
+        \item \important{Decoder}
+        \begin{itemize}
+            \item Takes the context vector from the encoder as input.
+            \item Generates the output sequence \textbf{one element at a time}:
+            \begin{equation*}
+                y_1, y_2, \ldots, y_{T'}
+            \end{equation*}
+            \item At each timestep, the decoder predicts the next output element based on:
+            \begin{itemize}
+                \item The context vector (encoder output).
+                \item The previously generated outputs.
+                \item Its own internal state.
+            \end{itemize}
+        \end{itemize}
+    \end{enumerate}
+
+
+    \item[\textcolor{Red3}{\faIcon{book}}] \definition{Many-to-Many Problems (with aligned sequences)}. In this variant of the Many-to-Many problem, the input and output sequences are of the \textbf{same length} ($T' = T$), and there is a direct alignment between each input element and its corresponding output element. This means that \hl{for each input $x_t$, there is a corresponding output $y_t$}.
+    
+    In this settings:
+    \begin{itemize}
+        \item \textbf{Input} is a sequence: $x_1, x_2, \ldots, x_T$.
+        \item \textbf{Output} is also a sequence: $y_1, y_2, \ldots, y_T$.
+        \item There is a \textbf{direct correspondence} between each input element and its output element: $x_t \to y_t$ for all $t = 1, 2, \ldots, T$.
+    \end{itemize}
+    So same number of timesteps, same temporal grid, and one output \textbf{for each input element}. Some examples of Many-to-Many problems with aligned sequences include:
+    \begin{itemize}
+        \item \textbf{Part-of-Speech Tagging}: Given a sentence, assign a part-of-speech tag to each word.
+        \item \textbf{Named Entity Recognition}: Given a sentence, identify and classify named entities (e.g., persons, organizations, locations).
+        \item \textbf{Video Frame Labeling}: Given a video, label each frame with an action or object.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How is it modeled?}} A Recurrent Neural Network (RNN)/LSTM/GRU processes the input sequence one timestep at a time:
+    \begin{equation*}
+        h_t = \text{LSTM}\left(x_t, h_{t-1}\right)
+    \end{equation*}
+    Then, at \textbf{every timestep} $t$, the model produces an output $y_t$ based on the current hidden state $h_t$:
+    \begin{equation*}
+        \hat{y}_t = g\left(h_t\right) \quad \text{linear } \to \text{ softmax or sigmoid}
+    \end{equation*}
+    So the model generates outputs:
+    \begin{equation*}
+        \hat{y}_1, \hat{y}_2, \ldots, \hat{y}_T
+    \end{equation*}
+    Often called \definition{Sequence Labeling} or \definition{Sequence Tagging}, since each input element is tagged with a corresponding output label.
+\end{itemize}
+
+\begin{figure}[!htp]
+\centering
+    \resizebox{\linewidth}{!}{%
+        \begin{tikzpicture}[
+            font=\small,
+            box/.style={draw, line width=0.6pt, minimum width=0.55cm, minimum height=1.15cm},
+            inBox/.style={box, fill=red!18},
+            rnnBox/.style={box, fill=green!18},
+            outBox/.style={box, fill=blue!18},
+            redUp/.style={->, line width=0.9pt, draw=red!70!black},
+            greenFwd/.style={->, line width=0.9pt, draw=green!60!black},
+            blueUp/.style={->, line width=0.9pt, draw=blue!70!black},
+            panel/.style={draw=none, fill=gray!15, rounded corners=10pt, inner sep=10pt},
+            title/.style={font=\small\bfseries, text=black, inner sep=1pt}
+        ]
+
+            % --- layout parameters ---
+            \pgfmathsetmacro{\xstep}{1.05}
+            \pgfmathsetmacro{\xgap}{4.2}
+            \pgfmathsetmacro{\ygap}{5.25}
+            \pgfmathsetmacro{\yIn}{0.0}
+            \pgfmathsetmacro{\yR}{1.45}
+            \pgfmathsetmacro{\yOut}{3.0}
+
+            % -------------------------
+            % Row 1, Col 1: one-to-one
+            % -------------------------
+            \begin{scope}[shift={(0.5, 2*\ygap)}]
+                \node[inBox]  (r1c1x) at (0,\yIn)  {};
+                \node[rnnBox] (r1c1h) at (0,\yR)   {};
+                \node[outBox] (r1c1y) at (0,\yOut) {};
+
+                \draw[redUp]  (r1c1x.north) -- (r1c1h.south);
+                \draw[blueUp] (r1c1h.north) -- (r1c1y.south);
+
+                \begin{pgfonlayer}{background}
+                    \node[panel, fit=(r1c1x)(r1c1y)] (panel11) {};
+                \end{pgfonlayer}
+
+                % title
+                \node[title, anchor=south] at (panel11.north) {\phantom{y}One-to-one\phantom{y}};
+            \end{scope}
+
+            % -------------------------
+            % Row 1, Col 2: one-to-many
+            % -------------------------
+            \begin{scope}[shift={(\xgap-1, 2*\ygap)}]
+                \node[inBox] (r1c2x1) at (0,\yIn) {};
+
+                \node[rnnBox] (r1c2h1) at (0,\yR) {};
+                \node[rnnBox] (r1c2h2) at (\xstep,\yR) {};
+                \node[rnnBox] (r1c2h3) at (2*\xstep,\yR) {};
+
+                \node[outBox] (r1c2y1) at (0,\yOut) {};
+                \node[outBox] (r1c2y2) at (\xstep,\yOut) {};
+                \node[outBox] (r1c2y3) at (2*\xstep,\yOut) {};
+
+                \draw[redUp] (r1c2x1.north) -- (r1c2h1.south);
+                \draw[greenFwd] (r1c2h1.east) -- (r1c2h2.west);
+                \draw[greenFwd] (r1c2h2.east) -- (r1c2h3.west);
+
+                \draw[blueUp] (r1c2h1.north) -- (r1c2y1.south);
+                \draw[blueUp] (r1c2h2.north) -- (r1c2y2.south);
+                \draw[blueUp] (r1c2h3.north) -- (r1c2y3.south);
+
+                \begin{pgfonlayer}{background}
+                    \node[panel, fit=(r1c2x1)(r1c2y3)] (panel12) {};
+                \end{pgfonlayer}
+
+                % title
+                \node[title, anchor=south] at (panel12.north) {One-to-many};
+            \end{scope}
+
+            % -------------------------
+            % Row 1, Col 3: many-to-one
+            % -------------------------
+            \begin{scope}[shift={(1.9*\xgap, 2*\ygap)}]
+                \node[inBox] (r2c1x1) at (0,\yIn) {};
+                \node[inBox] (r2c1x2) at (\xstep,\yIn) {};
+                \node[inBox] (r2c1x3) at (2*\xstep,\yIn) {};
+
+                \node[rnnBox] (r2c1h1) at (0,\yR) {};
+                \node[rnnBox] (r2c1h2) at (\xstep,\yR) {};
+                \node[rnnBox] (r2c1h3) at (2*\xstep,\yR) {};
+
+                \node[outBox] (r2c1y) at (2*\xstep,\yOut) {};
+
+                \draw[redUp] (r2c1x1.north) -- (r2c1h1.south);
+                \draw[redUp] (r2c1x2.north) -- (r2c1h2.south);
+                \draw[redUp] (r2c1x3.north) -- (r2c1h3.south);
+
+                \draw[greenFwd] (r2c1h1.east) -- (r2c1h2.west);
+                \draw[greenFwd] (r2c1h2.east) -- (r2c1h3.west);
+
+                \draw[blueUp] (r2c1h3.north) -- (r2c1y.south);
+
+                \begin{pgfonlayer}{background}
+                    \node[panel, fit=(r2c1x1)(r2c1y)] (panel13) {};
+                \end{pgfonlayer}
+
+                % title
+                \node[title, anchor=south] at (panel13.north) {Many-to-one};
+            \end{scope}
+
+            % -------------------------
+            % Row 2, Col 1: many-to-many (NOT aligned)
+            % -------------------------
+            \begin{scope}[shift={(0, \ygap-0.2)}]
+                \node[inBox] (r2c2x1) at (0,\yIn) {};
+                \node[inBox] (r2c2x2) at (\xstep,\yIn) {};
+                \node[inBox] (r2c2x3) at (2*\xstep,\yIn) {};
+
+                \node[rnnBox] (r2c2h1) at (0,\yR) {};
+                \node[rnnBox] (r2c2h2) at (\xstep,\yR) {};
+                \node[rnnBox] (r2c2h3) at (2*\xstep,\yR) {};
+                \node[rnnBox] (r2c2h4) at (3*\xstep,\yR) {};
+                \node[rnnBox] (r2c2h5) at (4*\xstep,\yR) {};
+
+                \node[outBox] (r2c2y3) at (2*\xstep,\yOut) {};
+                \node[outBox] (r2c2y4) at (3*\xstep,\yOut) {};
+                \node[outBox] (r2c2y5) at (4*\xstep,\yOut) {};
+
+                \draw[redUp] (r2c2x1.north) -- (r2c2h1.south);
+                \draw[redUp] (r2c2x2.north) -- (r2c2h2.south);
+                \draw[redUp] (r2c2x3.north) -- (r2c2h3.south);
+
+                \draw[greenFwd] (r2c2h1.east) -- (r2c2h2.west);
+                \draw[greenFwd] (r2c2h2.east) -- (r2c2h3.west);
+                \draw[greenFwd] (r2c2h3.east) -- (r2c2h4.west);
+                \draw[greenFwd] (r2c2h4.east) -- (r2c2h5.west);
+
+                \draw[blueUp] (r2c2h3.north) -- (r2c2y3.south);
+                \draw[blueUp] (r2c2h4.north) -- (r2c2y4.south);
+                \draw[blueUp] (r2c2h5.north) -- (r2c2y5.south);
+
+                \begin{pgfonlayer}{background}
+                    \node[panel, fit=(r2c2x1)(r2c2y5)] (panel21) {};
+                \end{pgfonlayer}
+
+                % title
+                \node[title, anchor=south] at (panel21.north) {Many-to-many (not aligned)};
+            \end{scope}
+
+            % -------------------------
+            % Row 2, Col 2.5: many-to-many (ALIGNED)
+            % -------------------------
+            \begin{scope}[shift={({1.5*\xgap}, \ygap-0.2)}]
+                \node[inBox] (r3x1) at (0,\yIn) {};
+                \node[inBox] (r3x2) at (\xstep,\yIn) {};
+                \node[inBox] (r3x3) at (2*\xstep,\yIn) {};
+                \node[inBox] (r3x4) at (3*\xstep,\yIn) {};
+                \node[inBox] (r3x5) at (4*\xstep,\yIn) {};
+
+                \node[rnnBox] (r3h1) at (0,\yR) {};
+                \node[rnnBox] (r3h2) at (\xstep,\yR) {};
+                \node[rnnBox] (r3h3) at (2*\xstep,\yR) {};
+                \node[rnnBox] (r3h4) at (3*\xstep,\yR) {};
+                \node[rnnBox] (r3h5) at (4*\xstep,\yR) {};
+
+                \node[outBox] (r3y1) at (0,\yOut) {};
+                \node[outBox] (r3y2) at (\xstep,\yOut) {};
+                \node[outBox] (r3y3) at (2*\xstep,\yOut) {};
+                \node[outBox] (r3y4) at (3*\xstep,\yOut) {};
+                \node[outBox] (r3y5) at (4*\xstep,\yOut) {};
+
+                \draw[redUp] (r3x1.north) -- (r3h1.south);
+                \draw[redUp] (r3x2.north) -- (r3h2.south);
+                \draw[redUp] (r3x3.north) -- (r3h3.south);
+                \draw[redUp] (r3x4.north) -- (r3h4.south);
+                \draw[redUp] (r3x5.north) -- (r3h5.south);
+
+                \draw[greenFwd] (r3h1.east) -- (r3h2.west);
+                \draw[greenFwd] (r3h2.east) -- (r3h3.west);
+                \draw[greenFwd] (r3h3.east) -- (r3h4.west);
+                \draw[greenFwd] (r3h4.east) -- (r3h5.west);
+
+                \draw[blueUp] (r3h1.north) -- (r3y1.south);
+                \draw[blueUp] (r3h2.north) -- (r3y2.south);
+                \draw[blueUp] (r3h3.north) -- (r3y3.south);
+                \draw[blueUp] (r3h4.north) -- (r3y4.south);
+                \draw[blueUp] (r3h5.north) -- (r3y5.south);
+
+                \begin{pgfonlayer}{background}
+                    \node[panel, fit=(r3x1)(r3y5)] (panel22) {};
+                \end{pgfonlayer}
+
+                % title
+                \node[title, anchor=south] at (panel22.north) {Many-to-many (aligned)};
+            \end{scope}
+
+        \end{tikzpicture}%
+    }
+\caption{Different types of Sequential Data Problems.}
+\end{figure}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | l | l @{}}
+        \toprule
+        Case                    & Input         & Output        & Alignment \\
+        \midrule
+        One-to-One              & Fixed-size    & Fixed-size    & N/A \\
+        One-to-Many             & Fixed-size    & Sequence      & No \\
+        Many-to-One             & Sequence      & Fixed-size    & No \\
+        Many-to-Many            & Sequence      & Sequence      & No \\
+        Many-to-Many (aligned)  & Sequence      & Sequence      & Yes \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of Sequential Data Problems. ``Fixed-size'' refers to inputs or outputs that do not vary in length, while ``Sequence'' indicates variable-length data. The ``Alignment'' column specifies whether there is a direct correspondence between elements of the input and output sequences.}
+\end{table}

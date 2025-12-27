@@ -64,6 +64,8 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="artificial-neural-networks-and-deep-learning">Course Details</a></li>
             <li><a href="artificial-neural-networks-and-deep-learning/notes/artificial-neural-networks-and-deep-learning.pdf">PDF v0.4.0</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-1">Challenge 1</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-2">Challenge 2</a></li>
         </ul></td>
     </tr>
     <tr>

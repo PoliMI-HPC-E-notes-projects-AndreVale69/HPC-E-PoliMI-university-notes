@@ -1,0 +1,110 @@
+\subsubsection{Nested Cross-Validation}\label{sec:nested-cross-validation}
+
+When we train a neural network (or any machine learning model), we actually perform \textbf{two separate activities}:
+\begin{itemize}
+    \item \textbf{Model selection}: choose the \emph{best configuration} (e.g., hyperparameters, architecture) based on performance on a validation set.
+    \item \textbf{Model assessment}: estimate the \emph{true generalization ability} of the final chosen model on unseen data.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle}} But here lies a \textbf{problem}: in most cross-validation setups, \textbf{we reuse the same data for both tasks}. That means we \textbf{peek} at our test data while tuning our model, leading to \textbf{optimistic bias} in our performance estimates.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why that's a problem (hidden optimism)?}} Let's say we're testing 10 different neuronal network architectures and we run \textbf{5-fold cross-validation} ($K=5$) to see which performs best.
+\begin{enumerate}
+    \item We choose the one with the lowest average validation error across the 5 folds.
+    \item Then we report that same average validation error as ``the model's performance''.
+\end{enumerate}
+\textcolor{Red2}{\faIcon{exclamation-triangle}} But this is \textbf{optimistically biased}, because:
+\begin{itemize}
+    \item We \textbf{used} the validation data to pick the best model.
+    \item Therefore, the validation score no longer represents unseen data, because the model (and our choice) are \textbf{tuned} to those particular folds we used (even if indirectly).
+\end{itemize}
+So we get a number that looks great, but it's \textbf{too optimistic}, it doesn't reflect how the model would perform on truly unseen data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{There is no more optimism with Nested Cross-Validation}}
+\end{flushleft}
+\definition{Nested Cross-Validation} is a technique that \textbf{separates model selection from model assessment} by introducing \textbf{two layers of cross-validation loops}:
+\begin{itemize}
+    \item An \textbf{outer loop} for \textbf{model assessment} (unseen test data). It evaluates \emph{how good that chosen configuration} really is on truly unseen data.
+    \item An \textbf{inner loop} for \textbf{model selection} (tuning hyperparameters). It decides \emph{which configuration} performs best (uses only training data of that outer fold).
+\end{itemize}
+So now, when we report the average outer test error, it reflects \textbf{real generalization}, not the performance on data we optimized for.
+
+\begin{examplebox}[: Nested Cross-Validation Analogy]
+    Think of it like preparing for an exam:
+    \begin{itemize}
+        \item We take \textbf{practice tests} to decide the best study method (this is the \textbf{inner loop, model selection}).
+        \item Then, we take the \textbf{final exam} to measure how well our preparation really worked (this is the \textbf{outer loop, model assessment}).
+    \end{itemize}
+    If we report our \emph{practice test} scores as our \emph{final exam} result, we'll be unrealistically confident, exactly what happens without nested cross-validation.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does Nested Cross-Validation work?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Outer Loop (Model Assessment)}:
+    \begin{itemize}
+        \item Split the entire dataset into $K$ \textbf{outer folds}:
+        \begin{equation*}
+            \mathcal{D} = \left\{ \mathcal{D}_1, \mathcal{D}_2, \ldots, \mathcal{D}_K \right\}
+        \end{equation*}
+        \item For each outer fold $k$:
+        \begin{itemize}
+            \item Reserve fold $\mathcal{D}_k^{\text{outer}}$ for \textbf{testing}.
+            \item Use the remaining $K-1$ folds as the \textbf{training set} for model selection in the inner loop:
+            \begin{equation*}
+                \mathcal{D}_{\text{train}}^{\text{outer}} = \bigcup_{\substack{j=1 \\ j \neq k}}^{K} \mathcal{D}_j
+            \end{equation*}
+        \end{itemize}
+    \end{itemize}
+    \item \important{Inner Loop (Model Selection)}:
+    \begin{itemize}
+        \item Inside that outer training data $\mathcal{D}_{\text{train}}^{\text{outer}}$, perform another $K$-fold cross-validation, called \textbf{$M$-fold cross-validation}:
+        \begin{equation*}
+            \mathcal{D}_{\text{train}}^{\text{outer}} = \left\{ \mathcal{D}_1^{\text{inner}}, \mathcal{D}_2^{\text{inner}}, \ldots, \mathcal{D}_M^{\text{inner}} \right\}
+        \end{equation*}
+        To \textbf{tune hyperparameters} (e.g., learning rate, number of layers, etc.). The letter $M$ is used to distinguish it from the outer loop's $K$.
+        \item Select the \hl{configuration} $\theta^{*}_{k}$ that gives the \textbf{lowest inner validation error averaged} over the $M$ inner folds:
+        \begin{equation*}
+            \theta^{*}_{k} = \arg\min_{\theta} \left(
+                \dfrac{1}{M} \cdot \sum_{m=1}^{M} \text{Error}\left( \mathcal{D}_m^{\text{inner, val}}; \theta \right)
+            \right)
+        \end{equation*}
+    \end{itemize}
+    \item \important{Model Evaluation}:
+    \begin{itemize}
+        \item Retrain the model on \textbf{all inner folds combined} using the selected configuration $\theta^{*}_{k}$:
+        \begin{equation*}
+            \mathcal{D}_{\text{train}}^{\text{inner}} = \bigcup_{m=1}^{M} \mathcal{D}_m^{\text{inner}}
+        \end{equation*}
+        \item Evaluate it on the \textbf{outer test fold} $\mathcal{D}_k^{\text{outer}}$ to get the test error for that outer fold:
+        \begin{equation*}
+            \text{Test Error}_k = \text{Error}\left( \mathcal{D}_k^{\text{outer}}; \theta^{*}_{k} \right)
+        \end{equation*}
+        And \hl{store} the test error for that outer fold:
+        \begin{equation*}
+            e_k = \text{Test Error}_k
+        \end{equation*}
+    \end{itemize}
+    \item \important{Average over outer folds}. After completing all $K$ outer folds, compute the overall performance estimate:
+    \begin{equation*}
+        \text{Overall Test Error} = \hat{E}_{\text{nested}} = \frac{1}{K} \sum_{k=1}^{K} e_k
+    \end{equation*}
+    This gives an \textbf{unbiased estimate} of the model's generalization performance.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}} \textbf{and} \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] Provides an \textbf{unbiased generalization estimate}, even after hyperparameter tuning.
+    \item[\textcolor{Green3}{\faIcon{check}}] Ensures a clear \textbf{separation between selection and assessment}.
+    \item[\textcolor{Green3}{\faIcon{check}}] Uses \textbf{all data efficiently} across different folds.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Computationally expensive}: Each outer folds contains a full inner cross-validation loop, so the model is trained $K \times M$ times. For deep neural networks, this can be prohibitive.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Complex implementation}: Careful bookkeeping is required to manage data splits and model configurations across nested loops. In other words, it's easy to make mistakes if not implemented carefully.
+\end{itemize}
+Some typical choices are $K=5$ for the outer loop and $M=3$ for the inner loop, balancing computational cost and reliable estimates. For more accurate estimates, $K=10$ and $M=5$ can be used, but at a higher computational cost. For small datasets, nested cross-validation is particularly beneficial to avoid overfitting during model selection, and a common choice is $K=10$ and $M=5$.

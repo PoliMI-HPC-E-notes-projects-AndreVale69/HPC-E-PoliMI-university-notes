@@ -1,0 +1,99 @@
+\subsubsection{Learning Rate Scheduling}\label{sec:learning-rate-scheduling}
+
+The \textbf{learning rate} $\eta$ is one of the most important hyperparameters in training neural networks. It controls how big the weight updates are at each step of the optimization process:
+\begin{equation*}
+    w_{k+1} = w_k - \eta \nabla_w E\left(w_k\right)
+\end{equation*}
+If $\eta$ is too \textbf{large}, training may \textbf{diverge} (overshoot minima). If it's too \textbf{small}, training is \textbf{slow} and can get stuck in \textbf{local minima} or \textbf{plateaus}. So we need ways to make the learning rate \textbf{adapt intelligently over time}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Fixed vs. Adaptive Learning Rates}}
+\end{flushleft}
+There are four main strategies for setting the learning rate during training:
+\begin{itemize}
+    \item \definition{Fixed Learning Rate} (baseline). The learning rate $\eta$ remains \textbf{constant} throughout training. So \textbf{gradient descent (GD)} or \textbf{stochastic gradient descent (SGD)} uses the same $\eta$ at every iteration:
+    \begin{equation*}
+        w_{k+1} = w_k - \eta \nabla_w E\left(w_k\right)
+    \end{equation*}
+    \textbf{Works fine for simple convex problems} (for example \autoref{fig:convex-bowl-contour}, \autopageref{fig:convex-bowl-contour}), but for deeper networks, loss landscapes are complex, and a fixed $\eta$ can lead to \textbf{slow convergence} or divergence.
+
+
+    \item \definition{Learning Rate Scheduling (decay)}. The learning rate $\eta$ is \textbf{reduced over time} according to a predefined schedule. Typical schedules include:
+    \begin{itemize}
+        \item \definitionWithSpecificIndex{Step Decay}{Learning Rate Scheduling: Step Decay}{}: reduce $\eta$ by a factor (e.g., halve it) every $s$ epochs:
+        \begin{equation}
+            \eta_t = \eta_0 \cdot \text{drop}^{\left\lfloor t \div s \right\rfloor}
+        \end{equation}
+        Where $\eta_0$ is the initial learning rate, $t$ is the epoch number, and \text{drop} is the factor by which to reduce $\eta$.
+
+        \item \definitionWithSpecificIndex{Exponential Decay}{Learning Rate Scheduling: Exponential Decay}{}: reduce $\eta$ by a factor \textbf{every} epoch:
+        \begin{equation}
+            \eta_t = \eta_0 \cdot e^{-\lambda t}
+        \end{equation}
+        Where $\lambda$ is the decay rate and $t$ is the epoch number.
+
+        \item \definitionWithSpecificIndex{1/t Decay}{Learning Rate Scheduling: 1/t Decay}{}: reduce $\eta$ according to the inverse of the epoch number:
+        \begin{equation}
+            \eta_t = \frac{\eta_0}{1 + \lambda t}
+        \end{equation}
+        Where $\lambda$ is the decay rate and $t$ is the epoch number. It is a classic stochastic approximation rule.
+
+        \item \definitionWithSpecificIndex{Cosine Annealing}{Learning Rate Scheduling: Cosine Annealing}{}: vary $\eta$ according to a cosine function:
+        \begin{equation}
+            \eta_t = \dfrac{\eta_0}{2} \cdot \left(1 + \cos\left(\frac{t}{T} \pi\right)\right)
+        \end{equation}
+        Where $T$ is the maximum number of epochs. This allows for periodic ``\emph{restarts}'' of the learning rate, because the cosine function oscillates (i.e., the interval $[0, \pi]$ can be repeated multiple times during training).
+    \end{itemize}
+    In practice, \textbf{learning rate is set to a relatively high value} initially to allow for \hl{rapid learning}, and then \textbf{gradually decreased} to allow for \hl{fine-tuning} as training progresses.
+
+
+    \item \important{Momentum: adding inertia to updates}. Since plain SGD (Stochaastic Gradient Descent) may zig-zag in narrow valleys of the loss surface, \textbf{momentum} accelerates learning by accumulating a \textbf{velocity vector} in directions of persistent reduction in loss:
+    \begin{equation}
+        v_t = \alpha v_{t-1} - \eta \nabla_w E\left(w_t\right)
+    \end{equation}
+    Then weights are updated using this velocity:
+    \begin{equation}
+        w_{t+1} = w_t + v_t
+    \end{equation}
+    Where $v_t$ is the velocity at time $t$, $\alpha \in \left[0, 1\right)$ is the momentum coefficient (typically around 0.9), and $\eta$ is the learning rate.
+
+
+    \item \important{Adaptive Learning Rate Methods}. These methods adjust the learning rate for each parameter individually based on historical gradients:
+    \begin{itemize}
+        \item \definitionWithSpecificIndex{RMSProp (Root Mean Square Propagation)}{Adaptive Learning Rate Methods: RMSProp (Root Mean Square Propagation)}{RMSProp (Root Mean Square Propagation)}. Adapts the step using a \emph{running average of squared gradients}:
+        \begin{equation}
+            \begin{aligned}
+                s_t &= \rho s_{t-1} + (1 - \rho) g_t^2 \\[.3em]
+                w_{t+1} &= w_t - \frac{\eta}{\sqrt{s_t + \varepsilon}} g_t
+            \end{aligned}
+        \end{equation}
+        Where $s_t$ is the running average of squared gradients, $\rho$ is the decay rate (typically around 0.9), $g_t$ is the gradient at time $t$, and $\varepsilon$ is a small constant to prevent division by zero. If gradients are large, then the denominator increases, and the step size decreases, and vice versa. This helps \textbf{stabilize updates and allows for larger learning rates}.
+
+        \item \definitionWithSpecificIndex{Adam (Adaptive Moment Estimation)}{Adaptive Learning Rate Methods: Adam (Adaptive Moment Estimation)}{Adam (Adaptive Moment Estimation)}: combines momentum (mean of gradients) and RMSProp (variance of gradients) by maintaining both a velocity vector and an exponentially decaying average of squared gradients:
+        \begin{equation}
+            \begin{aligned}
+                m_t &= \beta_1 m_{t-1} + (1 - \beta_1) g_t \\[.3em]
+                v_t &= \beta_2 v_{t-1} + (1 - \beta_2) g_t^2 \\[.3em]
+                \hat{m}_t &= \frac{m_t}{1 - \beta_1^t} \\[.3em]
+                \hat{v}_t &= \frac{v_t}{1 - \beta_2^t} \\[.3em]
+                w_{t+1} &= w_t - \eta \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \varepsilon}
+            \end{aligned}
+        \end{equation}
+        Where:
+        \begin{itemize}
+            \item $m_t$ is the first moment (mean) estimate,
+            \item $v_t$ is the second moment (uncentered variance) estimate,
+            \item $\beta_1$ and $\beta_2$ are decay rates for the moment estimates (typically $\beta_1 = 0.9$, $\beta_2 = 0.999$),
+            \item $\hat{m}_t$ and $\hat{v}_t$ are bias-corrected estimates,
+            \item $\varepsilon$ is a small constant to prevent division by zero, typically around $10^{-8}$.
+        \end{itemize}
+        Adam \textbf{adapts quickly}, \textbf{handles noisy gradients}, and \textbf{works well with mini-batches}. However, sometimes \textbf{generalizes worse} than SGD with momentum (flatter minima are less explored).
+    \end{itemize}
+\end{itemize}
+In practice, we can take a hybrid approach:
+\begin{enumerate}
+    \item \textbf{Start with Adam} for general-purpose training, especially with complex architectures or noisy data.
+    \item \textbf{Switch to SGD with Momentum} for final fine-tuning to potentially achieve better generalization.
+    \item \textbf{Learning rate scheduling} (cosine, step, or warm restarts) is used even \emph{with} Adam; we can adapt the \emph{global} $\eta$ while Adam adapts per-parameter rates.
+\end{enumerate}

@@ -75,13 +75,13 @@ L4 load balancers can make decisions in different ways, depending on how much st
 \end{flushleft}
 When we connect to a website, for example:
 \begin{equation*}
-    \text{Client} \rightarrow \text{VIP} = \texttt{203.0.113.10} (\text{example.com})
+    \text{Client} \rightarrow \text{VIP} = \texttt{203.0.113.10} \quad (\texttt{www.example.com})
 \end{equation*}
 Behind that VIP there might be \textbf{hundreds of backend servers}:
 \begin{equation*}
-    \texttt{10.0.1.1}, \;\texttt{10.0.1.2}, \;\texttt{10.0.1.3}, \dots
+    \texttt{10.0.1.1}, \quad \texttt{10.0.1.2}, \quad \texttt{10.0.1.3}, \quad \dots
 \end{equation*}
-A \textbf{Layer 4 load balancer} must decide \emph{which backend} will handle our connection. This decision must be taken carefully, because datacenters are large and dynamic: many load balancers instances (distributed LBs), servers added/removed frequently, VIPs shared across multiple racks. So packets from the same TCP connection may reach \textbf{different LBs}. If each LB picks a random backend, we break connection affinity. We need to ensure two properties:
+A \textbf{Layer 4 Load Balancer} must decide \emph{which backend} will handle our connection. This decision must be taken carefully, because datacenters are large and dynamic: many load balancers instances (distributed LBs), servers added/removed frequently, VIPs shared across multiple racks. So packets from the same TCP connection may reach \textbf{different LBs}. If each LB picks a random backend, we break connection affinity. We need to ensure two properties:
 \begin{itemize}
     \item \definition{Connection Affinity} (\textbf{Local Property}): \hl{All packets of the same connection (flow) must go to the same backend server}. It is mandatory for TCP correctness, otherwise connections would fail.
 
@@ -90,7 +90,7 @@ A \textbf{Layer 4 load balancer} must decide \emph{which backend} will handle ou
     \end{examplebox}
 
 
-    \item \definition{Persistency} (\textbf{Global Property}): \hl{the same connection (or flow) is always mapped to the same backend, even if other conditions change} (e.g., another LB instance, restart, or network rehash). It ensures that the \textbf{same flow always maps to the same backend}, regardless of which LB instance handles it, temporary restarts, scaling events, hash table updates, etc.
+    \item \definition{Persistency} (\textbf{Global Property}): \hl{The same connection (or flow) is always mapped to the same backend, even if other conditions change} (e.g., another LB instance, restart, or network rehash). It ensures that the \textbf{same flow always maps to the same backend}, regardless of which LB instance handles it, temporary restarts, scaling events, hash table updates, etc.
 
     \begin{examplebox}[: Persistency]
         We have two load balancer instances: $\text{LB}_1$ and $\text{LB}_2$. Due to ECMP routing, different packets of the same TCP flow might hit different LBs:
@@ -105,6 +105,30 @@ If we have \textbf{persistency}, then automatically each connection is mapped de
 \begin{equation*}
     \text{Persistency} \implies \text{Connection Affinity}
 \end{equation*}
+
+\begin{deepeningbox}[: Formalizing Connection Affinity and Persistency]
+    Let $F$ be the \textbf{set of flows}, $B$ the \textbf{set of backends}, and $L$ the \textbf{set of load-balancer instances}. For each $\ell \in L$ define a mapping:
+    \begin{equation*}
+        f_{\ell}:\; F \to B
+    \end{equation*}
+    Which assigns each flow to a backend when processed by instance $\ell$.
+
+    \highspace
+    \important{Connection Affinity} (\emph{local} to instance $\ell$) means that for \textbf{any flow} $\phi\in F$ \textbf{all packets} $p$ of $\phi$ (flow) \textbf{seen} by $\ell$ (load-balancer) \textbf{map to the same backend}:
+    \begin{gather*}
+        \forall\phi\in F:\; \forall\,p_1,p_2\in\mathrm{Packets}(\phi)\cap\mathrm{SeenBy}(\ell),\\[.1em]
+        \mathrm{decision}_{\ell}(p_1)=\mathrm{decision}_{\ell}(p_2)=f_{\ell}(\phi)
+    \end{gather*}
+    \important{Persistency} (\emph{global}) requires the \textbf{mapping to be independent of the LB instance}:
+    \begin{equation*}
+        \forall\ell_1,\ell_2\in L,\;\forall\phi\in F:\quad f_{\ell_1}(\phi)=f_{\ell_2}(\phi)
+    \end{equation*}
+    Hence Persistency implies Connection Affinity, since if all $f_{\ell}$ are identical then each $\ell$ trivially maps every flow consistently. Affinity without persistency corresponds to the case:
+    \begin{equation*}
+        \exists\ell_1\neq\ell_2,\;\exists\phi\in F:\; f_{\ell_1}(\phi)\neq f_{\ell_2}(\phi)
+    \end{equation*}
+    While each individual $f_{\ell}$ still satisfies the local affinity property above.
+\end{deepeningbox}
 
 \highspace
 \begin{examplebox}[: Analogy]
@@ -227,6 +251,7 @@ This guarantees that each server owns a ``slice'' of the ring (roughly uniform i
     Now only \textbf{flows that hash between 50 and 60} move, those that previously belonged to \code{S3} now go to \code{S4}. \textbf{All other flows stay exactly where they were}. That's the magic of consistent hashing: the mapping is \emph{consistent} before and after changes, only flows in the new server's interval are remapped.
 \end{examplebox}
 
+\highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{balance-scale} \textbf{Why it's ``fair'' and scalable}}
 \end{flushleft}
@@ -238,8 +263,7 @@ If we place servers randomly on the ring, each gets roughly the same share of th
 \end{itemize}
 This way, each server gets multiple slices of the ring, balancing load better. Consistent hashing scales well: adding or removing servers only affects a small portion of the ring, so most flows remain stable. It works efficiently even with thousands of servers and millions of flows.
 
-\newpage
-
+\highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{cogs} \textbf{Summary}}
 \end{flushleft}

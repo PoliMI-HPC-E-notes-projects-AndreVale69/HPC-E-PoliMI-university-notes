@@ -15,7 +15,7 @@ Their system emphasizes \textbf{scalability} (tens of millions of concurrent TCP
 
 \highspace
 \begin{definitionbox}[: Direct Server Return (DSR)]\label{definition: Direct Server Return (DSR)}
-    \textbf{Direct Server Return (DSR)} is a load balancing technique where the load balancer forwards incoming requests to backend servers, but the \hl{responses are sent directly from the backend servers to the clients, bypassing the load balancer on the return path}. This approach reduces the load on the load balancer and can improve response times.
+    \definition{Direct Server Return (DSR)} is a load balancing technique where the load balancer forwards incoming requests to backend servers, but the \hl{responses are sent directly from the backend servers to the clients, bypassing the load balancer on the return path}. This approach reduces the load on the load balancer and can improve response times.
 \end{definitionbox}
 
 \highspace
@@ -38,7 +38,7 @@ Alibaba Cloud employs \textbf{hierarchical L4 load balancer} built on programmab
 \end{enumerate}
 \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Alibaba's technique stand out?}} Alibaba's strength isn't just ``\emph{using NAT}'', it's \textbf{how they scale it}. They use \textbf{programmable switches} to handle the NAT translations at line rate, allowing them to manage millions of connections efficiently. The switches can perform the address rewriting directly in hardware, which is much faster than doing it in software on a traditional server-based load balancer. Furthermore, the \textbf{hierarchical design} allows them to distribute the load across multiple layers of switches:
 \begin{itemize}
-    \item \textbf{Edge / Border Switches}: the first programmable switches that packets hit after entering the datacenter from the Internet. They handle \textbf{VIP addressing}, perform \textbf{DNAT} (Destination NAt, map the VIP to a backend servers's internal IP), and optionally \textbf{SNAT} on replies(rewrite server's source IP to VIP). These edge switches are typically \textbf{programmable ASICs} (like Barefoot Tofino) running \textbf{P4 pipelines} that apply NAT rules.
+    \item \textbf{Edge / Border Switches}: the first programmable switches that packets hit after entering the datacenter from the Internet. They handle \textbf{VIP addressing}, perform \textbf{DNAT} (Destination NAT, map the VIP to a backend servers's internal IP), and optionally \textbf{SNAT} on replies (Source NAT, rewrite server's source IP to VIP). These edge switches are typically \textbf{programmable ASICs} (like Barefoot Tofino) running \textbf{P4 pipelines} that apply NAT rules.
 
     \textcolor{Green3}{\faIcon{check-circle}} Programmable hardware ensures \textbf{line-rate performance} (Terabits per second throughput with microsecond latency).
     \item \textbf{Aggregation / Spine Switches}: sometimes, Alibaba distributes part of the load-balancing logic here for \textbf{scalability and redundancy}. These switches \textbf{don't rewrite IPs} but may decide \emph{which edge switch} performs the NAT for a given VIP.
@@ -56,7 +56,7 @@ Alibaba Cloud employs \textbf{hierarchical L4 load balancer} built on programmab
 Azure's technique stands out \textbf{because it takes a very different design philosophy} compared to Alibaba, Meta, or Google. While Alibaba and Meta focus on \textbf{scaling L4 load balancing in hardware}, \textbf{Microsoft prioritizes control, observability, and integration} with the cloud platform, even at the cost of higher per-connection overhead.
 
 \highspace
-Microsoft's Azure load balancers, particularly \textbf{Ananta} and its successors, are based on \textbf{TCP termination}. That means the \textbf{load balancer actually participates in the TCP connection} instead of simply forwarding packets. With ``\emph{TCP termination}'', we mean that when a client connects to a service VIP:
+Microsoft's Azure load balancers, particularly \textbf{Ananta}\cite{patel2013ananta} and its successors, are based on \textbf{TCP termination}. That means the \textbf{load balancer actually participates in the TCP connection} instead of simply forwarding packets. With ``\emph{TCP termination}'', we mean that when a client connects to a service VIP:
 \begin{enumerate}
     \item The \textbf{load balancer itself accepts the TCP connection} from the client (acting as the server).
     \item Then, it \textbf{creates a new TCP connection} from itself to the chosen backend VM (acting as the client).
@@ -67,8 +67,7 @@ Essentially, the LB ``splits'' the connection into two halves:
     \begin{array}{rll}
         \text{Client} \longrightarrow & \text{TCP connection \#1} & \longrightarrow \\[.5em]
         & [\text{Load Balancer}] & \longrightarrow \\[.5em]
-        & \text{TCP connection \#2} & \longrightarrow \\[.5em]
-        & \text{Backend Server} &
+        & \text{TCP connection \#2} & \longrightarrow \text{Backend Server}
     \end{array}
 \end{equation*}
 This design gives Azure \textbf{full control over every connection}, which brings several major advantages:
@@ -129,6 +128,7 @@ It's a \textbf{software-based, distributed, stateless load balancer} running on 
     \begin{equation*}
         \text{server} = \text{hash}\left(\code{src\_ip}, \code{src\_port}, \code{dst\_ip}, \code{dst\_port}, \code{protocol}\right) \mod N
     \end{equation*}
+    Where $N$ is the number of backend servers, fixed across all Maglev nodes. This ensures \textbf{consistent flow affinity} without storing any state.
     So, even if packets of the same TCP connection hit different Maglev nodes, they'll all pick the \textbf{same backend server} deterministically. The result: no flow state to replicate or synchronize between load balancers, then huge scalability.
 
 
@@ -147,7 +147,7 @@ It's a \textbf{software-based, distributed, stateless load balancer} running on 
 
     \textcolor{Red2}{\faIcon{exclamation-triangle}} \textcolor{Red2}{\textbf{Trade-off}}: Harder to monitor replies and handle asymmetric routing, but Google solves this with deep in-network telemetry and strict network control.
 \end{itemize}
-A typically request flow looks like this:
+\textcolor{Green3}{\faIcon{exchange-alt}} A \textbf{typically request flow} looks like this:
 \begin{enumerate}
     \item A user on the Internet sends a request to a Google service (e.g., Gmail) using a \textbf{VIP (Virtual IP)} address.
     \item The request hits the \textbf{nearest Maglev instance} (via Anycast routing).
@@ -155,7 +155,7 @@ A typically request flow looks like this:
     \item It \textbf{forwards the packet} to the chosen backend server.
     \item The backend server processes the request and \textbf{sends the response directly} to the user, bypassing Maglev.
 \end{enumerate}
-Google solved two of the hardest problems in distributed L4 load balancing:
+\textcolor{Green3}{\faIcon{check-circle}} Google solved two of the hardest problems in distributed L4 load balancing:
 \begin{enumerate}
     \item \textbf{Consistency without state replication}, all nodes make identical decisions locally.
     \item \textbf{Scalability without single points of failure}, we can add/remove Maglev instances instantly.

@@ -30,11 +30,10 @@ Hence, there's a \textbf{trade-off} between:
     \item \textbf{Stateful designs}: strong persistency, weak scalability.
     \item \textbf{Stateless designs}: high scalability, but poor persistency on server pool changes.
 \end{itemize}
-
-\newpage
+\textcolor{Green3}{\faIcon{question-circle} \textbf{But isn't Maglev already stateless?}} Yes, but only in the data plane. Maglev is \textbf{stateless with respect to connections}, but \textbf{not stateless with respect to configuration}. Maglev does \textbf{not} store per-flow or per-connection state: no 5-tuple to backend table, nor TCP state tracking. However, Maglev \textbf{does maintain state in the control plane}, namely the consistent-hashing lookup table and the set of active backends. This state is global (shared by all LBs), static during normal operation and updated only on backend set changes. So ``stateless'' means \textbf{no per-connection state in the data plane}, but Maglev still relies on \textbf{global configuration state} to ensure persistency. Cheetah aims to go further by eliminating even this global state dependency, achieving true statelessness while still ensuring per-connection consistency.
 
 \begin{flushleft}
-    \hqlabel{sec:stateless-cheetah-key-idea}{\textcolor{Green3}{\faIcon{lightbulb} \textbf{Stateless Cheetah's Key Idea}}}
+    \hqlabel{sec:stateless-cheetah-key-idea}{\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Stateless Cheetah's Key Idea}}}
 \end{flushleft}
 \definitionWithSpecificIndex{Cheetah}{Stateless Cheetah}{} is a \emph{research prototype} of a \textbf{Layer-4 load balancer} proposed at NSDI 2020 \cite{barbette2020high}. It was developed by researchers from \textbf{University of Washington}, \textbf{Google}, and \textbf{MIT}, as part of the effort to improve scalability and performance of datacenter load balancing. Cheetah's main goal is to \textbf{reduce or eliminate per-flow state} at the load balancer while still ensuring \emph{connection persistency}, \emph{high performance}, and \emph{fine-grained load distribution}.
 
@@ -133,7 +132,8 @@ So, Cheetah's goal is to \textbf{guarantee per-connection consistency (PCC)}, th
     \item \important{Subsequent Packets}. Every following packet of that connection carries the cookie. The LB decodes it, extracts the server ID, and forwards the packet directly; no lookup in per-flow state. The \textbf{static tables} \hl{never change per-connection}, ensuring \textbf{persistency} even if VIP-to-server membership changes.
 \end{enumerate}
 
-\highspace
+\newpage
+
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{If Cheetah is stateless, how can it decrypt the cookie on every packet without keeping any state or key?}}
 \end{flushleft}
@@ -145,10 +145,10 @@ The salt ``S'' is a \textbf{global cryptographic-style secret} shared by all Che
         \toprule
         \textbf{Property} & \textbf{Description} \\
         \midrule
-        \textbf{Per-Connection-Consistency (PCC)}   & Guaranteed, since the cookie uniquely identifies the backend. \\[.5em]
-        \textbf{Statelessness}                      & No per-flow memory $\to$ scalable.                            \\[.5em]
-        \textbf{Flexibility}                        & Supports any LB algorithm, not just hashing.                  \\[.5em]
-        \textbf{Security / resilience}              & Salted cookie prevents clients from targeting a server.       \\[.5em]
+        \textbf{Per-Connection-Consistency (PCC)}   & Guaranteed, since the cookie uniquely identifies the backend. \\[.3em]
+        \textbf{Statelessness}                      & No per-flow memory $\to$ scalable.                            \\[.3em]
+        \textbf{Flexibility}                        & Supports any LB algorithm, not just hashing.                  \\[.3em]
+        \textbf{Security / resilience}              & Salted cookie prevents clients from targeting a server.       \\[.3em]
         \textbf{Overhead}                           & Cookie size grows $\approx\log_{2} k$ bits (small).           \\
         \bottomrule
     \end{tabular}
@@ -157,14 +157,14 @@ The salt ``S'' is a \textbf{global cryptographic-style secret} shared by all Che
 
 \begin{figure}[!htp]
     \centering
-    \includegraphics[width=\textwidth]{img/cheetah-lb.pdf}
+    \includegraphics[width=.77\textwidth]{img/cheetah-lb.pdf}
     \caption{The diagram \cite{barbette2020high} shows the \textbf{complete life-cycle of a connection} through a \textbf{\emph{stateless Cheetah} load balancer}. It illustrates \textbf{how per-connection consistency (PCC)} is guaranteed \emph{without} keeping any per-flow state in memory. }
 \end{figure}
 
 \newpage
 
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{lightbulb} \textbf{Cheetah Variant: Stateful Version}}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Cheetah Variant: Stateful Version}}
 \end{flushleft}
 While \textbf{stateless Cheetah} is elegant and fast, some datacenter applications still need \textbf{per-connection visibility} for: traffic shaping (rate limiting, NATs), DDoS filtering, per-flow monitoring, selective rerouting of heavy hitters, or other middlebox functions. These features \emph{require} the load balancer to know something about each active connection. So Cheetah extends its design with a \textbf{lightweight per-connection table}, but keeps the cookie logic to guarantee PCC.
 
@@ -183,26 +183,48 @@ Fast lookups, but large memory footprint (millions of entries) and high synchron
         \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What it sores.}} Per-connection entries: info about a specific connection (its hash and its server's IP/DIP).
         \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{How it's used.}} Directly indexed using the cookie number carried in each packet.
     \end{itemize}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            \textbf{Index} & \textbf{Connection Hash} & \textbf{Backend DIP} \\
+            \midrule
+            0 & \code{0xA1B2C3D4} & \code{10.0.0.1} \\
+            1 & \code{0xB2C3D4E5} & \code{10.0.0.2} \\
+            2 & \code{0xC3D4E5F6} & \code{10.0.0.3} \\
+            3 & \code{0xD4E5F607} & \code{10.0.0.4} \\
+            4 & \code{--free--} & \code{--free--} \\
+            5 & \code{--free--} & \code{--free--} \\
+            6 & \code{--free--} & \code{--free--} \\
+            \bottomrule
+        \end{tabular}
+        \caption{Example of \hl{ConnTable} with 4 active connections. Each entry stores the connection's hash and the backend server's DIP.}
+    \end{table}
     \item \important{\texttt{ConnStack}}
     \begin{itemize}
-        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What it sores.}} A simple stack (list) of free positions (indices) in the \code{ConnTable}.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What it sores.}} A simple stack (list) of free positions (indices) in the \code{ConnTable}. For example, taking the previous table, the stack would contain:
+        \begin{equation*}
+            \text{Free Indices} = \left[ 6, 5, 4 \right]
+        \end{equation*}
         \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{How it's used.}} When a new connection arrives, the LB ``\emph{pops}'' one free slot from this stack.
     \end{itemize}
+    
+    \newpage
+    
     \item \important{\texttt{Cookie}}
     \begin{itemize}
-        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What it sores.}} A small number inserted into the packet header, representing the \code{ConnTable} index.
+        \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What it sores.}} A small number inserted into the packet header, representing the \code{ConnTable} index. For example, if the cookie is \code{2}, it means the packet belongs to the connection stored in \code{ConnTable[2]}, in our case the one with hash \code{0xC3D4E5F6} and DIP \code{10.0.0.3}.
         \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{How it's used.}} Tells the LB exactly \emph{which \code{ConnTable} entry} to look at for this connection.
     \end{itemize}
 \end{itemize}
 So instead of hashing to \emph{find} the table entry, each packet \emph{tells} the LB its exact slow index via the cookie.
 
-\newpage
-
+\highspace
 \begin{flushleft}
     \hqlabel{how-it-works-stateful-cheetah}{\textcolor{Green3}{\faIcon{tools} \textbf{How it works - Stateful Cheetah}}}
 \end{flushleft}
 \begin{itemize}
-    \item \textcolor{Green3}{\textbf{New Connection (first packet)}}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{New Connection (first packet)}}
     \begin{enumerate}
         \item A new connection arrives at the LB.
         \item The LB pops a free index \code{i} from the \code{ConnStack}.
@@ -219,7 +241,7 @@ So instead of hashing to \emph{find} the table entry, each packet \emph{tells} t
     Now the LB \textbf{knows} that all packets with cookie $=$ \code{i} belong to that connection.
 
 
-    \item \textcolor{DarkOrange3}{\textbf{Subsequent Packets}}
+    \item[\textcolor{DarkOrange3}{\faIcon{stream}}] \textcolor{DarkOrange3}{\textbf{Subsequent Packets}}
     \begin{enumerate}
         \item When the LB receives another packet with cookie $=$ \code{i}: it \textbf{directly indexes} into \code{ConnTable[i]}. No hashing, no lookups.
         \item It fetches the DIP and forwards the packet.
@@ -227,22 +249,21 @@ So instead of hashing to \emph{find} the table entry, each packet \emph{tells} t
     This gives \textbf{constant-time lookups, insertion and deletion} ($\text{O}(1)$ complexity).
 
 
-    \item \textcolor{Red2}{\textbf{Connection Close}}. When the flow ends:
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Connection Close}}. When the flow ends:
     \begin{enumerate}
         \item The LB pushes index \code{i} back into the \code{ConnStack}, freeing the slot.
         \item That entry becomes reusable for a future connection.
     \end{enumerate}
 \end{itemize}
 
-\highspace
+\newpage
+
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{Since the hash is not used for lookups in the stateful version, why is it still needed?}}
 \end{flushleft}
-In \textbf{stateless Cheetah} (page \hqpageref{sec:stateless-cheetah-key-idea}), the hash of the connection ID (\code{hash\_S\break (connID)}) was essential to \emph{decode} the cookie and find the backend. But in \textbf{stateful Cheetah}, each packet carries the \emph{index} of its entry directly, so: the LB doesn't recompute hashes to find where the entry is and the table operations are constant-time. So \textbf{why keep the hash at all?} The hash nos servers a \hl{security and validation} purpose:
+In \textbf{stateless Cheetah} (page \hqpageref{sec:stateless-cheetah-key-idea}), the hash of the connection ID (\code{hash\_S\break (connID)}) was essential to \emph{decode} the cookie and find the backend. But in \textbf{stateful Cheetah}, each packet carries the \emph{index} of its entry directly, so: the LB doesn't recompute hashes to find where the entry is and the table operations are constant-time. So \textbf{why keep the hash at all?} The hash on the server serves a \hl{security and validation} purpose:
 \begin{itemize}
     \item \important{To verify packet integrity and prevent spoofing}. Remember: \textbf{any client could try} to forge a cookie (e.g., random index) \textbf{to hijack another flow}. That would be disastrous because the LB might forward packets to the wrong backend. So Cheetah stores, in each \code{ConnTable} entry, the \textbf{hash} of that connection's 5-tuple, computed with the \textbf{secret salt ``S''}.
-
-    \newpage
 
     When a packet arrives:
     \begin{enumerate}
@@ -375,16 +396,17 @@ However, it depends on the size of each \code{ConnTable} entry.
     This is very manageable for modern servers. So, \textbf{stateful Cheetah} can track \textbf{millions of connections} with \textbf{tens of MBs of memory}, while still providing \textbf{constant-time operations} and \textbf{per-connection consistency}.
 \end{examplebox}
 
-\newpage
-
+\highspace
 \begin{figure}[!htp]
     \centering
-    \includegraphics[width=\textwidth]{img/statefull-cheetah.pdf}
+    \includegraphics[width=.9\textwidth]{img/statefull-cheetah.pdf}
     \caption{The diagram \cite{barbette2020high} shows the \textbf{\emph{Cheetah stateful}} LB operations for the first packet of a connection. They do not show the stateless cookie for identifying the stateful LB. The VIP-to-servers is included within the LB-logic and not shown. The server performs Direct Server Return (DSR) so the response packet does not traverse the load balancers. Subsequent packets from the client only access their index in the corresponding \texttt{ConnTable}.}
 \end{figure}
 
+\newpage
+
 \begin{flushleft}
-    \textcolor{Green3}{\faIcon{lightbulb} \textbf{Hybrid Two-Tier Architecture}}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Hybrid Two-Tier Architecture}}
 \end{flushleft}
 Imagine a huge datacenter with millions of incoming connections per second; hundreds of thousands of backend servers (DIPs); tens or hundreds of load balancer nodes. Now, if every LB tried to be fully \textbf{stateful} (keeping per-flow state for all connections), it would need:
 \begin{itemize}
@@ -395,7 +417,7 @@ Imagine a huge datacenter with millions of incoming connections per second; hund
 \textbf{Impossible to scale cleanly}. So \definition{Hybrid Cheetah}'s insight is: ``\emph{split the job in two (divide and conquer): let the fast, simple LBs do stateless work, and let fewer, powerful LBs handle stateful per-flow logic}''.
 
 \highspace
-\textcolor{Green3}{\faIcon{check-circle} \textbf{Two-tier architecture}}:
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Two-tier architecture}}
 \begin{itemize}
     \item \important{Tier 1: Stateless Cheetah LB}: Entry point. \textbf{Chooses} which \textbf{Tier-2} LB handles the flow and \textbf{encodes} that \textbf{choice} into the \textbf{cookie}.
     \item \important{Tier 2: Stateful Cheetah LB}: \textbf{Manages} actual connection \textbf{table} (\code{ConnTable} $+$ \code{ConnStack}) and \textbf{forwards packets to backends}.
@@ -464,7 +486,7 @@ So, for \textbf{Tier-1 LBs, adding or removing nodes is easy}. Each Tier-1 LB us
 \highspace
 So the real challenge is \textbf{scaling Tier-2 LBs}, because they hold the actual connection state. When we add or remove a Tier-2 LB, we must ensure that existing connections are not disrupted.
 \begin{itemize}
-    \item \important{Adding a Tier-2 LB}:
+    \item[\textcolor{Green3}{\faIcon{plus}}] \textcolor{Green3}{\textbf{Adding a Tier-2 LB}} (easy):
     \begin{itemize}
         \item Tier-1 LBs \textbf{update} their internal ``\code{VIPToServers}''-like table with the \textbf{new Tier-2 instance}.
         \item \textbf{Future connections may hash} to the new Tier-2 LB.
@@ -472,7 +494,7 @@ So the real challenge is \textbf{scaling Tier-2 LBs}, because they hold the actu
     \end{itemize}
 
 
-    \item \important{Removing a Tier-2 LB}:
+    \item[\important{\faIcon{minus}}] \important{Removing a Tier-2 LB} (careful):
     \begin{itemize}
         \item \textbf{Active connections} on that LB can be \textbf{gracefully drained}. We stop sending \emph{new} connections to that LB, but let the existing ones finish naturally.
         \item Tier-1 LBs \textbf{update} their internal table to \textbf{remove} the departed Tier-2 LB.

@@ -1,0 +1,45 @@
+\subsection{Faild (Production Environment)}\label{sec:faild-production-l4-load-balancer}
+ 
+\definition{Faild} is a \textbf{production-grade Layer-4 load balancer} developed and deployed by \textbf{Fastly} to operate at the \textbf{edge of the network}, where traffic first enters the infrastructure. Unlike research-oriented designs, Faild is shaped primarily by \textbf{operational constraints} rather than theoretical optimality.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Motivation}}
+\end{flushleft}
+Fastly needed a new L4 load balancer because \textbf{existing approaches were not well suited for large-scale edge deployments}, where traffic patterns, failure modes, and operational requirements differ significantly from those of centralized datacenters. The key motivations behind Faild's design include:
+\begin{itemize}
+    \item \important{Edge-oriented traffic characteristics}. Traffic at the edge is highly variable, with millions of geographically distributed clients generating short-lived connections. Traditional load balancers often assume more stable traffic patterns typical of datacenter environments. Faild is optimized to handle this bursty, ephemeral traffic efficiently and with low latency.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] Traditional L4 load balancers struggle with the \textbf{unique traffic patterns at the edge}, leading to inefficiencies and increased latency.\footnote{Because they are designed for more stable traffic, they may not handle the high variability and short-lived connections effectively.}
+        \item[\textcolor{Green3}{\faIcon{check}}] Faild is designed to \textbf{efficiently manage short-lived}, \textbf{bursty connections} from a large number of clients, minimizing latency and maximizing throughput.
+    \end{itemize}
+
+
+    \item \important{Latency constraints}. At the edge, \textbf{every microsecond matters}. L7 load balancing is often too expensive due to TCP termination (\autopageref{def:tcp-termination}), application-level parsing, and higher per-connection overhead. Faild allows fast forwarding decisions based solely on transport headers, significantly reducing latency.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] L7 load balancers introduce \textbf{significant latency} due to TCP termination and application-level processing.\footnote{This is particularly problematic at the edge, where low latency is critical for user experience.}
+        \item[\textcolor{Green3}{\faIcon{check}}] Faild makes \textbf{fast forwarding decisions} based solely on transport headers, minimizing latency.
+    \end{itemize}
+    
+    
+    \item \important{Failure is the norm}. Edge nodes are expected to \textbf{fail, restart, and be upgraded frequently}. Faild is designed to be \textbf{resilient to partial failures}, with state that is easy to rebuild and cheap to maintain.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] Traditional load balancers often assume \textbf{stable environments} and struggle with frequent failures at the edge.\footnote{This can lead to complex recovery procedures and increased downtime.}
+        \item[\textcolor{Green3}{\faIcon{check}}] Faild's state management is designed to be \textbf{easy to rebuild} and \textbf{resilient to partial failures}, ensuring high availability.
+    \end{itemize}
+    
+    
+    \item \important{Operational simplicity}. Fastly prioritized \textbf{predictability and ease of debugging} over perfect load optimality. Faild avoids complex rebalancing logic and large per-flow state tables, favoring a fully stateless design that minimizes disruption during server changes.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] Complex load balancing algorithms can lead to \textbf{unpredictable behavior} and \textbf{difficult debugging} in production environments.\footnote{Large per-flow state tables increase memory pressure and complicate recovery after crashes.}
+        \item[\textcolor{Green3}{\faIcon{check}}] Faild employs a \textbf{fully stateless design}, prioritizing \textbf{operational simplicity} and minimizing connection disruption during server\break changes.
+    \end{itemize}
+
+
+    \item \important{Gap between research and practice}. Many research proposals for L4 load balancing, such as Cheetah (\autopageref{sec:stateless-cheetah-key-idea}), assume \textbf{stable environments, controlled failure models, and strong consistency guarantees}. In contrast, Faild is built for the messy realities of production systems, where \textbf{robustness and debuggability} are more important than theoretical optimality.
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] Research proposals often fail to account for the \textbf{complexities of real-world deployments}, leading to solutions that are difficult to implement in practice.\footnote{This includes assumptions about stable environments and controlled failure models that do not hold in production.}
+        \item[\textcolor{Green3}{\faIcon{check}}] Faild is designed with a focus on \textbf{robustness and debuggability}, accepting slight inefficiencies in favor of predictable behavior.
+    \end{itemize}
+\end{itemize}
+In summary, Faild was designed to satisfy \textbf{real-world edge constraints}: low latency, frequent failures, limited state, and operational simplicity; even if this means giving up some theoretical guarantees offered by purely stateless or perfectly uniform load balancing schemes. In the next sections, we will explore the specific design goals, key choices, and trade-offs that shaped Faild's architecture.

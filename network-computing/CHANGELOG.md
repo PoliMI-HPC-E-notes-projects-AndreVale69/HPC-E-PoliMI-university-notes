@@ -19,7 +19,7 @@
   - add `Traditional LB Architecture`
   - add `Real-World Deployments`
   - add `Design Space`
-  - add `Case Study: Cheetah`
+  - add `Cheetah (Research Proposal)`
 
 --------------------
 

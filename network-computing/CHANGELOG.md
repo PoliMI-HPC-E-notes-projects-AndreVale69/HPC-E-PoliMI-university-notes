@@ -21,6 +21,7 @@
   - add `Design Space`
   - add `Cheetah (Research Proposal)`
   - add `Faild (Production Environment)`
+    - add `Design Goals and Choices`
 
 --------------------
 

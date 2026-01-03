@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.0.2](#v102)
 - [v1.0.1](#v101)
 - [v1.0.0](#v100)
 - [v0.15.0](#v0150)
@@ -19,6 +20,12 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.0.2
+
+- fix: correct minor typo in the description of loop overhead in the exam notes. The word "changing" was split across two lines and has been corrected to appear on a single line for proper rendering.
 
 --------------------
 

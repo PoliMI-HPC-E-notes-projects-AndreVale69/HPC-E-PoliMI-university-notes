@@ -2411,16 +2411,20 @@ At program start, the BHT entries are \textbf{initialized} (often all taken or a
 \highspace
 The correct answer is: \textbf{True}, because the number of mispredictions depends on how the BHT entries are initialized and on the size of the BHT, which determines how many branches can be tracked without aliasing.
 
+\longline
+
 \subsubsection*{Quiz 5 - Branch Prediction}
 
 \emph{Consider the following assembly code executed by a processor with 1-entry 1-bit Branch History Table initialized as Taken}:
 \begin{lstlisting}
         ADDI R1, R0, 0
         ADDI R2, R0, 100
+
 LOOP:   BEQ R1, R2, DONE
         ADD R5, R5, R4
         ADDI R1, R1, 1
         J LOOP
+
 DONE:
 \end{lstlisting}
 \emph{Assuming \textbf{only} the branch instruction accesses the BHT:}
@@ -2428,10 +2432,56 @@ DONE:
     \item \emph{How many accesses to the Branch History Table?}
     \item \emph{How many mispredictions?}
 \end{itemize}
-\emph{True or False? Motivate.}
+\emph{\textbf{(Single Answer)}}
+\begin{description}
+    \item[\textbf{Answer 1:}] 101 accesses, 2 mispredictions
+    \item[\textbf{Answer 2:}] 100 accesses, 1 misprediction
+    \item[\textbf{Answer 3:}] 99 accesses, 1 misprediction
+    \item[\textbf{Answer 4:}] 201 accesses, 2 mispredictions
+\end{description}
+\textcolor{Green3}{\textbf{\emph{Answer:}}} The correct answer is \textbf{Answer 1: 101 accesses, 2 mispredictions}. Let's explain why. See also: \autopageref{sec:1-bit-bht}.
+\begin{itemize}
+    \item \textbf{How many BHT accesses?} Only the \textbf{conditional branch} \texttt{BEQ R1, R2, DONE} accesses the BHT (the \texttt{J LOOP} does \textbf{not}, by assumption).
+    \begin{itemize}
+        \item \code{R1} starts at \code{0}, \code{R2 = 100}.
+        \item The branch is executed once per loop check for $\code{R1 = 0,1,2,\ldots,100}$.
+        \begin{itemize}
+            \item For $\code{R1 = 0 \ldots 99}$: branch outcome is \textbf{Not Taken}.
+            \item For $\code{R1 = 100}$: branch outcome is \textbf{Taken} and we exit the loop.
+        \end{itemize}
+    \end{itemize}
+    So the number of executions (thus BHT accesses) of the branch is:
+    \begin{equation*}
+        100 \text{ (for R1 = 0 to 99)} + 1 \text{ (for R1 = 100)} = 101 \text{ accesses}
+    \end{equation*}
 
-\highspace
-\textcolor{Green3}{\textbf{\emph{Answer:}}} \texttt{R1} starts at \texttt{0}. Each loop iteration: \texttt{R1} is incremented by \texttt{1}, and the loop stops when \texttt{R1} equals \texttt{100}. Therefore, \texttt{BEQ} is executed \texttt{101} times: One hundred times when \texttt{R1} is not equal to \texttt{R2} (the branch is not taken), and one time when \texttt{R1} is equal to \texttt{R2} (the branch is taken). For the first \texttt{100} iterations: The \texttt{BEQ} condition is false, so the branch is not taken. Therefore, the predictor's Taken prediction is incorrect, resulting in a mispredict. For the $101^{\text{st}}$ \texttt{BEQ}, BHT predicts ``Not Taken'', but the branch is taken because \texttt{R1} is equal to \texttt{R2}, so there is a mispredict.
+
+    \item \textbf{How many mispredictions with a 1-entry, 1-bit BHT initialized as Taken?} A \textbf{1-bit BHT} remembers the \textbf{last outcome} (Taken or Not Taken) of the branch. If correct it stays, if wrong it flips. The initial state is \textbf{Predict Taken}. Then, let's walk through the loop:
+    \begin{enumerate}
+        \item \textbf{First time} branch is encountered \code{R1 = 0}:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{magic}}] Prediction: \textbf{Taken} (initial state, written on the exercise text).
+            \item[\textcolor{Green3}{\faIcon{check}}] Actual outcome: \textbf{Not Taken} (since \code{R1 != R2})
+            \item[\textcolor{Red3}{\faIcon{times}}] \textbf{Misprediction!} Update BHT to \textbf{Predict Not Taken} (flip the bit).
+        \end{itemize}
+
+        \item From \code{R1 = 1} to \code{R1 = 99} (99 iterations):
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{magic}}] Prediction: \textbf{Not Taken} (from last update).
+            \item[\textcolor{Green3}{\faIcon{check}}] Actual outcome: \textbf{Not Taken} (since \code{R1 != R2})
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Correct prediction!} BHT remains \textbf{Predict Not Taken}.
+        \end{itemize}
+
+        \item \textbf{Exit check} when \code{R1 = 100}:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{magic}}] Prediction: \textbf{Not Taken} (from last update).
+            \item[\textcolor{Green3}{\faIcon{check}}] Actual outcome: \textbf{Taken} (since \code{R1 == R2})
+            \item[\textcolor{Red3}{\faIcon{times}}] \textbf{Misprediction!} Update BHT to \textbf{Predict Taken} (flip the bit).
+        \end{itemize}
+    \end{enumerate}
+    So in total, we have \textbf{2 mispredictions} (first encounter and exit check).
+\end{itemize}
+The answer is as expected, as it aligns with the \textbf{traditional limitation of 1-bit predictors}. They often overlook a ``mostly one direction'' pattern when the outcome changes. In this case, the outcome is first \emph{Not Taken} and then \emph{Taken}. This results in two misses in this specific scenario: one at the beginning due to poor initialization and one at the final change.
 
 \newpage
 

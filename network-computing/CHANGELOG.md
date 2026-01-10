@@ -15,6 +15,9 @@
 
 ### v0.8.0
 
+- add `End-Host Networking`
+  - add `Why End-Host Networking Matters`
+
 --------------------
 
 ### v0.7.0

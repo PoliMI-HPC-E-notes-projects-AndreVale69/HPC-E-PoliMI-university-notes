@@ -1,0 +1,100 @@
+\subsection{Life of a Packet Inside a Server}
+
+When a packet arrives at a server, it does \textbf{not} go directly to the application. Instead, it must traverse a \textbf{layered processing pipeline}, which includes several steps:
+\begin{itemize}
+    \item Hardware boundaries (NIC, bus, memory).
+    \item Protection domains (kernel, user space).
+    \item Software abstractions (network stack, sockets, libraries).
+\end{itemize}
+Each step adds \textbf{latency}, \textbf{CPU overhead}, and \textbf{potential bottlenecks}. Understanding this pipeline is crucial for optimizing network performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{map-signs} \textbf{The baseline packet path}}
+\end{flushleft}
+At a very high level, an incoming packet follows this path:
+\begin{enumerate}
+    \item \important{Network} (i.e., the wire). It represents the external world where packets are transmitted.
+    \item \important{NIC (Network Interface Card)}. The \textbf{NIC} is the hardware component connected to the network. Its responsibilities include:
+    \begin{itemize}
+        \item Receiving packets from the wire.
+        \item Storing them temporarily in NIC memory.
+        \item Performing basic checks (e.g., checksum offload).
+        \item Initializing data transfer to host memory.
+    \end{itemize}
+    The NIC operates \textbf{independently of the CPU}, it cannot interpret application data. So it is the \textbf{first bottleneck} in the packet path: \hl{if it cannot sustain line rate, everything else is useless}.
+    \item \important{PCIe bus} (Peripheral Component Interconnect Express, connecting NIC to memory). The NIC is \textbf{not directly connected} to the CPU or main memory. Packets must cross the \textbf{PCIe bus} using \textbf{DMA (Direct Memory Access)} to transfer data to host memory. The PCIe bus has its own \textbf{bandwidth and latency characteristics}, which can impact performance.
+    \item \important{NIC Driver} (i.e., software managing the NIC). The \textbf{driver} is kernel code that manages the NIC, programs hardware registers, handles interrupts and moves packets into kernel data structures. It acts as the \textbf{software interface between hardware and kernel}. It runs in \textbf{kernel context}, it is executed frequently and bugs or inefficiencies here can have a large impact, since it is on the \textbf{critical path} of packet processing (i.e., every packet must go through it).
+    \item \important{Kernel Networking Stack} (operating system's network processing). The \textbf{network stack} is a complex software layer that implements network protocols (e.g., TCP/IP). It is responsible for:
+    \begin{itemize}
+        \item Protocol handling (e.g., TCP state machine).
+        \item Packet reassembly.
+        \item Congestion control.
+        \item Routing.
+    \end{itemize}
+    This is where security checks happen, congestion control lives, but also packet ordering is enforced. The kernel provides \textbf{generality and safety}, but at the cost of \textbf{performance overhead} due to context switches, data copies, and protocol processing.
+    \item \important{User-space Application} (i.e., the server application). Eventually, the packet reaches a socket buffer or a user-space application via a system call (e.g., \texttt{recvfrom()}). Crossing from kernel to user space involves \textbf{context switches} and \textbf{data copies}, which add latency and CPU overhead. The user-kernel boundary crossing is expensive and unavoidable in the baseline model.
+\end{enumerate}
+This is the \textbf{baseline model}, all optimizations later in the notes aim to \textbf{reduce the cost of one or more of these steps}.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[
+        font=\small,
+        node distance=7mm,
+        box/.style={
+            draw,
+            rounded corners=7pt,
+            line width=0.6pt,
+            minimum width=6.0cm,
+            minimum height=1.05cm,
+            align=center,
+            inner sep=6pt
+        },
+        hw/.style={box, fill=gray!10},
+        sw/.style={box, fill=blue!10},
+        arrow/.style={-{Stealth[length=2.3mm]}, line width=0.75pt},
+        region/.style={
+            draw,
+            dashed,
+            line width=0.6pt,
+            rounded corners=10pt,
+            inner sep=10pt
+        },
+        regionLabel/.style={
+            font=\footnotesize,
+            fill=white,
+            inner sep=2pt
+        }
+    ]
+
+        % ---- Nodes ----
+        \node[font=\footnotesize] (title) {Incoming packet from network};
+
+        \node[hw, below=3mm of title] (nic) {Network Interface Card (NIC)};
+        \node[hw, below=of nic] (pcie) {PCIe interconnect\\(DMA transfer)};
+
+        \node[sw, below=of pcie] (drv) {NIC Driver};
+        \node[sw, below=of drv] (kern) {Kernel networking stack\\(IP/TCP/UDP, routing, filtering)};
+
+        \node[sw, below=of kern] (app) {User-space application\\(socket API)};
+
+        % ---- Arrows ----
+        \draw[arrow] (nic) -- (pcie);
+        \draw[arrow] (pcie) -- (drv);
+        \draw[arrow] (drv) -- (kern);
+        \draw[arrow] (kern) -- (app);
+
+        % ---- Regions (kernel + user space) ----
+        \begin{pgfonlayer}{background}
+            \node[region, fit=(drv) (kern)] (kregion) {};
+            \node[region, fit=(app)] (uregion) {};
+        \end{pgfonlayer}
+
+        \node[regionLabel, anchor=west] at ([xshift=2mm]kregion.north west) {kernel space};
+        \node[regionLabel, anchor=west] at ([xshift=2mm]uregion.north west) {user space};
+
+    \end{tikzpicture}
+    \caption{Baseline packet path inside a server.}
+    \label{fig:baseline-endhost-path}
+\end{figure}

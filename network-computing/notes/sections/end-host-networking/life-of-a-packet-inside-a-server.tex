@@ -98,3 +98,141 @@ This is the \textbf{baseline model}, all optimizations later in the notes aim to
     \caption{Baseline packet path inside a server.}
     \label{fig:baseline-endhost-path}
 \end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Kernel packet buffers and descriptor rings}}
+\end{flushleft}
+Now that we have a high-level understanding of the packet path, let's look at some important data structures used in the kernel networking stack to manage packets efficiently.
+
+\highspace
+Our focus is on the \textbf{interaction between the NIC and the kernel}. Since the \hl{kernel mediates all packet transfers between the hardware and the applications, its interaction with the NIC determines the performance, scalability, and isolation}. This makes the kernel the primary bottleneck and optimization target in end-host networking.
+
+\highspace
+The NIC \textbf{cannot write packets wherever it wants} in host memory. Instead, the kernel:
+\begin{enumerate}
+    \item \textbf{Pre-allocates \emph{packet buffers}} in memory to hold incoming packets.
+    \item \textbf{Tells the NIC where they are} in memory.
+    \item \textbf{Uses \emph{descriptor rings} to coordinate ownership} of these buffers between the NIC and the kernel.
+\end{enumerate}
+This design avoids CPU involvement in the fast path, enables high throughput, and supports batching and Direct Memory Access (DMA).
+
+\highspace
+\textcolor{Green3}{\faIcon{question} \textbf{What are packet buffers?}} \definition{Packet Buffers} \textbf{are regions of host (DRAM) memory allocated by the kernel used to store incoming packets}. For example, in Linux, these are typically \texttt{sk\_buff} structures that hold packet metadata and data, or memory pages managed by the networking subsystem. It is important to note that \hl{buffers are allocated \textbf{before} packets arrive because this avoids dynamic allocation on the fast path}.\footnote{%
+    ``\emph{Dynamic allocation on the fast path}'' means allocating memory for each incoming packet as it arrives, which would introduce significant latency and overhead. By pre-allocating buffers, the system can quickly place incoming packets into these pre-reserved memory areas, allowing for higher throughput and lower latency. Here, fast path refers to the critical execution path (i.e., the sequence of operations that must be performed quickly to ensure efficient packet processing) that handles incoming packets with minimal delay.%
+} As anticipated, pre-allocating buffers is crucial for performance because, without it, the kernel would require locks, causing cache misses and severely limiting throughput. \textbf{Pre-allocated packet buffers are essential for line-rate reception of packets}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question} \textbf{What is a RX descriptor ring?}} \textbf{RX} stands for \emph{receive} and refers to the \textbf{direction of traffic}:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{arrow-left}}] \textbf{RX} path: packet reception (incoming packets).
+    \item[\textcolor{Red2}{\faIcon{arrow-right}}] \textbf{TX} path: packet transmission (outgoing packets).
+\end{itemize}
+Obviously, there are \textbf{TX descriptor rings} as well, but we focus on RX here because it is more complex and performance-critical.
+
+A \textbf{descriptor} is \emph{not} a packet. It is a \textbf{small control structure} that describes \emph{where} a packet should go. We can think of it as a \textbf{post-it note} attached to a buffer. Usually, a descriptor contains:
+\begin{itemize}
+    \item A \textbf{pointer} to a packet buffer in host memory (physical address).
+    \item The \textbf{size} of that buffer.
+    \item \textbf{Status flags} (empty, full, ownership, errors, etc.).
+\end{itemize}
+For example:
+\begin{lstlisting}[language=Python]
+Descriptor:
+    address = 0x1A2B3C4D  # Physical address of packet buffer
+    length  = 2048        # Size of the buffer in bytes
+    status  = EMPTY       # Status flag indicating buffer is empty
+\end{lstlisting}
+In simple terms, the descriptor \textbf{tells the NIC where to DMA-write incoming packets}.
+
+Finally, a \textbf{ring} is just a \textbf{circular queue} with a fixed number of entries. A \emph{circular queue} means that when we reach the end of the queue, we wrap around to the beginning. The circular nature allows for efficient use of memory (no reallocations), constant-time enqueue/dequeue operations, and perfect for hardware-software communication.
+
+\highspace
+Putting it all together, an \definition{RX Descriptor Ring} is a \textbf{circular queue of descriptors that tell the NIC where to place incoming packets in host memory}. The RX descriptor ring is:
+\begin{itemize}
+    \item \textbf{Allocated} by the \textbf{kernel}.
+    \item \textbf{Shared} with the \textbf{NIC}.
+    \item \textbf{Accessed concurrently} by both the \textbf{kernel} and the \textbf{NIC}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Relationship between NIC and Kernel memory via RX Descriptor Rings}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Initialization phase}
+    \begin{enumerate}
+        \item The \hl{kernel} \textbf{allocates packet buffers} in DRAM, creates descriptors pointing to empty buffers, marks them as \textbf{available} and tells the NIC about them.
+        \item The \hl{driver} programs the NIC with the address of the RX descriptor ring in host memory.
+        \item The \hl{NIC} now knows where buffers are located in host memory for incoming packets.
+    \end{enumerate}
+    In this phase, the kernel and NIC set up the necessary data structures to enable efficient packet reception.
+
+
+    \item \important{Packet reception phase}. When a packet arrives, the \hl{NIC}:
+    \begin{enumerate}
+        \item \textbf{Fetches} a descriptor from the RX ring (i.e., gets the address of an empty buffer) via \textbf{PCIe reads}.
+        \item \textbf{Performs} a \textbf{Direct Memory Access (DMA)} to \textbf{write} the incoming packet into the specified buffer in host memory.
+        \item \textbf{Updates} the descriptor status to \textbf{indicate that the buffer is full} and ready for processing by the kernel.
+    \end{enumerate}
+    The NIC does \textbf{not} allocate memory on the fly, call the CPU, or touch the kernel during this fast path. It \hl{simply uses DMA to write packets into pre-allocated buffers} as indicated by the descriptors.
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How does the kernel know when packets have arrived?}}
+    \end{flushleft}
+    So far, the NIC did all the work of receiving packets and writing them into host memory. But the kernel \textbf{does not know} a packet arrived until the NIC notify the CPU. In the first naïve design, the NIC raises an \definition{Interrupt Request (IRQ)} to a CPU core. Then, the kernel's NIC driver interrupt handler is invoked. This is the \textbf{first moment} the CPU is involved in packet processing.
+
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Interrupts can be expensive!}}
+    \end{flushleft}
+    Handling interrupts involves context switches, saving/restoring CPU state, and can lead to cache misses. If packets arrive at a high rate, the \hl{CPU can become overwhelmed with interrupts}, leading to \textbf{interrupt livelock}, where it spends all its time handling interrupts and cannot process packets effectively. To mitigate this, techniques like \emph{interrupt coalescing} (batching multiple packets per interrupt) and \emph{polling} (the kernel periodically checks for new packets instead of relying on interrupts) are often employed, and we will see them later in the notes.
+
+
+    \item \important{Ownership transfer}. The ownership of a descriptor:
+    \begin{enumerate}
+        \item Start with the \textbf{kernel} (buffer is empty, step 1).
+        \item Moves to the \textbf{NIC} during DMA write (buffer is being filled, step 2).
+        \item Returns to the \textbf{kernel} once packet is written (buffer is full).
+    \end{enumerate}
+    This ownership transfer is crucial for synchronization between the NIC and kernel. It ensures that the \hl{NIC only writes to buffers that the kernel has marked as available, and the kernel only processes buffers that the NIC has filled with incoming packets}. It prevents data races, avoids locks, and enables zero-copy transfers (i.e., no CPU copies needed).
+
+
+    \item \important{Kernel processing phase}. Upon receiving an interrupt (IRQ) from the NIC, the \hl{kernel}:
+    \begin{enumerate}
+        \item \textbf{Checks} the RX descriptor ring to identify descriptors marked as \textbf{full} by the NIC.
+        \item \textbf{Processes} the packets stored in the corresponding buffers (e.g., protocol handling, socket buffering, statistics).
+        \item \textbf{Reclaims} the buffers by resetting the descriptors and marking them as \textbf{available} again for the NIC.
+    \end{enumerate}
+    This phase involves the kernel regaining ownership of the descriptors after packet reception. Buffer recycling is \textbf{essential} to sustain high throughput, as it allows the NIC to continue receiving packets without exhausting available buffers.
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c c @{}}
+        \toprule
+        Step & NIC & PCIe & CPU (Kernel) \\
+        \midrule
+        Packet arrival      & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Red2}{\faIcon{times}}                              \\[.3em]
+        Descriptor fetch    & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}}                              \\[.3em]
+        DMA transfer        & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}}                              \\[.3em]
+        Interrupt           & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Red2}{\faIcon{exclamation-triangle}} (interrupt)   \\[.3em]
+        Kernel processing   & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Red2}{\faIcon{times}}      & \textcolor{Green3}{\faIcon{check}}                            \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of which components are involved in each step of the packet reception process using RX descriptor rings.}
+\end{table}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.58\textwidth]{img/life-of-a-packet-inside-a-server.pdf}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Packet reception at the end-host \cite{network-computing-polimi}, step by step: (1) a packet arrives from the network and is received by the NIC; (2) the NIC fetches an RX descriptor to determine the address of an empty host packet buffer; (3) the NIC transfers the packet into host memory via DMA over PCIe and updates the descriptor status; (4) the NIC generates an interrupt (IRQ) to notify the CPU that packets are available; (5) the kernel driver and networking stack process the packet and eventually deliver it to the application. Finally, regarding the RX queue within the NIC and the memory buffers:
+    \begin{itemize}
+        \item The NIC has a \textbf{small internal memory} just enough to \textbf{hold packets briefly} before DMA transfer. This memory is \textbf{only for waiting}, not for storage.
+        \item The NIC RX queue is just a small temporary waiting area inside the NIC that holds packets for a short time after they arrive from the network, until the NIC can copy them into main memory. It is separate from the kernel's descriptor ring and has nothing to do with kernel memory structures.
+    \end{itemize}}
+    \label{fig:life-of-a-packet-inside-a-server}
+\end{figure}
+
+

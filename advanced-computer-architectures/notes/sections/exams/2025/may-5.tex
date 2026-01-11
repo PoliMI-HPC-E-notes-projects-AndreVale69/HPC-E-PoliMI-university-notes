@@ -26,7 +26,7 @@ SP_LOOP:    SD F4, 0 (R1)
             ADD R3, R2, R1
             BNE R3, R4, SP_LOOP
 
-FINISH-UP:  SD F4, 8 (R1)
+FINISH_UP:  SD F4, 8 (R1)
             SD F6, 8 (R2)
             FADD F4, F0, F0
             FADD F6, F2, F2
@@ -302,7 +302,7 @@ The branch is completed with 1 cycle delay slot (branch solved in ID stage). \te
     
     \textcolor{Green3}{\textbf{\emph{Answer:}}} FP ops per cycle measures \textbf{how well we are utilizing the FP functional units}. Here, there are 2 floating-point additions (\texttt{FADD F4}, \texttt{FADD F6}):
     \begin{equation*}
-        \text{FP ops / cycle} = \dfrac{\text{\# Floating-Point ops}}{\text{\# Instructions}} = \dfrac{2}{8} = 0.25
+        \text{FP ops / cycle} = \dfrac{\text{\# Floating-Point ops}}{\text{\# Clock Cycles}} = \dfrac{2}{8} = 0.25
     \end{equation*}
 
 
@@ -2216,8 +2216,7 @@ LOOP:   LD F2, 0 (R1)
     \textcolor{Green3}{\textbf{\emph{Answer:}}} When we write a loop in assembly, \textbf{some instructions do useful work}, and \textbf{some instructions are only there to control the loop}.
     \begin{itemize}
         \item \textbf{Useful work}: instructions that do the actual computation we want (load data, do the calculation, store result).
-        \item \textbf{Overhead}: instructions that \emph{only} exist to keep the loop going; updating counters, chang
-        ing pointers, checking conditions, branching.
+        \item \textbf{Overhead}: instructions that \emph{only} exist to keep the loop going; updating counters, changing pointers, checking conditions, branching.
     \end{itemize}
     In our case, we have 4 useful operations (2 loads, 1 add, and 1 store), and \textbf{3} that \emph{only} exist to make the loop repeat: incrementing pointers/counters (\texttt{ADDUI R1}, \texttt{ADDUI R2}) and testing the loop condition (\texttt{BNE}). Loop overhead is extra work we must do every iteration to \textbf{make the loop repeat}, but it does not contribute to the real useful computation.
     
@@ -2402,15 +2401,17 @@ LOOP_UNROLLING_4:   LD F2, 0(R1)
 \emph{During the execution of a program, the number of mispredictions depends on the initialization and the size of the Branch History Table (BHT). True or False? Motivate.}
 
 \highspace
-\textcolor{Green3}{\textbf{\emph{Answer:}}} A BHT stores the \emph{history} (past behavior) of branches, usually with \emph{n}-bit saturating counters. The size of the BHT determines \textbf{how many unique branches can be tracked independently}
+\textcolor{Green3}{\textbf{\emph{Answer:}}} A BHT stores the \emph{history} (past behavior) of branches, usually with \emph{n}-bit saturating counters (\autopageref{def:branch-history-table}). The size of the BHT determines \textbf{how many unique branches can be tracked independently}
 \begin{itemize}
-    \item Small BHT $\rightarrow$ more aliasing $\rightarrow$ different branches share the same entry $\rightarrow$ more chance of misprediction.
-    \item Large BHT $\rightarrow$ fewer collisions $\rightarrow$ better prediction accuracy .
+    \item Small BHT $\rightarrow$ more aliasing (\autopageref{def:aliasing}) $\rightarrow$ different branches share the same entry $\rightarrow$ more chance of misprediction.
+    \item Large BHT $\rightarrow$ fewer collisions $\rightarrow$ better prediction accuracy.
 \end{itemize}
 At program start, the BHT entries are \textbf{initialized} (often all taken or all not take, or all weakly taken). If the actual branch pattern is opposite to the initialization, we'll have \textbf{mispredictions} until the counters adapt. So initialization affects startup behavior (how many initial mispredictions we get) and size of BHT affects aliasing (whether unrelated branches interfere with each other, more or fewer mispredictions overall).
 
 \highspace
 The correct answer is: \textbf{True}, because the number of mispredictions depends on how the BHT entries are initialized and on the size of the BHT, which determines how many branches can be tracked without aliasing.
+
+\longline
 
 \subsubsection*{Quiz 5 - Branch Prediction}
 
@@ -2418,10 +2419,12 @@ The correct answer is: \textbf{True}, because the number of mispredictions depen
 \begin{lstlisting}
         ADDI R1, R0, 0
         ADDI R2, R0, 100
+
 LOOP:   BEQ R1, R2, DONE
         ADD R5, R5, R4
         ADDI R1, R1, 1
         J LOOP
+
 DONE:
 \end{lstlisting}
 \emph{Assuming \textbf{only} the branch instruction accesses the BHT:}
@@ -2429,10 +2432,56 @@ DONE:
     \item \emph{How many accesses to the Branch History Table?}
     \item \emph{How many mispredictions?}
 \end{itemize}
-\emph{True or False? Motivate.}
+\emph{\textbf{(Single Answer)}}
+\begin{description}
+    \item[\textbf{Answer 1:}] 101 accesses, 2 mispredictions
+    \item[\textbf{Answer 2:}] 100 accesses, 1 misprediction
+    \item[\textbf{Answer 3:}] 99 accesses, 1 misprediction
+    \item[\textbf{Answer 4:}] 201 accesses, 2 mispredictions
+\end{description}
+\textcolor{Green3}{\textbf{\emph{Answer:}}} The correct answer is \textbf{Answer 1: 101 accesses, 2 mispredictions}. Let's explain why. See also: \autopageref{sec:1-bit-bht}.
+\begin{itemize}
+    \item \textbf{How many BHT accesses?} Only the \textbf{conditional branch} \texttt{BEQ R1, R2, DONE} accesses the BHT (the \texttt{J LOOP} does \textbf{not}, by assumption).
+    \begin{itemize}
+        \item \code{R1} starts at \code{0}, \code{R2 = 100}.
+        \item The branch is executed once per loop check for $\code{R1 = 0,1,2,\ldots,100}$.
+        \begin{itemize}
+            \item For $\code{R1 = 0 \ldots 99}$: branch outcome is \textbf{Not Taken}.
+            \item For $\code{R1 = 100}$: branch outcome is \textbf{Taken} and we exit the loop.
+        \end{itemize}
+    \end{itemize}
+    So the number of executions (thus BHT accesses) of the branch is:
+    \begin{equation*}
+        100 \text{ (for R1 = 0 to 99)} + 1 \text{ (for R1 = 100)} = 101 \text{ accesses}
+    \end{equation*}
 
-\highspace
-\textcolor{Green3}{\textbf{\emph{Answer:}}} \texttt{R1} starts at \texttt{0}. Each loop iteration: \texttt{R1} is incremented by \texttt{1}, and the loop stops when \texttt{R1} equals \texttt{100}. Therefore, \texttt{BEQ} is executed \texttt{101} times: One hundred times when \texttt{R1} is not equal to \texttt{R2} (the branch is not taken), and one time when \texttt{R1} is equal to \texttt{R2} (the branch is taken). For the first \texttt{100} iterations: The \texttt{BEQ} condition is false, so the branch is not taken. Therefore, the predictor's Taken prediction is incorrect, resulting in a mispredict. For the $101^{\text{st}}$ \texttt{BEQ}, BHT predicts ``Not Taken'', but the branch is taken because \texttt{R1} is equal to \texttt{R2}, so there is a mispredict.
+
+    \item \textbf{How many mispredictions with a 1-entry, 1-bit BHT initialized as Taken?} A \textbf{1-bit BHT} remembers the \textbf{last outcome} (Taken or Not Taken) of the branch. If correct it stays, if wrong it flips. The initial state is \textbf{Predict Taken}. Then, let's walk through the loop:
+    \begin{enumerate}
+        \item \textbf{First time} branch is encountered \code{R1 = 0}:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{magic}}] Prediction: \textbf{Taken} (initial state, written on the exercise text).
+            \item[\textcolor{Green3}{\faIcon{check}}] Actual outcome: \textbf{Not Taken} (since \code{R1 != R2})
+            \item[\textcolor{Red3}{\faIcon{times}}] \textbf{Misprediction!} Update BHT to \textbf{Predict Not Taken} (flip the bit).
+        \end{itemize}
+
+        \item From \code{R1 = 1} to \code{R1 = 99} (99 iterations):
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{magic}}] Prediction: \textbf{Not Taken} (from last update).
+            \item[\textcolor{Green3}{\faIcon{check}}] Actual outcome: \textbf{Not Taken} (since \code{R1 != R2})
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Correct prediction!} BHT remains \textbf{Predict Not Taken}.
+        \end{itemize}
+
+        \item \textbf{Exit check} when \code{R1 = 100}:
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{magic}}] Prediction: \textbf{Not Taken} (from last update).
+            \item[\textcolor{Green3}{\faIcon{check}}] Actual outcome: \textbf{Taken} (since \code{R1 == R2})
+            \item[\textcolor{Red3}{\faIcon{times}}] \textbf{Misprediction!} Update BHT to \textbf{Predict Taken} (flip the bit).
+        \end{itemize}
+    \end{enumerate}
+    So in total, we have \textbf{2 mispredictions} (first encounter and exit check).
+\end{itemize}
+The answer is as expected, as it aligns with the \textbf{traditional limitation of 1-bit predictors}. They often overlook a ``mostly one direction'' pattern when the outcome changes. In this case, the outcome is first \emph{Not Taken} and then \emph{Taken}. This results in two misses in this specific scenario: one at the beginning due to poor initialization and one at the final change.
 
 \newpage
 
@@ -2452,10 +2501,54 @@ DONE:
     
     \item \emph{Out-of-order execution can be generated by data cache misses.}
 
-    \textcolor{Green3}{\textbf{\emph{Answer:}}} \textbf{True}. Cache misses introduce stalls for dependent instructions; out-of-order execution allows independent instructions to bypass stalled loads, maximizing utilization of execution units.
+    \textcolor{Green3}{\textbf{\emph{Answer:}}} \textbf{True}. Cache misses introduce stalls for dependent instructions; out-of-order execution allows independent instructions to bypass stalled loads, maximizing utilization of execution units. In other words, data cache misses do \textbf{not prevent} execution; in an out-of-order superscalar processor, they often \textbf{enable visible out-of-order behavior} by stalling one instruction and allowing others to bypass it.
+
+    \begin{deepeningbox}[: Motivation]
+        In a \textbf{superscalar processor} (\autopageref{subsubsection: Superscalar Processors}), instructions are fetched and decoded in program order, but, if the microarchitecture supports it, they may \textbf{execute out of order} as long as \textbf{data and control dependencies are respected}.
+
+        \highspace
+        A \textbf{data cache miss} (\autopageref{def:data-cache-miss}, e.g., a load that misses in L1/L2) introduces a \textbf{long and unpredictable latency}. When this happens:
+        \begin{itemize}
+            \item The instruction that triggered the miss \textbf{cannot complete} (it is stalled waiting for data from lower levels of the memory hierarchy).
+            \item Independent instructions that are \textbf{already in the instruction window} / \textbf{reservation stations} and \textbf{do not depend on the missing load} can still be: issued, executed, and possibly completed \textbf{before} the stalled load completes.
+        \end{itemize}
+        This behavior is precisely \textbf{out-of-order execution}: instructions that appear \emph{later} in program order are executed \emph{earlier} in time.
+
+        \highspace
+        From a hardware point of view:
+        \begin{itemize}
+            \item The cache miss \textbf{creates a stall in one dependency chain}.
+            \item The \textbf{dynamic scheduler} (e.g., Tomasulo logic with reservation stations and register renaming) exploits \textbf{instruction-level parallelism (ILP)} by continuing execution on other ready instructions.
+        \end{itemize}
+        Therefore, although the cache miss itself is not a scheduling mechanism, it is a \textbf{triggering event} that \textbf{induces out-of-order execution} by freeing the scheduler to execute independent instructions while the miss is serviced.
+    \end{deepeningbox}
 
 
     \item \emph{The introduction of dynamic branch predictors improves the CPI metric.}
 
     \textcolor{Green3}{\textbf{\emph{Answer:}}} \textbf{True}. Dynamic branch predictors reduce the number of branch mispredictions by learning from past branch behavior. Fewer mispredictions mean fewer pipeline flushes and stalls, which directly lowers the average Cycles Per Instruction (CPI) and improves overall processor performance.
+
+    \begin{deepeningbox}[: Motivation]
+        The \textbf{Cycles Per Instruction (CPI)} metric captures both the ideal execution rate and the penalties due to pipeline hazards, including \textbf{control hazards} caused by branches (\autopageref{sec:control-hazards}). In a pipelined or superscalar processor:
+        \begin{itemize}
+            \item A \textbf{branch misprediction} causes:
+            \begin{itemize}
+                \item Pipeline flushing (all instructions after the mispredicted branch are discarded).
+                \item Squashing of wrong-path instructions (i.e., instructions that were fetched and possibly executed based on the incorrect prediction are invalidated).
+                \item And a \textbf{stall penalty} proportional to pipeline depth and issue width.
+            \end{itemize}
+            \item This penalty directly \textbf{increases CPI}, since extra cycles are spent without retiring useful instructions.
+        \end{itemize}
+        A \textbf{dynamic branch predictor} (e.g., 1-bit, 2-bit saturaing counters, local/global history predictors):
+        \begin{itemize}
+            \item Learns branch behavior at runtime.
+            \item Increases \textbf{prediction accuracy} compared to static schemes (e.g., always taken / always not taken).
+            \item \textbf{Reduces the misprediction rate}.
+        \end{itemize}
+        Since CPI can be expressed as:
+        \begin{equation*}
+            \text{CPI} = \text{CPI}_{\text{ideal}} + \text{Branch frequency} \times \text{Misp. rate} \times \text{Misp. penalty}
+        \end{equation*}
+        Improving prediction accuracy \textbf{reduces the branch penalty term}, thus \textbf{lowering CPI}. Therefore, introducing \textbf{dynamic branch predictors} improves (i.e., reduces) the CPI metric, assuming: branches are present (which is almost always true), and the predictor does not introduce prohibitive overheads.
+    \end{deepeningbox}
 \end{itemize}

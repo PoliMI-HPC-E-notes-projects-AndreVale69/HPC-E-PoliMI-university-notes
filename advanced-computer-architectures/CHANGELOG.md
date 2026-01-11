@@ -2,6 +2,9 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.0.3](#v103)
+- [v1.0.2](#v102)
+- [v1.0.1](#v101)
 - [v1.0.0](#v100)
 - [v0.15.0](#v0150)
 - [v0.14.0](#v0140)
@@ -18,6 +21,29 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.0.3
+
+- fix: add label definitions to 1-bit BHT section.
+- fix: trailing space after "prediction accuracy" in the May 5 exam notes.
+- feat: add a comprehensive definition and examples of aliasing, including memory, register, and branch predictor aliasing, to improve understanding of its impact on system behavior and performance.
+- feat: add cross-references to BHT and aliasing definitions.
+- feat: add detailed solution for May 5 quiz on 1-bit BHT behavior.
+- feat: add definition and explanation of data cache miss in VLIW section.
+
+--------------------
+
+### v1.0.2
+
+- fix: correct minor typo in the description of loop overhead in the exam notes. The word "changing" was split across two lines and has been corrected to appear on a single line for proper rendering.
+
+--------------------
+
+### v1.0.1
+
+- fix: correct label typo and clarify FP ops per cycle calculation
 
 --------------------
 

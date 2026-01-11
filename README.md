@@ -32,7 +32,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=154207" target="_blank">Silvano Cristina</a></td>
         <td><ul>
             <li><a href="advanced-computer-architectures">Course Details</a></li>
-            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.0.0</a></li>
+            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.0.3</a></li>
             <li><a href="advanced-computer-architectures/notes/formulary.pdf">Formulary</a></li>
         </ul></td>
     </tr>
@@ -63,7 +63,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://onlineservices.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&n_docente=Matteucci%20Matteo&k_doc=104160&lang=EN&aa=2025&tab_ricerca=1" target="_blank">Matteucci Matteo</a></td>
         <td><ul>
             <li><a href="artificial-neural-networks-and-deep-learning">Course Details</a></li>
-            <li><a href="artificial-neural-networks-and-deep-learning/notes/artificial-neural-networks-and-deep-learning.pdf">PDF v0.1.0</a></li>
+            <li><a href="artificial-neural-networks-and-deep-learning/notes/artificial-neural-networks-and-deep-learning.pdf">PDF v0.3.0</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -103,7 +103,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=867640&aa=2024&lang=IT&jaf_currentWFID=main" target="_blank">Antichi Gianni</a></td>
         <td><ul>
             <li><a href="network-computing">Course Details</a></li>
-            <li><a href="network-computing/notes/network-computing.pdf">PDF v0.6.0</a></li>
+            <li><a href="network-computing/notes/network-computing.pdf">PDF v0.7.0</a></li>
         </ul></td>
     </tr>
     <tr>

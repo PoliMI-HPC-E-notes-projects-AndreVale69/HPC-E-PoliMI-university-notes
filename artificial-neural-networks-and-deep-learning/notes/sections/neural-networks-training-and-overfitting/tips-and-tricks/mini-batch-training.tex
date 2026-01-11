@@ -1,0 +1,90 @@
+\subsubsection{Mini-Batch Training}\label{sec:mini-batch-training}
+
+When we train a neural network, we want to minimize the \textbf{empirical risk}:
+\begin{equation*}
+    E(w) = \frac{1}{N} \sum_{n=1}^{N} L\left(f\left(x_n; w\right), t_n\right)
+\end{equation*}
+\begin{itemize}
+    \item $N$ is the number of training samples
+    \item $L$ is the loss function
+    \item $f(x_n; w)$ is the model's prediction for input $x_n$ with parameters $w$ (outputs)
+    \item $t_n$ is the true target for input $x_n$
+\end{itemize}
+Theoretically, the gradient for updating weights should be computed over the entire dataset, over \textbf{all $N$ samples}:
+\begin{equation*}
+    \nabla_w E(w) = \frac{1}{N} \sum_{n=1}^{N} \nabla_w L\left(f\left(x_n; w\right), t_n\right)
+\end{equation*}
+But in practice, especially with large datasets, this is computationally expensive and inefficient.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Solution: Mini-Batch Gradient Descent}}
+\end{flushleft}
+Instead of using all $N$ samples to compute the gradient, we use a smaller subset of the data called a \textbf{mini-batch}. In general, the mini-batch technique is one of a set of batching techniques. The main batch techniques are:
+\begin{itemize}
+    \item \textbf{Full-Batch Gradient Descent (BGD)}: uses the entire dataset to compute the gradient. It is the method that we introduced when we covered gradient descent, as it is the most general (it uses all the data, \autopageref{sec:gradient-descent-basics}). However, it allows to get the exact gradient, but it is computationally \textbf{expensive} for large datasets and can lead to \textbf{slow convergence}.
+
+    \item \textbf{Stochastic Gradient Descent (SGD)}: uses a single sample to compute the gradient at each iteration. We introduced it when we covered stochastic gradient descent (\autopageref{def:stochastic-gradient-descent}) because we wanted to show how randomness can help in optimization. It is computationally \textbf{efficient} and can lead to \textbf{faster convergence}, but the gradient estimate is \textbf{noisy} and can lead to \textbf{unstable updates}.
+    
+    \item \textbf{Mini-Batch Gradient Descent (MBGD)}: uses a small subset of the dataset (mini-batch) to compute the gradient at each iteration. It is a compromise between BGD and SGD, \textbf{balancing computational efficiency and gradient accuracy}. It is widely used in practice due to its effectiveness in training deep neural networks.
+\end{itemize}
+
+\newpage
+
+\noindent
+The \definition{Mini-Batch Gradient Descent (MBGD)} algorithm works as follows:
+\begin{enumerate}
+    \item Shuffle the training dataset to ensure randomness.
+    \item \textbf{Divide} the dataset into \textbf{mini-batches of size} $m$ (where $m \ll N$, much smaller than $N$).
+    \item For \textbf{each mini-batch} $B = \left\{ x_1, x_2, \ldots, x_m \right\}$:
+    \begin{enumerate}
+        \item Compute the \textbf{gradient of the loss function} with respect to the weights using only the samples in the mini-batch:
+        \begin{equation*}
+            \nabla_w E_B(w) = \frac{1}{m} \sum_{i=1}^{m} \nabla_w L\left(f\left(x_i; w\right), t_i\right)
+        \end{equation*}
+        \item \textbf{Update the weights} using the computed gradient:
+        \begin{equation*}
+            w \leftarrow w - \eta \nabla_w E_B(w)
+        \end{equation*}
+        where $\eta$ is the learning rate.
+    \end{enumerate}
+    \item Repeat until convergence or for a fixed number of epochs.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{The trade-off: Stability vs. Speed}}
+\end{flushleft}
+Choosing the right mini-batch size is crucial:
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{9em} p{10em} p{12em} @{}}
+        \toprule
+        Property & Small $(1 \leq m \leq 32)$ & Large $(256 \leq m \leq 8192)$ \\
+        \midrule
+        \textbf{Computation per step}   & Very low & Very high \\[.5em]
+        \textbf{Update frequency}       & Very high & Very low \\[.5em]
+        \textbf{Gradient noise}         & High, helps generalization & Low, risk of sharp minima \\[.5em]
+        \textbf{Convergence}            & Fast but noisy & Smooth but slower learning per sample \\[.5em]
+        \textbf{GPU parallelism}        & Inefficient & Efficient \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+So \textbf{too small batches} can lead to \textbf{noisy updates} and \textbf{unstable training}, while \textbf{too large batches} can lead to \textbf{slow convergence} and \textbf{poor generalization}. A common practice is to start with a moderate batch size (e.g., 32, 64, or 128) and adjust based on the model's performance and available computational resources.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Impact on convergence and generalization}}
+\end{flushleft}
+Mini-batch training affects both convergence and generalization of neural networks:
+\begin{itemize}
+    \item \textbf{Convergence}. The stochasticity (small random fluctuations in gradient direction) helps the optimizer: escape shallow or sharp local minima, explore a larger portion of the loss landscape, and converge faster in expectation.
+    \item \textbf{Generalization}. Mini-batch noise acts as a \textbf{regularizer}, preventing the model from memorizing training data perfectly (and thus overfitting).
+    \begin{itemize}
+        \item Too large a batch $\to$ almost deterministic gradient $\to$ risk of converging to \textbf{sharp minima} $\to$ poor generalization.
+        \item Smaller batches $\to$ noisier gradients $\to$ exploration of \textbf{flatter minima} $\to$ better generalization.
+    \end{itemize}
+\end{itemize}

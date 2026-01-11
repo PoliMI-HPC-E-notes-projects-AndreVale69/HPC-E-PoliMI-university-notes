@@ -2,12 +2,28 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.7.0
+
+- add `Datacenter Layer 4 Load Balancing`
+  - add `Introduction`
+  - add `Traditional LB Architecture`
+  - add `Real-World Deployments`
+  - add `Design Space`
+  - add `Cheetah (Research Proposal)`
+  - add `Faild (Production Environment)`
+    - add `Design Goals and Choices`
+    - add `Faild vs Research Proposals`
+  - add `Summary`
 
 --------------------
 

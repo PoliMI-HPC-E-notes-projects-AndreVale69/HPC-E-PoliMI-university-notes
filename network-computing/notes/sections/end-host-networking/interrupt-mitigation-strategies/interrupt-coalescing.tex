@@ -1,0 +1,65 @@
+\subsection{Interrupt Mitigation Strategies}
+
+\subsubsection{Interrupt Coalescing}
+
+The core problem we just saw was that \textbf{too many interrupts per second overwhelm the CPU} (\autopageref{sec:the-receive-live-lock-problem}). Interrupt coalescing fixes this by \textbf{reducing the interrupt rate}, not the packet rate. The key idea is very simple: \textbf{do not interrupt the CPU for every packet; instead, interrupt it for a group of packets}.
+
+\highspace
+\begin{definitionbox}[: Interrupt Coalescing]
+    \definition{Interrupt Coalescing} is a mechanism in which a network interface card (NIC) delays and \textbf{groups multiple packet} reception events, generating a \textbf{single interrupt to notify the CPU} about a batch of packets instead of one interrupt per packet.
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``batching'' mean?}}
+\end{flushleft}
+In interrupt coalescing, \textbf{batching} means that the NIC receives \textbf{multiple packets}, processes them, and writes them into main memory. Finally, it \textbf{generates one interrupt for the entire group of packets}. So instead of interrupting the CPU for every single packet:
+\begin{equation*}
+    \text{packet} \to \text{interrupt} \to \text{packet} \to \text{interrupt} \to \text{packet} \to \text{interrupt}
+\end{equation*}
+The NIC interrupts the CPU only after receiving a batch of packets:
+\begin{equation*}
+    \text{packet} \, \text{packet} \, \text{packet} \, \text{packet} \to 1\text{ interrupt}
+\end{equation*}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does the NIC actually do this?}}
+\end{flushleft}
+Modern NICs implement interrupt coalescing using \textbf{hardware rules}, such as generate an interrupt only:
+\begin{itemize}
+    \item After \textbf{$N$ packets} have been received, or
+    \item After \textbf{$T$ microseconds} have passed since the first packet in the batch was received.
+\end{itemize}
+These parameters ($N$ and $T$) are configurable, allowing system administrators to tune the interrupt coalescing behavior based on their specific workload and performance requirements. In simple terms, the NIC effectively says: ``\emph{I'll wait a bit, accumulate work, then notify the CPU once}''.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this helpful?}}
+\end{flushleft}
+Interrupt handling has a \textbf{fixed cost}. If we handle:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] 1 interrupt per packet, we pay the interrupt cost \textbf{every time}.
+    \item[\textcolor{Green3}{\faIcon{check}}] 1 interrupt per $N$ packets, we pay the interrupt cost \textbf{once for every $N$ packets}.
+\end{itemize}
+The CPU now:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] Spends less time context switching.
+    \item[\textcolor{Green3}{\faIcon{check}}] Spends more time actually processing packets.
+\end{itemize}
+This directly reduces the chance of \textbf{receive livelock}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What are the trade-offs?}}
+\end{flushleft}
+The main trade-off with interrupt coalescing is between \textbf{latency and throughput}.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{What improves.}} By reducing the interrupt rate, the CPU can handle more packets overall, improving \textbf{throughput}, \textbf{CPU efficiency} and reducing the likelihood of \textbf{receive livelock}. This is why interrupt coalescing is \textbf{enabled by default} on most modern NICs.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{What gets worse.}} Packets are \textbf{not delivered immediately}. Because the NIC waits to accumulate packets or waits for a timer to expire before generating an interrupt, this introduces \textbf{additional latency} for packet delivery. For applications that require low latency (e.g., real-time communications), this can be a drawback.
+\end{itemize}
+Usually, this trade-off is acceptable for most workloads, because they care more about \textbf{throughput} than per-packet \textbf{latency}. However, for latency-sensitive applications (e.g.. RPCs, trading), careful tuning of the coalescing parameters ($N$ and $T$) is necessary to strike the right balance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What are the limitations?}}
+\end{flushleft}
+While interrupt coalescing is effective, it is not a silver bullet. It \textbf{does not eliminate interrupts}. Indeed, at \hl{very high packet rates, even coalesced interrupts can still overwhelm the CPU}. Additionally, it may not be suitable for all workloads, especially those requiring low latency. Therefore, interrupt coalescing is often used in conjunction with other techniques (like \textbf{polling} or \textbf{NAPI}, next sections) to further enhance packet processing efficiency.

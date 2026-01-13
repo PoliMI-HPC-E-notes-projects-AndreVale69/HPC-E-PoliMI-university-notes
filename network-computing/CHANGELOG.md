@@ -19,6 +19,8 @@
   - add `Why End-Host Networking Matters`
   - add `Life of a Packet Inside a Server`
   - add `The Receive Livelock Problem`
+  - add `Interrupt Mitigation Strategies`
+    - add `Interrupt Coalescing`
 
 --------------------
 

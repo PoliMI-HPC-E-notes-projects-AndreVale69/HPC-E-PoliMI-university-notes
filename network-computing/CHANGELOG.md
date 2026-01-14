@@ -21,6 +21,7 @@
   - add `The Receive Livelock Problem`
   - add `Interrupt Mitigation Strategies`
     - add `Interrupt Coalescing`
+    - add `Polling`
 
 --------------------
 

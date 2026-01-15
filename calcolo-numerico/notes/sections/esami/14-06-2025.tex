@@ -22,19 +22,310 @@ Si consideri la matrice $A \in \mathbb{R}^{n \times n}$ ed il vettore $\mathbf{x
 \begin{enumerate}
     \item Utilizzando gli opportuni comandi MATLAB, si costruiscano la matrice $A$ ed il vettore $\mathbf{x}^{*}$ per $n = 10$. Si calcoli $\mathbf{b} \in \mathbb{R}^{10}$ tale che $\mathbf{b} = A \mathbf{x}^{*}$.
 
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Il primo passaggio è quello di costruire la matrice $A$ e il vettore $\mathbf{x}^{*}$ in MATLAB. La matrice $A$ è una matrice tridiagonale con elementi specifici, mentre il vettore $\mathbf{x}^{*}$ è un vettore colonna con valori da 1 a 10. I comandi MATLAB per costruire questi oggetti sono i seguenti:
+    \begin{lstlisting}[language=MATLAB]
+n = 10;
+A = diag(3*ones(n,1)) + diag(-1*ones(n-1,1),-1) + diag(-2*ones(n-1,1),1);
+x_star = (1:n)';
+b = A * x_star;
+disp('Matrix A:');
+disp(A);
+disp('Vector x_star:');
+disp(x_star);
+disp('Vector b:');
+disp(b);\end{lstlisting}
+    \begin{lstlisting}
+Matrix A:
+     3    -2     0     0     0     0     0     0     0     0
+    -1     3    -2     0     0     0     0     0     0     0
+     0    -1     3    -2     0     0     0     0     0     0
+     0     0    -1     3    -2     0     0     0     0     0
+     0     0     0    -1     3    -2     0     0     0     0
+     0     0     0     0    -1     3    -2     0     0     0
+     0     0     0     0     0    -1     3    -2     0     0
+     0     0     0     0     0     0    -1     3    -2     0
+     0     0     0     0     0     0     0    -1     3    -2
+     0     0     0     0     0     0     0     0    -1     3
+
+Vector x_star:
+     1
+     2
+     3
+     4
+     5
+     6
+     7
+     8
+     9
+    10
+
+Vector b:
+    -1
+    -1
+    -1
+    -1
+    -1
+    -1
+    -1
+    -1
+    -1
+    21\end{lstlisting}
+
     \item Utilizzando il comando \texttt{lu} di MATLAB, si calcoli la fattorizzazione LU della matrice $A$ precedentemente costruita. Utilizzando il comando \texttt{spy}, si determini se si è verificato il fenomeno del \emph{fill-in}. Si commenti il risultato e si riportino tutti i comandi utilizzati.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Per calcolare la fattorizzazione LU della matrice $A$ in MATLAB, si utilizza il comando \texttt{lu}. Successivamente, si utilizza il comando \texttt{spy} per visualizzare la struttura delle matrici $L$ e $U$ e verificare la presenza del fenomeno del \emph{fill-in}. I comandi MATLAB sono i seguenti:
+    \begin{lstlisting}[language=MATLAB]
+[L,U,P] = lu(A);
+
+figure;
+subplot(1, 3, 1);
+spy(A);
+title('Original Matrix A');
+
+subplot(1, 3, 2);
+spy(L + U - eye(n));
+title('L + U - I (after LU factorization)');
+
+subplot(1, 3, 3);
+spy(L + U - eye(n) - A);
+title('Fill-in (new non-zeros in L+U)');\end{lstlisting}
+    Il fenomeno del \definition{fill-in} si verifica quando la fattorizzazione LU introduce nuovi elementi non nulli nelle matrici $L$ e $U$ che non erano presenti nella matrice originale $A$. Più formalmente, il \emph{fill-in} si verifica quando:
+    \begin{equation*}
+        \text{pattern}\left(L + U - I\right) \nsubseteq \text{pattern}\left(A\right)
+    \end{equation*}
+    Ovvero quando la fattorizzazione LU crea nuovi elementi non nulli in posizioni in cui $A$ aveva zeri. Quindi, la matrice corretta da analizzare per il \emph{fill-in} è $L + U - I$, dove $I$ è la matrice identità. Questo perché $L$ e $U$ contengono gli elementi della matrice originale $A$ più quelli introdotti dalla fattorizzazione. Sottraendo l'identità, si rimuovono gli elementi diagonali che sono sempre presenti in $L$ e $U$. Se la matrice risultante ha più elementi non nulli rispetto ad $A$, allora si è verificato il \emph{fill-in}.
+    \begin{itemize}
+        \item Con \texttt{spy(A)} si visualizza la struttura della matrice originale $A$.
+        \item Con \texttt{spy(L + U - eye(n))} si visualizza la struttura della matrice risultante dalla somma di $L$ e $U$ meno l'identità. Ma attenzione, questa matrice include ancora gli elementi originali di $A$ e non mostra direttamente il \emph{fill-in}.
+        \item Con \texttt{spy(L + U - eye(n) - A)} si visualizza la matrice che rappresenta il \emph{fill-in}, ossia i nuovi elementi non nulli introdotti dalla fattorizzazione LU che non erano presenti in $A$.
+    \end{itemize}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/14-06-2025/ex1_2.pdf}
+    \end{figure}
+    Dalla figura, si può osservare che nonostante la matrice \texttt{L + U - I} abbia una struttura identica a quella di $A$, la matrice che rappresenta il \emph{fill-in} mostra che sono stati introdotti nuovi elementi non nulli, indicando che il fenomeno del \emph{fill-in} si è verificato durante la fattorizzazione LU.
 
 
     \item Utilizzando le matrice $L$ e $U$ calcolate al punto precedente e le funzioni \texttt{fwsub.m} e \texttt{bksub.m} si risolva il sistema lineare $A\mathbf{x} = \mathbf{b}$. Si riporti il risultato ottenuto ed i comandi utilizzati.
-    
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Per risolvere il sistema lineare $A\mathbf{x} = \mathbf{b}$ utilizzando la fattorizzazione LU, si procede in due passi: prima si risolve il sistema $L\mathbf{y} = \mathbf{b}$ tramite sostituzione in avanti, e poi si risolve il sistema $U\mathbf{x} = \mathbf{y}$ tramite sostituzione all'indietro. I comandi MATLAB per eseguire questi passaggi sono i seguenti:
+    \begin{lstlisting}[language=MATLAB]
+% Risolvi Ly = b usando sostituzione in avanti
+y = fwsub(L, b);
+% Risolvi Ux = y usando sostituzione all'indietro
+x = bksub(U, y);
+disp('Soluzione x ottenuta risolvendo Ax = b:');
+disp(x);\end{lstlisting}
+    E il risultato ottenuto sarà:
+    \begin{lstlisting}
+Soluzione x ottenuta risolvendo Ax = b:
+     1
+     2
+     3
+     4
+     5
+     6
+     7
+     8
+     9
+    10\end{lstlisting}
+
 
     \item Si calcoli la fattorizzazione LU della matrice $B = AA^{T}$, dove $A^{T}$ è la matrice trasposta di $A$. Si determini se è stato eseguito \emph{pivoting} e si riportino i comandi utilizzati. Utilizzare le matrici calcolate al punto precedente ed il comando \texttt{\textbackslash} di MATLAB per risolvere il sistema lineare $B\mathbf{x} = \mathbf{b}$.
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Per calcolare la fattorizzazione LU della matrice $B = AA^{T}$ in MATLAB, si utilizza il comando \texttt{lu}. Per verificare se è stato eseguito il \emph{pivoting}, si può controllare la matrice di permutazione $P$ restituita dalla funzione \texttt{lu}. I comandi MATLAB sono i seguenti:
+    \begin{lstlisting}[language=MATLAB]
+B = A * A';
+[L_B, U_B, P_B] = lu(B);
+disp('L factor of B:');
+disp(L_B);
+disp('U factor of B:');
+disp(U_B);
+disp('Permutation matrix P_B:');
+disp(P_B);
+
+if isequal(P_B, eye(n))
+    disp('Il pivoting non e'' stato eseguito nella fattorizzazione LU di B.');
+else
+    disp('Il pivoting e'' stato eseguito nella fattorizzazione LU di B.');
+end
+
+x_B = B \ b;
+disp('Soluzione x ottenuta risolvendo Bx = b usando \:');
+disp(x_B);\end{lstlisting}
+    Se il \emph{pivoting} è stato eseguito, la matrice di permutazione $P_B$ non sarà la matrice identità poiché il \emph{pivoting} comporta la riorganizzazione delle righe della matrice per migliorare la stabilità numerica della fattorizzazione LU. Quindi, se $P_B$ è diversa dalla matrice identità, significa che il \emph{pivoting} è stato eseguito. Si ricorda che la matrice di permutazione $P_B$ indica come le righe della matrice originale $B$ sono state riorganizzate durante il processo di fattorizzazione LU; gli elementi non nulli in $P_B$ indicano le posizioni delle righe originali nella matrice permutata. Per esempio, se la prima riga di $P_B$ ha un elemento non nullo nella terza colonna, significa che la terza riga di $B$ è stata spostata alla prima posizione nella matrice permutata.
+    
+    \begin{lstlisting}[basicstyle=\ttfamily\scriptsize,columns=fullflexible,breaklines=false]
+L factor of B:
+  1.0000        0        0        0        0        0        0        0        0    0
+ -0.6923   1.0000        0        0        0        0        0        0        0    0
+       0   0.2574   1.0000        0        0        0        0        0        0    0
+       0        0  -0.2841   1.0000        0        0        0        0        0    0
+  0.1538  -0.9802  -0.8847  -0.9461   1.0000        0        0        0        0    0
+       0        0        0        0   0.4111   1.0000        0        0        0    0
+       0        0        0        0        0  -0.3102   1.0000        0        0    0
+       0        0        0        0        0        0  -0.4083   1.0000        0    0
+       0        0        0        0        0        0        0  -0.4521   1.0000    0
+       0        0        0  -0.3869  -0.9399  -0.7603  -0.7360  -0.7700  -0.8297  1.0
+
+U factor of B:
+ 13.0  -9.0000   2.0000        0        0        0        0        0        0        0
+    0   7.7692  -7.6154   2.0000        0        0        0        0        0        0
+    0        0  -7.0396  13.4851  -9.0000   2.0000        0        0        0        0
+    0        0        0  -5.1688  11.4430  -8.4318   2.0000        0        0        0
+    0        0        0        0   4.8645  -6.2082   1.8922        0        0        0
+    0        0        0        0        0  -6.4476  13.2220  -9.0000   2.0000        0
+    0        0        0        0        0        0  -4.8986  11.2082  -8.3796   2.0000
+    0        0        0        0        0        0        0  -4.4239  10.5788  -8.1834
+    0        0        0        0        0        0        0        0  -4.2174   6.3003
+    0        0        0        0        0        0        0        0        0   0.3978
+
+Permutation matrix P_B:
+    1     0     0     0     0     0     0     0     0     0
+    0     1     0     0     0     0     0     0     0     0
+    0     0     0     1     0     0     0     0     0     0
+    0     0     0     0     1     0     0     0     0     0
+    0     0     1     0     0     0     0     0     0     0
+    0     0     0     0     0     0     1     0     0     0
+    0     0     0     0     0     0     0     1     0     0
+    0     0     0     0     0     0     0     0     1     0
+    0     0     0     0     0     0     0     0     0     1
+    0     0     0     0     0     1     0     0     0     0
+
+Il pivoting e' stato eseguito nella fattorizzazione LU di B.
+Soluzione x ottenuta risolvendo Bx = b usando l'operatore backslash:
+     1.9624
+     4.8872
+     8.7367
+    13.4358
+    18.8339
+    24.6302
+    30.2228
+    34.4079
+    34.7782
+    26.5188
+\end{lstlisting}
     
 
     \item Definire il numero di condizionamento di una matrice $A$ e discutere la stabilità della soluzione numerica di un generico sistema lineare $A\mathbf{x} = \mathbf{b}$. Dimostrare come il residuo può essere usato come stimatore dell'errore.
     
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} 
+    
+    \textbf{Numero di condizionamento.} Sia $A \in \mathbb{R}^{n \times n}$ una matrice \textbf{invertibile} e sia $\left\| \cdot \right\|$ una norma matriciale indotta (ad esempio, la norma 2 o la norma infinito). Il \definition{numero di condizionamento} di $A$ rispetto alla norma $\left\| \cdot \right\|$ è definito come:
+    \begin{equation*}
+        \kappa(A) = \left\| A \right\| \, \left\| A^{-1} \right\|
+    \end{equation*}
+    Dove $\left\| A \right\|$ è la norma della matrice $A$ e $\left\| A^{-1} \right\|$ è la norma della matrice inversa di $A$. Il numero di condizionamento $\kappa(A)$ misura \textbf{quanto} la soluzione di un sistema lineare ($x$ in $A\mathbf{x} = \mathbf{b}$) può amplificare perturbazioni di dati (su $\mathbf{b}$ o su $A$). Più tale numero è grande, più il problema è \definition{mal condizionato}, il che significa che piccole variazioni nei dati di input possono causare grandi variazioni nella soluzione.
+
+    \highspace
+    \textbf{Stabilità della soluzione numerica di $A\mathbf{x} = \mathbf{b}$}
+    \begin{enumerate}
+        \item \textbf{Condizionamento del problema} (\emph{sensibilità ai dati}). Per studiare il condizionamento del problema, si introducono delle perturbazioni sui dati del problema.
+
+        Se perturbiamo solo il termine noto:
+        \begin{equation*}
+            A\left(\mathbf{x} + \delta \mathbf{x}\right) = \mathbf{b} + \delta \mathbf{b}
+        \end{equation*}
+        Allora, $A \delta \mathbf{x} = \delta \mathbf{b}$, e quindi $\delta \mathbf{x} = A^{-1} \delta \mathbf{b}$. Utilizzando le norme e $\mathbf{b} = A\mathbf{x}$, si ottiene:
+        \begin{equation*}
+            \dfrac{\left\| \delta \mathbf{x} \right\|}{\left\| \mathbf{x} \right\|} \le \dfrac{\left\|A^{-1}\right\| \, \left\| \delta \mathbf{b} \right\|}{\left\| \mathbf{x} \right\|} \le \dfrac{\left\|A^{-1}\right\| \, \left\| \delta \mathbf{b} \right\|}{\left\| A^{-1} \right\|^{-1} \left\| \mathbf{b} \right\|} = \kappa(A) \dfrac{\left\| \delta \mathbf{b} \right\|}{\left\| \mathbf{b} \right\|}
+        \end{equation*}
+        Questo significa che \textbf{un piccolo errore relativo su $\mathbf{b}$} può produrre un errore relativo su $\mathbf{x}$ amplificato da un fattore pari a $\kappa(A)$.
+
+
+        \item \index{stabile all'indietro} \textbf{Stabilità dell'algoritmo} (\emph{errori di arrotondamento}). Un algoritmo è \definition{backward stable} (``stabile all'indietro'') se la soluzione numerica $\hat{\mathbf{x}}$ calcolata dall'algoritmo è esattamente la soluzione di un problema ``vicino'':
+        \begin{equation*}
+            \left(A + \delta A\right) \hat{\mathbf{x}} = \mathbf{b} + \delta \mathbf{b}
+        \end{equation*}
+        Con $\dfrac{\left\| \delta A \right\|}{\left\| A \right\|}$ e $\dfrac{\left\| \delta \mathbf{b} \right\|}{\left\| \mathbf{b} \right\|}$ piccoli (dell'ordine della precisione di macchina, $O\left(\varepsilon_{\text{mach}}\right)$). Dunque, combinando il condizionamento del problema (punto precedente) con la stabilità dell'algoritmo, si ottiene che l'errore relativo sulla soluzione numerica è limitato da:
+        \begin{equation*}
+            \dfrac{\left\| \hat{\mathbf{x}} - \mathbf{x} \right\|}{\left\| \mathbf{x} \right\|} \approx O\left(\kappa(A)\right) \, O\left(\varepsilon_{\text{mach}}\right)
+        \end{equation*}
+        Che significa che l'errore relativo sulla soluzione numerica è proporzionale al numero di condizionamento della matrice $A$ e alla precisione di macchina. Quindi:
+        \begin{itemize}
+            \item Se $\kappa(A) \varepsilon_{\text{mach}} \ll 1$, la soluzione numerica è generalmente accurata.
+            \item Se $\kappa(A) \varepsilon_{\text{mach}} \approx 1$, la soluzione numerica può essere imprecisa, con poche cifre significative. Si dice che il problema è \definition{mal condizionato}.
+            \item Se $\kappa(A) \varepsilon_{\text{mach}} > 1$, anche un algoritmo stabile può dare una soluzione con pochi (o zero) cifre significative. Si dice che il problema è \definition{gravemente mal condizionato} (o \definition{fortemente mal condizionato}). In altre parole, non è un problema dell'algoritmo, ma è il problema matematico ad essere intrinsecamente instabile da risolvere numericamente.
+        \end{itemize}
+    \end{enumerate}
+    \textbf{Il residuo come stimatore dell'errore.} Sia $\hat{\mathbf{x}}$ la soluzione numerica approssimata del sistema lineare $A\mathbf{x} = \mathbf{b}$. Il \definition{residuo} associato a questa soluzione è definito come:
+    \begin{equation*}
+        \mathbf{r} = \mathbf{b} - A\hat{\mathbf{x}}
+    \end{equation*}
+    Sia $\mathbf{x}$ la soluzione esatta del sistema lineare e sia $e = \mathbf{x} - \hat{\mathbf{x}}$ l'errore commesso nella soluzione numerica. Allora, si ha:
+    \begin{equation*}
+        \mathbf{r} = \mathbf{b} - A\hat{\mathbf{x}} = A\mathbf{x} - A\hat{\mathbf{x}} = A\left(\mathbf{x} - \hat{\mathbf{x}}\right) = Ae
+    \end{equation*}
+    Quindi, l'errore $e$ può essere espresso in termini del residuo $\mathbf{r}$ come:
+    \begin{equation*}
+        Ae = \mathbf{r} \implies e = A^{-1}\mathbf{r}
+    \end{equation*}
+    Inoltre, utilizzando le norme, si ottiene:
+    \begin{equation*}
+        \left\| e \right\| = \left\| A^{-1}\mathbf{r} \right\| \le \left\| A^{-1} \right\| \, \left\| \mathbf{r} \right\|
+    \end{equation*}
+    Dividendo entrambi i membri per $\left\| \mathbf{x} \right\|$ e utilizzando la relazione $\left\| \mathbf{b} \right\| = \left\| A\mathbf{x} \right\| \leq \left\| A \right\| \, \left\| \mathbf{x} \right\|$, si ottiene:
+    \begin{equation*}
+        \dfrac{\left\| e \right\|}{\left\| \mathbf{x} \right\|} \le \left\| A^{-1} \right\| \, \dfrac{\left\| \mathbf{r} \right\|}{\left\| \mathbf{x} \right\|} \le \left\| A^{-1} \right\| \, \dfrac{\left\| \mathbf{r} \right\|}{\left\| A \right\|^{-1} \, \left\| \mathbf{b} \right\|} = \kappa(A) \, \dfrac{\left\| \mathbf{r} \right\|}{\left\| \mathbf{b} \right\|}
+    \end{equation*}
+    Quindi \textbf{il residuo relativo} $\dfrac{\left\| \mathbf{r} \right\|}{\left\| \mathbf{b} \right\|}$, moltiplicato per il numero di condizionamento $\kappa(A)$, fornisce una stima superiore (\textbf{upper bound}) dell'errore relativo nella soluzione numerica $\hat{\mathbf{x}}$. In altre parole, \hl{se il residuo è piccolo, allora l'errore nella soluzione numerica è anche piccolo}, a meno che la matrice $A$ non sia \hl{mal condizionata} (cioè, abbia un grande numero di condizionamento).
+
+    \begin{takeawaysbox}
+        Alcuni punti chiave da ricordare:
+        \begin{itemize}
+            \item \textbf{Residuo piccolo} non implica necessariamente un \textbf{errore piccolo} se la matrice è \textbf{mal condizionata} ($\kappa(A)$ grande).
+            \item Se $A$ è \textbf{ben condizionata} (cioè, $\kappa(A)$ piccolo), allora un \textbf{residuo piccolo} garantisce un \textbf{errore piccolo}, quindi è un buon indicatore di accuratezza.
+            \item In pratica si usa spesso anche il \textbf{residuo normalizzato}:
+            \begin{equation*}
+                \dfrac{\left\| \mathbf{r} \right\|}{\left\| A \right\| \, \left\| \hat{\mathbf{x}} \right\| + \left\| \mathbf{b} \right\|}
+            \end{equation*}
+            Che è un indicatore di backward error (errore all'indietro) più robusto. Dopodiché, moltiplicando questo residuo normalizzato per $\kappa(A)$, si ottiene l'errore forward (errore in avanti) stimato.
+        \end{itemize}
+    \end{takeawaysbox}
 
     \item Calcolare il condizionamento della matrice $B$ ed il residuo per fornire una stima dell'errore relativo commesso nella risoluzione del sistema lineare $B\mathbf{x} = \mathbf{b}$. Riportare i comandi utilizzati.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Per calcolare il condizionamento della matrice $B$ e il residuo associato alla soluzione numerica ottenuta, si utilizzano i seguenti comandi MATLAB:
+    \begin{lstlisting}[language=MATLAB]
+cond_B = cond(B);
+r = b - B * x_B;
+disp(['Condizionamento della matrice B: ', num2str(cond_B)]);
+disp('Residuo r = b - Bx:');
+disp(r);
+norm_r = norm(r);
+norm_B = norm(B);
+norm_x_B = norm(x_B);
+norm_b = norm(b);
+residuo_normalizzato = norm_r / (norm_B * norm_x_B + norm_b);
+disp([ ...
+    'Residuo normalizzato: ', ...
+    num2str(residuo_normalizzato) ...
+]);
+errore_stimato = cond_B * residuo_normalizzato;
+disp([ ...
+    'Stima dell''errore relativo: ', ...
+    num2str(errore_stimato) ...
+]);\end{lstlisting}
+    E il risultato ottenuto sarà:
+    \begin{lstlisting}
+Condizionamento della matrice B: 911.3637
+Residuo r = b - Bx:
+   1.0e-13 *
+
+         0
+    0.0355
+   -0.0711
+   -0.0711
+   -0.2842
+   -0.4263
+   -0.2842
+    0.1421
+         0
+         0
+
+Residuo normalizzato: 2.4185e-17
+Stima dell'errore relativo: 2.2042e-14\end{lstlisting}
+    Il sistema lineare $B\mathbf{x} = \mathbf{b}$ presenta un numero di condizionamento di circa $911.36$, indicando che il problema è moderatamente mal condizionato ($\kappa(B) \approx 9.11 \times 10^{2}$). Tuttavia, calcolando il residuo normalizzato, si ottiene un valore molto piccolo di circa $2.42 \times 10^{-17}$. Moltiplicando questo residuo per il condizionamento della matrice $B$, si ottiene una stima dell'errore relativo commesso nella risoluzione del sistema lineare, che risulta essere circa $2.20 \times 10^{-14}$. Questo indica che, nonostante il problema sia moderatamente mal condizionato, l'errore relativo nella soluzione numerica è ancora molto piccolo, suggerendo che la soluzione ottenuta è affidabile. Infatti, calcolando il prodotto $\kappa(B) \cdot \varepsilon_{\text{mach}}$ (dove $\varepsilon_{\text{mach}} \approx 2.22 \times 10^{-16}$ per la precisione doppia), si ottiene un valore di circa $2.02 \times 10^{-13}$, che è ancora molto piccolo, confermando che la soluzione numerica è accurata nonostante il condizionamento della matrice.
 \end{enumerate}
 
 \newpage

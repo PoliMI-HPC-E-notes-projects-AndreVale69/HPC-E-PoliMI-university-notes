@@ -27,6 +27,8 @@
 
 ### v1.1.0
 
+- fix: add missing label for simultaneous multithreading definition.
+
 --------------------
 
 ### v1.0.3

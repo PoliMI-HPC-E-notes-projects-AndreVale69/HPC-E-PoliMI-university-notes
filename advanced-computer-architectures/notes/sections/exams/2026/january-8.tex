@@ -1,0 +1,652 @@
+\section{Exams}
+
+\subsection{2026}
+
+\subsubsection{January 8}
+
+\subsubsection*{Exercise 1A - Scoreboard}
+
+\emph{\textbf{PART A:} Please consider the program in the table be executed on a CPU with dynamic scheduling based on \textbf{SCOREBOARD BASIC SCHEME} with the following assumptions and resources:
+\begin{itemize}
+    \item \textbf{Check for WAW hazards in the ISSUE stage;}
+    \item \textbf{No Forwarding;}
+    \item \textbf{2 LOAD/STORE Units (LDU1, LDU2) with latency 3 cycles;}
+    \item \textbf{1 FP Unit (FPU1) with latency 3 cycles;}
+    \item \textbf{1 ALU/BR Unit (ALU1) with latency 1 cycle.}
+\end{itemize}}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{I0:LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)} & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{I1:FADD \phantom{ }\$F4, \$F2, \$F6} &   &   &   &   &   &  \\
+        \code{I2:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)} &   &   &   &   &   &  \\
+        \code{I3:LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)} &   &   &   &   &   &  \\
+        \code{I4:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)} &   &   &   &   &   &  \\
+        \code{I5:ADDUI \$R6, \$R6, 4} &   &   &   &   &   &  \\
+        \code{I6:ADDUI \$R7, \$R7, 4} &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+    \caption*{\emph{Where I is the Issue stage, RR is the Read Operands stage, E is the Execute stage, WB is the Write Back stage.}}
+\end{table}
+\emph{Calculate the \textbf{CPI} of the program and draw the timing diagram showing the status of each instruction at each clock cycle.}
+
+\highspace
+\answer The scoreboard (\autopageref{section:scoreboard-dynamic-scheduling-algorithm}) allows out-of-order execution while maintaining program correctness by tracking hazards and resource usage. It is similar to Tomasulo's algorithm but lacks register renaming and forwarding mechanisms. So, \textbf{in-order issue} is enforced, there is no forwarding, and \textbf{out-of-order execution and commit} are allowed (which can introduce WAW and WAR hazards, since there's no register renaming).
+
+\highspace
+In a traditional pipeline, the Instruction Decode (ID) stage performs both decoding and operand fetching. But this assumes that operands are always available in the register file during the ID stage. However, with dynamic scheduling, operands might not be ready when an instruction is issued, leading to stalls if we wait for them to be fetched in the ID stage. So, the scoreboard splits the ID stage into two separate stages:
+\begin{itemize}
+    \item \textbf{Issue Stage}. It decodes the instruction, checks for structural hazards, and enforces in-order issue. If there are structural hazards, the instruction is stalled here.
+    \item \textbf{Read Operands Stage}. It waits for the operands to become available. It avoids RAW hazards by deferring opearnd reads until the register is no longer ``reserved'' by an active instruction writing to it. If there are RAW hazards, the instruction is stalled here. Since there is no forwarding, the instruction must wait until the writing instruction completes its Write Back stage.
+\end{itemize}
+So the \textbf{RAW} hazards are handled in the \textbf{Read Operands stage (RR)}, while \textbf{WAR} hazards are handled in the \textbf{Write Back stage (WB)}, \textbf{WAW} and \textbf{structural} hazards are handled in the \textbf{Issue stage (I)}. See \autoref{subsubsec:scoreboard-control-logic-and-stages} (\autopageref{subsubsec:scoreboard-control-logic-and-stages}) for more details on the scoreboard stages.
+
+\begin{enumerate}
+    \setcounter{enumi}{1}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 2
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item We do not consider the first cycle and the instruction \code{I0} because they are already filled in the table.
+        \item \code{I1} can be issued in cycle 2 because there are no structural hazards (\code{FPU1} is free) and no WAW hazards (no previous instruction writes to \$F4). So, \code{I1} is in the Issue stage in cycle 2.
+        \item Since \code{I1} is issued, it reserves the unit \code{FPU1} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & \hl{2} &   &   &   &   & \hl{\texttt{FPU1}} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    &   &   &   &   &   &  \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   &   &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 3
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I1} would like to read its operands in cycle 3, but it cannot because of a RAW hazard on \$F2 (it is being written by \code{I0} which has not yet completed its Write Back stage). So, \code{I1} is stalled until cycle 6 (inclusive), when \code{I0} completes its Write Back stage.
+        \item \code{I2} can be issued in cycle 3 because there are no structural hazards (\code{LDU2} is free) and no WAW hazards (no previous instruction writes to \$F4). So, \code{I2} is in the Issue stage in cycle 3.
+        \item Since \code{I2} is issued, it reserves the unit \code{LDU2} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 &   &   &   & \hl{RAW \texttt{\$F2} \texttt{I0}} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & \hl{3}  &   &   &   &   & \hl{\texttt{LDU2}} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   &   &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 4
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I1} is still stalled in the Read Operands stage due to the RAW hazard on \$F2.
+        \item \code{I2} would like to read its operands in cycle 4, but it cannot because of a RAW hazard on \$F4 (it is being written by \code{I1} which has not yet completed its Write Back stage). So, \code{I2} is stalled until cycle 9 (inclusive), when \code{I1} completes its Write Back stage.
+        \item *\code{I3} would like to be issued in cycle 4, but it cannot because of a \textbf{structural hazard} on \code{LDU1} (it is being used by \code{I0}) and a \textbf{WAW hazard} on \$F4 (it is being written by \code{I1} which has not yet completed its Write Back stage). So, \code{I3} is stalled.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 &   &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & \hl{RAW \texttt{\$F4} \texttt{I1}} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   & \hl{*STR/WAW} &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 7
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{6}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Now \code{I1} can read its operands in cycle 7, since the RAW hazard on \$F2 has been resolved (it was written back by \code{I0} in cycle 6). So, \code{I1} is in the Read Operands stage in cycle 7.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & \hl{7} &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   & STR/WAW &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 12
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{11}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item We skip to cycle 12, but in cycle 10 the execution of \code{I1} completes and in cycle 11 it writes back its result, resolving the RAW hazard on \$F4 for \code{I2}. So, in cycle 12 \code{I2} can read its operands. So, \code{I2} is in the Read Operands stage in cycle 12.
+        \item \code{I3} can now be issued because the WAW hazard on \$F4 has been resolved (it was written back by \code{I1} in cycle 11) and there are no structural hazards (\code{LDU1} is free since \code{I0} completed its Write Back stage in cycle 6). So, \code{I3} is in the Issue stage in cycle 12.
+        \item Since \code{I3} is issued, it reserves the unit \code{LDU1} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 &    &    & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 &    &    &    & STR/WAW & \hl{\texttt{LDU1}} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    &    &    &    &    & &  \\
+        \code{ADDUI \$R6, \$R6, 4}                        &    &    &    &    & &  \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 13
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} reads its operands in cycle 13, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I3} is in the Read Operands stage in cycle 13.
+        \item \code{I4} would like to be issued in cycle 13, but it cannot because of a \textbf{structural hazard} on \code{LDU2} (it is being used by \code{I2}).
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 &    &    & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & \hl{13} &    &    & STR/WAW & \hl{\texttt{LDU1}} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    &    &    &    &    & \hl{STR \texttt{\$F4} \texttt{I3}} &  \\
+        \code{ADDUI \$R6, \$R6, 4}                        &    &    &    &    & &  \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 17
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{16}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} execution completes in cycle 16 and it writes back its result in cycle 17.
+        \item \code{I4} can now be issued because the structural hazard on \code{LDU2} has been resolved (it was freed by \code{I2} which completed its Write Back stage in cycle 16). So, \code{I4} is in the Issue stage in cycle 17.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & \hl{17} & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & \hl{17} &    &    &    & STR \texttt{\$F4} \texttt{I3} & \hl{\texttt{LDU2}} \\
+        \code{ADDUI \$R6, \$R6, 4}                        &    &    &    &    & &  \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 18
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} reads its operands in cycle 18, since there is no RAW hazard on its \$R7 (it is not being written by any active instruction). So, \code{I4} is in the Read Operands stage in cycle 18.
+        \item \code{I5} can be issued in cycle 18 because there are no structural hazards (\code{ALU1} is free) and no WAW hazards (no previous instruction writes to \$R6). So, \code{I5} is in the Issue stage in cycle 18.
+        \item Since \code{I5} is issued, it reserves the unit \code{ALU1} and the destination register \$R6.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & \hl{18} &    &    & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & \hl{18} &    &    &    & & \hl{\texttt{ALU1}} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 19
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I5} reads its operands in cycle 19, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I5} is in the Read Operands stage in cycle 19.
+        \item \code{I6} cannot be issued in cycle 19 because of a \textbf{structural hazard} on \code{ALU1} (it is being used by \code{I5}).
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 &    &    & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & \hl{19} &    &    & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &  &    &    &    & \hl{STR \texttt{ALU1}} &  \\
+        \bottomrule
+    \end{tabular}
+
+    \newpage
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 21
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{20}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} completes its execution in cycle 20.
+        \item \code{I5} writes back its result in cycle 21, freeing up \code{ALU1}. There are no WAR hazards on \$R6 since no active instruction reads from it, so there are no stalls.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 & \hl{21} &    & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & 19 & 20 & \hl{21} & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &  &    &    &    & STR \texttt{ALU1} &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 22
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} writes back its result in cycle 22, freeing up \code{LDU2}. There are no WAR hazards on \$F4 since no active instruction reads from it, so there are no stalls.
+        \item \code{I6} can now be issued because the structural hazard on \code{ALU1} has been resolved (it was freed by \code{I5} which completed its Write Back stage in cycle 21) and there are no WAW hazards (no previous instruction writes to \$R7). So, \code{I6} is in the Issue stage in cycle 22.
+        \item Since \code{I6} is issued, it reserves the unit \code{ALU1} and the destination register \$R7.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 & 21 & \hl{22} & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & 19 & 20 & 21 & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & \hl{22} &    &    &    & STR \texttt{ALU1} & \hl{\texttt{ALU1}} \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 25
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{24}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item The execution of \code{I6} completes in cycle 24 and it writes back its result in cycle 25.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 & 21 & 22 & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & 19 & 20 & 21 & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & 22 & 23 & 24 & 25 & STR \texttt{ALU1} & \texttt{ALU1} \\
+        \bottomrule
+    \end{tabular}
+\end{enumerate}
+The \textbf{CPI} (Cycles Per Instruction) can be calculated as follows:
+\begin{equation*}
+    \text{CPI} = \dfrac{\# \, \text{clock cycles}}{\# \, \text{instructions}} = \dfrac{25}{7} \approx 3.57
+\end{equation*}
+
+\longline
+
+\subsubsection*{Exercise 1B - Scoreboard}
+
+\emph{\textbf{PART B:} Please consider the introduction of the following \textbf{Optimizations:}
+\begin{itemize}
+    \item \textbf{Check for WAW postponed to the WRITE BACK phase;}
+    \item \textbf{Forwarding;}
+\end{itemize}}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{I0:LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)} & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{I1:FADD \phantom{ }\$F4, \$F2, \$F6} &   &   &   &   &   &  \\
+        \code{I2:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)} &   &   &   &   &   &  \\
+        \code{I3:LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)} &   &   &   &   &   &  \\
+        \code{I4:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)} &   &   &   &   &   &  \\
+        \code{I5:ADDUI \$R6, \$R6, 4} &   &   &   &   &   &  \\
+        \code{I6:ADDUI \$R7, \$R7, 4} &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+    \caption*{\emph{Where I is the Issue stage, RR is the Read Operands stage, E is the Execute stage, WB is the Write Back stage.}}
+\end{table}
+\emph{\textbf{Fill the following table} indicating, for each cycle, which instruction is in which stage, and which hazards (if any) are present. Highlight the stalls caused by hazards. Finally, compute the \textbf{CPI} (Cycles Per Instruction) achieved with these optimizations and the \textbf{speedup} with respect to the previous case (without optimizations).}
+
+\highspace
+\answer With respect to Exercise 1A, here we have two optimizations: (1) WAW hazard checks are postponed to the Write Back stage, so instructions can be issued even if there is a WAW hazard; (2) Forwarding is implemented, so RAW hazards can be resolved earlier during the Execute stage instead of waiting for the Write Back stage. About forwarding, it simply means that when an instruction produces a result, that result can be forwarded directly to a subsequent instruction that needs it, without waiting for the first instruction to write it back to the register file.
+
+\highspace
+In the following tables, we do not report all cycles, but only the ones where the optimizations have an effect.
+\begin{enumerate}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 6
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{5}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item In the cycle 6, \code{I1} was stalled in the Read Operands stage due to the RAW hazard on \$F2. But now, with forwarding, \code{I1} can read its operand \$F2 directly from the output of \code{I0} during its Execute stage (cycle 5), instead of waiting for \code{I0} to write it back in cycle 6. So, \code{I1} can read its operands in cycle 6. It anticipates the Write Back of \code{I0} by one cycle.
+        \item \code{I3} cannot be issued in cycle 6 because of a \textbf{structural hazard} on \code{LDU1} (it is being used by \code{I0}). However, there is no WAW hazard on \$F4 because WAW checks are postponed to the Write Back stage. This will allow \code{I3} to be issued earlier in a later cycle.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & \hl{6} &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   & \hl{STR \texttt{LDU1}} &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 7
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Thanks to WAW checks being postponed to the Write Back stage, \code{I3} can now be issued in cycle 7, even if there is a WAW hazard on \$F4 with \code{I1}. So, \code{I3} is in the Issue stage in cycle 7.
+        \item Since \code{I3} is issued, it reserves the unit \code{LDU1} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & 6 &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    & \hl{7} &   &   &   & STR \texttt{LDU1} & \hl{\texttt{LDU1}} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 8
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} reads its operands in cycle 8, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I3} is in the Read Operands stage in cycle 8.
+        \item \code{I4} cannot be issued in cycle 8 because of a \textbf{structural hazard} on \code{LDU2} (it is being used by \code{I2}). \code{I4} chooses the FU \code{LDU2} because is the least recently used among the two load/store units.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & 6 &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & \hl{8} &   &   & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   & \hl{STR \texttt{LDU2}} &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+    \newpage
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 10
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{9}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I1} completes its execution in cycle 9 and it writes back its result in cycle 10.
+        \item \code{I2} can now read its operands in cycle 10, since there is forwarding and it can get the value of \$F4 directly from the output of \code{I1} during its Write Back stage (cycle 10), instead of waiting for \code{I1} to write it back in cycle 11. So, \code{I2} is in the Read Operands stage in cycle 10.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & 6 & 9  & \hl{10} & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & \hl{10} &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 &   &   & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   & STR \texttt{LDU2} &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 13
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{12}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} completes its execution in cycle 11 and it writes back its result in cycle 12. There is a WAW hazard on \$F4 with \code{I1}, but since WAW checks are postponed to the Write Back stage, \code{I3} can write back its result in cycle 12 without stalls (\code{I1} already wrote back in cycle 10, so there is no conflict).
+        \item \code{I4} can now read its operands in cycle 13, since there is no more structural hazard on \code{LDU2} (it was freed by \code{I2} which completed its Execute stage in cycle 12). So, \code{I4} is in the Read Operands stage in cycle 13.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & \hl{13} &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & \hl{13} &   &   &   & STR \texttt{LDU2} & \hl{\texttt{LDU1}} \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 14
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I2} completes its execution in cycle 13 and it writes back its result in cycle 14.
+        \item \code{I4} reads its operands in cycle 14, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I4} is in the Read Operands stage in cycle 14.
+        \item \code{I5} starts its Issue stage in cycle 14. There are no structural hazards.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & \hl{14} & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & \hl{14} &   &   & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & \hl{14} &   &   &   &   & \hl{\texttt{ALU1}} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 15
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I5} reads its operands in cycle 15, since there are no RAW hazards on its source register \$R6 (it is not being written by any active instruction). So, \code{I5} is in the Read Operands stage in cycle 15.
+        \item \code{I6} cannot be issued in cycle 15 because of a \textbf{structural hazard} on \code{ALU1} (it is being used by \code{I5}).
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & 14 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & 14 &   &   & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 14 & \hl{15} &   &   &   & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &   &   &   &   & \hl{STR \texttt{ALU1}} &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 18
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} completes its execution in cycle 17 and it writes back its result in cycle 18.
+        \item \code{I6} can now be issued because the structural hazard on \code{ALU1} has been resolved (it was freed by \code{I5} which completed its Execute stage in cycle 17). So, \code{I6} is in the Issue stage in cycle 18.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & 14 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & 14 & 17 & \hl{18} & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 14 & 15 & 16 & 17 &   & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & \hl{18} &   &   &   & STR \texttt{ALU1} & \hl{\texttt{ALU1}} \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 21
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{20}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item The execution of \code{I6} completes in cycle 20 and it writes back its result in cycle 21.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & 14 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & 14 & 17 & 18 & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 14 & 15 & 16 & 17 &   & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & 18 & 19 & 20 & 21 & STR \texttt{ALU1} & \texttt{ALU1} \\
+        \bottomrule
+    \end{tabular}
+\end{enumerate}
+The \textbf{CPI} (Cycles Per Instruction) can be calculated as follows:
+\begin{equation*}
+    \text{CPI} = \dfrac{\# \, \text{clock cycles}}{\# \, \text{instructions}} = \dfrac{21}{7} = 3
+\end{equation*}
+The \textbf{speedup} with respect to the previous case (without optimizations) is:
+\begin{equation*}
+    \text{Speedup} = \dfrac{\text{CPI}_{\text{old}}}{\text{CPI}_{\text{new}}} = \dfrac{3.57}{3} \approx 1.19
+\end{equation*}
+So, with these optimizations, we achieve a speedup of approximately 1.19 times compared to the original implementation without optimizations, about a 19\% performance improvement.

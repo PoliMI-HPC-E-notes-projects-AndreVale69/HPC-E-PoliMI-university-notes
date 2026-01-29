@@ -650,3 +650,229 @@ The \textbf{speedup} with respect to the previous case (without optimizations) i
     \text{Speedup} = \dfrac{\text{CPI}_{\text{old}}}{\text{CPI}_{\text{new}}} = \dfrac{3.57}{3} \approx 1.19
 \end{equation*}
 So, with these optimizations, we achieve a speedup of approximately 1.19 times compared to the original implementation without optimizations, about a 19\% performance improvement.
+
+\longline
+
+\subsubsection*{Exercise 2 - VLIW Scheduling}
+
+\emph{Let's consider the following LOOP code, where \textbf{\texttt{\$Ri}} are integer registers and \textbf{\texttt{\$Fi}} are floating-point registers.}
+\begin{lstlisting}
+FOR:    LD $F2, VB ($R6)    # I0
+        FADD $F4, $F2, $F6  # I1
+        SD  $F4, VA ($R7)   # I2
+        LD  $F4, VC ($R6)   # I3
+        SD  $F4, VC ($R7)   # I4
+        FADD $F8, $F8, $F8  # I5
+        ADDUI $R6, $R6, 4   # I6
+        ADDUI $R7, $R7, 4   # I7
+        BNE $R7, $R8, FOR   # I8
+\end{lstlisting}
+\emph{Given a \textbf{3-issue VLIW} machine with \textbf{fully pipelined functional units:}
+\begin{itemize}
+    \item \textbf{1 Memory Unit with 3 cycles latency}
+    \item \textbf{1 FP ALUs with 3 cycles latency}
+    \item \textbf{1 Integer ALU with 1 cycle latency to next Int/FP/L/S \& 2 cycles latency to next Branch}
+\end{itemize}
+The branch is completed with 1 cycle delay slot (branch solved in ID stage). \textbf{No branch prediction}. In the Register File, it is possible to read and write at the same address at the same clock cycle. Considering one iteration of the loop, complete the following table by using the \textbf{list-based scheduling} (do NOT introduce any software pipelining, loop unrolling and modifications to loop indexes) on the 3-issue VLIW machine including the BRANCH DELAY SLOT. Please do not write in NOPs.}
+
+\newpage
+
+\noindent
+\emph{Let's complete the following table indicating, for each cycle, which instructions are issued in the VLIW:}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | c | c @{}}
+        \toprule
+        & \textbf{Integer ALU} & \textbf{Memory Unit} & \textbf{FP Unit} \\
+        \midrule
+        \textbf{C1} & & \code{LD \$F2, VB(\$R6)} & \\
+        \textbf{C2} & & & \\
+        \textbf{C3} & & & \\
+        \textbf{C4} & & & \\
+        \textbf{C5} & & & \\
+        \textbf{C6} & & & \\
+        \textbf{C7} & & & \\
+        \textbf{C8} & & & \\
+        \textbf{C9} & & & \\
+        \textbf{C10} & & & \\
+        \textbf{C11} & & & \\
+        \textbf{C12} & & & \\
+        \textbf{C13} & & & \\
+        \textbf{C14} & & & \\
+        \textbf{C15} & & & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\emph{And finally, answer the following questions:
+\begin{itemize}
+    \item How long is the critical path for a single iteration?
+    \item What performance did you achieve in FP ops per cycles?
+    \item How much is the code efficiency for a single iteration?
+    \item What CPI did you achieve?
+\end{itemize}}
+
+\highspace
+\answer To perform list-based scheduling for the given loop code on a 3-issue VLIW machine, we first need to draw the dependency graph for the instructions (see \autopageref{subsubsection: Dependence Graph and Critical Path}). In the following list, we indicate the dependencies between instructions:
+\begin{itemize}
+    \item RAW:
+    \begin{itemize}
+        \item \code{I1} depends on \code{I0} (reads \$F2 written by \code{I0})
+        \item \code{I2} depends on \code{I1} (reads \$F4 written by \code{I1})
+        \item \code{I4} depends on \code{I3} (reads \$F4 written by \code{I3})
+        \item \code{I8} depends on \code{I7} (reads \$R7 written by \code{I7})
+    \end{itemize}
+    \item WAR and WAW:
+    \begin{itemize}
+        \item \code{I3} has a WAW hazard with \code{I1} (both write to \$F4)
+        \item \code{I3} has a WAR hazard with \code{I2} (writes to \$F4 read by \code{I2})
+        \item \code{I6} has a WAR hazard with \code{I3} (writes to \$R6 read by \code{I3})
+        \item \code{I7} has a WAR hazard with \code{I4} (writes to \$R7 read by \code{I4}) and \code{I2} (writes to \$R7 read by \code{I2})
+    \end{itemize}
+\end{itemize}
+Using this information, we draw the dependency graph below.
+
+\begin{center}
+    \begin{tikzpicture}[node distance=1.7cm, >=stealth]
+        % Nodes
+        \node[circle, draw] (I0) {$I_{0}$};
+        \node[circle, draw, right=of I0] (I5) {$I_{5}$};
+        \node[circle, draw, below=of I0] (I1) {$I_{1}$};
+        \node[circle, draw, below=of I1] (I2) {$I_{2}$};
+        \node[circle, draw, right=of I2] (I3) {$I_{3}$};
+        \node[circle, draw, right=of I3] (I6) {$I_{6}$};
+        \node[circle, draw, below=of I2] (I7) {$I_{7}$};
+        \node[circle, draw, below=of I3] (I4) {$I_{4}$};
+        \node[circle, draw, below=of I7] (I8) {$I_{8}$};
+
+        % % Dashed Edges
+        \draw[dashed, ->] (I1) -- (I3) node[midway, sloped, above, inner sep=2pt] {\texttt{WAW \$F4}};
+        \draw[dashed, ->] (I2) -- (I3) node[midway, sloped, above, inner sep=2pt] {\texttt{WAR \$F4}};
+        \draw[dashed, ->] (I2) -- (I7) node[midway, left, inner sep=2pt] {\texttt{WAR \$R7}};
+        \draw[dashed, ->] (I3) -- (I6) node[midway, sloped, above, inner sep=2pt] {\texttt{WAR \$R6}};
+        \draw[dashed, ->] (I4) -- (I7) node[midway, sloped, above, inner sep=2pt] {\texttt{WAR \$R7}};
+
+        % % Solid Edges
+        \draw[->] (I0) -- (I1);
+        \draw[->] (I1) -- (I2);
+        \draw[->] (I3) -- (I4);
+        \draw[->] (I7) -- (I8);
+    \end{tikzpicture}
+\end{center}
+And the table is completed simply by scheduling the instructions while respecting the dependencies and the functional unit constraints (waiting for RAW hazards to be resolved and avoiding structural hazards):
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | c | c @{}}
+        \toprule
+        & \textbf{Integer ALU} & \textbf{Memory Unit} & \textbf{FP Unit} \\
+        \midrule
+        \textbf{C1}  & & \texttt{LD \$F2, VB(\$R6)} & \texttt{FADD \$F8, \$F8, \$F8} \\
+        \textbf{C2}  & & & \\
+        \textbf{C3}  & & & \\
+        \textbf{C4}  & & & \texttt{FADD \$F4, \$F2, \$F6} \\
+        \textbf{C5}  & & & \\
+        \textbf{C6}  & & & \\
+        \textbf{C7}  & & \texttt{SD \$F4, VA (\$R7)} & \\
+        \textbf{C8}  & \texttt{ADDUI \$R6, \$R6, 4} & \texttt{LD \$F4, VC (\$R6)} & \\
+        \textbf{C9}  & & & \\
+        \textbf{C10} & & & \\
+        \textbf{C11} & \texttt{ADDUI \$R7, \$R7, 4} & \texttt{SD \$F4, VC (\$R7)} & \\
+        \textbf{C12} &  & & \\
+        \textbf{C13} & \texttt{BLT \$R7, \$R8, FOR} & & \\
+        \textbf{C14} & \texttt{(delay)} & & \\
+        \textbf{C15} & & & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+The \texttt{BLT} instruction is placed in cycle 13 because the previous instruction (\code{I7}) takes 2 cycles instead of 1 to prepare for the branch, as specified in the problem statement. Additionally, a delay slot must be added in cycle 14 after the branch instruction, as required by the exercise.
+
+\highspace
+Now, we can answer the questions:
+\begin{itemize}
+    \item \emph{How long is the critical path for a single iteration?} It corresponds to the last instruction to complete its Write Back stage: \code{I8} in cycle 14. Therefore, the critical path is \textbf{14 cycles}.
+    
+    \item \emph{What performance did you achieve in FP ops per cycles?} There are 2 floating-point operations (\code{I1} and \code{I5}) completed in 14 cycles. Therefore, the performance is:
+    \begin{equation*}
+        \text{FP ops/cycle} = \dfrac{2 \, \text{ FP ops}}{14 \, \text{cycles}} \approx 0.14 \text{ FP ops/cycle}
+    \end{equation*}
+
+    \item \emph{How much is the code efficiency for a single iteration?} Code efficiency quantifies how well the issued instructions utilize the available issue slots. In our case, we have a 3-issue VLIW machine and we issued 9 instructions in 14 cycles (cycles C2, C3, C5, C6, C9, C10, and C12 are empty). Therefore, the code efficiency is:
+    \begin{equation*}
+        \text{Code Efficiency} = \dfrac{\text{Instruction Count}}{\text{\# cycles} \cdot \text{Issue Width}} = \dfrac{9}{14 \cdot 3} \approx 0.21
+    \end{equation*}
+
+    \item \emph{What CPI did you achieve?} The CPI (Cycles Per Instruction) can be calculated as follows:
+    \begin{equation*}
+        \text{CPI} = \dfrac{\# \, \text{clock cycles}}{\text{Instruction Count}} = \dfrac{14}{9} \approx 1.56
+    \end{equation*}
+\end{itemize}
+
+\newpage
+
+\subsubsection*{Exercise 3 - MESI Protocol}
+
+\emph{Let's consider the following access patterns on a dual processor system with a direct-mapped, write-back cache with one cache block per processor and a two cache block memory. Assume the \textbf{MESI protocol} is used, with \textbf{write-back} caches, \textbf{write-allocate}, and \textbf{write-invalidate} of other caches. Please complete the following table:}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | p{5em} | p{5em} | p{4em} | p{4em} @{}}
+        \toprule
+        \textbf{T} & \textbf{After Operation} & \textbf{P0 cache block state} & \textbf{P1 cache block state} & \textbf{Memory at block 0 up to date?} & \textbf{Memory at block 1 up to date?} \\
+        \midrule
+        0   & \texttt{P0: read block 1}  & Excl(1) & Invalid & Yes & Yes \\[.3em]
+        1   & \texttt{P1: write block 0} & & & & \\[.3em]
+        2   & \texttt{P0: write block 0} & & & & \\[.3em]
+        3   & \texttt{P1: read block 0}  & & & & \\[.3em]
+        4   & \texttt{P0: read block 1}  & & & & \\[.3em]
+        5   & \texttt{P1: read block 1}  & & & & \\[.3em]
+        6   & \texttt{P0: read block 1}  & & & & \\[.3em]
+        7   & \texttt{P1: write block 1} & & & & \\[.3em]
+        8   & \texttt{P0: read block 0}  & & & & \\[.3em]
+        9   & \texttt{P1: write block 1} & & & & \\[.3em]
+        10  & \texttt{P1: write block 1} & & & & \\[.3em]
+        11  & \texttt{P0: read block 1}  & & & & \\[.3em]
+        12  & \texttt{P1: write block 1} & & & & \\[.3em]
+        13  & \texttt{P0: write block 1} & & & & \\[.3em]
+        14  & \texttt{P1: read block 1}  & & & & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+\answer The MESI protocol (\autopageref{section: mesi-protocol}) is a cache coherence protocol used in multiprocessor systems to maintain consistency between caches. The four states in the MESI protocol are Modified (M, a cache line that has been modified and is different from main memory), Exclusive (E, a cache line that is present only in one cache and is the same as main memory), Shared (S, a cache line that may be present in multiple caches and is the same as main memory), and Invalid (I, a cache line that is not valid). Also, the cache uses:
+\begin{itemize}
+    \item \textbf{Write-Back} policy: data is written to main memory only when it is evicted from the cache. In MESI, this means that a cache line in the Modified state must be written back to memory before being invalidated or replaced.
+    \item \textbf{Write-Allocate} policy: on a write miss, the cache allocates a new cache line and loads the data from memory before performing the write.
+    \item \textbf{Write-Invalidate} policy: when a processor writes to a cache line, it invalidates that line in other caches to maintain coherence.
+\end{itemize}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | p{5em} | p{5em} | p{4em} | p{4em} @{}}
+        \toprule
+        \textbf{T} & \textbf{After Operation} & \textbf{P0 cache block state} & \textbf{P1 cache block state} & \textbf{Memory at block 0 up to date?} & \textbf{Memory at block 1 up to date?} \\
+        \midrule
+        0   & \texttt{P0: read block 1}  & \texttt{Excl(1)}  & \texttt{Invalid}   & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        1   & \texttt{P1: write block 0} & \texttt{Excl(1)}  & \texttt{Mod(0)}    & \textcolor{Red2}{\faIcon{times}} No    & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        2   & \texttt{P0: write block 0} & \texttt{Mod(0)}   & \texttt{Invalid}   & \textcolor{Red2}{\faIcon{times}} No    & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        3   & \texttt{P1: read block 0}  & \texttt{Shr(0)}   & \texttt{Shr(0)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        4   & \texttt{P0: read block 1}  & \texttt{Excl(1)}  & \texttt{Excl(0)}   & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        5   & \texttt{P1: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        6   & \texttt{P0: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        7   & \texttt{P1: write block 1} & \texttt{Invalid}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        8   & \texttt{P0: read block 0}  & \texttt{Excl(0)}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        9   & \texttt{P1: write block 1} & \texttt{Excl(0)}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        10  & \texttt{P1: write block 1} & \texttt{Excl(0)}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        11  & \texttt{P0: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        12  & \texttt{P1: write block 1} & \texttt{Invalid}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        13  & \texttt{P0: write block 1} & \texttt{Mod(1)}   & \texttt{Invalid}   & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        14  & \texttt{P1: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Where \texttt{Mod(x)} indicates that the cache block x is in the Modified state, \texttt{Excl(x)} indicates that the cache block x is in the Exclusive state, \texttt{Shr(x)} indicates that the cache block x is in the Shared state, and \texttt{Invalid} indicates that the cache block is in the Invalid state. For reference on state transitions, see the complete finite state machine (FSM) for the MESI protocol on \autopageref{fig: mesi-finite-state-machine}.

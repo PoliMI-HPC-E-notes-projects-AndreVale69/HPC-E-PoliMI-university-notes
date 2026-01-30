@@ -28,6 +28,7 @@
 ### v1.1.0
 
 - fix: add missing label for simultaneous multithreading definition.
+- feat: enhance definition for Branch History Table (BHT)
 
 --------------------
 

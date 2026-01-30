@@ -876,3 +876,109 @@ Now, we can answer the questions:
 
 \noindent
 Where \texttt{Mod(x)} indicates that the cache block x is in the Modified state, \texttt{Excl(x)} indicates that the cache block x is in the Exclusive state, \texttt{Shr(x)} indicates that the cache block x is in the Shared state, and \texttt{Invalid} indicates that the cache block is in the Invalid state. For reference on state transitions, see the complete finite state machine (FSM) for the MESI protocol on \autopageref{fig: mesi-finite-state-machine}.
+
+\newpage
+
+\subsubsection*{Question 1: Cache Coherence Protocols}
+
+\emph{Let's consider the SNOOPING and the DIRECTORY-BASED protocols used to maintain the cache coherence in modern multiprocessor. Answer the following questions:}
+\begin{itemize}
+    \item \emph{Explain the main characteristics of each protocol.}
+    
+    \answer (see \autopageref{sec:snooping-bus-based-protocols} for snooping protocols and \autopageref{sec:directory-based-protocols} for directory-based protocols)
+    \begin{itemize}
+        \item \important{Snooping Protocols} are \textbf{cache coherence protocols based on broadcast communication}. Each cache controller \textbf{monitors\break (snoops)} all coherence transactions issued on a \textbf{shared communication medium} (typically a bus or a broadcast interconnect). The main characteristics include:
+        \begin{itemize}
+            \item \textbf{All coherence requests are broadcast} to all caches.
+            \item Each cache independently checks whether it has a copy of the block.
+            \item Coherence actions (invalidate / update) are taken locally.
+            \item No centralized state is maintained.
+        \end{itemize}
+        \item \important{Directory-Based Protocols} are \textbf{cache coherence protocols\break based on centralized or distributed directories} that \textbf{track the sharing state of each memory block}. For each memory block, a \textbf{directory entry} records:
+        \begin{itemize}
+            \item Which processors currently cache the block.
+            \item The coherence state (e.g., shared, exclusive).
+        \end{itemize}
+        Main characteristics include:
+        \begin{itemize}
+            \item Coherence requests are \textbf{sent to the directory}, not broadcast.
+            \item The directory \textbf{selectively notifies only the caches involved}.
+            \item Supports \textbf{point-to-point communication}.
+            \item Eliminates unnecessary broadcasts.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \emph{For which type of multiprocessor architecture is each protocol suitable for?}
+
+    \answer
+    \begin{itemize}
+        \item \important{Snooping protocol} is suitable for \textbf{small-scale centralized shared\break -memory multiprocessors (SMPs)}. In these architectures, processors share a \textbf{single logical memory}, a \textbf{broadcast interconnect} (like a bus) is available, and the number of processors is relatively small (typically up to 16 or 32). The use of broadcast allows every cache to observe coherence requests, but the approach \textbf{does not scale} due to increasing traffic and contention on the bus as the number of processors increases.
+        
+        \item \important{Directory-based protocol} is suitable for \textbf{large-scale distributed shared-memory multiprocessors}, including \textbf{NUMA and distributed shared-memory systems}. In these architectures, the memory is \textbf{physically distributed}, a coherence is enforced using \textbf{point-to-point messages}, and the directory tracks which processors cache each memory block. This approach avoids broadcast and therefore \textbf{scales well with the number of processors}. It is suitable for systems with a large number of processors (hundreds or thousands) where snooping would be impractical due to high communication overhead.
+    \end{itemize}
+
+
+    \item \emph{What are the \textbf{main benefits} of each protocol?}
+
+    \answer
+    \begin{itemize}
+        \item \important{Benefits of Snooping Protocols}:
+        \begin{itemize}
+            \item \textbf{Simplicity}, since no centralized structure is required.
+            \item \textbf{Low coherence latency}, thanks to immediate broadcast visibility.
+            \item \textbf{Fast detection of coherence events}, as every cache observes all requests.
+            \item \textbf{Low protocol overhead} for small-scale systems.
+        \end{itemize}
+        In short, snooping is \hl{simple}, \hl{low latency}, \hl{broadcast visibility}, and \hl{good for small systems}.
+        
+        \item \important{Benefits of Directory-Based Protocols}:
+        \begin{itemize}
+            \item \textbf{High scalability}, since broadcast is avoided.
+            \item \textbf{Reduced coherence traffic}, due to targeted point-to-point messages.
+            \item \textbf{Efficient bandwidth usage}, especially in large systems.
+            \item \textbf{Support} for \textbf{physically distributed memory} architectures.
+        \end{itemize}
+        In short, directory-based protocols are \hl{scalable}, \hl{no broadcast}, \hl{targeted communication}, and \hl{good for large/NUMA systems}.
+    \end{itemize}
+
+
+    \item \emph{Explain the \textbf{two types} of Snooping protocol depending on what happens on a write operation.}
+    
+    \answer (see \autopageref{sec:write-invalidate-vs-write-update})
+    \begin{itemize}
+        \item \important{Write-Invalidate Protocol}. When a processor writes to a shared cache block, it \textbf{invalidates all other cached copies} of that block. Mechanism:
+        \begin{enumerate}
+            \item The writing processor issues an \textbf{invalidate request} on the bus.
+            \item All other caches \textbf{snoop} the bus and \textbf{invalidate} their local copies of the block if they have it.
+            \item The writing processor then obtains \textbf{exclusive ownership} and can update the block locally.
+        \end{enumerate}
+        This approach allows \textbf{multiple readers but only one writer}. Subsequent writes by the same processor do \textbf{not generate bus traffic} and reduces coherence traffic for repeated writes.
+        \item \important{Write-Update (or Write-Broadcast) Protocol}. When a processor writes to a shared cache block, it \textbf{broadcast the new data value} to all other caches. Mechanism:
+        \begin{enumerate}
+            \item The writing processor places the \textbf{updated value} on the bus.
+            \item All caches \textbf{snoop} the write.
+            \item Caches that hold the block \textbf{update their local copy} with the new value.
+        \end{enumerate}
+        This approach allows to keep all cached copies \textbf{consistent at all times}, but generates \textbf{bus traffic on every write}. It is suitable when shared data are frequently read by many processors after each write.
+    \end{itemize}
+
+
+    \item \emph{What are the possible \textbf{coherence states} of a block in the home directory and the meaning of the \textbf{sharer bits}?}
+
+    \answer (see \autopageref{ques:what-is-stored-in-directory}) In a \textbf{directory-based cache coherence protocol}, each memory block has an associated \textbf{directory entry} stored at its \textbf{home node}. The directory entry records the \textbf{coherence state of the block} and a set of \textbf{sharer bits}.
+    
+    \important{Coherence states in the home directory.} A directory typically maintains \textbf{three coherence states} for each block:
+    \begin{enumerate}
+        \item \textbf{Uncached (U)} (or \textbf{Invalid}). The block is \textbf{not cached in any processor} and the memory holds the only valid copy.
+        \item \textbf{Shared (S)}. The block is cached by \textbf{multiple processors} and all cached copies are \textbf{read-only}. The memory contains an up-to-date copy.
+        \item \textbf{Modified (M)}. The block is cached by \textbf{exactly one processor} and that processor has \textbf{write permission}. The memory may be \textbf{out-of-date} if the cached copy has been modified.
+    \end{enumerate}
+
+    \important{Sharer bits.} The \textbf{sharer bits} are a bit-vector associated with each directory entry. Each bit corresponds to a processor (or cache) in the system. The meaning of the sharer bits is:
+    \begin{itemize}
+        \item A bit is set to \textbf{1} if the corresponding processor currently \textbf{caches a copy} of the block.
+        \item A bit is set to \textbf{0} if the corresponding processor does \textbf{not cache} the block.
+    \end{itemize}
+    The sharer bits allow the directory to send \textbf{targeted invalidations} and \textbf{update or recall messages} only to the processors that currently cache the block, avoiding broadcast communication. So, these bits are essential for scalability (avoiding broadcast), point-to-point communication, and efficiency in large multiprocessor systems.
+\end{itemize}

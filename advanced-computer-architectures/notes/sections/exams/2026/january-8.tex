@@ -1009,6 +1009,7 @@ Where \texttt{Mod(x)} indicates that the cache block x is in the Modified state,
     \end{itemize}
 
 
+
     \item \emph{Explain how works a \textbf{Branch History Table}.} 
     
     \answer (see \autopageref{def:branch-history-table}) A \textbf{Branch History Table (BHT)} is a hardware structure used in \textbf{dynamic branch prediction} to predict the outcome of conditional branches based on \textbf{past execution behavior}.
@@ -1025,7 +1026,47 @@ Where \texttt{Mod(x)} indicates that the cache block x is in the Modified state,
 
 
 
-    \item \emph{Explain the main purpose to introduce the Branch Target Buffer.}
+    \item \emph{Explain the main purpose to introduce the \textbf{Branch Target Buffer}.}
     
-    \answer TODO.
+    \answer (see \autopageref{sec:branch-target-buffer}) The \textbf{main purpose of introducing a Branch Target Buffer (BTB)} is to \textbf{eliminate the control hazard caused by the unknown target address of taken branches}, allowing the processor to continue instruction fetch \textbf{without stalling}.
+
+    In particular, the BTB provides the \textbf{predicted target address} of a branch \textbf{during the instruction fetch (IF) stage}, enables the processor to \textbf{fetch the next instruction from the predicted target in the same cycle}, and avoids waiting for branch target computation in later pipeline stages.
+
+    This is essential to support \textbf{efficient speculative execution}, especially in deeply pipelined processors.
+
+
+
+    \item \emph{Explain the main concepts of the \textbf{correlating branch prediction technique}.}
+
+    \answer (see \autopageref{def:correlating-branch-prediction}) The \definition{Correlating Predictor} (also known as \textbf{correlating branch prediction technique}) improves accuracy by \textbf{using the outcomes of recently executed branches to predict the current branch}.
+
+    \important{How correlation is captured.} To exploit correlation, the processor introduces a \textbf{history register}, called \definition{Global History Register (GHR)}. It is a shift register of the last \textbf{N branch outcomes} (taken/not taken), where each bit represents whether a branch was taken (1) or not taken (0). This is \textbf{explicit history}, unlike the implicit FSM state of a basic BHT.
+
+    The correlating predictor combines the \textbf{branch address (PC)} with the \textbf{Global Branch History (GHR)} to select a prediction entry from a \textbf{Pattern History Table (PHT)}. The PHT contains multiple entries for each branch, each corresponding to a different history pattern. The selection of the PHT entry is based on both the PC and the GHR. It is done by \textbf{concatenating} or \textbf{XORing}, and the selected entry contains a \textbf{2-bit saturating counter} (FSM) for the prediction.
+
+    \important{Possible exam answer structure.} Correlating branch prediction improves dynamic branch prediction accuracy by exploiting the correlation between different branch outcomes. It uses a history register (called Global History Register, GHR) to record the outcomes of recently executed branches and combines this information with the branch address to select a prediction entry. This two-level mechanism allows the predictor to adapt predictions based on the execution context, enabling accurate prediction of branches whose behavior depends on previous branches.
+
+
+
+    \item \emph{Explain what happens at runtime in a Speculative Tomasulo Architecture in the case of a \textbf{branch misprediction}.}
+
+    \answer At runtime, before the branch is resolved:
+    \begin{enumerate}
+        \item A branch is \textbf{predicted} (taken / not taken).
+        \item Instructions \textbf{after the branch} are fetched, issued, and executed \textbf{speculatively}.
+        \item Their results are written into \textbf{ROB entries} but \textbf{not} into the register file or memory.
+        \item These instructions are \textbf{marked as speculative} in the ROB.
+        \item Once the branch is resolved:
+        \begin{enumerate}
+            \item If the prediction was \textbf{correct}, the speculative instructions are \textbf{committed} in order.
+            \item If the prediction was \textbf{incorrect} (misprediction):
+            \begin{enumerate}
+                \item \textbf{Flush speculative instructions}. All instructions younger than the branch are invalidated and removed from the ROB, reservation stations, and functional units.
+                \item \textbf{Restore architectural state}. Since the speculative instructions did not update the register file or memory, because they were only in the ROB, the architectural state remains consistent. The processor can discard the ROB entries of the mispredicted instructions without needing to roll back any changes, and restore the rename table to the state before the branch.
+                \item \textbf{Redirect instruction fetch}. The PC is set to the correct target address of the branch (if taken) or the next sequential instruction (if not taken).
+                \item \textbf{Resume correct execution}. New instructions are fetched and executed from the correct path.
+            \end{enumerate}
+        \end{enumerate}
+    \end{enumerate}
+    In case of a branch misprediction, the only cost is \textbf{lost cycles} due to discarded speculative work and the time taken to fetch and execute instructions from the correct path.
 \end{itemize}

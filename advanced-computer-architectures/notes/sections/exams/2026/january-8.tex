@@ -1070,3 +1070,180 @@ Where \texttt{Mod(x)} indicates that the cache block x is in the Modified state,
     \end{enumerate}
     In case of a branch misprediction, the only cost is \textbf{lost cycles} due to discarded speculative work and the time taken to fetch and execute instructions from the correct path.
 \end{itemize}
+
+\newpage
+
+\subsubsection*{Quizzes}
+\begin{enumerate}
+    \item \textbf{Question 1 (format Multiple Choice - Single answer)}. \emph{Let's consider the following code executed by a Vector Processor with:
+    \begin{itemize}
+        \item Vector Register File composed of 32 vectors of 16 elements per 32 bits/element;
+        \item Scalar FP Register File composed of 32 registers of 32 bits;
+        \item One Load/Store Vector Unit with operation chaining and memory bandwidth 32 bits;
+        \item One Add/Sub Vector Unit with operation chaining.
+        \item One Mul/Div Vector Unit with operation chaining.
+    \end{itemize}}
+    \begin{lstlisting}
+L.V V1, RX          # Load vector from memory address RX into V1
+ADDVS.D V1, V1, F0  # FP add vector V1 to scalar F0
+MULV.D V2, V1, V1   # FP multiply vectors V1 and V1
+DIVVS.D V2, V2, F0  # FP divide vector V2 to scalar F0
+L.V V3, RY          # Load vector from memory address RY into V3
+ADDVV.D V3, V2, V3  # FP add vectors V2 and V3
+S.V V2, RZ          # Store vector V2 into memory address RZ
+S.V V3, RW          # Store vector V3 into memory address RW\end{lstlisting}
+    \emph{How many convoys? How many clock cycles to execute the code?}
+    \begin{itemize}
+        \item \textbf{Answer 1:} 3 convoys, 48 clock cycles
+        \item \textbf{Answer 2:} 2 convoys, 32 clock cycles
+        \item \textbf{Answer 3:} 4 convoys, 64 clock cycles
+        \item \textbf{Answer 4:} 5 convoys, 80 clock cycles
+    \end{itemize}
+    \emph{Motivate your answer by completing the following table:}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            & \textbf{Load/Store} & \textbf{Add/Sub} & \textbf{Mul/Div} \\
+            \midrule
+            \textbf{1 convoy} & & & \\
+            \textbf{2 convoy} & & & \\
+            \textbf{3 convoy} & & & \\
+            \textbf{4 convoy} & & & \\
+            \textbf{5 convoy} & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \answer We start from the table and then we can answer the question. The code can be scheduled as follows:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            & \textbf{Load/Store} & \textbf{Add/Sub} & \textbf{Mul/Div} \\
+            \midrule
+            \textbf{1 convoy} & \texttt{L.V V1, RX} & \texttt{ADDVS.D V1, V1, F0} & \texttt{MULV.D V2, V1, V1} \\
+            \textbf{2 convoy} & \texttt{L.V V3, RY} & \texttt{ADDVV.D V3, V2, V3} & \texttt{DIVVS.D V2, V2, F0} \\
+            \textbf{3 convoy} & \texttt{S.V V2, RZ} & & \\
+            \textbf{4 convoy} & \texttt{S.V V3, RW} & & \\
+            \textbf{5 convoy} & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \noindent
+    Each convoy takes 16 clock cycles to complete, as the vector length is 16 elements and the memory bandwidth is 32 bits (1 element per cycle). Therefore, the total number of clock cycles to execute the code is:
+    \begin{equation*}
+        \text{Total clock cycles} = 4 \text{ convoys} \times 16 \text{ cycles/convoy} = 64 \text{ clock cycles}
+    \end{equation*}
+    \textbf{Final answer:} 4 convoys, 64 clock cycles (Answer 3).
+
+
+    \item \textbf{Question 2 (format Multiple Choice - Single answer)}. \emph{Assume to apply a processor optimization resulting ten time faster on computation than the original mode of execution. What is the fraction of computation needed to quadruplicate the overall speedup?}
+    \begin{itemize}
+        \item \textbf{Answer 1:} 55\%
+        \item \textbf{Answer 2:} 83\%
+        \item \textbf{Answer 3:} 45\%
+        \item \textbf{Answer 4:} 40\%
+        \item \textbf{Answer 5:} 25\%
+    \end{itemize}
+    \emph{Motivate your answer.}
+
+    \answer We can use Amdahl's Law (\autopageref{eq:amdahls-law}) to solve this problem. Amdahl's Law states that the overall speedup $S$ of a system is given by:
+    \begin{equation*}
+        S = \dfrac{1}{(1 - f) + \dfrac{f}{s}}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $ f $ is the fraction of the execution time that can be improved (in this case, the computation fraction).
+        \item $ s $ is the speedup of the improved portion (in this case, ``ten'').
+    \end{itemize}
+    We want to find the fraction $ f $ such that the overall speedup $ S $ is quadrupled (i.e., $ S = 4 $). Plugging in the values, we have:
+    \begin{align*}
+        4 & = \dfrac{1}{(1 - f) + \dfrac{f}{10}} \\[.1em]
+        (1 - f) + \dfrac{f}{10} &  = \dfrac{1}{4} \\[.1em]
+        10 - 10f + f & = \dfrac{10}{4} \\[.1em]
+        -9f & = \dfrac{10}{4} - 10 \\[.1em]
+        f & = - \left(\dfrac{10}{4} - 10\right) \cdot \dfrac{1}{9} \\[.1em]
+        f & = \dfrac{30}{4} \cdot \dfrac{1}{9} \\[.1em]
+        f & = \dfrac{30}{36} = \dfrac{5}{6} \approx 0.8333
+    \end{align*}
+    Therefore, the fraction of computation needed to quadruplicate the overall speedup is approximately 83\% (\textbf{Answer 2}).
+
+
+    \item \textbf{Question 3 (format Multiple Choice - Single answer)}. \emph{Let us consider a computer with L1 and L2 caches with the following parameters:
+    \begin{itemize}
+        \item Processor Clock Frequency = 1 GHz;
+        \item Hit Time L1 = 1 clock cycle; Hit Rate L1 = 95\%;
+        \item Hit Time L2 = 5 clock cycles; Hit Rate L2 = 90\%; Miss Penalty L2 = 15 clock cycles;
+    \end{itemize}
+    How much is the Global Miss Rate for Last Level Cache?}
+    \begin{itemize}
+        \item \textbf{Answer 1:} 5\%
+        \item \textbf{Answer 2:} 0.5\%
+        \item \textbf{Answer 3:} 10\%
+        \item \textbf{Answer 4:} 7.5\%
+    \end{itemize}
+    \emph{Motivate your answer.}
+
+    \answer Given:
+    \begin{itemize}
+        \item $\text{L1 Hit Rate} = 95\% = 0.95 \Rightarrow \text{L1 Miss Rate} = 1 - 0.95 = 0.05 = 5\%$
+        \item $\text{L2 Hit Rate} = 90\% = 0.90 \Rightarrow \text{L2 Miss Rate} = 1 - 0.90 = 0.10 = 10\%$
+    \end{itemize}
+    The Global Miss Rate for the Last Level Cache (L2) can be calculated as:
+    \begin{equation*}
+        \text{Global Miss Rate} = \text{L1 Miss Rate} \times \text{L2 Miss Rate}
+    \end{equation*}
+    Plugging in the values:
+    \begin{equation*}
+        \text{Global Miss Rate} = 0.05 \times 0.10 = 0.005 = 0.5\%
+    \end{equation*}
+    Therefore, the Global Miss Rate for the Last Level Cache is 0.5\% (\textbf{Answer 2}).
+
+    \begin{deepeningbox}[: What is the Last Level Cache (LLC)?]
+        The \definition{Last Level Cache (LLC)} is the \textbf{lowest cache level before main memory}. If the hierarchy is L1 $\rightarrow$ L2 $\rightarrow$ L3 $\rightarrow$ Main Memory, then L3 is the LLC. So here, in this question, L2 is the LLC.
+    \end{deepeningbox}
+
+
+    \item \textbf{Question 4 (format Multiple Choice - Multiple answers)}. \emph{Which of the following cache improvements are effective in reducing the miss penalty?}
+    \begin{itemize}
+        \item \textbf{Answer 1}: Adopting higher associativity in designing the cache to reducing the impact of collisions when the correct block must be loaded in the cache.
+        \item \textbf{Answer 2}: Avoiding address translation during indexing of the cache to minimize the management time of miss penalties.
+        \item \textbf{Answer 3}: Combining a small and fast level-1 cache with a slower but larger level-2 cache to capture many accesses that would go to the main memory.
+        \item \textbf{Answer 4}: Giving priority to read misses over writes, exploiting techniques to serve the reads before the writes have been completed.
+    \end{itemize}
+    \answer The definition of \textbf{miss penalty} is the \textbf{additional time required to service a cache miss}, i.e. the time to fetch the block from the lower level (or memory) and make it usable by the processor. This should not be confused with the \textbf{miss rate}, which is the \textbf{fraction of memory accesses that result in a miss}. So we are looking for techniques that \textbf{shorten the time to recover from a miss}, or \textbf{avoid going all the way to main memory once a miss occurs}. Now, let's analyze each answer:
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Answer 1}: \emph{Adopting higher associativity...} - \textbf{Incorrect}. Higher associativity means \textbf{fewer conflict misses}, which \textbf{reduces the overall miss rate}, but it does \textbf{not directly reduce the miss penalty} itself. The time to service a miss remains the same regardless of associativity. So this affects \textbf{miss rate}, not \textbf{miss penalty}.
+
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Answer 2}: \emph{Avoiding address translation during indexing...} - \textbf{Correct}. During a cache miss, the processor must: (1) detect the miss, (2) translate the virtual address (TLB), (3) generate the physical address, and (4) access the lower-level cache or memory. If \textbf{address translation is on the critical path of the miss handling}, then the miss service \textbf{starts later}, the pipeline remains stalled longer, and the \textbf{effective miss penalty increases}. By \textbf{avoiding address translation during indexing}, part of the miss handling overlaps, translation latency is hidden and \textbf{total miss penalty is reduced}.
+
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Answer 3}: \emph{Combining a small and fast level-1 cache with a slower but larger level-2...} - \textbf{Correct}. When an L1 miss occurs, the access may be satisfied by \textbf{L2 instead of main memory}. Since L2 is \textbf{much faster than DRAM}, the effective miss penalty is \textbf{greatly reduced}. This is also the main motivation for \textbf{multi-level cache hierarchies} (L1, L2, L3). So this directly reduces \textbf{miss penalty}.
+        
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Answer 4}: \emph{Giving priority to read misses over writes...} - \textbf{Incorrect}. While prioritizing read misses can improve overall performance by reducing stalls for read operations, it does \textbf{not reduce the miss penalty itself}. The time to service a miss remains unchanged; it only affects the order in which misses are handled. So this does not directly impact \textbf{miss penalty}.
+    \end{itemize}
+
+
+    \newpage
+
+
+    \item \textbf{Question 5 (format Multiple Choice - Single answer)}. \emph{What type of multiprocessor architecture does the following picture represent?}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=0.5\textwidth]{img/exam-2026-01-08.jpg}
+    \end{figure}
+    \begin{itemize}
+        \item \textbf{Answer 1}: Centralized Memory; Single Logically Shared Address Space
+        \item \textbf{Answer 2}: Centralized Memory; Message Passing Architectures
+        \item \textbf{Answer 3}: Distributed Memory; Single Logically Shared Address Space
+        \item \textbf{Answer 4}: Distributed Memory; Message Passing Architectures
+    \end{itemize}
+    \answer The correct answer is \textbf{Answer 3}: \emph{Distributed Memory; Single Logically Shared Address Space}. Each vertical block contains processor ($P_i$), private cache ($C_i$), and local memory (${MM}_{i}$). So physically there are \textbf{multiple memory modules}, each memory is \textbf{attached to a node} and there is \textbf{no single central memory}. So the first and second answers are incorrect because they refer to \textbf{centralized memory} architectures.
+
+    Now, each memory module is annotated with $P0, P1, P2, P3$, indicating that \textbf{all processors can address all memory modules} and any processor can load/store from any ${MM}_{i}$. This indicates a \textbf{single logically shared address space}, where the entire memory is \textbf{logically shared among all processors}, even though it is physically distributed. Therefore, the third answer is correct.
+
+    The fourth answer is incorrect because in a \textbf{message passing architecture}, each processor can access \textbf{only its local memory}, and communication happens via send/receive operations and explicit messages. But in the picture, all processors access memory using normal memory operations, no explicit message queues or memory looks shared to software.
+
+    This picture represents a \textbf{Distributed Shared-Memory (DSM)} architecture, where memory is physically distributed but logically shared. Also known as \textbf{NUMA (Non-Uniform Memory Access)} architecture (\autopageref{def:numa}).
+\end{enumerate}

@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.1.1](#v111)
 - [v1.1.0](#v110)
 - [v1.0.3](#v103)
 - [v1.0.2](#v102)
@@ -22,6 +23,12 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.1.1
+
+- fix: correct label for correlating branch predictors section.
 
 --------------------
 

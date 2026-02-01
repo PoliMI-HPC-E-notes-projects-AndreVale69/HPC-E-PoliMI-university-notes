@@ -30,6 +30,7 @@
 - fix: add missing label for simultaneous multithreading definition.
 - feat: enhance definition for Branch History Table (BHT)
 - feat: add detailed explanation of Branch Target Buffer (BTB) functionality and its role in branch prediction.
+- feat: add exam solution for January 8, 2026.
 
 --------------------
 

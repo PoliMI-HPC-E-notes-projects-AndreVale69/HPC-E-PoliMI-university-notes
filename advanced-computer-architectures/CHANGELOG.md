@@ -2,6 +2,8 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.1.1](#v111)
+- [v1.1.0](#v110)
 - [v1.0.3](#v103)
 - [v1.0.2](#v102)
 - [v1.0.1](#v101)
@@ -21,6 +23,21 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.1.1
+
+- fix: correct label for correlating branch predictors section.
+
+--------------------
+
+### v1.1.0
+
+- fix: add missing label for simultaneous multithreading definition.
+- feat: enhance definition for Branch History Table (BHT)
+- feat: add detailed explanation of Branch Target Buffer (BTB) functionality and its role in branch prediction.
+- feat: add exam solution for January 8, 2026.
 
 --------------------
 

@@ -1,4 +1,4 @@
-\subsubsection{Branch Target Buffer}
+\subsubsection{Branch Target Buffer}\label{sec:branch-target-buffer}
 
 The \definition{Branch Target Buffer (BTB)} is a \textbf{specialized cache used to store target address of taken branches}. The stored Predicted Target Address (PTA) allows the processor to fetch instructions from the target without delay when a branch is predicted taken. The PTA is typically stored in PC-relative format (offset from current PC).
 
@@ -71,5 +71,64 @@ It is placed in the Instruction Fetch (IF) phase. During fetch:
 \end{flushleft}
 \begin{itemize}
     \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Eliminates delay} from calculating the \textbf{branch target address} manually.
-    \item[\textcolor{Green3}{\faIcon{check}}] Enables speculative instruction fetch from correct target, \textbf{improving pipeline efficiency}.
+    \item[\textcolor{Green3}{\faIcon{check}}] Enables speculative instruction fetch from correct target, \textbf{improving\break pipeline efficiency}.
 \end{itemize}
+
+\newpage
+
+\begin{deepeningbox}[: Branch Target Buffer]
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{times-circle} \textbf{What is the problem without a BTB?}}
+    \end{flushleft}
+    Consider a pipelined processor. When we fetch an instruction at address \code{PC}:
+    \begin{itemize}
+        \item If it's \textbf{not a branch} instruction $\to$ fetch next instruction at \code{PC + 4}.
+        \item If it's a \textbf{branch} instruction, we must know:
+        \begin{enumerate}
+            \item \emph{Will it be taken or not?} (predicted by BHT)
+            \item \emph{If taken, where do we jump to?} (target address)
+        \end{enumerate}
+    \end{itemize}
+    Now the key point is that \textbf{the branch target address is usually computed later in the pipeline} (e.g., in ID or EX stage using PC and an offset or a register value). So even if we can \emph{predict} that the branch will be taken, \textbf{we still don't know where to fetch from}.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{exclamation-triangle}} Assume we have a Branch History Table (BHT) that predicts the branch is \textbf{taken}, but the target address is not yet known. Without a BTB, the processor must \textbf{stall instruction fetch}, or \textbf{fetch sequentially and later flush}. Either way, this loses cycles and speculation becomes weak and inefficient. So, this is the \textbf{control hazard BTB is designed to solve}.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What a BTB actually does?}}
+    \end{flushleft}
+    A \definition{Branch Target Buffer (BTB)} is a small, cache-like table that remember \textbf{the target addresses of previously executed branches}, indexed by the branch PC. Each BTB entry typically contains:
+    \begin{itemize}
+        \item \important{Tag}: A branch instruction address, PC. It identifies the branch.
+        \item \important{Predicted Target Address (PTA)}: Target address. The address to jump to if the branch is taken.
+        \item (often) \important{Prediction State}: A bit or counter indicating taken/not taken (sometimes combined with BHT).
+    \end{itemize}
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{tools} \textbf{How BTB works in practice?}}
+    \end{flushleft}
+    During the \textbf{instruction fetch (IF) stage} (i.e., when fetching the branch instruction):
+    \begin{enumerate}
+        \item The PC is used to:
+        \begin{itemize}
+            \item Index the \textbf{BHT} $\to$ predict \emph{taken} or \emph{not taken}.
+            \item Index the \textbf{BTB} $\to$ get the \emph{Predicted Target Address} if the branch is taken.
+        \end{itemize}
+        \item If the BHT predicts \textbf{taken} \underline{and} there is a \textbf{BTB hit} (i.e., the branch PC matches the BTB tag), the \textbf{next PC is immediately set to the target address}, in the \textbf{same cycle}. This allows no stalling, no waiting, and fetching continues smoothly.
+    \end{enumerate}
+    \textcolor{Red2}{\faIcon{times} \textbf{What BTB does not do?}} The BTB does \textbf{not} decide \emph{whether} the branch is taken or not (that's the BHT's job), \textbf{nor} does it compute the target address (that's done later in the pipeline), \textbf{nor} does it replace BHT. It simply \textbf{remembers previously computed target addresses} for quick access during fetch, like a cache for branch targets.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What happens on BTB miss?}}
+    \end{flushleft}
+    In the previous explanation, we always assumed that there is a \textbf{BTB hit} when the BHT predicts taken. However, like any cache, the BTB can also \textbf{miss}. If the BHT predicts taken but there is a \textbf{BTB miss} (i.e., no entry for that branch PC):
+    \begin{itemize}
+        \item The processor must wait until the target is computed later in the pipeline (e.g., in ID or EX stage).
+        \item This causes a \textbf{stall or delayed fetch}.
+        \item Once the target is computed, the BTB can be \textbf{updated} with the new target address for future predictions.
+    \end{itemize}
+    In other words, \textbf{it's as if there's no BTB for that branch at all}, which leads to the same control hazard problem that we wanted to avoid. Clearly, the best option is to have a BTB with a certain rate of misses rather than no BTB at all.
+\end{deepeningbox}

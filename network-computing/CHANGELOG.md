@@ -25,6 +25,7 @@
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`
+    - add `P4 Architecture`
 
 --------------------
 

@@ -1,33 +1,54 @@
 \subsubsection{P4 ecosystem and motivation}
 
-Traditional networks are built with \textbf{fixed-function devices}, such as routers and switches, which have predefined functionalities determined by their hardware design. This rigidity limits the ability to adapt to new protocols or requirements without replacing the hardware. Supporting new protocols requires new hardware \emph{or} slow firmware updates, which can be costly and time-consuming. Network operators have \textbf{little control} over packet processing, which hinders innovation and flexibility.
+Traditional networks are built with \textbf{fixed-function devices}, such as routers and switches, which have predefined functionalities determined by their hardware design. This rigidity limits the ability to adapt to new protocols or requirements without replacing the hardware. Supporting new protocols requires new hardware \emph{or} slow firmware updates, which can be costly and time-consuming. 
+Network operators have \textbf{little control} over the internal packet-processing logic of network devices, as parsing, matching, and forwarding behaviors are hard-coded by vendors. This lack of programmability hinders innovation and limits the ability to quickly adapt the network to new protocols or application requirements.
 
 \highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Core motivation behind P4}}
 \end{flushleft}
-P4 (Programming Protocol-Independent Packet Processors) was designed to answer one question: ``\emph{how should packets be processed?}'' instead of ``\emph{which protocol does this switch support?}''. So the motivation is \textbf{protocol independence}, \textbf{programmability of the data plane}, and \textbf{fast innovation without changing hardware}.
+P4 (Programming Protocol-Independent Packet Processors, see \autopageref{subsection: Data Plane Programming and P4}) was designed to answer one question: ``\emph{how should packets be processed?}'' instead of ``\emph{which protocol does this switch support?}''. So the motivation is \textbf{protocol independence}, \textbf{programmability of the data plane}, and \textbf{fast innovation without changing hardware}.
 
 \highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{Where P4 fits in the ecosystem}}
 \end{flushleft}
-P4 is part of a broader shift toward \textbf{network programmability}.
+Historically, control plane became \textbf{very programmable} (e.g., SDN with OpenFlow), while data plane remained \textbf{fixed-function}. So we had this mismatch: \emph{very smart control plane} vs. \emph{very dumb (but fast) data plane}. The control plane could compute complex policies (e.g., routing decisions) but the data plane could only execute a \textbf{fixed set of behaviors} (like matching on predefined headers and forwarding accordingly).
+
+\highspace
+P4 is part of a broader shift toward \textbf{network programmability}. It lives \textbf{entirely in the data plane}, allowing operators (i.e., the control plane) to define how packets are parsed, what fields can be matched, and which actions are possible.
 \begin{itemize}
-    \item Control Plane $\to$ decides policies (routing, rules) and manages the network.
-    \item Data Plane $\to$ executes packet processing (P4 lives here).
+    \item \textbf{Control Plane} $\to$ computes policies and installs rules in the network.
+    \item \textbf{Data Plane} $\to$ executes packet processing at line rate; P4 is used to define its capabilities.
 \end{itemize}
-P4 does \textbf{not} replace routing protocols, controllers, or orchestration tools. Instead, it gives them \textbf{more expressive power}.
+P4 does \textbf{not} replace routing protocols, controllers, or orchestration tools. Instead, it gives them \textbf{more expressive power}. In other words, P4 only defines \textbf{what the data plane is capable of doing}, while the control plane still decides \textbf{how to use those capabilities}.
+
+\highspace
+For example, without P4, the control plane can say ``\emph{forward packets based on IP prefix}'' because that's all the hardware supports. In contrast, with P4, the control plane can say ``\emph{forward packets based on custom headers, application IDs, telemetry metadata, congestion signals, and flow state}'', because \textbf{P4 made those operations possible}. So P4 \textbf{extends the vocabulary} of the data plane, enabling more sophisticated policies.
 
 \highspace
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{tools} \textbf{Typical P4 ecosystem components}}
 \end{flushleft}
-A P4-based system usually includes:
+A \textbf{P4 ecosystem} is the toolchain and runtime environment that allows developers to describe packet processing, compile it for specific targets, run it on a switch, and control it at runtime. A P4-based system typically consists of the following components:
 \begin{enumerate}
-    \item \textbf{P4 program}: Describes how packets are processed.
-    \item \textbf{P4 compiler}: Translates the program for a specific target.
-    \item \textbf{P4 target}: Switch, SmartNIC, or software switch that runs the compiled program.
-    \item \textbf{Control plane}: Installs table entries (e.g., via P4Runtime).
+    \item \important{P4 program}: A high-level description of the data plane, defining packet parsing, match-action tables, and supported actions.
+    
+    More specifically, a \textbf{P4 program} is a \textbf{static description of the data plane}. It defines which headers exist, how packets are parsed, which tables exist, and which actions can be executed. However, it \textbf{does not contain forwarding rules}; \hl{those are installed at runtime by the control plane.}
+    
+    
+    \item \important{P4 compiler}: Translates the P4 program into a target-specific representation.
+
+    \textcolor{Green3}{\faIcon{question} \textbf{Why is a compiler needed?}} P4 is high-level and target-independent, but switches are hardware- or software-specific. So we need a \textbf{compiler} that translates the P4 source code into a target-specific representation. Usually, a compiler checks correctness (e.g., type checking), enforces architectural constraints, and produces artifacts usable by the target and control plane.
+    
+    
+    \item \important{P4 target}: A hardware or software switch that executes the compiled P4 program and processes packets.
+    
+    In other words, the \textbf{P4 target} is the \textbf{thing that processes packets}. It can be a programmable switch (e.g., Barefoot Tofino), a software switch (e.g., BMv2, used in this lab), or even a network interface card (NIC) with P4 capabilities. The target executes packet processing at line rate and exposes tables to the control plane. However, it does \textbf{not decide policies} or does \textbf{not compute routes}; it just executes rules installed by the control plane.
+    
+    
+    \item \important{Control plane}: An external entity that installs table entries and policies at runtime, typically using \texttt{P4Runtime}.
+    
+    More specifically, the control plane runs as a \textbf{separate program}, communicates with the switch, and installs \textbf{table entries} (e.g., match-action rules) at runtime.
 \end{enumerate}
-The key idea is that the \textbf{data plane is programmable}, but the \textbf{control plane still decides policies}.
+The key idea is that the data plane becomes programmable, while the control plane remains responsible for policy decisions.

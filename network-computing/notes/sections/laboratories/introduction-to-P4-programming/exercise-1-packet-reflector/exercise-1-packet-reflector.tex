@@ -1,0 +1,117 @@
+\subsubsection{Exercise 1: Packet Reflector}
+
+In this first exercise, we will implement a simple packet reflector in P4. The network topology consists of two hosts connected to a single P4-programmable switch.
+
+\highspace
+The goal of the network topology is to create the \textbf{simplest possible network} that lets us observe packet behavior \textbf{inside the switch}. Conceptually, the topology is:
+\begin{equation*}
+    \text{Host A} \leftrightarrow \text{Switch} \leftrightarrow \text{Host B}
+\end{equation*}
+\begin{itemize}
+    \item Two hosts connected through a single P4 switch.
+    \item No routing or complex forwarding logic is needed; the switch will simply reflect packets back to the sender.
+    \item Just packet ingress and egress processing to observe how packets are handled within the switch.
+\end{itemize}
+This simple setup is intentional to allow us to focus on \textbf{packet processing} and \textbf{not on complex network behavior}. It allows us to send a packet from a host, observe how the switch processes it, and see the packet come back to the sender, effectively reflecting it. If the packet is correctly reflected, so that Host A sends a packet and receives the same packet back, we can confirm that our P4 program is correctly processing packets at the switch level.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a ``\emph{packet reflector}''?}}
+\end{flushleft}
+A \textbf{packet reflector} is a switch that receives a packet and sends it back to the ingress port. So a packet comes in on port \emph{p}, and the switch sends it back out on the same port \emph{p}. No routing, no learning, no forwarding tables, just a simple reflection of the packet back to the sender. This allows us to observe how packets are processed within the switch without any additional complexity.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the purpose of the P4 program?}}
+\end{flushleft}
+The P4 program:
+\begin{enumerate}
+    \item Parses the packet.
+    \item Stores the ingress port in metadata.
+    \item Sets the egress port equal to the ingress port (to reflect the packet back).
+    \item Emits the packet.
+\end{enumerate}
+That's it! But conceptually, this uses \textbf{all three pipeline stages}:
+\begin{enumerate}
+    \item \textbf{Parser}: extracts ethernet header and makes packet fields available (even if unused).
+    \item \textbf{Match-Action pipeline}: executes an action, for example:
+    \begin{equation*}
+        \texttt{egress\_port} = \texttt{ingress\_port}
+    \end{equation*}
+    \item \textbf{Deparser}: emits the packet back out.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What we need for this exercise?}}
+\end{flushleft}
+Inside \texttt{lab\_1/01-PacketReflector} directory, we have:
+\begin{itemize}
+    \item \texttt{packet\_reflector.p4}: is the \textbf{data plane program}. It is the incomplete P4 program that we need to fill in. The \textbf{P4 target} is the \textbf{BMv2 software switch}, which will run our P4 program and process packets according to the logic we define. So this file defines the \textbf{capabilities} of the switch, not the dynamic rules (which are defined in the control plane).
+
+    \begin{deepeningbox}[: What is BMv2?]
+        \definition{BMv2 (Behavioral Model v2)} is a \textbf{software implementation of a P4 switch}, used mainly for \textbf{testing, teaching, and prototyping}.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why BMv2 exists?}} Real P4 switches (e.g., Tofino) are expensive, vendor-specific, not easy to experiment with, and not suitable for learning. So the P4 community needed a switch that behaves like a real P4 switch, but runs on a normal computer. \hl{That's BMv2: it allows us to write P4 programs and test them in a software environment before deploying them on real hardware.}
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What BMv2 actually is?}} BMv2 is a \textbf{software switch} that runs as a \textbf{user-space program} on a normal computer and \textbf{executes a P4 program packet by packet}. It implements a P4 \textbf{architecture model} (in our laboratory, we use the \textbf{V1Model architecture}) and processes packets according to the logic defined in the P4 program. It is not a real switch, but it behaves like one for the purposes of testing and learning P4 programming. So BMv2 is a \textbf{P4 target}, not an architecture.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What BMv2 does when a packet arrives?}} When a packet reaches the BMv2 switch:
+        \begin{enumerate}
+            \item BMv2 calls the \textbf{parser} defined in our P4 program to extract packet headers and fields.
+            \item Executes the \textbf{match-action pipeline} defined in our P4 program, which can modify packet metadata and determine the egress port.
+            \item Runs the \textbf{deparser} to emit the packet back out according to the logic we defined.
+            \item And finally, BMv2 sends the packet out on the specified egress port.
+        \end{enumerate}
+        Conceptually identical to how a real P4 switch would process packets, but all in software.
+    \end{deepeningbox}
+
+    \begin{deepeningbox}[: What is the V1Model architecture?]
+        \definition{V1Model} is a \textbf{P4 architecture} that defines the abstract structure, metadata, and interfaces of a simple programmable switch. It is a \textbf{reference architecture} used for learning and prototyping P4 programs.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need something like V1Model?}} P4 is \textbf{architecture-independent} by design. Itself does \textbf{not} define how many pipeline stages exist, which metadata fields exist, and how packets enter/exit the switch. So we need a \textbf{contract} that says: ``if we write a P4 program for \emph{this} architecture, the switch will provide \emph{these} components''. That contract is an \textbf{architecture model}.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What does V1Model define?}} V1Model defines:
+        \begin{itemize}
+            \item The \textbf{packet-processing pipeline structure} (parser, match-action tables, deparser).
+            \item The \textbf{standard metadata} fields. It defines a struct called \texttt{standard\_metadata\_t} containing fields like: \texttt{ingress\_port}, \texttt{egress\_spec}, \texttt{egress\_port}, \texttt{packet\_length}, \texttt{drop}. These fields \textbf{exist only because v1model defines them}. If we were using a different architecture, these fields might not exist or might have different names.
+            \item The \textbf{externs} available. V1Model defines extern objects such as registers, counters, meters and checksum helpers. These are \textbf{black-box primitives} provided by the target (BMv2 in our case) that we can use in our P4 program.
+            
+            For example, the \texttt{ingress\_port} field is part of the standard metadata defined by v1model, and BMv2 will automatically populate it with the port number where the packet arrived.
+        \end{itemize}
+        \textcolor{Green3}{\faIcon{tools} \textbf{Relationship: v1model vs BMv2.}} The v1model is the \textbf{architecture} and defines \emph{what exists} in the switch, while BMv2 is the \textbf{target} that implements that architecture. So when we write a P4 program for v1model, we know that BMv2 will provide the components defined by v1model, and we can use them in our program. The architecture defines the \textbf{capabilities} of the switch, and the target provides the \textbf{implementation} of those capabilities.
+    \end{deepeningbox}
+
+
+    \item \texttt{network\_topo.py}: the incomplete topology definition that we need to fill in. It is a Python script that uses Mininet and P4-Utils to:
+    \begin{itemize}
+        \item Create hosts and switches,
+        \item Connect them with links,
+        \item Load the P4 program into the switch,
+        \item Enable logging, pcap dumps, and CLI.
+    \end{itemize}
+    We run this script to set up the network topology and start the BMv2 switch with our P4 program loaded. It will create the hosts, connect them to the switch, and prepare the environment for testing.
+
+    \begin{deepeningbox}[: What is Mininet?]
+        \definition{Mininet} is a \textbf{network emulator} that lets us \textbf{create virtual networks} (hosts, switches, links) \textbf{on a single machine}.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``network emulator'' mean?}} Mininet creates \textbf{real network elements}, but virtualized. It uses Linux namespaces and virtual Ethernet interfaces to create isolated hosts and switches that can communicate with each other as if they were on a real network. So when we create a host in Mininet, it is a real Linux process with its own network stack, and when we create a switch, it is a real software switch (like BMv2) that processes packets.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What Mininet actually gives us?}} With Mininet, we can create: hosts, switches, links between them, IP/MAC configurations, terminals, packet capture and logging. All \textbf{without physical hardware}. It is important to note that Mininet does \textbf{not} process packets itself; it only provides the \textbf{environment}.
+    \end{deepeningbox}
+
+
+    \item \texttt{test.py}: the test script that sends packets and checks if they are reflected back correctly. It is a Python script that runs on the host, sends packets, and checks if packets are reflected. It uses Scapy library to craft and send packets, and to sniff for incoming packets. We run this script after the topology is set up to verify that our P4 program is working correctly. It will send a packet from Host A, wait for the reflected packet, and check if it matches the expected behavior.
+\end{itemize}
+We'll implement the P4 program so it performs the 4 required steps (Ethernet header, parsing, swap MAC addresses, reflect to ingress port).
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_1/01-PacketReflector} \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_1/01-PacketReflector}{GitHub Repository}
+\end{center}

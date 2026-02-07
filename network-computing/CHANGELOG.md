@@ -26,6 +26,11 @@
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`
     - add `P4 Architecture`
+    - add `Control Plane Interaction (P4Runtime)`
+    - add `Exercise 1: Packet Reflector`
+      - add `Build network_topo.py`
+      - add `Build packet_reflector.p4`
+      - add `Test P4 Program`
 
 --------------------
 

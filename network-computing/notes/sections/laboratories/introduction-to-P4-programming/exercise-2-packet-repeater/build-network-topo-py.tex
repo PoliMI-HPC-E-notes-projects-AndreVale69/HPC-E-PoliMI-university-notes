@@ -1,0 +1,56 @@
+\paragraph{Build \texttt{network\_topo.py}}
+
+As we have seen in Exercise 1 (\autopageref{sec:exercise-1-packet-reflector}), the \texttt{network\_topo.py} file is responsible for creating and starting the network. In Exercise 2, we will build a slightly more complex topology with:
+\begin{itemize}
+    \item Two \textbf{hosts} (\texttt{h1}, \texttt{h2}).
+    \item One P4 \textbf{switch} (\texttt{s1}).
+    \item A \textbf{control switch} that programs the P4 switch at runtime using \texttt{P4Runtime}.
+\end{itemize}
+So, the code will be similar to Exercise 1, but with an additional host and the necessary links to connect everything together. The final topology will look like this:
+\begin{lstlisting}[language=Python]
+from p4utils.mininetlib.network_API import NetworkAPI
+
+network = NetworkAPI()
+
+# Network general options
+network.setLogLevel('info')
+network.setCompiler(p4rt=True)
+network.execScript('python control_plane.py', reboot=True)
+
+# Network definition
+switch = network.addP4RuntimeSwitch('s1')
+host1 = network.addHost('h1')
+host2 = network.addHost('h2')
+network.setP4Source('s1', 'packet_repeater.p4')
+
+# Assignment strategy
+network.addLink(host1, switch)
+network.addLink(host2, switch)
+
+# Nodes general options
+network.l2()
+network.enablePcapDumpAll()
+network.enableLogAll()
+network.enableCli()
+network.startNetwork()\end{lstlisting}
+The code is self-explanatory, but there are a few things to note:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What is \texttt{network.setCompiler(...)}?}} In this exercise, the switch must understand \texttt{P4Runtime} messages from the control plane, so we need to add \textbf{extra compilation artifacts} to the switch. This is done by setting the compiler to \texttt{p4rt=True}, which tells the framework to generate the necessary files for \texttt{P4Runtime} support. In practice, the compiler generates a simple JSON pipeline description and a P4Runtime (protobuf) description of the switch, which are used by the control plane to interact with the switch at runtime.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle}} \textcolor{Red2}{\textbf{What happens \emph{without} this line?}} The P4 program is compiled only for \textbf{data plane execution}, so no P4Runtime metadata is generated. This means that a controller \textbf{cannot} talk to the switch, and the execution of \texttt{control\_plane.py} will fail to connect or install rules, resulting in a non-functional network.
+
+
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What is \texttt{network.execScript(...)}?}} Even if the switch supports\break \texttt{P4Runtime}, the tables start \textbf{empty} and no forwarding rules are installed. So someone musts connect to the switch and install forwarding rules at runtime. This is the role of the \textbf{control plane}, which is implemented in \texttt{control\_plane.py}.
+
+    This line tells the framework to execute the control plane script after the network is started. More precisely:
+    \begin{itemize}
+        \item The script is executed \textbf{after Mininet starts};
+        \item It runs in the host environment;
+        \item It connects to the switch via \texttt{P4Runtime};
+        \item It installs forwarding rules on the switch to enable packet forwarding between the hosts.
+        \item With \texttt{reboot=True}, the script is re-executed every time the network is restarted, ensuring that the control plane is always up and running.
+    \end{itemize}
+
+
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why do we use \texttt{addP4RuntimeSwitch} instead of \texttt{addP4Switch}?}} The main difference is that \texttt{addP4RuntimeSwitch} creates a switch that is compatible with \texttt{P4Runtime}, meaning it can be controlled at runtime by a control plane. On the other hand, \texttt{addP4Switch} creates a switch that is only meant for data plane execution, without any runtime control capabilities. Since we need to interact with the switch at runtime in this exercise, we must use \texttt{addP4RuntimeSwitch}.
+\end{itemize}

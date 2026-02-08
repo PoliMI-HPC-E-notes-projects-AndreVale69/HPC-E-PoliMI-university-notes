@@ -31,6 +31,10 @@
       - add `Build network_topo.py`
       - add `Build packet_reflector.p4`
       - add `Test P4 Program`
+    - add `Exercise 2: Packet Repeater`
+      - add `Build network_topo.py`
+      - add `Build control_plane.py`
+      - add `Build packet_repeater.p4`
 
 --------------------
 

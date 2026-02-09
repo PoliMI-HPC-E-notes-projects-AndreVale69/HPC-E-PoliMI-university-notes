@@ -35,6 +35,10 @@
       - add `Build network_topo.py`
       - add `Build control_plane.py`
       - add `Build packet_repeater.p4`
+    - add `Exercise 3: VLAN Handler`
+      - add `Build network_topo.py`
+      - add `Build control_plane.py`
+      - add `Build vlan_handler.p4`
 
 --------------------
 

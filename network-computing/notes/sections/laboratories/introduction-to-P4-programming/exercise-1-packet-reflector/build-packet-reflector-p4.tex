@@ -3,7 +3,7 @@
 Now that we have the topology ready, we can start writing the P4 program for our packet reflector. We will complete the implementation of P4 program step by step, following the TODOs outlined in the exercise. Each TODO will guide us through the necessary components of the P4 program, starting with defining the headers and moving on to parsing, processing, and finally emitting packets.
 \begin{enumerate}
     \item \important{TODO 1: Define headers (Ethernet)}
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style]
 /* -*- P4_16 -*- */
 #include <core.p4>
 #include <v1model.p4>
@@ -26,26 +26,27 @@ struct metadata {
     In P4, a \texttt{header} is a special type that represents a \textbf{protocol header that may or may not be present} in a packet. It has an \textbf{implicit validity bit} (valid/invalid). The parser will ``extract'' it, which makes it \textbf{valid} and fills its fields from the packet. Later stages (ingress/egress) can safely check/use it.
 
     For our packet reflector, we only need to define the Ethernet header:
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style]
 header ethernet_t { ... }\end{lstlisting}
     It means that our program will only be able to parse and process the Ethernet header. If we receive a packet with an IP header, for example, we won't be able to parse it and won't be able to access its fields.
 
     \textcolor{Green3}{\faIcon{question-circle} \textbf{Which fields should we define in the Ethernet header?}} The exercise provides a hint: ``the format of the Ethernet header is 6 bytes for the destination MAC, 6 bytes for the source MAC, and 2 bytes for the EtherType''. So we need to define three fields: \texttt{dstAddr}, \texttt{srcAddr}, and \texttt{etherType}. The first two are 48 bits (6 bytes) long, while the last one is 16 bits (2 bytes) long. We can use the built-in type \texttt{bit} to define them:
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style]
 header ethernet_t {
     bit<48> dstAddr;
     bit<48> srcAddr;
     bit<16> etherType;
 }\end{lstlisting}
     We also need to define a \texttt{headers} struct that contains all the headers we want to parse. In our case, we only have one header (Ethernet), so it will be simple:
-    \begin{lstlisting}
+    % add color to ethernet_t
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t}}]
 struct headers {
     ethernet_t ethernet;
 }\end{lstlisting}
 
 
     \item \important{TODO 2: parse ethernet header}
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 /*
  * P A R S E R
  */
@@ -64,7 +65,7 @@ parser MyParser(packet_in packet,
         \item Decides what state to go to next
     \end{itemize}
     For this exercise, we only need \textbf{one header} (Ethernet), so the parser can be minimal. We can start in a state called \texttt{start}, where we will try to extract the Ethernet header. If the extraction is successful, we will transition to a state called \texttt{accept}, which means that we have successfully parsed the packet and can move on to processing it. If the extraction fails (e.g., if the packet is too short), we can transition to a state called \texttt{reject}, which means that we will drop the packet.
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
@@ -85,7 +86,7 @@ parser MyParser(packet_in packet,
 
 
     \item \important{TODO 3: define packet reflector logic}
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 /*
  * I N G R E S S   P R O C E S S I N G
  */
@@ -106,16 +107,16 @@ control MyIngress(inout headers hdr,
         \texttt{standard\_metadata.egress\_spec}
     \end{equation*}
     Which specifies the output port. The code to swap the MAC addresses would look like this:
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 bit<48> originalAddr;
 originalAddr = hdr.ethernet.srcAddr;
 hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
 hdr.ethernet.dstAddr = originalAddr;\end{lstlisting}
     And to reflect the packet back to the input port, we can use:
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 standard_metadata.egress_spec = standard_metadata.ingress_port;\end{lstlisting}
     We put it all together in the \texttt{MyIngress} control:
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
@@ -131,7 +132,7 @@ control MyIngress(inout headers hdr,
 
 
     \item \important{TODO 4: deparse header}
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 /*
  * D E P A R S E R
  */
@@ -141,7 +142,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
 	}
 }\end{lstlisting}
     The deparser is responsible for taking the processed headers and emitting them back as raw bytes to be sent out of the switch. In our case, we only have one header (Ethernet), so we just need to emit it in the correct order. The code would look like this:
-    \begin{lstlisting}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);

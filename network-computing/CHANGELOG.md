@@ -39,6 +39,9 @@
       - add `Build network_topo.py`
       - add `Build control_plane.py`
       - add `Build vlan_handler.p4`
+  - add `Stateful Packet Processing in P4`
+    - add `Introduction to Stateful P4 Programs`
+    - add `Registers in P4`
 
 --------------------
 

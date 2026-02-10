@@ -49,6 +49,7 @@
     - add `Exercise 2: Heavy Hitter Detector v2`
   - add `Introduction to eBPF and XDP Programming`
     - add `Why eBPF in Network Computing`
+    - add `What is eBPF?`
 
 --------------------
 

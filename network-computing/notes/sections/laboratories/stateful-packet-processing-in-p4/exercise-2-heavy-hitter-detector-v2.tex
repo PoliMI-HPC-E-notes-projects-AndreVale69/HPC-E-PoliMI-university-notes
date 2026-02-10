@@ -1,0 +1,455 @@
+\subsubsection{Exercise 2: Heavy hitter detector v2}
+
+The second version of the heavy hitter detector is more complex than the first one, but it’s also more efficient. The main characteristics of this version are:
+\begin{itemize}
+    \item Key: \textbf{flow 5-tuple}
+    \begin{equation*}
+        \texttt{src IP}, \texttt{dst IP}, \texttt{src port}, \texttt{dst port}, \texttt{protocol}
+    \end{equation*}
+
+    \item Data structure: \textbf{counting Bloom filter} (\autopageref{sec:counting-bloom-filters})
+
+    \item Algorithm: \textbf{probabilistic}
+
+    \item Threshold: \textbf{hard-coded in P4} (1000 packets)
+
+    \item Two switches and IPv4 forwarding (i.e., the heavy hitter detector is implemented in one switch, and the other switch is used to forward packets to the controller)
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=0.8\textwidth]{img/ex2-lab2-p4.pdf}
+        \caption{Network topology for Exercise 2.}
+        \label{fig:exercise-2-topology}
+    \end{figure}
+
+    \item Must support \textbf{TCP} and \textbf{UDP} traffic (i.e., the algorithm must be able to detect heavy hitters for both TCP and UDP flows)
+\end{itemize}
+These requirements are more complex than the ones of Exercise 1, but they also allow us to implement a more efficient algorithm.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{What problem v2 is solving?}} The main problem that v2 is solving is the scalability of the heavy hitter detector. In Exercise 1, we had to maintain a counter for each flow, which is not scalable. In Exercise 2, we use a counting Bloom filter, which allows us to maintain a compact data structure that can efficiently detect heavy hitters without needing to maintain a counter for each flow.
+
+\highspace
+In real networks, the number of flows is enormous and keeping one counter per flow is impossible. So v2 asks us to detect heavy hitters \textbf{approximately}, using \textbf{bounded memory}, directly in the data plane. That's why we must use a \textbf{counting Bloom filter}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Network behavior (what the switches must do)?}} Each switch:
+\begin{enumerate}
+    \item Forwards packets using an \textbf{IPv4 LPM table} (normal routing)
+    \item Extracts the \textbf{5-tuple}
+    \item Updates a \textbf{counting Bloom filter}
+    \item If the flow \textbf{exceeds the threshold} (1000 packets), \textbf{drops} the packet
+    \item Otherwise, decrement TTL, forward packet and update checksum.
+\end{enumerate}
+This happens \textbf{on both switches}.
+
+\highspace
+About the structure of the counting Bloom filter, we have $k$ hash functions, where $k = 2$. So we have 2 independent counters per element. For a flow:
+\begin{enumerate}
+    \item Hash the 5-tuple with hash \texttt{\#1} to get index \texttt{i}
+    \item Hash the 5-tuple with hash \texttt{\#2} to get index \texttt{j}
+    \item Read counters at index \texttt{i} and \texttt{j}
+    \item If the flow counter (i.e., the minimum of the two counters) exceeds the threshold, drop the packet
+    \item Otherwise, increment both counters and forward the packet
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    % implementation P4
+    \textcolor{Green3}{\faIcon{code} \textbf{P4 implementation}}
+\end{flushleft}
+Let the network topology code:
+\begin{lstlisting}[language=Python]
+from p4utils.mininetlib.network_API import NetworkAPI
+
+net = NetworkAPI()
+
+# Network general options
+net.setLogLevel('info')
+net.setCompiler(p4rt=True)
+net.execScript('python control_plane.py', reboot=True)
+
+# Network definition
+net.addP4RuntimeSwitch('s1')
+net.addP4RuntimeSwitch('s2')
+net.setP4SourceAll('./hdd_v2.p4')
+
+net.addHost('h1')
+net.addHost('h2')
+
+net.addLink("h1", "s1", port2=1)
+net.addLink("s1", "s2", port1=2, port2=2)
+net.addLink("s2", "h2", port1=1)
+
+# Assignment strategy
+net.mixed()
+
+# Nodes general options
+net.enablePcapDumpAll()
+net.enableLogAll()
+net.enableCli()
+net.startNetwork()\end{lstlisting}
+And the control plane code:
+\begin{lstlisting}[language=Python]
+#!/usr/bin/env python3
+
+from p4utils.utils.helper import load_topo
+from p4utils.utils.sswitch_p4runtime_API import SimpleSwitchP4RuntimeAPI
+
+
+topo = load_topo('topology.json')
+controllers = {}
+
+for switch, data in topo.get_p4rtswitches().items():
+    controllers[switch] = SimpleSwitchP4RuntimeAPI(
+        data['device_id'],
+        data['grpc_port'],
+        p4rt_path=data['p4rt_path'],
+        json_path=data['json_path']
+    )
+
+controller = controllers['s1']     
+
+controller.table_clear('ipv4_lpm')
+
+controller.table_add(
+    'ipv4_lpm',
+    'ipv4_forward',
+    ['10.0.1.1/32'],
+    ['00:00:0a:00:01:01', '1']
+)
+controller.table_add(
+    'ipv4_lpm',
+    'ipv4_forward',
+    ['10.0.2.2/32'],
+    ['00:00:00:02:01:00', '2']
+)
+
+controller.table_set_default('ipv4_lpm', 'drop')
+
+controller = controllers['s2']     
+
+controller.table_clear('ipv4_lpm')
+
+controller.table_add(
+    'ipv4_lpm',
+    'ipv4_forward',
+    ['10.0.2.2/32'],
+    ['00:00:0a:00:02:02', '1']
+)
+controller.table_add(
+    'ipv4_lpm',
+    'ipv4_forward',
+    ['10.0.1.1/32'],
+    ['00:00:00:02:01:00', '2']
+)
+
+controller.table_set_default('ipv4_lpm', 'drop')\end{lstlisting}
+We can explain the P4 implementation of the heavy hitter detector as follows:
+\begin{itemize}
+    \item \important{Constants}
+    \begin{lstlisting}[style=p4style]
+/* -*- P4_16 -*- */
+#include <core.p4>
+#include <v1model.p4>
+
+/* CONSTANTS */
+const bit<16> TYPE_IPV4 = 0x800;
+const bit<8>  TYPE_TCP  = 6;
+const bit<8>  TYPE_UDP  = 17;
+
+#define BLOOM_FILTER_ENTRIES 4096
+#define BLOOM_FILTER_BIT_WIDTH 32
+#define PACKET_THRESHOLD 1000\end{lstlisting}
+    The constants are used to define the Ethernet type for IPv4, the protocol numbers for TCP and UDP, the number of entries in the Bloom filter, the bit width of the counters in the Bloom filter, and the packet threshold for detecting heavy hitters.
+
+
+    \item \important{Headers}
+    \begin{lstlisting}[style=p4style]
+typedef bit<9>  egressSpec_t;
+typedef bit<48> macAddr_t;
+typedef bit<32> ip4Addr_t;
+
+header ethernet_t {
+    macAddr_t dstAddr;
+    macAddr_t srcAddr;
+    bit<16>   etherType;
+}
+
+header ipv4_t {
+    bit<4>    version;
+    bit<4>    ihl;
+    bit<8>    diffserv;
+    bit<16>   totalLen;
+    bit<16>   identification;
+    bit<3>    flags;
+    bit<13>   fragOffset;
+    bit<8>    ttl;
+    bit<8>    protocol;
+    bit<16>   hdrChecksum;
+    ip4Addr_t srcAddr;
+    ip4Addr_t dstAddr;
+}
+
+header tcp_t{
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4>  dataOffset;
+    bit<4>  res;
+    bit<1>  cwr;
+    bit<1>  ece;
+    bit<1>  urg;
+    bit<1>  ack;
+    bit<1>  psh;
+    bit<1>  rst;
+    bit<1>  syn;
+    bit<1>  fin;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
+}
+
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> pktLength;
+    bit<16> checksum;
+}
+
+struct metadata {
+    bit<32> output_hash_one;
+    bit<32> output_hash_two;
+    bit<32> counter_one;
+    bit<32> counter_two;
+}
+
+struct headers {
+    ethernet_t   ethernet;
+    ipv4_t       ipv4;
+    tcp_t        tcp;
+    udp_t        udp;
+}\end{lstlisting}
+    The headers define the structure of the Ethernet, IPv4, TCP, and UDP headers, as well as the metadata that we will use to store the hash values and counters for the Bloom filter.
+
+
+    \item \important{Parser}
+    \begin{lstlisting}[style=p4style]
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+
+    state start {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType){
+
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+    state parse_ipv4 {
+        packet.extract(hdr.ipv4);
+
+        transition select(hdr.ipv4.protocol){
+            TYPE_TCP: parse_tcp;
+            TYPE_UDP: parse_udp;
+            default: accept;
+        }
+    }
+
+    state parse_tcp {
+       packet.extract(hdr.tcp);
+       transition accept;
+    }
+
+    state parse_udp {
+       packet.extract(hdr.udp);
+       transition accept;
+    }
+
+}\end{lstlisting}
+    The parser extracts the Ethernet header, checks if the EtherType is IPv4, and if so, extracts the IPv4 header. Then it checks the protocol field of the IPv4 header to determine if it is TCP or UDP, and extracts the corresponding header. If the packet is not IPv4, or if the protocol is not TCP or UDP, the parser accepts the packet without extracting any further headers.
+
+
+    \item \important{Ingress processing}
+    \begin{lstlisting}[style=p4style]
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+
+
+    register<bit<BLOOM_FILTER_BIT_WIDTH>>(BLOOM_FILTER_ENTRIES) bloom_filter;
+
+    action drop() {
+        mark_to_drop(standard_metadata);
+    }
+
+    action update_bloom_filter(in bit<16> srcPort, in bit<16> dstPort){
+        // get register position
+        hash(
+            meta.output_hash_one,
+            HashAlgorithm.crc16,
+            (bit<16>)0,
+            {
+                hdr.ipv4.srcAddr,
+                hdr.ipv4.dstAddr,
+                srcPort,
+                dstPort,
+                hdr.ipv4.protocol
+            },
+            (bit<32>)BLOOM_FILTER_ENTRIES
+        );
+
+        hash(
+            meta.output_hash_two,
+            HashAlgorithm.crc32,
+            (bit<16>)0,
+            {
+                hdr.ipv4.srcAddr,
+                hdr.ipv4.dstAddr,
+                srcPort,
+                dstPort,
+                hdr.ipv4.protocol
+            },
+            (bit<32>)BLOOM_FILTER_ENTRIES
+        );
+
+        // read counters
+        bloom_filter.read(
+            meta.counter_one,
+            meta.output_hash_one
+        );
+        bloom_filter.read(
+            meta.counter_two,
+            meta.output_hash_two
+        );
+
+        meta.counter_one = meta.counter_one + 1;
+        meta.counter_two = meta.counter_two + 1;
+
+        // write counters
+        bloom_filter.write(
+            meta.output_hash_one,
+            meta.counter_one
+        );
+        bloom_filter.write(
+            meta.output_hash_two,
+            meta.counter_two
+        );
+    }
+
+    action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
+
+        hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+
+        // set the destination mac address that
+        // we got from the match in the table
+        hdr.ethernet.dstAddr = dstAddr;
+
+        // set the output port that we also get from the table
+        standard_metadata.egress_spec = port;
+
+        // decrease ttl by 1
+        hdr.ipv4.ttl = hdr.ipv4.ttl -1;
+
+    }
+
+    table ipv4_lpm {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction();
+    }
+
+    bit<16> srcPort;
+    bit<16> dstPort;
+
+    apply {
+        if (hdr.ipv4.isValid()) {
+            if (hdr.tcp.isValid() || hdr.udp.isValid()) {
+                if (hdr.tcp.isValid()) {
+                    srcPort = hdr.tcp.srcPort;
+                    dstPort = hdr.tcp.dstPort;
+                } else {
+                    srcPort = hdr.udp.srcPort;
+                    dstPort = hdr.udp.dstPort;
+                }
+                update_bloom_filter(srcPort, dstPort);
+
+                if (
+                    meta.counter_one > PACKET_THRESHOLD &&
+                    meta.counter_two > PACKET_THRESHOLD
+                ){
+                    drop();
+                    return;
+                }
+            }
+            ipv4_lpm.apply();
+        }
+    }
+}\end{lstlisting}
+    The ingress processing is where the main logic of the heavy hitter detector is implemented.
+    \begin{itemize}
+        \item \textbf{Actions:}
+        \begin{itemize}
+            \item \texttt{drop()}: marks the packet to be dropped.
+            \item \texttt{update\_bloom\_filter()}: updates the Bloom filter counters for the given source and destination ports. It computes two hash values for the flow, reads the corresponding counters from the Bloom filter, increments them, and writes them back to the Bloom filter.
+            \item \texttt{ipv4\_forward()}: forwards the packet to the next hop based on the destination IP address. It updates the Ethernet source and destination addresses, sets the egress port, and decrements the TTL.
+        \end{itemize}
+
+        \item \textbf{Table} \texttt{ipv4\_lpm}: an IPv4 longest prefix match table that matches the destination IP address and forwards the packet accordingly. If there is no match, the default action is to do nothing (i.e., the packet will be dropped later if it is not forwarded).
+
+        \item \textbf{Apply block:} Checks if the packet is IPv4. If it is, it checks if it is TCP or UDP. If it is, it extracts the source and destination ports, updates the Bloom filter, and checks if the flow is a heavy hitter by comparing the counters to the threshold. If the flow is a heavy hitter, it drops the packet. Otherwise, it applies the IPv4 forwarding table.
+    \end{itemize}
+
+
+    \item \important{Checksum computation}
+    \begin{lstlisting}[style=p4style]
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
+     apply {
+	update_checksum(
+	    hdr.ipv4.isValid(),
+            { hdr.ipv4.version,
+	      hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr },
+            hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16);
+    }
+}\end{lstlisting}
+    In the previous exercise, we did not need to compute the checksum because we were not modifying any header fields. In this exercise, we are modifying the TTL field of the IPv4 header, so we need to update the checksum accordingly. The \texttt{update\_checksum()} function computes the new checksum based on the modified IPv4 header fields. The checksum indicates if the packet has been modified in transit, so it must be updated whenever we modify any of the fields that are included in the checksum computation (in this case, the TTL field).
+
+
+    \item \textbf{Deparser:} The deparser is responsible for emitting the headers back into the packet after processing. In this case, it emits the Ethernet, IPv4, TCP, and UDP headers in the correct order.
+    \begin{lstlisting}[style=p4style]
+control MyDeparser(packet_out packet, in headers hdr) {
+    apply {
+        packet.emit(hdr.ethernet);
+        packet.emit(hdr.ipv4);
+        packet.emit(hdr.tcp);
+        packet.emit(hdr.udp);
+    }
+}\end{lstlisting}
+\end{itemize}
+The source code of the P4 program is available in the file \texttt{hdd\_v2.p4} in the repository:
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/blob/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_2/05-HHDv2/solution/hdd_v2.p4}
+    \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/blob/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_2/05-HHDv2/solution/hdd_v2.p4}{hdd\_v2.p4}
+\end{center}

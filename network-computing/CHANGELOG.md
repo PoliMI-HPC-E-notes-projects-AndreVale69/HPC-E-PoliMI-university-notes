@@ -42,6 +42,11 @@
   - add `Stateful Packet Processing in P4`
     - add `Introduction to Stateful P4 Programs`
     - add `Registers in P4`
+    - add `Exercise 1: Heavy Hitter Detector v1`
+      - add `Build network_topo.py`
+      - add `Build control_plane.py`
+      - add `Build hdd_v1.p4`
+    - add `Exercise 2: Heavy Hitter Detector v2`
 
 --------------------
 

@@ -56,6 +56,7 @@
     - add `XDP Execution Context`
     - add `XDP Return Codes`
     - add `Tooling: libbpf & bpftool`
+    - add `Exercise 1: The first eBPF program`
 
 --------------------
 

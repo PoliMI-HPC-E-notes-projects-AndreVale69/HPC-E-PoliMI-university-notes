@@ -52,6 +52,7 @@
     - add `What is eBPF?`
     - add `eBPF Program Constraints`
     - add `eBPF Core Building Blocks`
+    - add `XDP: eXpress Data Path`
 
 --------------------
 

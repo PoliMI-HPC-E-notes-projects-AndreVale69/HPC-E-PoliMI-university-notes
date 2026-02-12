@@ -57,6 +57,9 @@
     - add `XDP Return Codes`
     - add `Tooling: libbpf & bpftool`
     - add `Exercise 1: The first eBPF program`
+    - add `Exercise 2: Counting with BPF Maps`
+    - add `Exercise 3: Packet Parsing`
+    - add `Exercise 4: Packet Rewriting`
 
 --------------------
 

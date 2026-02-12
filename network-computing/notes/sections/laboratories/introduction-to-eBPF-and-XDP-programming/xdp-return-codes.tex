@@ -1,0 +1,43 @@
+\subsubsection{XDP Return Codes}
+
+An XDP program must return an integer value that tells the kernel how to handle the packet: ``\emph{what should we do with this packet?}''. These return values are predefined constants:
+\begin{itemize}
+    \item \important{\texttt{XDP\_PASS}}: let the packet continue up the normal Linux networking stack. So the flow of the packet is not changed, and the \textbf{packet is processed as if no XDP program was attached to the interface}. We use this return code when we want to let the packet be processed by the kernel as usual, without any modification.
+    
+
+    \item \important{\texttt{XDP\_DROP}}: \textbf{drop the packet immediately}. The packet will not be processed further, and it will not be forwarded to any other interface. We use this return code when we want to block certain packets, for example, based on their source IP address or other criteria.
+    
+    This is useful for implementing simple firewall rules or mitigating DDoS attacks. It is important to note that when a packet is dropped, it is \textbf{not sent back to the sender}, so the sender will not receive any indication that the packet was dropped. Also, dropping packets can \textbf{save CPU resources}, as the kernel does not have to spend time processing the packet further.
+    
+    However, it is important to use this return code with caution, as dropping packets can lead to unintended consequences, such as disrupting legitimate traffic or causing network instability if used excessively.
+    
+
+    \item \important{\texttt{XDP\_TX}}: \textbf{transmit the packet back out of the same interface it was received on}. This is useful for implementing simple echo servers or for testing purposes. When a packet is transmitted back, it will be sent back to the sender, and the sender will receive a response. This can be used to verify that the XDP program is working correctly and that packets are being processed as expected.
+    
+    In simple terms, this return code allows us to send the packet back to the sender immediately, bypassing kernel stack and socket layers, which can be useful for certain applications like load balancing or DDoS mitigation.
+
+    It is important to note that when a packet is sent back, it must remain valid and properly formatted; otherwise, it may be dropped by the network or cause issues for the sender. If we want to modify the packet before sending it back, we need to update the checksums to ensure the packet remains valid according to the relevant protocols (e.g., Ethernet, IP, TCP/UDP).
+
+
+    \item \important{\texttt{XDP\_REDIRECT}}: \textbf{redirect the packet to another interface or to a user-space socket}. This is more flexible than \texttt{XDP\_TX} because it allows us to send the packet to a different destination, such as another network interface or a user-space application that is listening for packets. This can be useful for implementing load balancing, traffic steering, or for processing packets in user space for more complex logic.
+
+    When using \texttt{XDP\_REDIRECT}, we need to specify the target interface or socket to which the packet should be redirected. This can be done using helper functions provided by the eBPF API, such as \texttt{bpf\_redirect()} for redirecting to another interface or \texttt{bpf\_redirect\_map()} for redirecting to a user-space socket. However, these low-level details are beyond the scope of this introduction, and we will cover them in more depth in later sections when we discuss how to implement XDP programs in practice.
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{13em} l @{}}
+        \toprule
+        \textbf{Return Code}    & \textbf{What Happens} & \textbf{Typical Use Case} \\
+        \midrule
+        \texttt{XDP\_PASS}      & Continue normal stack processing              & Monitoring    \\[.3em]
+        \texttt{XDP\_DROP}      & Drop packet immediately                       & Filtering     \\[.3em]
+        \texttt{XDP\_TX}        & Send packet back on same interface            & Simple reply  \\[.3em]
+        \texttt{XDP\_REDIRECT}  & Send packet to another interface/destination  & Forwarding    \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of XDP return codes and their effects on packet processing.}
+\end{table}
+
+\noindent
+In summary, the return code is the \textbf{only way for an XDP program to communicate with the kernel about how to handle the packet}. By choosing the appropriate return code, we can control the flow of packets through the network stack and implement various functionalities such as filtering, load balancing, or traffic redirection.

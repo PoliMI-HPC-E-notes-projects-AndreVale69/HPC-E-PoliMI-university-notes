@@ -1,0 +1,49 @@
+\subsubsection{XDP Execution Context}
+
+When an XDP program runs, it does \textbf{not} receive a packet object as an argument. Instead, it receives a \textbf{pointer to a structure} called \texttt{xdp\_md}, which is the \textbf{execution context}. We can think of it as the information the kernel gives our program when a packet arrives, and it contains all the information about the packet and the environment in which the program is running.
+
+\highspace
+A simplified version looks like this:
+\begin{lstlisting}[language=C]
+struct xdp_md {
+    __u32 data;
+    __u32 data_end;
+    __u32 data_meta;
+    __u32 ingress_ifindex;
+    __u32 rx_queue_index;
+};\end{lstlisting}
+This structure contains several fields, but the most important ones for us are:
+\begin{itemize}
+    \item \texttt{data} is a pointer to the beginning of the packet in memory. It usually points to the Ethernet header of the packet. It is the first byte of the received frame.
+    \item \texttt{data\_end} is a pointer to the first byte \emph{after} the end of the packet. It is extremely important because if we access memory beyond this pointer, we will cause an out-of-bounds access, which the kernel will detect and reject our program.
+    \item \texttt{data\_meta} is less commonly used, but it points to a region before \texttt{data} that can be used to store metadata about the packet. This is useful for certain advanced use cases, like storing information that can be accessed by other eBPF programs later in the processing pipeline.
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why both pointers?}} The kernel does not give us a packet length or a safe buffer abstraction. Instead, it gives us raw memory boundaries, and we must always prove to the verifier that we are accessing memory within these boundaries. In practice, we will often write:
+\begin{lstlisting}[language=C]
+void *data = (void *)(long)ctx->data;
+void *data_end = (void *)(long)ctx->data_end;
+
+if (data + sizeof(struct ethhdr) > data_end) {
+    // Not enough data for Ethernet header, drop the packet
+    return XDP_PASS;
+}\end{lstlisting}
+This way, we ensure that we only access memory that is within the packet's boundaries, and the verifier will allow our program to run.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{If data and data\_end are pointers, why are they defined as \texttt{\_\_u32}?}} This is largely a UAPI/ABI quirk (i.e., the way the kernel's user-space API is defined): in \texttt{struct xdp\_md}, the fields \texttt{data} and \texttt{data\_end} are declared as \texttt{\_\_u32}, so in C they look like integers rather than pointers. In XDP programs we therefore cast them (e.g., \texttt{(void *)(long)ctx->data}) to obtain pointers that can be used for packet parsing. Crucially, the eBPF verifier treats these values as special packet pointers and rewrites/tracks their use at load time, enforcing bounds checks via \texttt{data\_end}. This design is maintained for compatibility, but programmers should think of \texttt{data} and \texttt{data\_end} as defining the valid packet memory range \texttt{[data, data\_end)}.
+
+\highspace
+In other words, in the actual kernel, these fields represent memory addresses, but they are exposed as \texttt{\_\_u32} for ABI and verifier reasons. The verifier rewrites them into proper pointers during program loading, so what happens is:
+\begin{enumerate}
+    \item We cast them to pointers.
+    \item The verifier checks all pointer arithmetic.
+    \item The kernel internally treats them as valid packet memory pointers.
+\end{enumerate}
+The kernel cannot just give us pointers directly (e.g., \texttt{struct ethhdr *eth}) because the packet layout and the size are not known at compile time, and the verifier needs to ensure that all memory accesses are safe. By giving us raw pointers and enforcing bounds checks, the kernel allows us to write flexible packet processing code while maintaining safety guarantees.
+
+\highspace
+In summary, if we do something like:
+\begin{lstlisting}[language=C]
+struct ethhdr *eth = data;
+eth->h_proto\end{lstlisting}
+Without checking bounds first, the \textbf{verifier will reject our program} because we might be accessing memory beyond \texttt{data\_end}. We must always check that we have enough data before accessing any fields of the packet, which is a fundamental aspect of writing safe eBPF/XDP programs.

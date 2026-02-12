@@ -55,6 +55,7 @@
     - add `XDP: eXpress Data Path`
     - add `XDP Execution Context`
     - add `XDP Return Codes`
+    - add `Tooling: libbpf & bpftool`
 
 --------------------
 

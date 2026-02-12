@@ -1,0 +1,133 @@
+\subsubsection{Tooling: \texttt{libbpf} \& \texttt{bpftool}}
+
+So far, we have learned how XDP works and what maps, helpers, and return codes are. We also know the constraints imposed by the verifier. But how do we actually load and manage eBPF programs from user space? This is where libbpf and bpftool come into play.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Role of \texttt{libbpf}}}
+\end{flushleft}
+\texttt{libbpf} is the \textbf{official user-space library} (i.e., a C library) used to \textbf{load}, \textbf{verify}, \textbf{attach}, and \textbf{manage eBPF programs}. It acts as a \textbf{bridge} between our user-space application and the kernel's eBPF subsystem. Without \texttt{libbpf}, we would have to interact with the kernel's eBPF API directly, which is complex and error-prone. \texttt{libbpf} abstracts away these complexities and provides a convenient interface for developers.
+
+\highspace
+When we load an eBPF program using \texttt{libbpf}, it performs several tasks:
+\begin{enumerate}
+    \item \textbf{Parses the compiled ELF file} (i.e., the output of our eBPF C code compilation).
+    \item \textbf{Creates maps in the kernel} as defined in our eBPF program.
+    \item \textbf{Loads programs via the \texttt{bpf} syscall}, which involves passing the program's bytecode and metadata to the kernel.
+    \item \textbf{Invokes the kernel's verifier} to ensure the program is safe to run.
+    \item \textbf{Attaches programs to the specified hooks}. In our case, it attaches to the XDP hook, but it can also attach to other hooks, such as \texttt{kprobes} and \texttt{uprobes}.
+    \item \textbf{Provides file descriptors for maps and programs}, allowing us to interact with them from user space (e.g., reading map values).
+\end{enumerate}
+So conceptually:
+\begin{equation*}
+    \text{User-space app} \to \texttt{libbpf} \to \texttt{bpf()}\text{ syscall} \to \text{Kernel verifier and loader}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Do not use \texttt{libbpf} directly! Use \texttt{bpftool} instead}}
+\end{flushleft}
+When writing an XDP program, we actually write \textbf{two separate programs}:
+\begin{itemize}
+    \item A \textbf{kernel program}, which is restricted C code compiled into eBPF bytecode and executed inside the kernel (e.g., attached to the XDP hook). It implements the fast-path data-plane logic under strict safety and resource constraints enforced by the verifier.
+
+    For example, we write the kernel program in a file named \texttt{xdp\_prog.bpf.c}, which contains the eBPF code that will be loaded into the kernel. Then, we compile it using \texttt{clang} with specific flags to generate the eBPF bytecode:
+    \begin{equation*}
+        \texttt{clang} \, \rightarrow \,  \texttt{xdp\_prog.bpf.o}
+    \end{equation*}
+
+    \item A \textbf{user-space program}, which loads and manages the eBPF program using \texttt{libbpf}. It interacts with the kernel program indirectly through shared eBPF maps, handling configuration, statistics collection, and control-plane logic that cannot be efficiently or safely implemented inside the kernel.
+    
+    For example, we write the user-space program in a file named \texttt{xdp\_\break{}loader.c}, which uses \texttt{libbpf} to load the compiled eBPF program and manage its lifecycle.
+\end{itemize}
+When we got the bytecode from the kernel program (\texttt{xdp\_prog.bpf.o}), we cannot just execute it directly. We need to load it into the kernel, create maps, attach program to the interface (i.e., the XDP hook), and get file descriptors to interact with maps. That is complicated, so \hl{Linux provides a tool called \texttt{bpftool} that uses \texttt{libbpf} under the hood to perform all these tasks for us}.
+
+\highspace
+\texttt{bpftool} is a \textbf{command-line utility} that allows us to manage eBPF programs and maps without writing any C code:
+\begin{lstlisting}
+bpftool gen skeleton xdp_prog.bpf.o > xdp_prog.skel.h\end{lstlisting}
+This command generates a C header file (\texttt{xdp\_prog.skel.h}) that contains the necessary code to load and manage the eBPF program defined in \texttt{xdp\_prog.bpf\break{}.o}. The generated \textbf{skeleton} is automatically generated C code that wraps our eBPF program using \texttt{libbpf} (i.e., it contains the code to load the program, create maps, and attach it to the XDP hook). It provides a struct like this:
+\begin{lstlisting}[language=C]
+struct xdp_prog_bpf {
+    struct bpf_object *obj;
+    struct bpf_program *prog;
+    struct bpf_map *my_map;
+};\end{lstlisting}
+And some helper functions:
+\begin{lstlisting}[language=C]
+xdp_prog_bpf__open();
+xdp_prog_bpf__load();
+xdp_prog_bpf__attach();\end{lstlisting}
+So instead of manually writing 200 lines of boilerplate code to load and manage the eBPF program, we can just include the generated skeleton header and call these helper functions to do everything for us:
+\begin{lstlisting}[language=C]
+#include "xdp_prog.skel.h"
+
+// ...
+
+skel = xdp_prog_bpf__open();
+xdp_prog_bpf__load(skel);
+xdp_prog_bpf__attach(skel);\end{lstlisting}
+In other words, it is an auto-generated \texttt{libbpf} wrapper for our specific eBPF program.
+
+\highspace
+With \texttt{bpftool}, our workflow becomes much simpler:
+\begin{enumerate}
+    \item Write kernel program in \texttt{xdp\_prog.bpf.c}.
+    \item Compile it to eBPF bytecode using \texttt{clang}.
+    \item Generate the skeleton header using \texttt{bpftool}.
+    \item Write a small user-space program that includes the skeleton header and calls the helper functions to load and attach the eBPF program.
+\end{enumerate}
+Instead of manually parsing ELF (i.e., the output of \texttt{clang}), calling the \texttt{bpf} syscall, handling map file descriptors, and attaching the program, we can just use the generated skeleton to do all of that for us. In summary, \textbf{the skeleton reduces complexity and boilerplate code drastically, allowing us to focus on the logic of our eBPF program rather than the intricacies of loading and managing it}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Kernel Program vs User-space Loader}}
+\end{flushleft}
+This is architectural, not tooling.
+\begin{itemize}
+    \item \important{Kernel Program} $=$ \textbf{Data Plane}. The C file \texttt{xdp\_prog.bpf.c} runs in the kernel, is attached to the XDP hook, works on every packet, and is subject to the verifier's constraints. Its purpose is to process packets quickly with minimal state handling. It should be small, deterministic, and efficient.
+    
+
+    \item \important{User-space Loader} $=$ \textbf{Control Plane}. The C file \texttt{xdp\_loader.c} runs in user space with full C features \emph{without} verifier constraints. It is responsible for loading the kernel program, attaching it to the XDP hook, read/update maps, print statistics, handle timeouts, and parse command-line arguments. It can be as complex as needed since it does not run in the kernel and is not subject to the same constraints.
+\end{itemize}
+In summary, the \textbf{kernel program quickly} counts packets per flow, checks the threshold, and drops or passes them. In contrast, the \textbf{user-space} sets the threshold value in the map, reads the statistics, and prints the heavy hitters. It is \textbf{smart}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Some useful \texttt{bpftool} commands}}
+\end{flushleft}
+\hl{\texttt{bpftool} is not only useful for generating skeletons but also for inspecting and managing eBPF programs and maps at runtime.} Here are some common commands:
+\begin{itemize}
+    \item \important{Inspecting eBPF Objects}. Once an eBPF program is loaded into the kernel, it becomes a kernel object. We can use \texttt{bpftool} to inspect these objects:
+    \begin{lstlisting}
+bpftool prog list\end{lstlisting}
+    This command shows all loaded eBPF programs, their IDs, types (e.g., XDP), attached interfaces, and other metadata. We can also \textbf{inspect maps} with:
+    \begin{lstlisting}[language=bash]
+bpftool map list\end{lstlisting}
+    This shows all eBPF maps, their types (e.g., hash, array), sizes, and other details. This is useful for debugging and monitoring our eBPF programs. Finally, we can even \textbf{dump map contents} with:
+    \begin{lstlisting}[language=bash]
+bpftool map dump id <map_id>\end{lstlisting}
+    This command allows us to see the key-value pairs stored in a specific map, which is invaluable for understanding the state of our eBPF program and verifying that it is working as expected.
+
+    
+    \item \important{Generating Skeletons}. As mentioned earlier, we can generate skeleton headers for our eBPF programs with:
+    \begin{lstlisting}
+bpftool gen skeleton xdp_prog.bpf.o > xdp_prog.skel.h\end{lstlisting}
+    This command :
+    \begin{itemize}
+        \item Parses the compiled eBPF bytecode from \texttt{xdp\_prog.bpf.o}.
+        \item Detect the maps and programs defined in the bytecode.
+        \item Generates a C header file (\texttt{xdp\_prog.skel.h}) that contains the necessary code to load, manage, and interact with the eBPF program using \texttt{libbpf}.
+    \end{itemize}
+
+
+    \item \important{Debugging Maps and Programs}. If our eBPF program is not working as expected, we can use \texttt{bpftool} to debug it. For example, if we want to \textbf{check if our XDP program is attached to the correct interface}, we can run:
+    \begin{lstlisting}
+bpftool net\end{lstlisting}
+    This command shows which interfaces have XDP programs attached and their IDs.
+    
+    If we want to \textbf{show program details}, we can run:
+    \begin{lstlisting}
+bpftool prog dump xlated id <id>\end{lstlisting}
+    This command shows the eBPF bytecode of the program with the specified ID, which can help us understand how the kernel is executing our program and identify any issues.
+\end{itemize}

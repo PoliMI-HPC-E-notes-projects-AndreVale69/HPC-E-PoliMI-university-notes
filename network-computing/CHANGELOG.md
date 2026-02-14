@@ -22,6 +22,7 @@
   - add `Interrupt Mitigation Strategies`
     - add `Interrupt Coalescing`
     - add `Polling`
+    - add `NAPI (New API)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

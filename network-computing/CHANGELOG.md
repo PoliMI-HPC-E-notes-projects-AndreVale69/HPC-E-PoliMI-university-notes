@@ -25,6 +25,7 @@
     - add `NAPI (New API)`
   - add `Multi-Queue NICs`
   - add `Receive-Side Scaling (RSS)`
+  - add `Advanced Receive Flow Steering (aRFS)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

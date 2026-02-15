@@ -24,6 +24,7 @@
     - add `Polling`
     - add `NAPI (New API)`
   - add `Multi-Queue NICs`
+  - add `Receive-Side Scaling (RSS)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

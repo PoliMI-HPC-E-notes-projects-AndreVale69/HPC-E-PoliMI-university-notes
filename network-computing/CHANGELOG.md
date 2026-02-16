@@ -31,6 +31,7 @@
   - add `PCIe`
   - add `Compute Express Link (CXL)`
   - add `NIC Driver`
+  - add `The sk_buff (Socket Buffer)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

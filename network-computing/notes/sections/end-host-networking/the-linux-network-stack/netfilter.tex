@@ -1,0 +1,25 @@
+\subsubsection{Netfilter}
+
+\definition{Netfilter} is the \textbf{Linux kernel framework} responsible for packet filtering, Network Address Translation (NAT), connection tracking, and other \textbf{packet manipulation operations}.
+
+\highspace
+It is the foundation of \texttt{iptables}\footnote{\texttt{iptables} is the user-space utility for configuring Netfilter rules.} and \texttt{nftables}\footnote{\texttt{nftables} is the newer user-space utility that replaces \texttt{iptables} for configuring Netfilter rules.}, which are used to define firewall rules, NAT rules, and other packet processing policies.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Where does it sit in the receive path?}} Netfilter operates \textbf{after GRO} and before the TCP/IP stack:
+\begin{equation*}
+    \text{NIC} \rightarrow \text{GRO} \rightarrow \text{Netfilter} \rightarrow \text{TCP/IP Stack} \rightarrow \text{Application}
+\end{equation*}
+So every packet (or merged packet from GRO) passes through Netfilter before being processed by the TCP/IP stack. Even if our application does not use a firewall, Netfilter hooks are still in the receive path, and the kernel will check for any applicable rules.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does Netfilter do?}} It provides \textbf{hook points} inside the kernel networking stack where kernel modules can inspect packets and make decisions based on defined rules. Typical operations include:
+\begin{itemize}
+    \item \important{Packet Filtering}: allow/deny packets based on IP, port, protocol, etc. This is the basis of firewall functionality.
+    \item \important{NAT (Network Address Translation)}: modify source/destination IP addresses and ports for packets, enabling features like masquerading and port forwarding.
+    \item \important{Connection Tracking}: maintain state of TCP flows, tracking sequence numbers and connection states (\texttt{NEW}, \texttt{ESTABLISHED}, \texttt{RELATED}).
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Performance Implications}}: Netfilter adds rule matching, state lookup, hash table operations, and metadata updates to the receive path. For each packet, Netfilter may traverse rule chains, consult connection tracking tables, and update flow state. Even if no rule matches, the packet still goes through hook logic. At high packet rates, this results in significant CPU overhead.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Connection Tracking}}: Netfilter's connection tracking is essential for stateful firewalling and NAT. It maintains a \textbf{hash table of active connections, tracking their state and metadata}. For TCP, it tracks sequence numbers, ACK numbers, and connection states. For UDP, it tracks source/destination IPs and ports. This \textbf{allows Netfilter to make informed decisions based on connection state} (e.g., allow established connections while blocking new ones). However, maintaining this state incurs \textbf{overhead}, \textbf{especially for high connection rates or long-lived connections}. Connection tracking can also lead to memory pressure if there are many active connections, as each connection entry consumes kernel memory.

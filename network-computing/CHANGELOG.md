@@ -32,6 +32,10 @@
   - add `Compute Express Link (CXL)`
   - add `NIC Driver`
   - add `The sk_buff (Socket Buffer)`
+  - add `The Linux Network Stack`
+    - add `Generic Receive Offload (GRO)`
+    - add `Netfilter`
+    - add `TCP/IP Stack`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

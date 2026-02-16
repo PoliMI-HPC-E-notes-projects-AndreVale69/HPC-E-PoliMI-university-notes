@@ -1,0 +1,31 @@
+\subsection{Compute Express Link (CXL)}
+
+In general, NIC speeds have been increasing faster than CPU speeds, which has led to the \textbf{need for faster interconnects between the CPU and the NIC}. In other words, the interconnect latency is orders of magnitude larger than packet transmission time, which is a \textbf{problem} for high-performance applications.
+
+\highspace
+To address this issue, the \definition{Compute Express Link (CXL)} has been developed as a \textbf{high-speed interconnect standard} with the goal of \hl{replacing, or evolving from, the PCIe standard}. It uses the \textbf{same physical layer and form factor as PCIe}, and provides a \textbf{backward compatible} interface (i.e., it can be used with existing PCIe devices).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Improvements over PCIe}}
+\end{flushleft}
+CLX offers two main improvements over PCIe:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item \textbf{Lower Latency}: the PCIe minimum latency is around 400 ns, while CXL can achieve latencies as low as 200 ns, which is roughly a \hl{$2\times$ improvement}. CXL achieves this by simplifying some parts of the PCIe protocol, reducing the transaction overhead and optimizing memory semantics (i.e., allowing for more efficient memory access patterns).
+
+
+    \item \textbf{Cache Coherence (Major Conceptual Shift)}: \hl{CXL supports cache coherence}, which allows devices to share memory and maintain a consistent view of data across the system. This is a \textbf{significant improvement over PCIe}, which does not support cache coherence and requires software to manage data consistency manually. \hl{With CXL, devices can directly access each other's memory without needing to go through the CPU}, which can significantly reduce latency and improve performance for certain workloads (e.g., those that require frequent data sharing between the CPU and the NIC).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How CXL Works}}
+\end{flushleft}
+CLX creates a \textbf{cache-coherent domain} between the CPU cache/memory and the device side. So CPU caches and device updates stay consistent.
+\begin{enumerate}
+    \item \important{CPU performs a CXL read}. The CPU issues a \textbf{CXL read} to fetch \texttt{data}. Conceptually the \hl{same as PCIe} read, but under a coherent protocol.
+    \item \important{Data arrives and can be cached safely}. The \texttt{data} is returned and stored so the CPU can use it (typically cached).Up to here it \hl{still looks like PCIe}.
+    \item \important{CPU uses cached data during processing}. The CPU reads \texttt{data} from its cache while handling an input/request. This is where the \textbf{cache coherence} comes into play. Here, the CPU is allowed to rely on the cache \textbf{because coherence is enforced by CXL}. This is a \hl{major difference from PCIe}, where the CPU would have to ensure data consistency manually.
+    \item \important{If the device/NIC updates the data, CXL triggers cache invalidation}. The \hl{critical issue with PCIe} is that when a device updates data, the CPU's cache may contain stale information. It would then be up to the software to address this issue. \textbf{CXL solves this problem by automatically invalidating the CPU cache when the NIC updates the data}. Specifically, each device participates in the cache coherence protocol. When a device updates the data, the CPU's cached copy is invalidated or updated, depending on the coherence protocol. Thus, the CPU will not use stale data and will be notified of the change.
+\end{enumerate}
+In summary, \textbf{CXL is PCIe-like physically, but adds cache coherence}: CPU can cache device data, and if the device updates it, CXL ensurs correctness by triggering cache invalidation, avoiding expensive repeated ``re-reads'' that PCIe would require.

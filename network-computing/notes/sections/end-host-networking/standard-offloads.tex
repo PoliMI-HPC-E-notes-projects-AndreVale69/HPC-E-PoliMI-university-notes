@@ -1,0 +1,43 @@
+\subsection{Standard Offloads}
+
+We will continue our presentation of techniques to improve end-host networking performance. Before introducing kernel bypass techniques, which allow for very high performance, we will present another class of techniques that leverage CPU workload during packet processing: standard offloads.
+
+\begin{definitionbox}[: Standard Offloads]
+    \definition{Standard Offloads} are \textbf{hardware features implemented in modern NICs that offload common packet-processing tasks from the CPU to the NIC}, reducing per-packet processing overhead while preserving the traditional kernel networking stack.
+\end{definitionbox}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need standard offloads?}} The answer is simple. \textbf{Standard Offloads reduce the CPU workload per packet without bypassing or removing the kernel networking stack}. This allows applications to use the familiar socket API and benefit from the kernel networking stack's rich features while offloading certain tasks to the NIC for improved performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What are the common types of Standard Offloads?}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Checksum Offload}: The \textbf{NIC computes the checksum} for outgoing packets and \textbf{verifies the checksum} for incoming packets, reducing CPU overhead for these operations.
+
+    \highspace
+    Traditionally, the CPU computes TCP/IP checksum for each packet and verifies it for incoming packets. With checksum offload, the NIC takes care of these tasks, allowing the CPU to focus on other processing tasks.
+    
+    
+    \item \definition{TCP Segmentation Offload (TSO)}: The \textbf{NIC handles the segmentation of large TCP packets} into smaller segments that fit the Maximum Transmission Unit (MTU) of the network. This allows applications to send larger data chunks, reducing the number of packets and CPU overhead for segmentation. TSO reduces Packets Per Second (PPS) seen by the CPU, improving performance for high-throughput applications.
+
+    \highspace
+    The problem is that MTU limits the size of packets that can be transmitted over the network. But TCP may generate large data chunks that exceed the MTU. \textcolor{Red2}{\faIcon{times}} Without TSO, the CPU must split large buffers into MTU-sized segments, constructs many TCP headers, and sends many packets. \textcolor{Green3}{\faIcon{check}} With TSO, the CPU sends a large TCP segment to the NIC, and the NIC takes care of splitting it into MTU-sized segments (and adding the necessary TCP headers), reducing CPU overhead and improving performance.
+    
+    
+    \item \definition{UDP Fragmentation Offload (UFO)}: \textbf{Similar to TSO, but for UDP packets}. The NIC handles the fragmentation of large UDP packets into smaller segments that fit the MTU, reducing CPU overhead for fragmentation.
+    
+    
+    \item \definition{Large Receive Offload (LRO)}: The \textbf{NIC aggregates multiple incoming packets} into a larger buffer before passing it to the CPU, reducing the number of interrupts and CPU overhead for processing incoming packets.
+    
+    \highspace
+    It is the opposite of TSO. Without LRO, the CPU processes each received TCP segment individually, which can lead to high CPU overhead for high-throughput applications. With LRO, the NIC merges multiple incoming TCP segments into a larger buffer and passes it to the CPU as a single packet, reducing the number of interrupts and CPU overhead for processing incoming packets.
+
+    \highspace
+    This technique is particularly beneficial for applications that receive a high volume of small packets, as it reduces the number of interrupts and context switches, improving overall performance and reducing Packets Per Second (PPS) seen by the CPU.
+\end{itemize}
+These standard offloads are helpful because the packet processing cost is often per-packet, meaning that the CPU overhead is proportional to the number of packets processed. By offloading tasks like checksum computation, segmentation, and aggregation to the NIC, we can significantly reduce the Packets Per Second (PPS) that the CPU needs to handle, improving performance for high-throughput applications while still using the traditional kernel networking stack.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations.}} Although standard offloads can reduce CPU overhead for certain tasks, they do \textbf{not eliminate kernel overhead} for packet processing, \textbf{memory copies}, or the \textbf{interrupt-driven processing model}. Therefore, they are optimizations, not architectural shifts.

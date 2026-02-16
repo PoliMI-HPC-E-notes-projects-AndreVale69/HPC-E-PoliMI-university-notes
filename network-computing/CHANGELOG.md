@@ -26,6 +26,10 @@
   - add `Multi-Queue NICs`
   - add `Receive-Side Scaling (RSS)`
   - add `Advanced Receive Flow Steering (aRFS)`
+  - add `Data Direct I/O (DDIO)`
+  - add `Standard Offloads`
+  - add `PCIe`
+  - add `Compute Express Link (CXL)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

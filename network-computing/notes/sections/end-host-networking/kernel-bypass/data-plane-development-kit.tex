@@ -1,0 +1,68 @@
+\subsubsection{Data Plane Development Kit (DPDK)}
+
+\definition{Data Plane Development Kit (DPDK)} is a set of user-space \textbf{libraries and drivers} that allow applications to \textbf{process packets directly from the NIC without using the kernel} networking stack.
+
+\highspace
+DPDK does three fundamental things:
+\begin{enumerate}
+    \item Uses \textbf{user-space drivers} (poll-mode drivers) to bypass the kernel and access the NIC directly.
+    \item Maps NIC DMA memory directly into user-space. It means that applications can access the NIC's memory directly without copying data between kernel and user space.
+    \item Uses a \textbf{polling model} instead of interrupts to process packets.
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{User-Space Drivers (Poll-Mode Drivers)}}
+\end{flushleft}
+In a traditional kernel-based networking stack, the NIC driver operates in kernel space and uses interrupts to notify the CPU when packets arrive (see \autopageref{sec:interrupt-mitigation-strategies}). In contrast, DPDK uses \textbf{poll-mode drivers (PMDs)} that run in user space and continuously poll the NIC for incoming packets. This approach eliminates completely the \texttt{sk\_buff} structure, the kernel socket layer and interrupts. So the application continuously polls the RX ring, directly reads descriptors, and processes packets as they arrive.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Hugepages \& Direct Memory Access (DMA)}}
+\end{flushleft}
+DPDK uses \textbf{hugepages} to allocate large contiguous blocks of memory that can be directly accessed by the NIC via Direct Memory Access (DMA). They are very large memory pages (e.g., 2MB or 1GB) that reduce TLB misses (i.e., the overhead of translating virtual addresses to physical addresses), reduce page table overhead, improve DMA efficiency, and provide physically contiguous memory for the NIC. By \textbf{mapping this memory directly into user space}, \hl{DPDK allows applications to read and write packet data directly from/to the NIC without copying data between kernel and user space}, significantly improving performance (zero kernel-to-user copying).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Polling Model (No Interrupts)}}
+\end{flushleft}
+DPDK uses a \textbf{polling model} instead of interrupts to process packets. The application continuously polls the Network Interface Controller (NIC) for new packets, eliminating the overhead associated with handling interrupts and context switches. This technique can also be adopted in kernel-space drivers (e.g., NAPI); however, \hl{DPDK's user-space implementation allows for even lower latency and higher throughput by bypassing the kernel entirely}. However, in this case, \hl{a CPU core must be dedicated to polling the NIC}, which can lead to increased CPU usage and power consumption. Therefore, DPDK is typically used in scenarios where high performance is critical and the workload justifies dedicating CPU resources to packet processing, such as in high-frequency trading and network function virtualization.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{What DPDK Eliminates}}
+\end{flushleft}
+By using DPDK, applications can bypass the entire kernel networking stack. This means that DPDK eliminates:
+\begin{itemize}
+    \item \texttt{sk\_buff} structure and associated overhead.
+    \item Netfilter and other kernel-level packet processing modules.
+    \item Kernel TCP/IP stack and its associated overhead.
+    \item System calls for packet processing (e.g., \texttt{recvfrom}, \texttt{sendto}).
+    \item Interrupt handling overhead, since DPDK uses polling instead of interrupts.
+\end{itemize}
+\textcolor{Red2}{\faIcon{times-circle} \textbf{What DPDK does NOT eliminate.}} DPDK does not remove:
+\begin{itemize}
+    \item \textbf{PCIe bus communication} between the CPU and the NIC, which still incurs some latency.
+    \item \textbf{DMA operations}, which can still introduce latency, although DPDK optimizes this with hugepages.
+    \item \textbf{Memory bandwidth limitations}, as the CPU and NIC still need to access memory to read/write packet data.
+    \item \textbf{Cache effects}, as the CPU's cache may still be involved in processing packets, although DPDK's design minimizes this overhead.
+\end{itemize}
+It removes \textbf{software stack overhead}, not hardware communication overhead.
+
+\highspace
+The \textbf{main problem} with DPDK is that bypassing the kernel means \textbf{giving up all the features it provides}, such as security, isolation, and energy efficiency. This requires implementing those features ourselves in user space. Additionally, DPDK is designed for high-performance applications requiring low latency and high throughput. However, it may not be suitable for general-purpose applications that do not require such performance levels.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l @{}}
+        \toprule
+        Traditional Stack & DPDK \\
+        \midrule
+        Flexible            & Specialized           \\[.2em]
+        Secure              & Less isolated         \\[.2em]
+        Energy-efficient    & CPU-hungry            \\[.2em]
+        Kernel-managed      & App-managed           \\[.2em]
+        Easy API            & Complex programming   \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between traditional kernel-based networking stack and DPDK.}
+\end{table}

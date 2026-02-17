@@ -103,7 +103,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=867640&aa=2024&lang=IT&jaf_currentWFID=main" target="_blank">Antichi Gianni</a></td>
         <td><ul>
             <li><a href="network-computing">Course Details</a></li>
-            <li><a href="network-computing/notes/network-computing.pdf">PDF v0.8.0</a></li>
+            <li><a href="network-computing/notes/network-computing.pdf">PDF v1.0.0</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/network-computing-project">eBPF Project</a></li>
         </ul></td>
     </tr>

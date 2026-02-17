@@ -38,6 +38,7 @@
     - add `TCP/IP Stack`
   - add `Kernel Bypass`
     - add `Data Plane Development Kit (DPDK)`
+    - add `Remote Direct Memory Access (RDMA)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

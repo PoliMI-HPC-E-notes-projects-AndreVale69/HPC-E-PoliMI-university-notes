@@ -1,0 +1,39 @@
+\subsection{eBPF (Extended Berkeley Packet Filter)}
+
+In section \ref{sec:intro-ebpf-xdp} on \autopageref{sec:intro-ebpf-xdp}, we already discuss eBPF. Here, however, we add other details about hooks. For the eBPF definition and more, see section \ref{sec:intro-ebpf-xdp} on \autopageref{sec:intro-ebpf-xdp}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{eBPF Hooks}}
+\end{flushleft}
+eBPF programs can be attached to various hooks in the kernel, allowing them to execute in response to specific events. Some common eBPF hooks include:
+\begin{itemize}
+    \item \textbf{XDP (eXpress Data Path)}: see \autopageref{sec:xdp} for details. However, it is a hook that allows eBPF programs to run at the earliest possible point in the Linux networking receive path, directly in the network driver. Precisely, it is attached to the driver and \textbf{executed immediately after the NIC receives a packet} (after DMA), \textbf{before \texttt{sk\_buff} (SKB) allocation}.
+
+    Since it runs at the earliest point in the receive path, it has no full socket context, no TCP state, limited metadata, and no reassembly (i.e., it cannot see the full packet if it is fragmented). However, it can make decisions about the packet before any kernel processing occurs, making it ideal for high-performance use cases such as DDoS mitigation, load balancing, and packet filtering.
+
+
+    \item \definition{AF\_XDP} is a socket type that allows XDP programs to \textbf{redirect\break frames} (i.e., packets) \textbf{to a memory buffer in user space}. This allows to \textbf{bypass GRO, Netfilter, and the TCP/IP} stack, enabling high-performance packet processing in user space applications.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Since it is similar to DPDK, should we give up all the kernel features?}} It depends on the use case. AF\_XDP allows two modes of operation:
+    \begin{itemize}
+        \item \textbf{Zero-copy mode} allows user space applications to access packet data directly from the NIC's memory, bypassing the kernel entirely. This provides the highest performance but also means that the application must handle all aspects of packet processing, including parsing, filtering, and forwarding.
+        \item \textbf{Copy mode} allows packets to be copied from the kernel to user space, providing a more traditional socket interface while still benefiting from XDP's performance advantages. This mode allows applications to use familiar socket APIs while still achieving better performance than traditional sockets.
+    \end{itemize}
+    In summary, AF\_XDP provides a powerful way to leverage XDP's performance advantages while still allowing applications to choose the level of kernel involvement based on their specific requirements and use cases.
+
+
+    \item \textbf{TC (Traffic Control)}: TC is a hook that allows eBPF programs to run at the ingress and egress points of network interfaces.
+    
+    It is executed in the Netfilter layer, which means it runs after the SKB has been allocated, but before TCP/IP processing. This allows TC to perform more advanced traffic shaping and policing capabilities compared to XDP, but it also incurs more overhead due to the SKB allocation and processing.
+
+
+    \item \definition{SK\_SKB (Socket Buffer)}: This hook allows eBPF programs to run at various points in the socket buffer processing, such as when a packet is received or transmitted. It provides access to the full socket context, including TCP state and metadata, allowing for more complex packet processing and filtering. However, it also incurs more overhead compared to XDP and TC due to the additional processing involved in handling SKBs.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.3\textwidth]{img/ebpf-hooks.pdf}
+    \caption{eBPF Hooks in the Linux Kernel. \cite{network-computing-polimi}}
+    \label{fig:ebpf-hooks}
+\end{figure}

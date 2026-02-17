@@ -40,6 +40,7 @@
     - add `Data Plane Development Kit (DPDK)`
     - add `Remote Direct Memory Access (RDMA)`
     - add `Programmable NICs (SmartNICs)`
+  - add `eBPF (Extended Berkeley Packet Filter)`
 - add `Laboratories`
   - add `Introduction to P4 Programming`
     - add `P4 Ecosystem and Motivation`

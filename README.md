@@ -97,7 +97,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         </ul></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2024/2025</td>
         <td>Network Computing</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=867640&aa=2024&lang=IT&jaf_currentWFID=main" target="_blank">Antichi Gianni</a></td>

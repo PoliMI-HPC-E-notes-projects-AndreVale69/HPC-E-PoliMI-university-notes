@@ -22,6 +22,16 @@
   - add `Why TCP is Problematic in Datacenters`
   - add `DCTCP (Datacenter TCP)`
   - add `pFabric`
+- add `Paper Discussion: Fastpass`
+  - add `Motivation and Problem Context`
+  - add `Core Idea`
+  - add `Architecture`
+    - add `Timeslot Allocation`
+    - add `Path Selection`
+    - add `Fault Handling`
+    - add `Implementation Details`
+  - add `Key Results`
+  - add `Limitations`
 
 --------------------
 

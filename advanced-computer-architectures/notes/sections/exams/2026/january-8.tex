@@ -1,0 +1,1249 @@
+\section{Exams}
+
+\subsection{2026}
+
+\subsubsection{January 8}
+
+\subsubsection*{Exercise 1A - Scoreboard}
+
+\emph{\textbf{PART A:} Please consider the program in the table be executed on a CPU with dynamic scheduling based on \textbf{SCOREBOARD BASIC SCHEME} with the following assumptions and resources:
+\begin{itemize}
+    \item \textbf{Check for WAW hazards in the ISSUE stage;}
+    \item \textbf{No Forwarding;}
+    \item \textbf{2 LOAD/STORE Units (LDU1, LDU2) with latency 3 cycles;}
+    \item \textbf{1 FP Unit (FPU1) with latency 3 cycles;}
+    \item \textbf{1 ALU/BR Unit (ALU1) with latency 1 cycle.}
+\end{itemize}}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{I0:LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)} & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{I1:FADD \phantom{ }\$F4, \$F2, \$F6} &   &   &   &   &   &  \\
+        \code{I2:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)} &   &   &   &   &   &  \\
+        \code{I3:LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)} &   &   &   &   &   &  \\
+        \code{I4:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)} &   &   &   &   &   &  \\
+        \code{I5:ADDUI \$R6, \$R6, 4} &   &   &   &   &   &  \\
+        \code{I6:ADDUI \$R7, \$R7, 4} &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+    \caption*{\emph{Where I is the Issue stage, RR is the Read Operands stage, E is the Execute stage, WB is the Write Back stage.}}
+\end{table}
+\emph{Calculate the \textbf{CPI} of the program and draw the timing diagram showing the status of each instruction at each clock cycle.}
+
+\highspace
+\answer The scoreboard (\autopageref{section:scoreboard-dynamic-scheduling-algorithm}) allows out-of-order execution while maintaining program correctness by tracking hazards and resource usage. It is similar to Tomasulo's algorithm but lacks register renaming and forwarding mechanisms. So, \textbf{in-order issue} is enforced, there is no forwarding, and \textbf{out-of-order execution and commit} are allowed (which can introduce WAW and WAR hazards, since there's no register renaming).
+
+\highspace
+In a traditional pipeline, the Instruction Decode (ID) stage performs both decoding and operand fetching. But this assumes that operands are always available in the register file during the ID stage. However, with dynamic scheduling, operands might not be ready when an instruction is issued, leading to stalls if we wait for them to be fetched in the ID stage. So, the scoreboard splits the ID stage into two separate stages:
+\begin{itemize}
+    \item \textbf{Issue Stage}. It decodes the instruction, checks for structural hazards, and enforces in-order issue. If there are structural hazards, the instruction is stalled here.
+    \item \textbf{Read Operands Stage}. It waits for the operands to become available. It avoids RAW hazards by deferring opearnd reads until the register is no longer ``reserved'' by an active instruction writing to it. If there are RAW hazards, the instruction is stalled here. Since there is no forwarding, the instruction must wait until the writing instruction completes its Write Back stage.
+\end{itemize}
+So the \textbf{RAW} hazards are handled in the \textbf{Read Operands stage (RR)}, while \textbf{WAR} hazards are handled in the \textbf{Write Back stage (WB)}, \textbf{WAW} and \textbf{structural} hazards are handled in the \textbf{Issue stage (I)}. See \autoref{subsubsec:scoreboard-control-logic-and-stages} (\autopageref{subsubsec:scoreboard-control-logic-and-stages}) for more details on the scoreboard stages.
+
+\begin{enumerate}
+    \setcounter{enumi}{1}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 2
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item We do not consider the first cycle and the instruction \code{I0} because they are already filled in the table.
+        \item \code{I1} can be issued in cycle 2 because there are no structural hazards (\code{FPU1} is free) and no WAW hazards (no previous instruction writes to \$F4). So, \code{I1} is in the Issue stage in cycle 2.
+        \item Since \code{I1} is issued, it reserves the unit \code{FPU1} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & \hl{2} &   &   &   &   & \hl{\texttt{FPU1}} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    &   &   &   &   &   &  \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   &   &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 3
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I1} would like to read its operands in cycle 3, but it cannot because of a RAW hazard on \$F2 (it is being written by \code{I0} which has not yet completed its Write Back stage). So, \code{I1} is stalled until cycle 6 (inclusive), when \code{I0} completes its Write Back stage.
+        \item \code{I2} can be issued in cycle 3 because there are no structural hazards (\code{LDU2} is free) and no WAW hazards (no previous instruction writes to \$F4). So, \code{I2} is in the Issue stage in cycle 3.
+        \item Since \code{I2} is issued, it reserves the unit \code{LDU2} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 &   &   &   & \hl{RAW \texttt{\$F2} \texttt{I0}} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & \hl{3}  &   &   &   &   & \hl{\texttt{LDU2}} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   &   &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 4
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I1} is still stalled in the Read Operands stage due to the RAW hazard on \$F2.
+        \item \code{I2} would like to read its operands in cycle 4, but it cannot because of a RAW hazard on \$F4 (it is being written by \code{I1} which has not yet completed its Write Back stage). So, \code{I2} is stalled until cycle 9 (inclusive), when \code{I1} completes its Write Back stage.
+        \item *\code{I3} would like to be issued in cycle 4, but it cannot because of a \textbf{structural hazard} on \code{LDU1} (it is being used by \code{I0}) and a \textbf{WAW hazard} on \$F4 (it is being written by \code{I1} which has not yet completed its Write Back stage). So, \code{I3} is stalled.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 &   &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & \hl{RAW \texttt{\$F4} \texttt{I1}} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   & \hl{*STR/WAW} &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 7
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{6}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Now \code{I1} can read its operands in cycle 7, since the RAW hazard on \$F2 has been resolved (it was written back by \code{I0} in cycle 6). So, \code{I1} is in the Read Operands stage in cycle 7.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & \hl{7} &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   & STR/WAW &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 12
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{11}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item We skip to cycle 12, but in cycle 10 the execution of \code{I1} completes and in cycle 11 it writes back its result, resolving the RAW hazard on \$F4 for \code{I2}. So, in cycle 12 \code{I2} can read its operands. So, \code{I2} is in the Read Operands stage in cycle 12.
+        \item \code{I3} can now be issued because the WAW hazard on \$F4 has been resolved (it was written back by \code{I1} in cycle 11) and there are no structural hazards (\code{LDU1} is free since \code{I0} completed its Write Back stage in cycle 6). So, \code{I3} is in the Issue stage in cycle 12.
+        \item Since \code{I3} is issued, it reserves the unit \code{LDU1} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 &    &    & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 &    &    &    & STR/WAW & \hl{\texttt{LDU1}} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    &    &    &    &    & &  \\
+        \code{ADDUI \$R6, \$R6, 4}                        &    &    &    &    & &  \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 13
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} reads its operands in cycle 13, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I3} is in the Read Operands stage in cycle 13.
+        \item \code{I4} would like to be issued in cycle 13, but it cannot because of a \textbf{structural hazard} on \code{LDU2} (it is being used by \code{I2}).
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 &    &    & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & \hl{13} &    &    & STR/WAW & \hl{\texttt{LDU1}} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    &    &    &    &    & \hl{STR \texttt{\$F4} \texttt{I3}} &  \\
+        \code{ADDUI \$R6, \$R6, 4}                        &    &    &    &    & &  \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 17
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{16}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} execution completes in cycle 16 and it writes back its result in cycle 17.
+        \item \code{I4} can now be issued because the structural hazard on \code{LDU2} has been resolved (it was freed by \code{I2} which completed its Write Back stage in cycle 16). So, \code{I4} is in the Issue stage in cycle 17.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & \hl{17} & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & \hl{17} &    &    &    & STR \texttt{\$F4} \texttt{I3} & \hl{\texttt{LDU2}} \\
+        \code{ADDUI \$R6, \$R6, 4}                        &    &    &    &    & &  \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 18
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} reads its operands in cycle 18, since there is no RAW hazard on its \$R7 (it is not being written by any active instruction). So, \code{I4} is in the Read Operands stage in cycle 18.
+        \item \code{I5} can be issued in cycle 18 because there are no structural hazards (\code{ALU1} is free) and no WAW hazards (no previous instruction writes to \$R6). So, \code{I5} is in the Issue stage in cycle 18.
+        \item Since \code{I5} is issued, it reserves the unit \code{ALU1} and the destination register \$R6.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & \hl{18} &    &    & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & \hl{18} &    &    &    & & \hl{\texttt{ALU1}} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &    &    &    &    & &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 19
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I5} reads its operands in cycle 19, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I5} is in the Read Operands stage in cycle 19.
+        \item \code{I6} cannot be issued in cycle 19 because of a \textbf{structural hazard} on \code{ALU1} (it is being used by \code{I5}).
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 &    &    & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & \hl{19} &    &    & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &  &    &    &    & \hl{STR \texttt{ALU1}} &  \\
+        \bottomrule
+    \end{tabular}
+
+    \newpage
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 21
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{20}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} completes its execution in cycle 20.
+        \item \code{I5} writes back its result in cycle 21, freeing up \code{ALU1}. There are no WAR hazards on \$R6 since no active instruction reads from it, so there are no stalls.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 & \hl{21} &    & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & 19 & 20 & \hl{21} & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &  &    &    &    & STR \texttt{ALU1} &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 22
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} writes back its result in cycle 22, freeing up \code{LDU2}. There are no WAR hazards on \$F4 since no active instruction reads from it, so there are no stalls.
+        \item \code{I6} can now be issued because the structural hazard on \code{ALU1} has been resolved (it was freed by \code{I5} which completed its Write Back stage in cycle 21) and there are no WAW hazards (no previous instruction writes to \$R7). So, \code{I6} is in the Issue stage in cycle 22.
+        \item Since \code{I6} is issued, it reserves the unit \code{ALU1} and the destination register \$R7.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 & 21 & \hl{22} & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & 19 & 20 & 21 & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & \hl{22} &    &    &    & STR \texttt{ALU1} & \hl{\texttt{ALU1}} \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 25
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{24}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item The execution of \code{I6} completes in cycle 24 and it writes back its result in cycle 25.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1  & 2  & 5  & 6  & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2  & 7  & 10 & 11 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3  & 12 & 15 & 16 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 12 & 13 & 16 & 17 & STR/WAW & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 17 & 18 & 21 & 22 & STR \texttt{\$F4} \texttt{I3} & \texttt{LDU2} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 18 & 19 & 20 & 21 & & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & 22 & 23 & 24 & 25 & STR \texttt{ALU1} & \texttt{ALU1} \\
+        \bottomrule
+    \end{tabular}
+\end{enumerate}
+The \textbf{CPI} (Cycles Per Instruction) can be calculated as follows:
+\begin{equation*}
+    \text{CPI} = \dfrac{\# \, \text{clock cycles}}{\# \, \text{instructions}} = \dfrac{25}{7} \approx 3.57
+\end{equation*}
+
+\longline
+
+\subsubsection*{Exercise 1B - Scoreboard}
+
+\emph{\textbf{PART B:} Please consider the introduction of the following \textbf{Optimizations:}
+\begin{itemize}
+    \item \textbf{Check for WAW postponed to the WRITE BACK phase;}
+    \item \textbf{Forwarding;}
+\end{itemize}}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{I0:LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)} & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{I1:FADD \phantom{ }\$F4, \$F2, \$F6} &   &   &   &   &   &  \\
+        \code{I2:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)} &   &   &   &   &   &  \\
+        \code{I3:LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)} &   &   &   &   &   &  \\
+        \code{I4:SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)} &   &   &   &   &   &  \\
+        \code{I5:ADDUI \$R6, \$R6, 4} &   &   &   &   &   &  \\
+        \code{I6:ADDUI \$R7, \$R7, 4} &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+    \caption*{\emph{Where I is the Issue stage, RR is the Read Operands stage, E is the Execute stage, WB is the Write Back stage.}}
+\end{table}
+\emph{\textbf{Fill the following table} indicating, for each cycle, which instruction is in which stage, and which hazards (if any) are present. Highlight the stalls caused by hazards. Finally, compute the \textbf{CPI} (Cycles Per Instruction) achieved with these optimizations and the \textbf{speedup} with respect to the previous case (without optimizations).}
+
+\highspace
+\answer With respect to Exercise 1A, here we have two optimizations: (1) WAW hazard checks are postponed to the Write Back stage, so instructions can be issued even if there is a WAW hazard; (2) Forwarding is implemented, so RAW hazards can be resolved earlier during the Execute stage instead of waiting for the Write Back stage. About forwarding, it simply means that when an instruction produces a result, that result can be forwarded directly to a subsequent instruction that needs it, without waiting for the first instruction to write it back to the register file.
+
+\highspace
+In the following tables, we do not report all cycles, but only the ones where the optimizations have an effect.
+\begin{enumerate}
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 6
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{5}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item In the cycle 6, \code{I1} was stalled in the Read Operands stage due to the RAW hazard on \$F2. But now, with forwarding, \code{I1} can read its operand \$F2 directly from the output of \code{I0} during its Execute stage (cycle 5), instead of waiting for \code{I0} to write it back in cycle 6. So, \code{I1} can read its operands in cycle 6. It anticipates the Write Back of \code{I0} by one cycle.
+        \item \code{I3} cannot be issued in cycle 6 because of a \textbf{structural hazard} on \code{LDU1} (it is being used by \code{I0}). However, there is no WAW hazard on \$F4 because WAW checks are postponed to the Write Back stage. This will allow \code{I3} to be issued earlier in a later cycle.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & \hl{6} &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    &   &   &   &   & \hl{STR \texttt{LDU1}} &  \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 7
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item Thanks to WAW checks being postponed to the Write Back stage, \code{I3} can now be issued in cycle 7, even if there is a WAW hazard on \$F4 with \code{I1}. So, \code{I3} is in the Issue stage in cycle 7.
+        \item Since \code{I3} is issued, it reserves the unit \code{LDU1} and the destination register \$F4.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & 6 &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    & \hl{7} &   &   &   & STR \texttt{LDU1} & \hl{\texttt{LDU1}} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   &   &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 8
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} reads its operands in cycle 8, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I3} is in the Read Operands stage in cycle 8.
+        \item \code{I4} cannot be issued in cycle 8 because of a \textbf{structural hazard} on \code{LDU2} (it is being used by \code{I2}). \code{I4} chooses the FU \code{LDU2} because is the least recently used among the two load/store units.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & 6 &   &   & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 &   &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & \hl{8} &   &   & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   & \hl{STR \texttt{LDU2}} &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+    \newpage
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 10
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{9}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I1} completes its execution in cycle 9 and it writes back its result in cycle 10.
+        \item \code{I2} can now read its operands in cycle 10, since there is forwarding and it can get the value of \$F4 directly from the output of \code{I1} during its Write Back stage (cycle 10), instead of waiting for \code{I1} to write it back in cycle 11. So, \code{I2} is in the Read Operands stage in cycle 10.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \phantom{ }\$F4, \$F2, \$F6}                      & 2 & 6 & 9  & \hl{10} & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & \hl{10} &   &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 &   &   & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\phantom{ }\$F4, VC(\$R7)}    &   &   &   &   & STR \texttt{LDU2} &  \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 13
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{12}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I3} completes its execution in cycle 11 and it writes back its result in cycle 12. There is a WAW hazard on \$F4 with \code{I1}, but since WAW checks are postponed to the Write Back stage, \code{I3} can write back its result in cycle 12 without stalls (\code{I1} already wrote back in cycle 10, so there is no conflict).
+        \item \code{I4} can now read its operands in cycle 13, since there is no more structural hazard on \code{LDU2} (it was freed by \code{I2} which completed its Execute stage in cycle 12). So, \code{I4} is in the Read Operands stage in cycle 13.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & \hl{13} &   & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & \hl{13} &   &   &   & STR \texttt{LDU2} & \hl{\texttt{LDU1}} \\
+        \code{ADDUI \$R6, \$R6, 4}                                   &   &   &   &   &   &  \\
+        \code{ADDUI \$R7, \$R7, 4}                                   &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 14
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I2} completes its execution in cycle 13 and it writes back its result in cycle 14.
+        \item \code{I4} reads its operands in cycle 14, since there is no RAW hazard on its \$R6 (it is not being written by any active instruction). So, \code{I4} is in the Read Operands stage in cycle 14.
+        \item \code{I5} starts its Issue stage in cycle 14. There are no structural hazards.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & \hl{14} & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & \hl{14} &   &   & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & \hl{14} &   &   &   &   & \hl{\texttt{ALU1}} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &   &   &   &   &   &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 15
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I5} reads its operands in cycle 15, since there are no RAW hazards on its source register \$R6 (it is not being written by any active instruction). So, \code{I5} is in the Read Operands stage in cycle 15.
+        \item \code{I6} cannot be issued in cycle 15 because of a \textbf{structural hazard} on \code{ALU1} (it is being used by \code{I5}).
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & 14 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & 14 &   &   & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 14 & \hl{15} &   &   &   & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        &   &   &   &   & \hl{STR \texttt{ALU1}} &  \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 18
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item \code{I4} completes its execution in cycle 17 and it writes back its result in cycle 18.
+        \item \code{I6} can now be issued because the structural hazard on \code{ALU1} has been resolved (it was freed by \code{I5} which completed its Execute stage in cycle 17). So, \code{I6} is in the Issue stage in cycle 18.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & 14 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & 14 & 17 & \hl{18} & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 14 & 15 & 16 & 17 &   & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & \hl{18} &   &   &   & STR \texttt{ALU1} & \hl{\texttt{ALU1}} \\
+        \bottomrule
+    \end{tabular}
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    % Cycle 21
+    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \setcounter{enumi}{20}
+    \item \textbf{Cycle \theenumi}
+    \begin{itemize}
+        \item The execution of \code{I6} completes in cycle 20 and it writes back its result in cycle 21.
+    \end{itemize}
+    \begin{tabular}{@{} l c c c c c c @{}}
+        \toprule
+        \textbf{Instruction} & \textbf{I} & \textbf{RR} & \textbf{E} & \textbf{WB} & \textbf{Hazards Type} & \textbf{Unit} \\
+        \midrule
+        \code{LD \phantom{ }\phantom{ }\$F2, VB(\$R6)}    & 1 & 2 & 5 & 6 & & \code{LDU1} \\
+        \code{FADD \$F4, \$F2, \$F6}                      & 2 & 6 & 9  & 10 & RAW \texttt{\$F2} \texttt{I0} & \texttt{FPU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VA(\$R7)}    & 3 & 10 & 13 & 14 & RAW \texttt{\$F4} \texttt{I1} & \texttt{LDU2} \\
+        \code{LD \phantom{ }\phantom{ }\$F4, VC(\$R6)}    & 7 & 8 & 11 & 12 & STR \texttt{LDU1} & \texttt{LDU1} \\
+        \code{SD \phantom{ }\phantom{ }\$F4, VC(\$R7)}    & 13 & 14 & 17 & 18 & STR \texttt{LDU2} & \texttt{LDU1} \\
+        \code{ADDUI \$R6, \$R6, 4}                        & 14 & 15 & 16 & 17 &   & \texttt{ALU1} \\
+        \code{ADDUI \$R7, \$R7, 4}                        & 18 & 19 & 20 & 21 & STR \texttt{ALU1} & \texttt{ALU1} \\
+        \bottomrule
+    \end{tabular}
+\end{enumerate}
+The \textbf{CPI} (Cycles Per Instruction) can be calculated as follows:
+\begin{equation*}
+    \text{CPI} = \dfrac{\# \, \text{clock cycles}}{\# \, \text{instructions}} = \dfrac{21}{7} = 3
+\end{equation*}
+The \textbf{speedup} with respect to the previous case (without optimizations) is:
+\begin{equation*}
+    \text{Speedup} = \dfrac{\text{CPI}_{\text{old}}}{\text{CPI}_{\text{new}}} = \dfrac{3.57}{3} \approx 1.19
+\end{equation*}
+So, with these optimizations, we achieve a speedup of approximately 1.19 times compared to the original implementation without optimizations, about a 19\% performance improvement.
+
+\longline
+
+\subsubsection*{Exercise 2 - VLIW Scheduling}
+
+\emph{Let's consider the following LOOP code, where \textbf{\texttt{\$Ri}} are integer registers and \textbf{\texttt{\$Fi}} are floating-point registers.}
+\begin{lstlisting}
+FOR:    LD $F2, VB ($R6)    # I0
+        FADD $F4, $F2, $F6  # I1
+        SD  $F4, VA ($R7)   # I2
+        LD  $F4, VC ($R6)   # I3
+        SD  $F4, VC ($R7)   # I4
+        FADD $F8, $F8, $F8  # I5
+        ADDUI $R6, $R6, 4   # I6
+        ADDUI $R7, $R7, 4   # I7
+        BNE $R7, $R8, FOR   # I8
+\end{lstlisting}
+\emph{Given a \textbf{3-issue VLIW} machine with \textbf{fully pipelined functional units:}
+\begin{itemize}
+    \item \textbf{1 Memory Unit with 3 cycles latency}
+    \item \textbf{1 FP ALUs with 3 cycles latency}
+    \item \textbf{1 Integer ALU with 1 cycle latency to next Int/FP/L/S \& 2 cycles latency to next Branch}
+\end{itemize}
+The branch is completed with 1 cycle delay slot (branch solved in ID stage). \textbf{No branch prediction}. In the Register File, it is possible to read and write at the same address at the same clock cycle. Considering one iteration of the loop, complete the following table by using the \textbf{list-based scheduling} (do NOT introduce any software pipelining, loop unrolling and modifications to loop indexes) on the 3-issue VLIW machine including the BRANCH DELAY SLOT. Please do not write in NOPs.}
+
+\newpage
+
+\noindent
+\emph{Let's complete the following table indicating, for each cycle, which instructions are issued in the VLIW:}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | c | c @{}}
+        \toprule
+        & \textbf{Integer ALU} & \textbf{Memory Unit} & \textbf{FP Unit} \\
+        \midrule
+        \textbf{C1} & & \code{LD \$F2, VB(\$R6)} & \\
+        \textbf{C2} & & & \\
+        \textbf{C3} & & & \\
+        \textbf{C4} & & & \\
+        \textbf{C5} & & & \\
+        \textbf{C6} & & & \\
+        \textbf{C7} & & & \\
+        \textbf{C8} & & & \\
+        \textbf{C9} & & & \\
+        \textbf{C10} & & & \\
+        \textbf{C11} & & & \\
+        \textbf{C12} & & & \\
+        \textbf{C13} & & & \\
+        \textbf{C14} & & & \\
+        \textbf{C15} & & & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\emph{And finally, answer the following questions:
+\begin{itemize}
+    \item How long is the critical path for a single iteration?
+    \item What performance did you achieve in FP ops per cycles?
+    \item How much is the code efficiency for a single iteration?
+    \item What CPI did you achieve?
+\end{itemize}}
+
+\highspace
+\answer To perform list-based scheduling for the given loop code on a 3-issue VLIW machine, we first need to draw the dependency graph for the instructions (see \autopageref{subsubsection: Dependence Graph and Critical Path}). In the following list, we indicate the dependencies between instructions:
+\begin{itemize}
+    \item RAW:
+    \begin{itemize}
+        \item \code{I1} depends on \code{I0} (reads \$F2 written by \code{I0})
+        \item \code{I2} depends on \code{I1} (reads \$F4 written by \code{I1})
+        \item \code{I4} depends on \code{I3} (reads \$F4 written by \code{I3})
+        \item \code{I8} depends on \code{I7} (reads \$R7 written by \code{I7})
+    \end{itemize}
+    \item WAR and WAW:
+    \begin{itemize}
+        \item \code{I3} has a WAW hazard with \code{I1} (both write to \$F4)
+        \item \code{I3} has a WAR hazard with \code{I2} (writes to \$F4 read by \code{I2})
+        \item \code{I6} has a WAR hazard with \code{I3} (writes to \$R6 read by \code{I3})
+        \item \code{I7} has a WAR hazard with \code{I4} (writes to \$R7 read by \code{I4}) and \code{I2} (writes to \$R7 read by \code{I2})
+    \end{itemize}
+\end{itemize}
+Using this information, we draw the dependency graph below.
+
+\begin{center}
+    \begin{tikzpicture}[node distance=1.7cm, >=stealth]
+        % Nodes
+        \node[circle, draw] (I0) {$I_{0}$};
+        \node[circle, draw, right=of I0] (I5) {$I_{5}$};
+        \node[circle, draw, below=of I0] (I1) {$I_{1}$};
+        \node[circle, draw, below=of I1] (I2) {$I_{2}$};
+        \node[circle, draw, right=of I2] (I3) {$I_{3}$};
+        \node[circle, draw, right=of I3] (I6) {$I_{6}$};
+        \node[circle, draw, below=of I2] (I7) {$I_{7}$};
+        \node[circle, draw, below=of I3] (I4) {$I_{4}$};
+        \node[circle, draw, below=of I7] (I8) {$I_{8}$};
+
+        % % Dashed Edges
+        \draw[dashed, ->] (I1) -- (I3) node[midway, sloped, above, inner sep=2pt] {\texttt{WAW \$F4}};
+        \draw[dashed, ->] (I2) -- (I3) node[midway, sloped, above, inner sep=2pt] {\texttt{WAR \$F4}};
+        \draw[dashed, ->] (I2) -- (I7) node[midway, left, inner sep=2pt] {\texttt{WAR \$R7}};
+        \draw[dashed, ->] (I3) -- (I6) node[midway, sloped, above, inner sep=2pt] {\texttt{WAR \$R6}};
+        \draw[dashed, ->] (I4) -- (I7) node[midway, sloped, above, inner sep=2pt] {\texttt{WAR \$R7}};
+
+        % % Solid Edges
+        \draw[->] (I0) -- (I1);
+        \draw[->] (I1) -- (I2);
+        \draw[->] (I3) -- (I4);
+        \draw[->] (I7) -- (I8);
+    \end{tikzpicture}
+\end{center}
+And the table is completed simply by scheduling the instructions while respecting the dependencies and the functional unit constraints (waiting for RAW hazards to be resolved and avoiding structural hazards):
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | c | c | c @{}}
+        \toprule
+        & \textbf{Integer ALU} & \textbf{Memory Unit} & \textbf{FP Unit} \\
+        \midrule
+        \textbf{C1}  & & \texttt{LD \$F2, VB(\$R6)} & \texttt{FADD \$F8, \$F8, \$F8} \\
+        \textbf{C2}  & & & \\
+        \textbf{C3}  & & & \\
+        \textbf{C4}  & & & \texttt{FADD \$F4, \$F2, \$F6} \\
+        \textbf{C5}  & & & \\
+        \textbf{C6}  & & & \\
+        \textbf{C7}  & & \texttt{SD \$F4, VA (\$R7)} & \\
+        \textbf{C8}  & \texttt{ADDUI \$R6, \$R6, 4} & \texttt{LD \$F4, VC (\$R6)} & \\
+        \textbf{C9}  & & & \\
+        \textbf{C10} & & & \\
+        \textbf{C11} & \texttt{ADDUI \$R7, \$R7, 4} & \texttt{SD \$F4, VC (\$R7)} & \\
+        \textbf{C12} &  & & \\
+        \textbf{C13} & \texttt{BLT \$R7, \$R8, FOR} & & \\
+        \textbf{C14} & \texttt{(delay)} & & \\
+        \textbf{C15} & & & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+The \texttt{BLT} instruction is placed in cycle 13 because the previous instruction (\code{I7}) takes 2 cycles instead of 1 to prepare for the branch, as specified in the problem statement. Additionally, a delay slot must be added in cycle 14 after the branch instruction, as required by the exercise.
+
+\highspace
+Now, we can answer the questions:
+\begin{itemize}
+    \item \emph{How long is the critical path for a single iteration?} It corresponds to the last instruction to complete its Write Back stage: \code{I8} in cycle 14. Therefore, the critical path is \textbf{14 cycles}.
+    
+    \item \emph{What performance did you achieve in FP ops per cycles?} There are 2 floating-point operations (\code{I1} and \code{I5}) completed in 14 cycles. Therefore, the performance is:
+    \begin{equation*}
+        \text{FP ops/cycle} = \dfrac{2 \, \text{ FP ops}}{14 \, \text{cycles}} \approx 0.14 \text{ FP ops/cycle}
+    \end{equation*}
+
+    \item \emph{How much is the code efficiency for a single iteration?} Code efficiency quantifies how well the issued instructions utilize the available issue slots. In our case, we have a 3-issue VLIW machine and we issued 9 instructions in 14 cycles (cycles C2, C3, C5, C6, C9, C10, and C12 are empty). Therefore, the code efficiency is:
+    \begin{equation*}
+        \text{Code Efficiency} = \dfrac{\text{Instruction Count}}{\text{\# cycles} \cdot \text{Issue Width}} = \dfrac{9}{14 \cdot 3} \approx 0.21
+    \end{equation*}
+
+    \item \emph{What CPI did you achieve?} The CPI (Cycles Per Instruction) can be calculated as follows:
+    \begin{equation*}
+        \text{CPI} = \dfrac{\# \, \text{clock cycles}}{\text{Instruction Count}} = \dfrac{14}{9} \approx 1.56
+    \end{equation*}
+\end{itemize}
+
+\newpage
+
+\subsubsection*{Exercise 3 - MESI Protocol}
+
+\emph{Let's consider the following access patterns on a dual processor system with a direct-mapped, write-back cache with one cache block per processor and a two cache block memory. Assume the \textbf{MESI protocol} is used, with \textbf{write-back} caches, \textbf{write-allocate}, and \textbf{write-invalidate} of other caches. Please complete the following table:}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | p{5em} | p{5em} | p{4em} | p{4em} @{}}
+        \toprule
+        \textbf{T} & \textbf{After Operation} & \textbf{P0 cache block state} & \textbf{P1 cache block state} & \textbf{Memory at block 0 up to date?} & \textbf{Memory at block 1 up to date?} \\
+        \midrule
+        0   & \texttt{P0: read block 1}  & Excl(1) & Invalid & Yes & Yes \\[.3em]
+        1   & \texttt{P1: write block 0} & & & & \\[.3em]
+        2   & \texttt{P0: write block 0} & & & & \\[.3em]
+        3   & \texttt{P1: read block 0}  & & & & \\[.3em]
+        4   & \texttt{P0: read block 1}  & & & & \\[.3em]
+        5   & \texttt{P1: read block 1}  & & & & \\[.3em]
+        6   & \texttt{P0: read block 1}  & & & & \\[.3em]
+        7   & \texttt{P1: write block 1} & & & & \\[.3em]
+        8   & \texttt{P0: read block 0}  & & & & \\[.3em]
+        9   & \texttt{P1: write block 1} & & & & \\[.3em]
+        10  & \texttt{P1: write block 1} & & & & \\[.3em]
+        11  & \texttt{P0: read block 1}  & & & & \\[.3em]
+        12  & \texttt{P1: write block 1} & & & & \\[.3em]
+        13  & \texttt{P0: write block 1} & & & & \\[.3em]
+        14  & \texttt{P1: read block 1}  & & & & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+\answer The MESI protocol (\autopageref{section: mesi-protocol}) is a cache coherence protocol used in multiprocessor systems to maintain consistency between caches. The four states in the MESI protocol are Modified (M, a cache line that has been modified and is different from main memory), Exclusive (E, a cache line that is present only in one cache and is the same as main memory), Shared (S, a cache line that may be present in multiple caches and is the same as main memory), and Invalid (I, a cache line that is not valid). Also, the cache uses:
+\begin{itemize}
+    \item \textbf{Write-Back} policy: data is written to main memory only when it is evicted from the cache. In MESI, this means that a cache line in the Modified state must be written back to memory before being invalidated or replaced.
+    \item \textbf{Write-Allocate} policy: on a write miss, the cache allocates a new cache line and loads the data from memory before performing the write.
+    \item \textbf{Write-Invalidate} policy: when a processor writes to a cache line, it invalidates that line in other caches to maintain coherence.
+\end{itemize}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l | p{5em} | p{5em} | p{4em} | p{4em} @{}}
+        \toprule
+        \textbf{T} & \textbf{After Operation} & \textbf{P0 cache block state} & \textbf{P1 cache block state} & \textbf{Memory at block 0 up to date?} & \textbf{Memory at block 1 up to date?} \\
+        \midrule
+        0   & \texttt{P0: read block 1}  & \texttt{Excl(1)}  & \texttt{Invalid}   & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        1   & \texttt{P1: write block 0} & \texttt{Excl(1)}  & \texttt{Mod(0)}    & \textcolor{Red2}{\faIcon{times}} No    & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        2   & \texttt{P0: write block 0} & \texttt{Mod(0)}   & \texttt{Invalid}   & \textcolor{Red2}{\faIcon{times}} No    & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        3   & \texttt{P1: read block 0}  & \texttt{Shr(0)}   & \texttt{Shr(0)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        4   & \texttt{P0: read block 1}  & \texttt{Excl(1)}  & \texttt{Excl(0)}   & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        5   & \texttt{P1: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        6   & \texttt{P0: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        7   & \texttt{P1: write block 1} & \texttt{Invalid}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        8   & \texttt{P0: read block 0}  & \texttt{Excl(0)}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        9   & \texttt{P1: write block 1} & \texttt{Excl(0)}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        10  & \texttt{P1: write block 1} & \texttt{Excl(0)}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        11  & \texttt{P0: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\[.3em]
+        12  & \texttt{P1: write block 1} & \texttt{Invalid}  & \texttt{Mod(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        13  & \texttt{P0: write block 1} & \texttt{Mod(1)}   & \texttt{Invalid}   & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\[.3em]
+        14  & \texttt{P1: read block 1}  & \texttt{Shr(1)}   & \texttt{Shr(1)}    & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Where \texttt{Mod(x)} indicates that the cache block x is in the Modified state, \texttt{Excl(x)} indicates that the cache block x is in the Exclusive state, \texttt{Shr(x)} indicates that the cache block x is in the Shared state, and \texttt{Invalid} indicates that the cache block is in the Invalid state. For reference on state transitions, see the complete finite state machine (FSM) for the MESI protocol on \autopageref{fig: mesi-finite-state-machine}.
+
+\newpage
+
+\subsubsection*{Question 1: Cache Coherence Protocols}
+
+\emph{Let's consider the SNOOPING and the DIRECTORY-BASED protocols used to maintain the cache coherence in modern multiprocessor. Answer the following questions:}
+\begin{itemize}
+    \item \emph{Explain the main characteristics of each protocol.}
+    
+    \answer (see \autopageref{sec:snooping-bus-based-protocols} for snooping protocols and \autopageref{sec:directory-based-protocols} for directory-based protocols)
+    \begin{itemize}
+        \item \important{Snooping Protocols} are \textbf{cache coherence protocols based on broadcast communication}. Each cache controller \textbf{monitors\break (snoops)} all coherence transactions issued on a \textbf{shared communication medium} (typically a bus or a broadcast interconnect). The main characteristics include:
+        \begin{itemize}
+            \item \textbf{All coherence requests are broadcast} to all caches.
+            \item Each cache independently checks whether it has a copy of the block.
+            \item Coherence actions (invalidate / update) are taken locally.
+            \item No centralized state is maintained.
+        \end{itemize}
+        \item \important{Directory-Based Protocols} are \textbf{cache coherence protocols\break based on centralized or distributed directories} that \textbf{track the sharing state of each memory block}. For each memory block, a \textbf{directory entry} records:
+        \begin{itemize}
+            \item Which processors currently cache the block.
+            \item The coherence state (e.g., shared, exclusive).
+        \end{itemize}
+        Main characteristics include:
+        \begin{itemize}
+            \item Coherence requests are \textbf{sent to the directory}, not broadcast.
+            \item The directory \textbf{selectively notifies only the caches involved}.
+            \item Supports \textbf{point-to-point communication}.
+            \item Eliminates unnecessary broadcasts.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \emph{For which type of multiprocessor architecture is each protocol suitable for?}
+
+    \answer
+    \begin{itemize}
+        \item \important{Snooping protocol} is suitable for \textbf{small-scale centralized shared\break -memory multiprocessors (SMPs)}. In these architectures, processors share a \textbf{single logical memory}, a \textbf{broadcast interconnect} (like a bus) is available, and the number of processors is relatively small (typically up to 16 or 32). The use of broadcast allows every cache to observe coherence requests, but the approach \textbf{does not scale} due to increasing traffic and contention on the bus as the number of processors increases.
+        
+        \item \important{Directory-based protocol} is suitable for \textbf{large-scale distributed shared-memory multiprocessors}, including \textbf{NUMA and distributed shared-memory systems}. In these architectures, the memory is \textbf{physically distributed}, a coherence is enforced using \textbf{point-to-point messages}, and the directory tracks which processors cache each memory block. This approach avoids broadcast and therefore \textbf{scales well with the number of processors}. It is suitable for systems with a large number of processors (hundreds or thousands) where snooping would be impractical due to high communication overhead.
+    \end{itemize}
+
+
+    \item \emph{What are the \textbf{main benefits} of each protocol?}
+
+    \answer
+    \begin{itemize}
+        \item \important{Benefits of Snooping Protocols}:
+        \begin{itemize}
+            \item \textbf{Simplicity}, since no centralized structure is required.
+            \item \textbf{Low coherence latency}, thanks to immediate broadcast visibility.
+            \item \textbf{Fast detection of coherence events}, as every cache observes all requests.
+            \item \textbf{Low protocol overhead} for small-scale systems.
+        \end{itemize}
+        In short, snooping is \hl{simple}, \hl{low latency}, \hl{broadcast visibility}, and \hl{good for small systems}.
+        
+        \item \important{Benefits of Directory-Based Protocols}:
+        \begin{itemize}
+            \item \textbf{High scalability}, since broadcast is avoided.
+            \item \textbf{Reduced coherence traffic}, due to targeted point-to-point messages.
+            \item \textbf{Efficient bandwidth usage}, especially in large systems.
+            \item \textbf{Support} for \textbf{physically distributed memory} architectures.
+        \end{itemize}
+        In short, directory-based protocols are \hl{scalable}, \hl{no broadcast}, \hl{targeted communication}, and \hl{good for large/NUMA systems}.
+    \end{itemize}
+
+
+    \item \emph{Explain the \textbf{two types} of Snooping protocol depending on what happens on a write operation.}
+    
+    \answer (see \autopageref{sec:write-invalidate-vs-write-update})
+    \begin{itemize}
+        \item \important{Write-Invalidate Protocol}. When a processor writes to a shared cache block, it \textbf{invalidates all other cached copies} of that block. Mechanism:
+        \begin{enumerate}
+            \item The writing processor issues an \textbf{invalidate request} on the bus.
+            \item All other caches \textbf{snoop} the bus and \textbf{invalidate} their local copies of the block if they have it.
+            \item The writing processor then obtains \textbf{exclusive ownership} and can update the block locally.
+        \end{enumerate}
+        This approach allows \textbf{multiple readers but only one writer}. Subsequent writes by the same processor do \textbf{not generate bus traffic} and reduces coherence traffic for repeated writes.
+        \item \important{Write-Update (or Write-Broadcast) Protocol}. When a processor writes to a shared cache block, it \textbf{broadcast the new data value} to all other caches. Mechanism:
+        \begin{enumerate}
+            \item The writing processor places the \textbf{updated value} on the bus.
+            \item All caches \textbf{snoop} the write.
+            \item Caches that hold the block \textbf{update their local copy} with the new value.
+        \end{enumerate}
+        This approach allows to keep all cached copies \textbf{consistent at all times}, but generates \textbf{bus traffic on every write}. It is suitable when shared data are frequently read by many processors after each write.
+    \end{itemize}
+
+
+    \item \emph{What are the possible \textbf{coherence states} of a block in the home directory and the meaning of the \textbf{sharer bits}?}
+
+    \answer (see \autopageref{ques:what-is-stored-in-directory}) In a \textbf{directory-based cache coherence protocol}, each memory block has an associated \textbf{directory entry} stored at its \textbf{home node}. The directory entry records the \textbf{coherence state of the block} and a set of \textbf{sharer bits}.
+    
+    \important{Coherence states in the home directory.} A directory typically maintains \textbf{three coherence states} for each block:
+    \begin{enumerate}
+        \item \textbf{Uncached (U)} (or \textbf{Invalid}). The block is \textbf{not cached in any processor} and the memory holds the only valid copy.
+        \item \textbf{Shared (S)}. The block is cached by \textbf{multiple processors} and all cached copies are \textbf{read-only}. The memory contains an up-to-date copy.
+        \item \textbf{Modified (M)}. The block is cached by \textbf{exactly one processor} and that processor has \textbf{write permission}. The memory may be \textbf{out-of-date} if the cached copy has been modified.
+    \end{enumerate}
+
+    \important{Sharer bits.} The \textbf{sharer bits} are a bit-vector associated with each directory entry. Each bit corresponds to a processor (or cache) in the system. The meaning of the sharer bits is:
+    \begin{itemize}
+        \item A bit is set to \textbf{1} if the corresponding processor currently \textbf{caches a copy} of the block.
+        \item A bit is set to \textbf{0} if the corresponding processor does \textbf{not cache} the block.
+    \end{itemize}
+    The sharer bits allow the directory to send \textbf{targeted invalidations} and \textbf{update or recall messages} only to the processors that currently cache the block, avoiding broadcast communication. So, these bits are essential for scalability (avoiding broadcast), point-to-point communication, and efficiency in large multiprocessor systems.
+\end{itemize}
+
+\newpage
+
+\subsubsection*{Question 2: Dynamic Branch Prediction}
+
+\emph{Let's consider the Dynamic Branch Prediction techniques used in modern microprocessors. Answer to the following questions:}
+\begin{itemize}
+    \item \emph{What are the \textbf{main benefits} to introduce the \textbf{dynamic branch prediction} in a modern microprocessor?}
+
+    \answer (see \autopageref{def:dynamic-branch-prediction}) Dynamic branch prediction is introduced in modern microprocessors to \textbf{reduce the performance penalties caused by control hazards} (i.e., branch instructions that can change the flow of execution) and to \textbf{enable aggressive exploitation of Instruction-Level Parallelism (ILP)}. The main benefits are:
+    \begin{enumerate}
+        \item \textbf{Reduction of branch penalty}. Dynamic branch prediction allows the processor to \hl{\textbf{predict the outcome of a branch at runtime}, instead of waiting for the branch condition to be resolved}. This reduces pipeline stalls, avoids frequent pipeline flushes, and improves overall instruction throughput.
+        \item \textbf{Adaptation to runtime behavior}. Unlike static prediction, dynamic branch prediction \hl{learns from the \textbf{actual execution behavior} of the program, and can adapt} when branch behavior changes due to input data, loop iteration counts or program phase changes. This leads to \textbf{higher prediction accuracy}.
+        \item \textbf{Support for deep pipelines}. Modern processors often have deep pipelines to increase clock speeds. Dynamic branch prediction \hl{helps to \textbf{keep the pipeline filled} by predicting branches early}, which is crucial for maintaining high performance in deep pipelines.
+        \item \textbf{Enabling speculative execution}. Dynamic branch prediction allows \hl{instructions \textbf{beyond unresolved branches} to be fetched and executed speculatively}. This increases ILP, keeps function units busy, and improves overall performance. Speculative execution would not be effective without accurate dynamic prediction.
+        \item \textbf{Performance scalability with program complexity}. As programs become more branch-intensive and more irregular, dynamic branch prediction \hl{provides \textbf{robust performance}, independent of compile-time heuristics}.
+    \end{enumerate}
+    In short:
+    \begin{itemize}
+        \item Reduce branch penalty.
+        \item Adapt to runtime behavior.
+        \item Essential for deep pipelines.
+        \item Enable speculation and ILP.
+        \item Higher accuracy than static.
+    \end{itemize}
+
+
+
+    \item \emph{Explain how works a \textbf{Branch History Table}.} 
+    
+    \answer (see \autopageref{def:branch-history-table}) A \textbf{Branch History Table (BHT)} is a hardware structure used in \textbf{dynamic branch prediction} to predict the outcome of conditional branches based on \textbf{past execution behavior}.
+
+    \important{Structure.} The BHT is a \textbf{small memory table} indexed using part of the \textbf{branch instruction address (PC)}. Each entry contains a \textbf{prediction state}, typically implemented using a \textbf{1-bit} or a \textbf{2-bit saturating counter} (i.e., a finite state machine) that indicates whether the branch is predicted to be taken or not taken.
+
+    \important{Operation.}
+    \begin{enumerate}
+        \item \textbf{During instruction fetch (IF stage)}, the PC of the branch indexes the BHT. The corresponding entry provides a prediction:\break \textbf{taken} or \textbf{not taken}.
+        \item \textbf{Speculative execution}. The processor fetches and executes instructions according to the predicted outcome.
+        \item \textbf{When the branch outcome is resolved}, the actual outcome (taken or not taken) is compared with the prediction. The BHT entry is \textbf{updated} to reflect the new behavior.
+    \end{enumerate}
+    In summary, the BHT is a table indexed by PC, storing past branch behavior to predict future branches using taken/not taken states. It is updated after each branch resolution and usually uses a 2-bit saturating counter (FSM) for better accuracy over simple 1-bit schemes.
+
+
+
+    \item \emph{Explain the main purpose to introduce the \textbf{Branch Target Buffer}.}
+    
+    \answer (see \autopageref{sec:branch-target-buffer}) The \textbf{main purpose of introducing a Branch Target Buffer (BTB)} is to \textbf{eliminate the control hazard caused by the unknown target address of taken branches}, allowing the processor to continue instruction fetch \textbf{without stalling}.
+
+    In particular, the BTB provides the \textbf{predicted target address} of a branch \textbf{during the instruction fetch (IF) stage}, enables the processor to \textbf{fetch the next instruction from the predicted target in the same cycle}, and avoids waiting for branch target computation in later pipeline stages.
+
+    This is essential to support \textbf{efficient speculative execution}, especially in deeply pipelined processors.
+
+
+
+    \item \emph{Explain the main concepts of the \textbf{correlating branch prediction technique}.}
+
+    \answer (see \autopageref{sec:correlating-branch-prediction}) The \definition{Correlating Predictor} (also known as \textbf{correlating branch prediction technique}) improves accuracy by \textbf{using the outcomes of recently executed branches to predict the current branch}.
+
+    \important{How correlation is captured.} To exploit correlation, the processor introduces a \textbf{history register}, called \definition{Global History Register (GHR)}. It is a shift register of the last \textbf{N branch outcomes} (taken/not taken), where each bit represents whether a branch was taken (1) or not taken (0). This is \textbf{explicit history}, unlike the implicit FSM state of a basic BHT.
+
+    The correlating predictor combines the \textbf{branch address (PC)} with the \textbf{Global Branch History (GHR)} to select a prediction entry from a \textbf{Pattern History Table (PHT)}. The PHT contains multiple entries for each branch, each corresponding to a different history pattern. The selection of the PHT entry is based on both the PC and the GHR. It is done by \textbf{concatenating} or \textbf{XORing}, and the selected entry contains a \textbf{2-bit saturating counter} (FSM) for the prediction.
+
+    \important{Possible exam answer structure.} Correlating branch prediction improves dynamic branch prediction accuracy by exploiting the correlation between different branch outcomes. It uses a history register (called Global History Register, GHR) to record the outcomes of recently executed branches and combines this information with the branch address to select a prediction entry. This two-level mechanism allows the predictor to adapt predictions based on the execution context, enabling accurate prediction of branches whose behavior depends on previous branches.
+
+
+
+    \item \emph{Explain what happens at runtime in a Speculative Tomasulo Architecture in the case of a \textbf{branch misprediction}.}
+
+    \answer At runtime, before the branch is resolved:
+    \begin{enumerate}
+        \item A branch is \textbf{predicted} (taken / not taken).
+        \item Instructions \textbf{after the branch} are fetched, issued, and executed \textbf{speculatively}.
+        \item Their results are written into \textbf{ROB entries} but \textbf{not} into the register file or memory.
+        \item These instructions are \textbf{marked as speculative} in the ROB.
+        \item Once the branch is resolved:
+        \begin{enumerate}
+            \item If the prediction was \textbf{correct}, the speculative instructions are \textbf{committed} in order.
+            \item If the prediction was \textbf{incorrect} (misprediction):
+            \begin{enumerate}
+                \item \textbf{Flush speculative instructions}. All instructions younger than the branch are invalidated and removed from the ROB, reservation stations, and functional units.
+                \item \textbf{Restore architectural state}. Since the speculative instructions did not update the register file or memory, because they were only in the ROB, the architectural state remains consistent. The processor can discard the ROB entries of the mispredicted instructions without needing to roll back any changes, and restore the rename table to the state before the branch.
+                \item \textbf{Redirect instruction fetch}. The PC is set to the correct target address of the branch (if taken) or the next sequential instruction (if not taken).
+                \item \textbf{Resume correct execution}. New instructions are fetched and executed from the correct path.
+            \end{enumerate}
+        \end{enumerate}
+    \end{enumerate}
+    In case of a branch misprediction, the only cost is \textbf{lost cycles} due to discarded speculative work and the time taken to fetch and execute instructions from the correct path.
+\end{itemize}
+
+\newpage
+
+\subsubsection*{Quizzes}
+\begin{enumerate}
+    \item \textbf{Question 1 (format Multiple Choice - Single answer)}. \emph{Let's consider the following code executed by a Vector Processor with:
+    \begin{itemize}
+        \item Vector Register File composed of 32 vectors of 16 elements per 32 bits/element;
+        \item Scalar FP Register File composed of 32 registers of 32 bits;
+        \item One Load/Store Vector Unit with operation chaining and memory bandwidth 32 bits;
+        \item One Add/Sub Vector Unit with operation chaining.
+        \item One Mul/Div Vector Unit with operation chaining.
+    \end{itemize}}
+    \begin{lstlisting}
+L.V V1, RX          # Load vector from memory address RX into V1
+ADDVS.D V1, V1, F0  # FP add vector V1 to scalar F0
+MULV.D V2, V1, V1   # FP multiply vectors V1 and V1
+DIVVS.D V2, V2, F0  # FP divide vector V2 to scalar F0
+L.V V3, RY          # Load vector from memory address RY into V3
+ADDVV.D V3, V2, V3  # FP add vectors V2 and V3
+S.V V2, RZ          # Store vector V2 into memory address RZ
+S.V V3, RW          # Store vector V3 into memory address RW\end{lstlisting}
+    \emph{How many convoys? How many clock cycles to execute the code?}
+    \begin{itemize}
+        \item \textbf{Answer 1:} 3 convoys, 48 clock cycles
+        \item \textbf{Answer 2:} 2 convoys, 32 clock cycles
+        \item \textbf{Answer 3:} 4 convoys, 64 clock cycles
+        \item \textbf{Answer 4:} 5 convoys, 80 clock cycles
+    \end{itemize}
+    \emph{Motivate your answer by completing the following table:}
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            & \textbf{Load/Store} & \textbf{Add/Sub} & \textbf{Mul/Div} \\
+            \midrule
+            \textbf{1 convoy} & & & \\
+            \textbf{2 convoy} & & & \\
+            \textbf{3 convoy} & & & \\
+            \textbf{4 convoy} & & & \\
+            \textbf{5 convoy} & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \answer We start from the table and then we can answer the question. The code can be scheduled as follows:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l | c c c @{}}
+            \toprule
+            & \textbf{Load/Store} & \textbf{Add/Sub} & \textbf{Mul/Div} \\
+            \midrule
+            \textbf{1 convoy} & \texttt{L.V V1, RX} & \texttt{ADDVS.D V1, V1, F0} & \texttt{MULV.D V2, V1, V1} \\
+            \textbf{2 convoy} & \texttt{L.V V3, RY} & \texttt{ADDVV.D V3, V2, V3} & \texttt{DIVVS.D V2, V2, F0} \\
+            \textbf{3 convoy} & \texttt{S.V V2, RZ} & & \\
+            \textbf{4 convoy} & \texttt{S.V V3, RW} & & \\
+            \textbf{5 convoy} & & & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \noindent
+    Each convoy takes 16 clock cycles to complete, as the vector length is 16 elements and the memory bandwidth is 32 bits (1 element per cycle). Therefore, the total number of clock cycles to execute the code is:
+    \begin{equation*}
+        \text{Total clock cycles} = 4 \text{ convoys} \times 16 \text{ cycles/convoy} = 64 \text{ clock cycles}
+    \end{equation*}
+    \textbf{Final answer:} 4 convoys, 64 clock cycles (Answer 3).
+
+
+    \item \textbf{Question 2 (format Multiple Choice - Single answer)}. \emph{Assume to apply a processor optimization resulting ten time faster on computation than the original mode of execution. What is the fraction of computation needed to quadruplicate the overall speedup?}
+    \begin{itemize}
+        \item \textbf{Answer 1:} 55\%
+        \item \textbf{Answer 2:} 83\%
+        \item \textbf{Answer 3:} 45\%
+        \item \textbf{Answer 4:} 40\%
+        \item \textbf{Answer 5:} 25\%
+    \end{itemize}
+    \emph{Motivate your answer.}
+
+    \answer We can use Amdahl's Law (\autopageref{eq:amdahls-law}) to solve this problem. Amdahl's Law states that the overall speedup $S$ of a system is given by:
+    \begin{equation*}
+        S = \dfrac{1}{(1 - f) + \dfrac{f}{s}}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $ f $ is the fraction of the execution time that can be improved (in this case, the computation fraction).
+        \item $ s $ is the speedup of the improved portion (in this case, ``ten'').
+    \end{itemize}
+    We want to find the fraction $ f $ such that the overall speedup $ S $ is quadrupled (i.e., $ S = 4 $). Plugging in the values, we have:
+    \begin{align*}
+        4 & = \dfrac{1}{(1 - f) + \dfrac{f}{10}} \\[.1em]
+        (1 - f) + \dfrac{f}{10} &  = \dfrac{1}{4} \\[.1em]
+        10 - 10f + f & = \dfrac{10}{4} \\[.1em]
+        -9f & = \dfrac{10}{4} - 10 \\[.1em]
+        f & = - \left(\dfrac{10}{4} - 10\right) \cdot \dfrac{1}{9} \\[.1em]
+        f & = \dfrac{30}{4} \cdot \dfrac{1}{9} \\[.1em]
+        f & = \dfrac{30}{36} = \dfrac{5}{6} \approx 0.8333
+    \end{align*}
+    Therefore, the fraction of computation needed to quadruplicate the overall speedup is approximately 83\% (\textbf{Answer 2}).
+
+
+    \item \textbf{Question 3 (format Multiple Choice - Single answer)}. \emph{Let us consider a computer with L1 and L2 caches with the following parameters:
+    \begin{itemize}
+        \item Processor Clock Frequency = 1 GHz;
+        \item Hit Time L1 = 1 clock cycle; Hit Rate L1 = 95\%;
+        \item Hit Time L2 = 5 clock cycles; Hit Rate L2 = 90\%; Miss Penalty L2 = 15 clock cycles;
+    \end{itemize}
+    How much is the Global Miss Rate for Last Level Cache?}
+    \begin{itemize}
+        \item \textbf{Answer 1:} 5\%
+        \item \textbf{Answer 2:} 0.5\%
+        \item \textbf{Answer 3:} 10\%
+        \item \textbf{Answer 4:} 7.5\%
+    \end{itemize}
+    \emph{Motivate your answer.}
+
+    \answer Given:
+    \begin{itemize}
+        \item $\text{L1 Hit Rate} = 95\% = 0.95 \Rightarrow \text{L1 Miss Rate} = 1 - 0.95 = 0.05 = 5\%$
+        \item $\text{L2 Hit Rate} = 90\% = 0.90 \Rightarrow \text{L2 Miss Rate} = 1 - 0.90 = 0.10 = 10\%$
+    \end{itemize}
+    The Global Miss Rate for the Last Level Cache (L2) can be calculated as:
+    \begin{equation*}
+        \text{Global Miss Rate} = \text{L1 Miss Rate} \times \text{L2 Miss Rate}
+    \end{equation*}
+    Plugging in the values:
+    \begin{equation*}
+        \text{Global Miss Rate} = 0.05 \times 0.10 = 0.005 = 0.5\%
+    \end{equation*}
+    Therefore, the Global Miss Rate for the Last Level Cache is 0.5\% (\textbf{Answer 2}).
+
+    \begin{deepeningbox}[: What is the Last Level Cache (LLC)?]
+        The \definition{Last Level Cache (LLC)} is the \textbf{lowest cache level before main memory}. If the hierarchy is L1 $\rightarrow$ L2 $\rightarrow$ L3 $\rightarrow$ Main Memory, then L3 is the LLC. So here, in this question, L2 is the LLC.
+    \end{deepeningbox}
+
+
+    \item \textbf{Question 4 (format Multiple Choice - Multiple answers)}. \emph{Which of the following cache improvements are effective in reducing the miss penalty?}
+    \begin{itemize}
+        \item \textbf{Answer 1}: Adopting higher associativity in designing the cache to reducing the impact of collisions when the correct block must be loaded in the cache.
+        \item \textbf{Answer 2}: Avoiding address translation during indexing of the cache to minimize the management time of miss penalties.
+        \item \textbf{Answer 3}: Combining a small and fast level-1 cache with a slower but larger level-2 cache to capture many accesses that would go to the main memory.
+        \item \textbf{Answer 4}: Giving priority to read misses over writes, exploiting techniques to serve the reads before the writes have been completed.
+    \end{itemize}
+    \answer The definition of \textbf{miss penalty} is the \textbf{additional time required to service a cache miss}, i.e. the time to fetch the block from the lower level (or memory) and make it usable by the processor. This should not be confused with the \textbf{miss rate}, which is the \textbf{fraction of memory accesses that result in a miss}. So we are looking for techniques that \textbf{shorten the time to recover from a miss}, or \textbf{avoid going all the way to main memory once a miss occurs}. Now, let's analyze each answer:
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Answer 1}: \emph{Adopting higher associativity...} - \textbf{Incorrect}. Higher associativity means \textbf{fewer conflict misses}, which \textbf{reduces the overall miss rate}, but it does \textbf{not directly reduce the miss penalty} itself. The time to service a miss remains the same regardless of associativity. So this affects \textbf{miss rate}, not \textbf{miss penalty}.
+
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Answer 2}: \emph{Avoiding address translation during indexing...} - \textbf{Correct}. During a cache miss, the processor must: (1) detect the miss, (2) translate the virtual address (TLB), (3) generate the physical address, and (4) access the lower-level cache or memory. If \textbf{address translation is on the critical path of the miss handling}, then the miss service \textbf{starts later}, the pipeline remains stalled longer, and the \textbf{effective miss penalty increases}. By \textbf{avoiding address translation during indexing}, part of the miss handling overlaps, translation latency is hidden and \textbf{total miss penalty is reduced}.
+
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Answer 3}: \emph{Combining a small and fast level-1 cache with a slower but larger level-2...} - \textbf{Correct}. When an L1 miss occurs, the access may be satisfied by \textbf{L2 instead of main memory}. Since L2 is \textbf{much faster than DRAM}, the effective miss penalty is \textbf{greatly reduced}. This is also the main motivation for \textbf{multi-level cache hierarchies} (L1, L2, L3). So this directly reduces \textbf{miss penalty}.
+        
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Answer 4}: \emph{Giving priority to read misses over writes...} - \textbf{Incorrect}. While prioritizing read misses can improve overall performance by reducing stalls for read operations, it does \textbf{not reduce the miss penalty itself}. The time to service a miss remains unchanged; it only affects the order in which misses are handled. So this does not directly impact \textbf{miss penalty}.
+    \end{itemize}
+
+
+    \newpage
+
+
+    \item \textbf{Question 5 (format Multiple Choice - Single answer)}. \emph{What type of multiprocessor architecture does the following picture represent?}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=0.5\textwidth]{img/exam-2026-01-08.jpg}
+    \end{figure}
+    \begin{itemize}
+        \item \textbf{Answer 1}: Centralized Memory; Single Logically Shared Address Space
+        \item \textbf{Answer 2}: Centralized Memory; Message Passing Architectures
+        \item \textbf{Answer 3}: Distributed Memory; Single Logically Shared Address Space
+        \item \textbf{Answer 4}: Distributed Memory; Message Passing Architectures
+    \end{itemize}
+    \answer The correct answer is \textbf{Answer 3}: \emph{Distributed Memory; Single Logically Shared Address Space}. Each vertical block contains processor ($P_i$), private cache ($C_i$), and local memory (${MM}_{i}$). So physically there are \textbf{multiple memory modules}, each memory is \textbf{attached to a node} and there is \textbf{no single central memory}. So the first and second answers are incorrect because they refer to \textbf{centralized memory} architectures.
+
+    Now, each memory module is annotated with $P0, P1, P2, P3$, indicating that \textbf{all processors can address all memory modules} and any processor can load/store from any ${MM}_{i}$. This indicates a \textbf{single logically shared address space}, where the entire memory is \textbf{logically shared among all processors}, even though it is physically distributed. Therefore, the third answer is correct.
+
+    The fourth answer is incorrect because in a \textbf{message passing architecture}, each processor can access \textbf{only its local memory}, and communication happens via send/receive operations and explicit messages. But in the picture, all processors access memory using normal memory operations, no explicit message queues or memory looks shared to software.
+
+    This picture represents a \textbf{Distributed Shared-Memory (DSM)} architecture, where memory is physically distributed but logically shared. Also known as \textbf{NUMA (Non-Uniform Memory Access)} architecture (\autopageref{def:numa}).
+\end{enumerate}

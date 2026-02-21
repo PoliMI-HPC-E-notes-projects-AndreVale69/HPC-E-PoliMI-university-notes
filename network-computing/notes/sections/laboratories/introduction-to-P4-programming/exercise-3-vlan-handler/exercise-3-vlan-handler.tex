@@ -1,0 +1,96 @@
+\subsubsection{Exercise 3: VLAN Handler}
+
+In this exercise, we will build a VLAN handler. In general, a \textbf{VLAN handler} is a piece of switch logic that \textbf{adds, removes, checks, and uses VLAN tags to control where packets go}. In other words, it is the part of a switch that understands \textbf{Virtual LANs (VLANs)} and enforces VLAN-based isolation and forwarding rules.
+
+\highspace
+\begin{remarkbox}[: What is a VLAN?]
+    A \definition{VLAN (Virtual LAN)} is a way to split one physical network into multiple \textbf{logical networks}, using a small tag inside Ethernet frames. That tag is the \textbf{802.1Q VLAN header}, which contains:
+    \begin{itemize}
+        \item A \textbf{VLAN ID (VID)} (12 bits) that identifies which VLAN the frame belongs to.
+        \item A \textbf{DEI (Drop Eligible Indicator)} bit that indicates if the frame can be dropped under congestion.
+        \item A \textbf{PRI (Priority)} field (3 bits) that indicates the priority of the frame for Quality of Service (QoS) purposes.
+        \item A \textbf{TPID (Tag Protocol Identifier)} field (16 bits) that indicates the presence of a VLAN tag (usually set to \texttt{0x8100}, which is the ethernet type for VLAN-tagged frames).
+    \end{itemize}
+    So a packet can be \textbf{untagged} (no VLAN header, just Ethernet $+$ payload) or \textbf{tagged} (Ethernet $+$ VLAN header $+$ payload).
+\end{remarkbox}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/vlan-header.pdf}
+    \caption{Structure of an Ethernet frame with an 802.1Q VLAN tag.\cite{network-computing-polimi}}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does a VLAN handler do?}}
+\end{flushleft}
+A VLAN handler sits in a switch and performs \textbf{four kinds of tasks}:
+\begin{enumerate}
+    \item \important{Detect whether a packet is VLAN-tagged}. When a packet arrives:
+    \begin{itemize}
+        \item Look at the Ethernet type field (\texttt{EtherType}).
+        \item If it is \texttt{0x8100}, the packet is VLAN-tagged.
+        \item Otherwise, it is a normal Ethernet frame.
+    \end{itemize}
+    And this is done in the \textbf{parser}, because it needs to know how to parse the packet correctly (where the headers are, etc).
+
+
+    \item \important{Enforce VLAN rules (policy)}. Typical rules looks like:
+    \begin{itemize}
+        \item ``Packets from this port \textbf{must} be tagged''.
+        \item ``Packets from that port \textbf{must not} be tagged''.
+        \item ``Drop packets that violate the rule''.
+    \end{itemize}
+    This is \textbf{validation logic}.
+
+
+    \item \important{Use the VLAN ID to make forwarding decisions}. Once a packet is known to be VLAN-tagged:
+    \begin{itemize}
+        \item Extract the VLAN ID from the tag.
+        \item Use it as a \textbf{key in a table}.
+        \item Decide which port(s) the packet should go to.
+    \end{itemize}
+    This is VLAN-based forwarding, which is done in the \textbf{control plane} (because it is a forwarding decision based on packet metadata).
+
+
+    \item \important{Add or remove VLAN tags (encapsulation / decapsulation)}. A VLAN handler must:
+    \begin{itemize}
+        \item \important{Decapsulation}: \textbf{remove the VLAN tag} when sending packets to end hosts.
+        \item \important{Encapsulation}: \textbf{add a VLAN tag} when sending packets back toward the tagged side.
+    \end{itemize}
+\end{enumerate}
+These tasks explain why it is called \emph{handler}: it doesn't just forward packets, but it \textbf{handles VLAN semantics}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the behavior we want to implement?}}
+\end{flushleft}
+The exercise asks us to build a VLAN handler with the following behavior:
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.7\textwidth]{img/vlan-handler-arch.pdf}
+    \caption{Behavior of the VLAN handler we want to implement.\cite{network-computing-polimi}}
+\end{figure}
+\begin{itemize}
+    \item The topology is a simple 4-host, 1-switch network (\texttt{s1}). Host \texttt{h1} is connected to the switch on port 1, and hosts \texttt{h2}, \texttt{h3}, \texttt{h4} are connected on ports 2, 3, 4.
+
+    \item The switch must enforce these constraints:
+    \begin{enumerate}
+        \item \textbf{Ingress on port 1 (from \texttt{h1})}: \textbf{must be VLAN-tagged}, Otherwise \textbf{drop}.
+        \item \textbf{Ingress on ports 2/3/4 (from \texttt{h2}/\texttt{h3}/\texttt{h4})}: \textbf{must be untagged}, otherwise \textbf{drop}.
+        \item For tagged packets from port 1:
+        \begin{itemize}
+            \item Read VLAN \textbf{VID} from the tag.
+            \item Consult \textbf{control-plane rules}.
+            \item Forward to the correct host port.
+            \item \textbf{Remove VLAN tag before delivering} (so \texttt{h2}/\texttt{h3}/\texttt{h4} see \emph{untagged} packets).
+            \item If VID not found, \textbf{default forward to h2}.
+        \end{itemize}
+        \item For return traffic (from \texttt{h2}/\texttt{h3}/\texttt{h4} to \texttt{h1}):
+        \begin{itemize}
+            \item Those packets arrive untagged on ports 2/3/4.
+            \item The switch \textbf{adds a VLAN tag} according to the same rules (based on the control-plane rules).
+            \item And sends them back to \texttt{h1} on port 1, where \texttt{h1} should receive them \textbf{tagged}.
+        \end{itemize}
+    \end{enumerate}
+\end{itemize}
+Similar to Exercise 2, we have three files to build: \texttt{network\_topo.py}, \texttt{control\_plane.py}, and \texttt{vlan\_handler.p4}. The first two are similar to Exercise 2, but with different logic. The P4 program is more complex because it needs to handle both tagged and untagged packets, and perform parsing, validation, forwarding, and encapsulation/decapsulation logic. We will go through each file in detail in the next sections.

@@ -32,7 +32,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=154207" target="_blank">Silvano Cristina</a></td>
         <td><ul>
             <li><a href="advanced-computer-architectures">Course Details</a></li>
-            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.0.0</a></li>
+            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.1.1</a></li>
             <li><a href="advanced-computer-architectures/notes/formulary.pdf">Formulary</a></li>
         </ul></td>
     </tr>
@@ -75,7 +75,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=717400" target="_blank">Botti Michele</a></td>
         <td><ul>
             <li><a href="calcolo-numerico">Course Details</a></li>
-            <li><a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF v1.1.0</a></li>
+            <li><a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF v1.2.0</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -99,13 +99,14 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         </ul></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2024/2025</td>
         <td>Network Computing</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=867640&aa=2024&lang=IT&jaf_currentWFID=main" target="_blank">Antichi Gianni</a></td>
         <td><ul>
             <li><a href="network-computing">Course Details</a></li>
-            <li><a href="network-computing/notes/network-computing.pdf">PDF v0.6.0</a></li>
+            <li><a href="network-computing/notes/network-computing.pdf">PDF v1.0.0</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/network-computing-project">eBPF Project</a></li>
         </ul></td>
     </tr>
     <tr>

@@ -1,0 +1,122 @@
+\subsubsection{What is eBPF?}
+
+\begin{definitionbox}[: eBPF (extended Berkeley Packet Filter)]
+    \definition{eBPF (extended Berkeley Packet Filter)} is a mechanism that allows user-defined programs to run \textbf{safely and efficiently inside the Linux kernel}, in response to specific kernel events.
+\end{definitionbox}
+
+\noindent
+The previous definition contains \textbf{four key ideas} that we will unpack in this section:
+\begin{enumerate}
+    \item User-defined programs
+    \item Inside the Linux kernel
+    \item Event-driven
+    \item Safe and fast execution
+\end{enumerate}
+Now, let's break down each of these ideas to understand what eBPF is and why it is designed the way it is.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{From cBPF to eBPF}}
+\end{flushleft}
+Originally, the \textbf{Berkeley Packet Filter (BPF)} was designed in the early 1990s to solve one simple problem: ``\emph{how can we filter packets efficiently inside the kernel for tools like \texttt{tcpdump}?}''\footnote{%
+    \texttt{tcpdump} is a packet capture and analysis tool that relies on the Berkeley Packet Filter (BPF) to efficiently filter packets inside the kernel before delivering them to user space.
+}. This was \definition{Classic BPF (Classic Berkeley Packet Filter)}, which was a simple, limited instruction set that could only be used for packet filtering. It was designed to be fast and safe, but it had very limited capabilities. It could only operate on packet data and had a very small instruction set, which made it difficult to use for anything other than simple packet filtering.
+
+\highspace
+Over time, people realized that the packet filtering alone wasn't enough. They wanted to be able to run more complex programs inside the kernel, for a variety of use cases beyond just packet filtering. In particular, they wanted features like: \textbf{state}, \textbf{logic}, \textbf{reuse} and \textbf{flexibility}.
+
+\highspace
+In response to this demand, the Linux kernel developers created \textbf{eBPF (extended Berkeley Packet Filter)}, which is a much more powerful and flexible mechanism that allows user-defined programs to run safely and efficiently inside the kernel in response to specific events. eBPF is not just for packet filtering anymore; it can be used for a wide range of applications, including performance monitoring, security, and even custom networking features.
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Classic BPF} & \textbf{eBPF} \\
+        \midrule
+        Simple filter & General-purpose \\
+        Accumulator-based & Register-based \\
+        No state & Persistent maps \\
+        Packet filtering only & Generic kernel events \\
+        Limited instruction set & Rich instruction set \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between Classic BPF and eBPF.}
+\end{table}
+
+\noindent
+Today, cBPF is still used for simple packet filtering tasks, but eBPF has become the go-to mechanism for more complex and powerful kernel programming. It has opened up a whole new world of possibilities for developers to extend the functionality of the Linux kernel in a safe and efficient way.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{eBPF as a sandboxed in-kernel VM}}
+\end{flushleft}
+From a technical perspective, what is eBPF? In other words, how does it work? eBPF is \textbf{not} native C code, a kernel module, or an arbitrary assembly language. Instead, it is a \textbf{virtual machine embedded inside the Linux kernel}, with strict rules and constraints. The key properties of the eBPF virtual machine are:
+\begin{itemize}
+    \item \textbf{Fixed number of registers}: eBPF programs execute on a register-based virtual machine with a limited set of registers (10 general-purpose registers plus a few special-purpose ones), simplifying verification and preventing unsafe behavior.
+    \item \textbf{Bounded stack}: Each eBPF program has access to a fixed-size stack (512 bytes), which eliminates the possibility of stack overflows and enables static analysis by the verifier.
+    \item \textbf{No arbitrary memory access}: eBPF programs cannot access arbitrary memory locations; all memory accesses must be performed through verifier-approved pointers (e.g., packet data, maps, or context structures).
+    \item \textbf{No system calls}: eBPF programs are not allowed to invoke system calls, preventing them from executing unsafe or blocking operations within the kernel.
+    \item \textbf{Controlled interaction via helper functions}: Interaction with kernel subsystems is restricted to a predefined set of helper functions, which provide safe and controlled access to kernel functionality.
+\end{itemize}
+This is why eBPF can run \textbf{safely inside the kernel} without risking system stability or security.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Event-driven execution model}}
+\end{flushleft}
+Unlike normal programs, eBPF programs \textbf{do not run on their own}. They only run \textbf{when something happens} (i.e., in response to specific kernel events). This is what we mean by an \textbf{event-driven execution model}. Typical events that can trigger eBPF programs include:
+\begin{itemize}
+    \item A packet arrives at a network interface (XDP)
+    \item A socket receives data (socket filters)
+    \item A system call is executed (\texttt{kprobes}, \texttt{uprobes})
+    \item A tracepoint is hit (tracepoints)
+\end{itemize}
+So the model is:
+\begin{enumerate}
+    \item Event happens (e.g., packet arrives)
+    \item Kernel invokes eBPF program associated with that event
+    \item Program runs
+    \item Returns a result (e.g., accept/drop packet, log data, update a map)
+\end{enumerate}
+So there is no \texttt{main()} function, infinite loop or background thread. The eBPF program is just a piece of code that gets executed in response to specific events, and then it finishes. This allows eBPF to be very efficient and responsive, since it only runs when needed.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{shield-alt} \textbf{Safe and efficient execution}}
+\end{flushleft}
+The eBPF virtual machine is designed to be \textbf{safe and efficient}. The safety comes from the fact that eBPF programs are verified before they are allowed to run. The \textbf{verifier} is a component of the Linux kernel that performs static analysis on the eBPF bytecode to ensure that it adheres to all safety constraints (e.g., no out-of-bounds memory access, no infinite loops, no unsafe helper calls). In other words, the verifier answers the question: ``\emph{can this program ever crash or cause instability in the kernel?}'' If the \hl{verifier determines that the program is unsafe}, or could potentially cause harm, it will \hl{reject the program} and prevent it from being loaded into the kernel.
+
+\highspace
+Some of the key safety checks performed by the verifier include:
+\begin{itemize}
+    \item Every memory access must be within bounds
+    \item All loops must have a bounded number of iterations (or be unrolled)
+    \item Stack usage must be within limits (512 bytes)
+    \item Pointers are tracked precisely to ensure they are valid and safe to dereference
+    \item Execution paths are analyzed to ensure they terminate and do not cause infinite loops
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Despite all these safety checks, eBPF programs can run at near-native speed. How is this possible?}}
+\end{flushleft}
+Despite all these restrictions, eBPF is \textbf{fast}. But, why?
+\begin{enumerate}
+    \item \important{No syscalls.} The code runs entirely in kernel space, so there is no overhead of crossing the user-kernel boundary. The packet data is already in the kernel, so the eBPF program can access it directly without copying it to user space.
+
+
+    \item \important{JIT compilation.} The eBPF bytecode is just an intermediate representation. When an eBPF program is loaded into the kernel, it is \textbf{Just-In-Time (JIT) compiled} into native machine code for the specific CPU architecture. This means that the eBPF program can run at near-native speed, since it is executing native code instead of interpreted bytecode.
+    \begin{remarkbox}[: JIT compilation]
+        \definition{JIT (Just-In-Time compilation)} is a technique where code is \textbf{compiled to native machine instructions at runtime}, instead of being interpreted instruction by instruction.
+
+        In the context of eBPF, they are first loaded as \textbf{bytecode}, then \textbf{translated into native CPU instructions by the kernel}, just before execution.
+    \end{remarkbox}
+
+
+    \item \important{Runs early.} eBPF programs can be attached to very early points in the kernel's processing pipeline (e.g., XDP runs at the earliest point of packet processing), which allows them to operate on data before it has been fully processed by the kernel, reducing overhead and latency.
+\end{enumerate}
+In summary, eBPF is a sandboxed, event-driven virtual machine inside the Linux kernel that allows safe, high-performance execution of user-defined programs, verified at load time and often JIT-compiled for efficiency.

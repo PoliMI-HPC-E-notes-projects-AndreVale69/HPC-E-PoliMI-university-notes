@@ -1,0 +1,62 @@
+\subsection{Data Direct I/O (DDIO)}
+
+% Add introduction to DDIO, explaining what it is and why it's important in the context of end-host networking.
+To further optimize the data path from the NIC to the CPU, modern CPUs have introduced a feature called \textbf{Data Direct I/O (DDIO)}. With DDIO, the traditional data path from the NIC to the application:
+\begin{equation*}
+    \text{NIC} \rightarrow \text{PCIe} \rightarrow \text{DRAM} \rightarrow \text{CPU cache} \rightarrow \text{CPU core}
+\end{equation*}
+Is optimized to:
+\begin{equation*}
+    \text{NIC} \rightarrow \text{PCIe} \rightarrow \text{Last-Level Cache (LLC)} \rightarrow \text{CPU core}
+\end{equation*}
+Instead of writing incoming packets into DRAM first, the NIC can \textbf{DMA directly into the CPU's L3 cache (Last-Level Cache)}.
+
+\highspace
+\begin{definitionbox}[: Data Direct I/O (DDIO)]
+    \definition{Data Direct I/O (DDIO)} is a CPU feature that \textbf{allows I/O devices}, such as NICs, \textbf{to perform DMA writes directly into the processor's last-level cache (LLC)} instead of main memory (DRAM), reducing memory latency and improving cache locality for packet processing.
+\end{definitionbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits of DDIO}}
+\end{flushleft}
+\textcolor{Red2}{\faIcon{times}} Without DDIO, when a packet arrives at the NIC, it is written to DRAM via PCIe, and then the CPU must fetch it from DRAM into the cache before processing. This \textbf{adds latency} due to the additional memory access.
+
+\highspace
+\textcolor{Green3}{\faIcon{check}} With DDIO, the NIC can write the packet directly into the LLC, allowing the CPU to access it with much lower latency.
+\begin{itemize}
+    \item \textbf{Reduced Memory Latency}: By bypassing DRAM, DDIO significantly reduces the time it takes for the CPU to access incoming packets, which is critical for high-performance networking applications.
+    \item \textbf{Reduced Memory Bandwidth Pressure}: Since packets are not written to DRAM, there is less contention for memory bandwidth, allowing other applications to access memory more efficiently.
+    \item \textbf{Better Packet Processing Performance}: With lower latency and improved cache locality, applications can process packets faster, leading to higher throughput and better performance in network-intensive workloads.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How it relates to aRFS and Affinity}}
+\end{flushleft}
+DDIO complements techniques such as aRFS and RSS by ensuring that, once steered to the correct CPU core, \textbf{packets can be accessed with minimal latency}. While aRFS and RSS focus on steering packets to the correct core, \textbf{DDIO ensures those packets are available in the cache for immediate processing}. This further enhances the overall performance of end-host networking. Therefore, \textbf{cache locality is maximized} because the packet is in the cache, and there are \textbf{no cross-core cache transfers} because the packet is already in the correct core's cache.
+
+\highspace
+However, DDIO reinforces the \textbf{importance of correct flow} steering because the \hl{benefits of DDIO are only realized if packets are steered to the correct core}, where they can be accessed from the cache. Otherwise, the CPU would still have to fetch the packet from DRAM, which negates the benefits of DDIO.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations of DDIO: The Leaky DMA Problem}}
+\end{flushleft}
+Although DDIO offers significant performance benefits, it also introduces a potential size limitation known as the \definition{Leaky DMA Problem}.
+
+\highspace
+The last-level cache (LLC) is typically much smaller than DRAM and has \textbf{limited capacity} (e.g., 20-30 MB). If the amount of traffic becomes too high, the \textbf{network interface card (NIC) continues to write new packets into the LLC}. This can lead to \textbf{cache evictions}, whereby older packets are removed from the cache to make room for new ones. As a result, \textbf{previously received packets may be evicted before they are processed by the CPU}. Thus, rather than improving locality, an \hl{overwhelmed cache can actually degrade performance}. In other words, the cache ``\emph{leaks}'' useful packet data before processing it, which can lead to increased latency and reduced throughput.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        Advantage & Risk \\
+        \midrule
+        Lower latency       & Cache eviction    \\[.3em]
+        Less DRAM traffic   & LLC contention    \\[.3em]
+        Faster processing   & Interference with application cache \\
+        \bottomrule
+    \end{tabular}
+\end{table}

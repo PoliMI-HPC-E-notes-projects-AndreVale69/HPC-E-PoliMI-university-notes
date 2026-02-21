@@ -1,0 +1,25 @@
+\paragraph{Build \texttt{control\_plane.py}}
+
+The \texttt{control\_plane.py} file is responsible for programming the P4 switch at runtime using \texttt{P4Runtime}. In Exercise 1, we will implement a simple control plane that programs the switch to detect heavy hitters.
+
+\begin{lstlisting}[language=Python]
+from p4utils.utils.helper import load_topo
+from p4utils.utils.sswitch_p4runtime_API import SimpleSwitchP4RuntimeAPI
+
+
+topo = load_topo('topology.json')
+controllers = {}
+
+for switch, data in topo.get_p4rtswitches().items():
+    controllers[switch] = SimpleSwitchP4RuntimeAPI(data['device_id'], data['grpc_port'],
+                                                  p4rt_path=data['p4rt_path'],
+                                                  json_path=data['json_path'])
+
+controller = controllers['s1']                        
+
+# TODO: write the forwarding rules for the switch
+controller.table_clear('hhd_threshold')
+controller.table_add('hhd_threshold', 'set_hhd_threshold', ['10.0.0.1/32'], ['100'])
+controller.table_add('hhd_threshold', 'set_hhd_threshold', ['10.0.0.2/32'], ['1000'])
+controller.table_add('hhd_threshold', 'set_hhd_threshold', ['10.0.0.3/32'], ['300'])\end{lstlisting}
+The code is straightforward: we load the topology, create a controller for each P4 switch, and then program the forwarding rules for the switch. In this case, we are programming the \texttt{hhd\_threshold} table to set different thresholds for different IP addresses. The behavior of the switch will be defined by the P4 program, which we will see in the next section. The values 100, 1000, and 300 indicate the thresholds for the heavy hitter detection for the respective IP addresses.

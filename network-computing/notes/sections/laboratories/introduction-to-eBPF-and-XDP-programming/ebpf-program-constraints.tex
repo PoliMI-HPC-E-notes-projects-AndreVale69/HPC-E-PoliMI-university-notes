@@ -1,0 +1,78 @@
+\subsubsection{eBPF Program Constraints}
+
+eBPF programs are powerful, but \textbf{not free-form}. They are intentionally constrained so the kernel can \textbf{prove} they are safe \emph{before} running them. We can think of these constraints as a \textbf{contract}: the kernel agrees to run our code in kernel space \textbf{if} we agree to write code that can be statically analyzed and verified to be safe.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Restricted C}}
+\end{flushleft}
+We write eBPF programs in C, but not all C features are allowed. What's missing:
+\begin{itemize}
+    \item \textbf{No dynamic memory allocation} (e.g., no malloc/free).
+    \item \textbf{No recursion} (functions cannot call themselves).
+    \item \textbf{No function pointers} (cannot call functions through pointers).
+    \item \textbf{No floating point} (e.g., no float/double types).
+    \item \textbf{No arbitrary pointer arithmetic} (cannot manipulate pointers like in regular C).
+    \item \textbf{Limited standard library} (only a subset of C standard library functions are available).
+\end{itemize}
+These restrictions ensure that the eBPF verifier can analyze \textbf{all possible execution paths}, track \textbf{all memory accesses} and guarantee \textbf{termination}. Full C is simply \textbf{too expressive} to verify safely, so eBPF uses \textbf{C as a syntax}, not as a full programming language.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{No unbounded loops}}
+\end{flushleft}
+This is one of the most important constraints. \hl{eBPF programs cannot contain loops that the verifier cannot guarantee will terminate.} This means:
+\begin{itemize}
+    \item No while:
+    \begin{lstlisting}[language=C]
+while (condition) {
+    // code
+}\end{lstlisting}
+    
+    \item No for:
+    \begin{lstlisting}[language=C]
+for (int i = 0; i < n; i++) {
+    // code
+}\end{lstlisting}
+\end{itemize}
+But we can still write loops that the verifier can analyze, such as:
+\begin{lstlisting}[language=C]
+for (int i = 0; i < 10; i++) {
+    // code
+}\end{lstlisting}
+The reason for this restriction is that the \textbf{program must be guaranteed to terminate}. If a loop's number of iterations cannot be proven at load time, the verifier rejects the program. This prevents infinite loops, kernel hangs, and CPU starvation. Recent kernels allow \textbf{bounded loops}, but only when the bound is statically provable (e.g., a loop that iterates over a fixed-size array). The key point is that the verifier needs to be able to \textbf{analyze all possible execution paths} and ensure they all terminate.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limited stack size}}
+\end{flushleft}
+Each eBPF program has a \textbf{fixed stack size of 512 bytes}. This means that there is no heap, the stack cannot grow dynamically, and there is no dynamic memory allocation (i.e., no malloc/free). It is so small because the stack usage must be known at verification time, and deep stacks complicate verification. Additionally, a stack overflow in kernel space would be disastrous, so the kernel enforces this limit to ensure safety and reliability.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Pointer rules}}
+\end{flushleft}
+In eBPF \textbf{not all pointers are equal}. The verifier tracks pointer \emph{types} and \emph{ranges} (e.g., which memory region they point to). So every pointer access must be bounds-checked and type-checked. For example:
+\begin{lstlisting}[language=C]
+int *ptr = map_lookup_elem(&my_map, &key);
+if (ptr) {
+    // Access *ptr safely, knowing it's valid and of the correct type
+}\end{lstlisting}
+Pointer arithmetic must be provably safe and cannot be mixed arbitrarily. This is why we often see patterns like:
+\begin{lstlisting}[language=C]
+if (ptr + sizeof(struct hdr) > data_end) {
+    return XDP_PASS;
+}\end{lstlisting}
+This is not boilerplate; it is \textbf{proof} that the pointer access is safe and will not cause a kernel crash. The verifier needs to be able to track all pointer accesses and ensure they are valid, which is why these rules exist.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How the verifier reasons}}
+\end{flushleft}
+The verifier does \textbf{not} run our program, it symbolically executes it. It analyzes the code as a \textbf{control flow graph} (CFG), tracking all possible paths and states. It uses \textbf{abstract interpretation} to reason about variable values, pointer states, and memory accesses. The constraints we discussed are designed to make this analysis tractable and sound, ensuring that the verifier can guarantee safety without needing to execute the code. The verifier checks for:
+\begin{itemize}
+    \item \textbf{Termination}: All paths must lead to a return statement.
+    \item \textbf{Memory safety}: All pointer accesses must be within bounds and of the correct type.
+    \item \textbf{Resource limits}: Stack usage and program size must be within limits.
+\end{itemize}
+By adhering to these constraints, we can write powerful eBPF programs that run safely in kernel space, enabling us to do things that were previously impossible or unsafe.

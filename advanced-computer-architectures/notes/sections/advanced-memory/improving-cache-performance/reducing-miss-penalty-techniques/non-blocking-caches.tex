@@ -1,0 +1,62 @@
+\paragraph{Non-Blocking Caches}\label{paragraph: Non-Blocking Caches}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The problem with classic (blocking) caches}}
+\end{flushleft}
+In a \textbf{blocking cache}, when we get a \textbf{miss}, the cache controller stalls the CPU until the miss is resolved and the data is in the cache. Even if the CPU could access \textbf{other data already in the cache}, it can't. It must wait for the miss to finish.
+\begin{lstlisting}[language=c, mathescape=true]
+sum += A[i];   // miss $\rightarrow$ wait...
+sum += B[0];   // could be a hit, but must wait anyway\end{lstlisting}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The idea of Non-Blocking Caches}}
+\end{flushleft}
+A \definition{Non-Blocking Cache} lets the CPU \textbf{continue to service hits even when a miss is being processed}.
+\begin{itemize}
+    \item This means the cache can have \textbf{multiple memory transactions in-flight}.
+    \item The hardware must track each outstanding miss (via \definition{Miss Status Holding Registers (MSHRs)}).
+    \item The CPU can keep executing instructions that do not depend on the missing data.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Hit Under Miss}}
+\end{flushleft}
+\definition{Hit Under Miss} is the \textbf{simplest level of non-blocking cache capability}. The cache can handle hits to other addresses while one miss is outstanding.
+\begin{enumerate}
+    \item Miss on address \texttt{X} $\rightarrow$ request sent to memory.
+    \item While waiting, CPU requests address \texttt{Y}.
+    \item If \texttt{Y} is in the cache $\rightarrow$ serve it immediately (\textbf{hit under miss}).
+    \item If \texttt{Y} is also miss $\rightarrow$ depends on capability (next topic, miss under miss).
+\end{enumerate}
+\textcolor{Green3}{\faIcon{check} \textbf{Benefit:}} hides some of the miss by overlapping \textbf{independent hits} with miss handling.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Going beyond: ``Miss Under Miss''}}
+\end{flushleft}
+A more advanced feature is \definition{Miss Under Miss} (aka \definition{Multiple Outstanding Misses}):
+\begin{itemize}
+    \item Allows \textbf{starting a second miss while the first one is still being serviced}.
+    \item Requires \textbf{multiple Miss Status Holding Registers (MSHRs)} to track all pending misses, and \textbf{non-blocking memory controllers} and \textbf{out-of-order handling} of cache fills.
+\end{itemize}
+\textcolor{Green3}{\faIcon{check} \textbf{Benefit:}} maximizes \textbf{memory-level parallelism (MLP)} and is particularly useful for high-latency main memory or multi-core systems.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-offs}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Hardware Complexity}: Tracking multiple misses is non-trivial..
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Extra Area \& Power}: Miss Status Holding Registers (MSHRs) consume silicon and energy.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Consistency Handling}: Must ensure memory ordering rules are respected.
+\end{itemize}
+
+\highspace
+Non-blocking caches \textbf{reduce effective miss penalty} by overlapping miss servicing with useful work:
+\begin{itemize}
+    \item \textbf{Blocking cache}: One miss stops \emph{all} accesses.
+    \item \textbf{Hit Under Miss}: One miss stops \emph{new misses}, but hits to other addresses still work.
+    \item \textbf{Miss Under Miss}: Multiple misses can be serviced in parallel.
+\end{itemize}

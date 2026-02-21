@@ -1,0 +1,140 @@
+\paragraph{Build \texttt{packet\_repeater.p4}}
+
+The \texttt{packet\_repeater.p4} file is the P4 program that defines the behavior of the switch. It specifies how packets are processed, what headers are parsed, and what actions are taken based on the packet contents.
+\begin{itemize}
+    \item The skeleton code provided in \texttt{packet\_repeater.p4} can be found in the GitHub repository:
+    \begin{center}
+        \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/blob/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_1/02-PacketRepeater/packet_repeater.p4}
+        \hspace{1cm}
+        \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/blob/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_1/02-PacketRepeater/packet_repeater.p4}{View on GitHub}
+    \end{center}
+
+    \item \important{Define headers, parsers and deparser}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
+/* -*- P4_16 -*- */
+#include <core.p4>
+#include <v1model.p4>
+
+/*
+ * H E A D E R S
+ */
+
+struct metadata {
+}
+
+header ethernet_t {
+    bit<48> dstAddr;
+    bit<48> srcAddr;
+    bit<16> etherType;
+}
+
+struct headers {
+    ethernet_t ethernet;
+}
+
+/*
+ * P A R S E R
+ */
+
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+    state start {
+        packet.extract(hdr.ethernet);
+        transition accept;
+    }
+}\end{lstlisting}
+    The header and the parser are the same as in the previous exercise. We define an Ethernet header with the standard fields (destination MAC, source MAC, and EtherType), and the parser simply extracts this header from the incoming packet. The parser is very simple: it just extracts the Ethernet header and then transitions to the accept state, which means that the packet is ready to be processed by the ingress control.
+
+    Also the deparser is the same as before, it just emits the Ethernet header back out:
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
+/*
+ * D E P A R S E R
+ */
+
+control MyDeparser(packet_out packet, in headers hdr) {
+    apply {
+        packet.emit(hdr.ethernet);
+    }
+}\end{lstlisting}
+    The deparser takes the processed headers and emits them back as raw bytes. Since we only have one header (Ethernet), we just emit it directly.
+
+    \item \important{Ingress Processing}
+    \begin{lstlisting}[style=p4style, morekeywords={[2]{ethernet_t, headers, metadata}}]
+/*
+ * I N G R E S S   P R O C E S S I N G
+ */
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+
+    /************ Actions ************/
+
+    action forward(bit<9> port) {
+        standard_metadata.egress_spec = port;
+    }
+
+    action drop() {
+        mark_to_drop(standard_metadata);
+    }
+
+    /************ Table ************/
+
+    table repeater {
+        key = {
+            standard_metadata.ingress_port : exact;
+        }
+        actions = {
+            forward;
+            drop;
+        }
+        // If no rule matches, drop (safe default)
+        default_action = drop();
+        size = 16;
+    }
+
+    apply {
+        repeater.apply();
+    }
+}\end{lstlisting}
+    The ingress control is where the main logic of our packet repeater resides. We define two actions: \texttt{forward}, which sets the egress port to forward the packet, and \texttt{drop}, which marks the packet to be dropped.
+
+    We also define a table called \texttt{repeater} that matches on the ingress port of the packet. The table has two possible actions: \texttt{forward} and \texttt{drop}. If no rule matches, the default action is to drop the packet, which is a safe default to prevent unintended forwarding.
+
+    In the apply block, we simply apply the \texttt{repeater} table, which means that for each incoming packet, we will look up the ingress port in the table and execute the corresponding action (either forward or drop).
+\end{itemize}
+The complete code for the \texttt{packet\_repeater.p4} file can be found in the GitHub repository:
+\begin{center}
+    \qrcode{https://gist.github.com/AndreVale69/8031008f1495d3d235d27ac17d413da9}
+    \hspace{1cm}
+    \href{https://gist.github.com/AndreVale69/8031008f1495d3d235d27ac17d413da9}{View on GitHub}
+\end{center}
+To test the P4 program, we can use the same commands as in the previous exercise:
+\begin{itemize}
+    \item Run the network topology with the command:
+    \begin{lstlisting}
+sudo python3 network_topo.py\end{lstlisting}
+    \item After running the network, we open two terminals for the hosts and run the control plane script in the main terminal. So in the mininet CLI, we run:
+    \begin{lstlisting}
+mininet> xterm h1 h2\end{lstlisting}
+    This will open two xterm windows, one for each host.
+
+    \item In the host \texttt{h2} terminal, we run the command to listen for incoming packets:
+    \begin{lstlisting}
+python3 receive.py\end{lstlisting}
+    This will start a simple Python script that listens for packets on the host \texttt{h2}.
+
+    \item In the host \texttt{h1} terminal, we run the command to send a packet:
+    \begin{lstlisting}
+python3 send.py -d 10.0.0.2 -m "Hello H2, I'm H1!"\end{lstlisting}
+    This will send a packet from \texttt{h1} to \texttt{h2} with the specified destination IP and message.
+
+    If everything is set up correctly, we should see the message ``\emph{Hello H2, I'm H1!}'' appear in the terminal of \texttt{h2}, indicating that the packet was successfully forwarded by the switch according to the rules we installed in the control plane.
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/lab1-ex2.png}
+        \caption{Testing the packet repeater: \texttt{h1} sends a packet to \texttt{h2}, which receives it successfully.}
+    \end{figure}
+\end{itemize}

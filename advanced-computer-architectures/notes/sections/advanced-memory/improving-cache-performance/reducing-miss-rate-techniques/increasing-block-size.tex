@@ -1,0 +1,73 @@
+\paragraph{Increasing Block Size}\label{paragraph: Increasing Block Size}
+
+When a program accesses a memory location, it is \textbf{very likely} to soon access \textbf{neighboring addresses}: this is \important{Spatial Locality} (page \pageref{def: Spatial Locality}).
+
+\highspace
+By \textbf{increasing the cache block size} (i.e., the amount of data brought in with each cache miss), we \textbf{preload} \hl{nearby data into the cache before it's even requested}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Effect on Miss Rate}}
+\end{flushleft}
+\textbf{Compulsory misses}\footnote{Compulsory Misses, or Cold Start Misses, occurs the first time a block is accessed, so it's not in the cache yet (see page \pageref{def: Compulsory Misses} for more).} are reduced: since a single access brings in \textbf{more than one word}, \textbf{fewer unique block fetches} are needed. The \hl{effectiveness depends} on \textbf{how well the program exhibits spatial locality}\footnote{Spatial Locality says: ``\emph{if we access this memory address, we will probably access nearby ones soon}''.}.
+
+\highspace
+\begin{examplebox}
+    \begin{lstlisting}[language=c]
+for (int i = 0; i < 100; i++)
+    sum += a[i];\end{lstlisting}
+    If \texttt{a[i]} and \texttt{a[i + 1]} are in the same larger block, we benefit from fetching both in one miss.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Drawbacks and Trade-offs}}
+\end{flushleft}
+While increasing block size helps with \textbf{spatial locality}, there are serious \textbf{downsides}:
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{20em} @{}}
+        \toprule
+        Trade-Off & Impact \\
+        \midrule
+        \textbf{Increased Miss Penalty}  & Larger blocks take more time to transfer from lower levels $\rightarrow$ slower cache refill.                        \\ [.3em]
+        \textbf{Fewer Blocks in Cache}   & For a fixed cache size, larger blocks $=$ fewer blocks stored $\rightarrow$ \textbf{more conflict/capacity misses}.  \\ [.3em]
+        \textbf{Wasted Bandwidth}        & If \hl{spatial locality is weak}, much of the \hl{block may be unused}.                                              \\ [.3em]
+        \textbf{Power and Energy}        & More data fetched and written increases energy usage.                                                                \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+\textcolor{Red2}{\faIcon{exclamation-triangle}} At some point, \textbf{increasing block size hurts more than it helps}.
+
+\newpage
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Empirical Behavior}}
+\end{flushleft}
+Empirical behavior refers to how something actually behaves in practice, based on measured data, experiments, or real-world observations, not just theoretical analysis.
+
+\highspace
+In our context (Block Size vs. Miss Rate), theory says: ``\emph{increasing block size should reduce compulsory misses thanks to spatial locality}''. But when researchers actually test it on real systems and real programs, they observe that:
+\begin{itemize}
+    \item Miss rate \textbf{initially decreases} as block size increases.
+    \item But \hl{beyond an optimal size}, it begins to \textbf{increase again} due to:
+    \begin{itemize}
+        \item \textbf{Fewer total blocks} (higher conflict/capacity pressure).
+        \item \textbf{Higher miss penalty}.
+    \end{itemize}
+\end{itemize}
+This forms a \textbf{U-shaped curve} when plotting miss rate vs. block size.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/miss-rate-vs-block-size.pdf}
+\end{figure}
+
+\begin{itemize}
+    \item Common block sizes: \textbf{16, 32, 64 bytes} (chosen based on workload).
+    \item Larger blocks may be beneficial for \textbf{instruction caches} (sequential fetch).
+    \item Data caches are more sensitive, \textbf{balance carefully}.
+\end{itemize}
+Increasing block size helps \textcolor{Green3}{\faIcon{check} \textbf{reduce compulsory misses}} by exploiting \textbf{spatial locality}, but only up to a point. It can \textcolor{Red2}{\faIcon{times} \textbf{increase conflict and capacity misses}} and make \textcolor{Red2}{\faIcon{times} \textbf{misses more expensive}}.

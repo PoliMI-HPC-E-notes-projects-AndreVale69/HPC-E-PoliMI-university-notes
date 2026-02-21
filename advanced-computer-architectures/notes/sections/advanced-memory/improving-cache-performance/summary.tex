@@ -1,0 +1,85 @@
+\subsubsection{Summary}
+
+The memory hierarchy is designed to give the \emph{illusion} of a large, fast memory, by combining small/fast and large/slow storage. Programs naturally exhibit \textbf{temporal locality} (recently used data is reused soon) and \textbf{spatial locality} (nearby data is likely used together). Cache optimizations exploit these principles by reducing miss rate, miss penalty, or hit time.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{percentage} \textbf{Reducing Miss Rate}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Increase Cache Size} (page \pageref{paragraph: Increasing Cache Size}): Larger caches hold more blocks, reducing capacity misses, but slower and more complex.
+    \item \textbf{Increase Block Size} (page \pageref{paragraph: Increasing Block Size}): Larger blocks capture spatial locality, but too large blocks increase miss penalty and internal waste.
+    \item \textbf{Increase Associativity} (page \pageref{paragraph: Increasing Associativity}): Higher associativity reduces conflict misses, though hit time and hardware cost grow.
+    \item \textbf{Victim Cache} (page \pageref{paragraph: Victim Cache}): A small fully-associative buffer keeps recently evicted blocks, catching conflict misses.
+    \item \textbf{Pseudo-Associativity / Way Prediction} (page \pageref{paragraph: Pseudo-Associativity and Way Prediction}): Simulates higher associativity with lower hit time by predicting the correct way.
+    \item \textbf{Hardware Prefetching} (page \pageref{paragraph: Hardware Prefetching}): Dedicated hardware anticipates sequential or streaming accesses, hiding compulsory misses.
+    \item \textbf{Software Prefetching} (page \pageref{paragraph: Software Prefetching}): Compiler inserts prefetch instructions for predictable patterns.
+    \item \textbf{Compiler Optimizations} (page \pageref{paragraph: Compiler Optimizations}): Loop blocking, reordering, and array alignment improve temporal and spatial locality.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{hourglass-half} \textbf{Reducing Miss Penalty}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Read Priority over Write} (page \pageref{paragraph: Read Priority over Write on Miss}): On a miss, reads are prioritized so computation continues sooner.
+    \item \textbf{Sub-block Placement} (page \pageref{paragraph: Sub-block Placement}): Blocks divided into smaller sub-blocks; only the needed sub-block is fetched.
+    \item \textbf{Early Restart and Critical Word First} (page \pageref{paragraph: Early Restart and Critical Word First}): The CPU resumes as soon as the requested word arrives, without waiting for the full block.
+    \item \textbf{Non-blocking Caches} (page \pageref{paragraph: Non-Blocking Caches}): Allow hits during a miss (\emph{hit under miss}) or multiple misses in parallel (\emph{miss under miss}) using MSHRs.
+    \item \textbf{Second-Level and Multi-Level Caches} (page \pageref{paragraph: Second-Level and Multi-Level Caches}): Extra cache levels catch L1 misses before they reach main memory, dramatically lowering effective penalty.
+    \item \textbf{Merging Write Buffers} (page \pageref{paragraph: Merging Write Buffers}): Consecutive writes to the same block are merged, reducing memory traffic and contention.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stopwatch} \textbf{Reducing Hit Time}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Small and Simple L1} (page \pageref{paragraph: Small and Simple L1 Caches}): Keeping L1 small (16-64 KB) and low-associativity enables single-cycle access, despite a slightly higher miss rate.
+    \item \textbf{Virtually Indexed, Physically Tagged (VIPT)} (page \pageref{paragraph: Avoid address translation - VIPT}): Starts cache lookup using virtual address bits while TLB translation proceeds in parallel; avoids TLB latency in the critical path.
+    \item \textbf{Pipelined Writes} (page \pageref{paragraph: Pipelined Writes}): Splits writes into pipeline stages, allowing multiple writes in flight and improving throughput.
+    \item \textbf{Small Sub-blocks for Write-Through Caches} (page \pageref{paragraph: Small Sub-Blocks for Write-Through Caches}): Dividing cache lines into sub-blocks avoids writing entire blocks for small updates, saving time and bandwidth.
+\end{itemize}
+
+\highspace
+Cache design always balances three factors:
+\begin{itemize}
+    \item \textbf{Miss Rate} (avoid misses with larger/associative caches and prefetching).
+    \item \textbf{Miss Penalty} (recover faster with multi-level caches, early restart, non-blocking designs).
+    \item \textbf{Hit Time} (keep L1 as fast as possible with simplicity and VIPT).
+\end{itemize}
+No single technique dominates; architects combine them carefully to match the workload and technology constraints.
+
+\newpage
+
+\begin{landscape}
+    \begin{table}[p]
+        \centering
+        \begin{adjustbox}{max width=\linewidth,center}
+            \begin{tabular}{@{} l c c c c @{}}
+            \toprule
+            \textbf{Technique} & \textbf{Miss Rate} & \textbf{Miss Penalty} & \textbf{Hit Time} & \textbf{Complexity} \\
+            \midrule
+            Increase Cache Size                     & $\downarrow$ (fewer capacity)             & --                                        & $\uparrow$ (slower)                           & $\uparrow$ (larger arrays)    \\ [.3em]
+            Increase Block Size                     & $\downarrow$ (spatial locality)           & $\uparrow$ (bigger transfer)              & $\uparrow$                                    & Moderate                      \\ [.3em]
+            Increase Associativity                  & $\downarrow$ (conflict misses)            & --                                        & $\uparrow$ (tag checks)                       & $\uparrow$                    \\ [.3em]
+            Victim Cache                            & $\downarrow$ (conflict misses)            & $\downarrow$ (slightly)                   & $=$                                           & Low--Moderate                 \\ [.3em]
+            Pseudo-Associativity / Way Prediction   & $\downarrow$ (like 2-way)                 & --                                        & $=$ (fast if predicted)                       & Moderate                      \\ [.3em]
+            HW Prefetching                          & $\downarrow$ (compulsory/capacity)        & --                                        & $=$                                           & $\uparrow$ (stream buffers)   \\ [.3em]
+            SW Prefetching                          & $\downarrow$ (predictable patterns)       & --                                        & $\uparrow$ (extra instr.)                     & Moderate (compiler)           \\ [.3em]
+            Compiler Optimizations                  & $\downarrow$ (better locality)            & --                                        & $=$                                           & $\uparrow$ (compiler effort)  \\ [.3em]
+            Read Priority over Write                & --                                        & $\downarrow$ (fewer stalls)               & $=$                                           & Low                           \\ [.3em]
+            Sub-block Placement                     & --                                        & $\downarrow$ (partial fetch)              & $=$                                           & $\uparrow$ (valid bits)       \\ [.3em]
+            Early Restart                           & --                                        & $\downarrow$ (resume earlier)             & $=$                                           & Low                           \\ [.3em]
+            Critical Word First                     & --                                        & $\downarrow$ (critical word first)        & $=$                                           & Moderate                      \\ [.3em]
+            Non-blocking Caches                     & --                                        & $\downarrow\downarrow$ (overlap misses)   & $=$                                           & $\uparrow\uparrow$ (MSHRs)    \\ [.3em]
+            Second-Level / Multi-Level              & $\downarrow$ (fewer L1 misses to DRAM)    & $\downarrow\downarrow\downarrow$          & $\uparrow$ (extra level)                      & $\uparrow\uparrow$            \\ [.3em]
+            Merging Write Buffers                   & --                                        & $\downarrow$ (less traffic)               & $=$                                           & Moderate                      \\ [.3em]
+            Small \& Simple L1                      & $\uparrow$ (slightly more misses)         & --                                        & $\downarrow\downarrow\downarrow$ (fast hits)  & Low                           \\ [.3em]
+            VIPT Caches                             & --                                        & --                                        & $\downarrow$ (parallel TLB/cache)             & $\uparrow$ (alias handling)   \\ [.3em]
+            Pipelined Writes                        & --                                        & --                                        & $\downarrow$ (higher throughput)              & $\uparrow$                    \\ [.3em]
+            Small Sub-blocks (Write-through)        & --                                        & --                                        & $\downarrow$ (less write work)                & $\uparrow$                    \\
+            \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+        \caption{Cache optimization techniques and their impact on Miss Rate, Miss Penalty, Hit Time, and Complexity.}
+    \end{table}
+\end{landscape}

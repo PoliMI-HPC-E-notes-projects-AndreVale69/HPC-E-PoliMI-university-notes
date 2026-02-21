@@ -1,0 +1,74 @@
+\subsection{Multicore + SMT}
+
+When you combine \textbf{multicore} (multiple physical cores) with \textbf{SMT} (multiple hardware threads per core):
+\begin{equation}
+    \text{Total hardware threads} = \left(\text{\# cores}\right) \times \left(\text{SMT threads per core}\right)
+\end{equation}
+For example, Intel Core i7 with 8 cores and 2-way SMT, has \textbf{16 hardware threads}, and IBM POWER9 with 24 cores and 4-way SMT has \textbf{96 hardware threads}. This is what Task Manager (Windows) or \texttt{lscpu} (Linux) reports as \textbf{logical CPUs}.
+
+\highspace
+\begin{examplebox}[: \texttt{lscpu}]
+    For example (on my Thinkpad T430), when we run the \texttt{lscpu} command on a random Ubuntu computer, we get the following output:
+    \begin{lstlisting}[language=bash]
+andre@andre:~$ lscpu
+Architecture:             x86_64
+  CPU op-mode(s):         32-bit, 64-bit
+  Address sizes:          36 bits physical, 48 bits virtual
+  Byte Order:             Little Endian
+CPU(s):                   8
+  On-line CPU(s) list:    0-7
+Vendor ID:                GenuineIntel
+  Model name:             Intel(R) Core(TM) i7-3632QM CPU @ 2.20GHz
+    CPU family:           6
+    Model:                58
+    Thread(s) per core:   2
+    Core(s) per socket:   4
+    Socket(s):            1
+    Stepping:             9
+    CPU(s) scaling MHz:   51%
+    CPU max MHz:          3200.0000
+    CPU min MHz:          1200.0000
+...\end{lstlisting}
+    A socket is the physical connector on the motherboard where a CPU chip (package) is installed. Each socket can hold one CPU chip (the ``package'' with its silicon die(s) inside). For example, servers can have multiple sockets (e.g., 2-socket or 4-socket motherboards).
+    
+    \highspace
+    In this example, there is 1 physical CPU package with 4 physical cores. Each core supports 2 hardware threads via Intel Hyper-Threading technology (SMT).
+
+    \highspace
+    So Linux scheduler sees 8 logical CPUs. The OS can schedule up to 8 software threads to run truly \emph{simultaneously}. But remember: the extra thread per core (Hyper-Threading is used because we are working with Intel architecture) doesn't double performance. It just helps keep the core busy when one thread is stalled.
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this matters}}
+\end{flushleft}
+More hardware threads increase the number of OS threads that can execute \textbf{truly simultaneously}. But scaling threads per core vs scaling cores affects performance differently, depending on the workload:
+\begin{itemize}
+    \item \important{More cores} helps when threads are \textbf{truly independent} and need their own compute capacity.
+    \item \important{More SMT per core} helps when a single core has idle slots to fill, but not enough ILP from one thread.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{share-alt} \textbf{Cache Sharing Policies}}
+\end{flushleft}
+When multiple threads share a core, they inevitably also share caches:
+\begin{itemize}
+    \item \important{L1 cache}: almost always \textbf{shared between SMT threads of the same core}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Pro:}} keeps design simple, avoids duplication.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Con:}} threads can evict each other's cache lines (cache thrashing).
+    \end{itemize}
+
+    \item \important{L2 cache}: depends on the architecture. In some CPUs it is \textbf{private} to each core (like in most Intel/AMD), in others it is \textbf{shared among a group of cores} (some ARM clusters, some older Intel Atom).
+    
+    \item \important{L3 cache}: often \textbf{shared across all cores} (chip-level cache).
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Implications:}} with SMT, \textbf{cache pressure increases}. Two (or more) active threads double the working set of the L1/L2. Designers sometimes add policies:
+\begin{itemize}
+    \item \textbf{Partitioning} cache space between threads.
+    \item \textbf{QoS (quality of service)} mechanisms to prevent one thread from starving the other.
+    \item Replacement policies aware of thread ID.
+\end{itemize}
+\textbf{Multicore scaling} increases raw compute capacity. \textbf{SMT scaling} improves utilization of each core. Both combined give high \emph{thread counts} on modern CPUs, but cache sharing makes resource management critical.

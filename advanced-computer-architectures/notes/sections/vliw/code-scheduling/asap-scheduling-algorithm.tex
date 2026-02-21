@@ -1,0 +1,108 @@
+\subsubsection{ASAP Scheduling Algorithm (As Soon As Possible)}\label{subsubsection: ASAP Scheduling Algorithm}
+
+\definition{ASAP (As Soon As Possible) Scheduling} is a \textbf{greedy scheduling algorithm} used in instruction scheduling. Its main idea is to \textbf{schedule each operation as early as possible} once its \textbf{dependencies are satisfied}.
+\begin{itemize}
+    \item It \hl{does not consider resource constraints}.
+    \item It focuses only on \textbf{data readiness}.
+    \item It is useful for computing \textbf{lower bounds} on execution time and for \textbf{priority estimation}.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How ASAP Scheduling Works}}
+\end{flushleft}
+\begin{enumerate}
+    \item Build the \textbf{dependence graph} (page \pageref{subsubsection: Dependence Graph and Critical Path}).
+    \item Initialize a \textbf{ready list} with all \textbf{source nodes} (instructions with no predecessors). A \definition{Ready List} is a list of all instructions \textbf{ready to be scheduled} at a given cycle. An \hl{instruction is ready} if:
+    \begin{itemize}
+        \item All its \hl{predecessors} have been \hl{scheduled}.
+        \item Its \hl{operands are available} (i.e., computed and propagated).
+    \end{itemize}
+    \item For each cycle:
+    \begin{itemize}
+        \item Schedule every instruction in the ready list.
+        \item Update successors (check if all their predecessors are now scheduled).
+        \item Move newly ready instructions into the next cycle's ready list.
+    \end{itemize}
+    \item Repeat until all instructions are scheduled.
+\end{enumerate}
+ASAP produces \textbf{one of the shortest possible schedules}, assuming no resource constraints. The result gives the \textbf{earliest cycle} at which each instruction can execute.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why use ASAP Scheduling if it ignores resource constraints?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{It Computes a Theoretical Lower Bound}. ASAP gives us the earliest possible execution cycle for each instruction, assuming infinite resources. The critical path of the dependence graph emerges directly from ASAP: it is the shortest possible execution time, even for a perfectly parallel machine. We use \textbf{ASAP as a baseline} because \textbf{we know we can't do better than this in terms of schedule length}.
+
+    \item \textbf{It Helps Assign Priorities for Real Scheduling Algorithms}. In list-based scheduling, instructions are chosen from the ready list based on priority. One way to assign this priority is using the Longest Path to Sink (from ASAP): instructions deeper in the graph (closer to the end) are more urgent. So \textbf{even if ASAP isn't the final schedule, it informs how to choose wisely in realistic algorithms}.
+    
+    \item \textbf{It's a Building Block for More Advanced Scheduling}. Many algorithms, like List Scheduling, start by computing the ASAP schedule. Then they incorporate resource constraints and adjust from there. Think of it as the ``\textbf{first approximation}'', \textbf{later refined under constraints}.
+    
+    \item \textbf{Compiler Simplicity in Early Stages}. In early compiler passes (before hardware-specific optimization), ASAP can: help restructure code, estimate ILP, and guide unrolling or pipelining transformations.
+\end{enumerate}
+A great \hl{analogy}: ASAP is like planning a trip \textbf{assuming we hit green lights at every intersection}. It's not realistic, but it \textbf{gives us a best-case travel time}, which is useful for planning and comparison.
+
+\begin{examplebox}[: ASAP Scheduling Algorithm]
+    Consider the following dependence graph:
+    \begin{center}
+        \begin{tikzpicture}[node distance=1cm, >=stealth]
+            \node[circle, draw] (a) {$a \left(\times\right)$};
+            \node[circle, draw, below=of a] (b) {$b \left(+\right)$};
+            \node[circle, draw, below=of b] (c) {$c \left(+\right)$};
+
+            \node[circle, draw, right=of a] (d) {$d \left(\times\right)$};
+            \node[circle, draw, right=of b] (e) {$e \left(-\right)$};
+
+            \node[circle, draw, right=of e] (f) {$f \left(\text{St}\right)$};
+            
+            \node[circle, draw, right=of f] (g) {$g \left(-\right)$};
+
+            \draw[->] (a) -- (d);
+            \draw[->] (b) -- (e);
+            \draw[->] (c) -- (f);
+            \draw[->] (e) -- (f);
+            \draw[->] (d) -- (g);
+            \draw[->] (f) -- (g);
+        \end{tikzpicture}
+    \end{center}
+    Each node has the corresponding operation in brackets. For example, ``St'' is the store operation. Multiply operations take three latency cycles; ALU operations (addition and subtraction) take one; and the store operation takes two.
+
+    \highspace
+    \begin{minipage}{0.35\textwidth}
+        \centering
+        \begin{tabular}{@{} c | c @{}}
+            \toprule
+            \multicolumn{2}{c}{Ready List} \\
+            \midrule
+            \textbf{Cycle} & \textbf{Ready List} \\
+            \midrule
+            1 & $a$, $b$, $c$ \\
+            2 & $e$ \\
+            3 & $f$ \\
+            4 & $d$ \\
+            5 & \\
+            6 & \\
+            7 & $g$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.6\textwidth}
+        \centering
+        \begin{tabular}{@{} c | c | c | c | c @{}}
+            \toprule
+            \multicolumn{5}{c}{Resource Reservation Table} \\
+            \midrule
+            \textbf{Cycle} & \textbf{ALU1} & \textbf{ALU2} & \textbf{L/S} & \textbf{MUL} \\
+            \midrule
+            1 & $b$ & $c$ &     & $a$ \\
+            2 & $e$ &   &     & $a$ \\
+            3 & $f$ &   & $f$   & $a$ \\
+            4 & &   & $f$   & $d$ \\
+            5 & &   &     & $d$ \\
+            6 & &   &     &   \\
+            7 & $g$ &   &     &   \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+\end{examplebox}

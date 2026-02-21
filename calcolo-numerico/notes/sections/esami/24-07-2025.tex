@@ -1,0 +1,812 @@
+\subsection{24/07/2025}
+
+\subsubsection*{Esercizio 1}
+
+Si consideri la matrice $A \in \mathbb{R}^{n \times n}$ ed il vettore $\mathbf{b} \in \mathbb{R}^{n}$ tali che:
+\begin{equation*}
+    A = \begin{bmatrix}
+        2 & -1 & 0 & 0 & \cdots & 0 \\
+        -1 & 2 & -1 & 0 & \cdots & 0 \\
+        0 & -1 & \ddots & \ddots & \ddots & \vdots \\
+        0 & 0 & \ddots & \ddots & \ddots & 0 \\
+        \vdots & \vdots & \vdots & -1 & 2 & -1 \\
+        0 & 0 & \cdots & 0 & -1 & 2 \\
+    \end{bmatrix}
+    \hspace{3em}
+    \mathbf{b} = \begin{bmatrix}
+        -1 \\
+        -1 \\
+        -1 \\
+        \vdots \\
+        -1 \\
+        -1 \\
+    \end{bmatrix}
+\end{equation*}
+\begin{enumerate}
+    \item Utilizzando gli opportuni comandi Matlab, si costruiscano la matrice $A$ ed il vettore $\mathbf{b}$ per $n = 7$. Utilizzando il comando \texttt{\textbackslash} si risolva il sistema lineare $A\mathbf{x} = \mathbf{b}$. Riportare $\mathbf{x}$ e tutti i comandi Matlab usati.
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+    \begin{lstlisting}[language=MATLAB]
+% dimensione di n
+n = 7;
+% creiamo un vettore di 1 e aggiungiamo 1
+A = diag(ones(n,1)+1) + ...      % diag. principale
+    diag(ones(n-1,1)-2, 1) + ... % diag. sopra principale
+    diag(ones(n-1,1)-2, -1);     % diag. sotto principale
+% creiamo vettore b
+b = -ones(n,1);
+% calcola soluzione di x
+x = A\b;\end{lstlisting}
+Il vettore \texttt{x} produce il seguente risultato:
+\begin{equation*}
+    \mathbf{x} = \begin{bmatrix}
+        -3.5 \\
+        -6 \\
+        -7.5 \\
+        -8 \\
+        -7.5 \\
+        -6 \\
+        -3.5
+    \end{bmatrix}
+\end{equation*}
+
+    \item Elencare e discutere:
+    \begin{enumerate}
+        \item Le condizioni sufficienti per la convergenza del metodo di Gauss-Seidel.
+        \item Le condizioni necessarie e sufficienti per la convergenza del metodo di Gauss-Seidel.
+    \end{enumerate}
+    Data $B_{GS}$ la matrice di iterazione di Gauss-Seidel, dimostrare che\break $\left\| B_{GS} \right\| < 1$ implica la convergenza.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Le condizioni sufficienti per la convergenza del metodo di Gauss-Seidel sono 3:
+    \begin{itemize}
+        \item La matrice $A$ deve essere a \textbf{dominanza diagonale stretta per righe}:
+        \begin{equation*}
+            \left|a_{ii}\right| > \displaystyle\sum_{j \ne i} \left|a_{ij}\right| \hspace{1em} \forall i
+        \end{equation*}
+        \item La matrice $A$ deve essere \textbf{simmetrica definita positiva (SPD)}:
+        \begin{equation*}
+            \mathbf{x}^{T} A \mathbf{x} > 0 \hspace{1em} \forall \mathbf{x} \ne 0
+        \end{equation*}
+        \item La matrice $A$ deve essere una \textbf{Matrice di classe M (M-Matrice) non singolare}. Ovvero una matrice con diagonale positiva e elementi extradiagonali (non sulla diagonale) non positivi.
+    \end{itemize}
+    L'unica condizione necessaria e sufficiente per la convergenza è quando il raggio spettrale della matrice di iterazione $B_{GS}$ è minore di uno:
+    \begin{equation*}
+        \text{convergenza} \iff \rho(B_{GS}) < 1
+    \end{equation*}
+    \begin{proof}[Dimostrazione ($\left\| B_{GS} \right\| < 1$ implica la convergenza)]
+        Il metodo di Gauss-Seidel si scrive
+        \begin{equation*}
+            x^{(k+1)} = B_{GS}x^{(k)} + c
+        \end{equation*}
+        Definendo l'errore $e^{(k)} = x^{(k)} - x^{*}$, si ha
+        \begin{equation*}
+            e^{(k+1)} = B_{GS} e^{(k)} \quad \Rightarrow \quad e^{(k)} = B_{GS}^k e^{(0)}
+        \end{equation*}
+        Se $\|B_{GS}\| < 1$, allora:
+        \begin{equation*}
+            \|e^{(k)}\| \le \|B_{GS}\|^k \|e^{(0)}\| \to 0,
+        \end{equation*}
+        Per $k \to \infty$. Quindi $x^{(k)} \to x^\ast$: il metodo converge.
+    \end{proof}
+
+
+    \item Verificare se la matrice $A$ soddisfa le condizioni precedenti riportate. Motivare le risposte e riportare i comandi utilizzati.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}}
+    \begin{lstlisting}[language=MATLAB]
+condition = true;
+for row = 1:length(A)
+    % valore sulla diagonale
+    a_ii = abs(A(row, row));
+    % somma della riga inclusa la diagonale
+    row_sum = sum(abs(A(row, 1:n)));
+    % se la condizione per la row-esima
+    % non e' valida, exit
+    if ~(a_ii > (row_sum - a_ii))
+        condition = false;
+        break
+    end
+end
+if condition
+    disp("La matrice A e' a dominanza diagonale stretta per righe");
+else
+    disp("La matrice A non e' a dominanza diagonale stretta per righe");
+end
+
+% dimostrare che e' simmetrica e definita positiva
+if issymmetric(A) && all(eig(A) > 0)
+    disp("La matrice e' simmetrica definita positiva")
+else
+    disp("La matrice NON e' simmetrica definita positiva")
+end
+
+% dimostrare che e' una M-Matrice non singolare
+% 1. Extradiagonali non positivi
+n = size(A, 1);
+% creiamo la matrice con solo la diagonale principale
+% diag(diag(A)) e sottraiamo alla matrice A la diagonale
+% principale per ottenere la matrice con solo le
+% extradiagonali
+offdiag = A - diag(diag(A));
+% verifichiamo che tutte le extradiagonali siano <= 0
+first_m_cond = all(offdiag(:) <= 0);
+if first_m_cond == false
+    disp("La matrice NON e' una M-matrice: extradiagonali positive")
+end
+% 2. Diagonale principale positiva
+second_m_cond = all(diag(A) > 0);
+if second_m_cond == false
+    disp("La matrice NON e' una M-matrice: diagonale principale non positiva")
+end
+% 3. A e' non singolare, cioe' rango(A) = n
+% si ricorda che una matrice e' singolare se det(A) = 0
+% e che rango(A) = n se e solo se det(A) != 0
+% perche' il determinante e' il prodotto degli autovalori
+% e una matrice e' singolare se ha almeno un autovalore nullo
+third_m_cond = (rank(A) == n);
+if third_m_cond == false
+    disp("La matrice NON e' una M-matrice: matrice singolare")
+end
+
+if first_m_cond && second_m_cond && third_m_cond
+    disp("La matrice e' una M-matrice non singolare")
+end\end{lstlisting}
+    Output:
+    \begin{lstlisting}
+La matrice A non e' a dominanza diagonale stretta per righe
+La matrice e' simmetrica definita positiva
+La matrice e' una M-matrice non singolare\end{lstlisting}
+    Quindi, la matrice $A$ soddisfa le condizioni di essere simmetrica definita positiva e di essere una M-matrice non singolare, ma non soddisfa la condizione di dominanza diagonale stretta per righe.
+    Questo comporta che il metodo di Gauss-Seidel converge comunque, in quanto la condizione di dominanza diagonale stretta per righe è solo una condizione sufficiente, ma non necessaria. Infatti, la condizione necessaria e sufficiente per la convergenza del metodo di Gauss-Seidel è che il raggio spettrale della matrice di iterazione $B_{GS}$ sia minore di uno, condizione che è soddisfatta in questo caso:
+    \begin{lstlisting}[language=MATLAB]
+B_gs = eye(size(A,1)) - tril(A)\A;
+rho_gs = max(abs(eig(B_gs)));
+disp("Raggio spettrale di B_gs: " + rho_gs);
+disp("Il metodo Gauss-Seidel converge? " + (rho_gs < 1));\end{lstlisting}
+    Output:
+    \begin{lstlisting}
+Raggio spettrale di B_gs: 0.85355
+Il metodo Gauss-Seidel converge? true\end{lstlisting}
+    Quindi, il raggio spettrale di $B_{GS}$ è minore di uno, confermando che il metodo di Gauss-Seidel converge per questa matrice $A$.
+
+
+    \item \label{item: punto d - 24-07-2025} Usando la funzione \texttt{gs.m} si risolva il sistema lineare $Ax = b$ con il metodo iterativo di Gauss-Seidel per $x^{(0)} = \left(0, 0, 0, 0, 0, 0, 0\right)^{T}$, tolleranza $tol = 10^{-7}$ e massimo numero di iterazioni $N_{\max} = 700$. Indicata con $x_{GS}$ la soluzione approssimata ottenuta, si riportino: il numero di iterazioni effettuate, l'errore $\left\| x_{GS} - x \right\|$ e tutti i comandi Matlab utilizzati.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}}
+    \begin{lstlisting}[language=MATLAB]
+x0 = zeros(n, 1);
+tol = 1e-7;
+n_max = 700;
+[x_gs, k] = gs(A, b, x0, tol, n_max);
+disp("Soluzione con Gauss-Seidel:")
+disp(x_gs)
+disp("Numero di iterazioni:")
+disp(k)
+% errore x_gs - x
+err_gs = norm(x_gs - x);
+disp("Errore tra soluzione esatta e soluzione con Gauss-Seidel:")
+disp(err_gs)\end{lstlisting}
+    Output:
+    \begin{lstlisting}
+Soluzione con Gauss-Seidel:
+   -3.5000
+   -6.0000
+   -7.5000
+   -8.0000
+   -7.5000
+   -6.0000
+   -3.5000
+
+Numero di iterazioni:
+   103
+
+Errore tra soluzione esatta e soluzione con Gauss-Seidel:
+   1.4486e-06\end{lstlisting}
+
+
+    \item Si riportino il valore del parametro $\alpha$ che massimizza la velocità di convergenza del metodo di Richardson stazionario ed il corrispondente raggio spettrale della matrice di iterazione.
+   
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Da definizione, il parametro $\alpha_{\mathrm{opt}}$ che massimizza la velocità di convergenza del metodo di Richardson è:
+    \begin{equation*}
+        \alpha_{\mathrm{opt}} = \dfrac{2}{\lambda_{\min}(A) + \lambda_{\max}(A)}
+    \end{equation*}
+    Dove $\lambda$ rappresenta il vettore degli autovalori della matrice $A$. Invece, il raggio spettrale della matrice di iterazione corrispondente al parametro $\alpha_{\mathrm{opt}}$ é:
+    \begin{equation*}
+        \rho\left(I - \alpha_{\mathrm{opt}}A\right) = \dfrac{
+            \lambda_{\max}(A) - \lambda_{\min}(A)
+        }{
+            \lambda_{\max}(A) + \lambda_{\min}(A)
+        }
+    \end{equation*}
+    Implementato quanto detto su MATLAB, il codice è:
+    \begin{lstlisting}[language=MATLAB]
+eigen_values = eig(A);
+lambda_min = min(eigen_values);
+lambda_max = max(eigen_values);
+alpha_opt = 2 / (lambda_min + lambda_max);
+disp("Parametro alpha che massimizza la velocita' di convergenza: " + alpha_opt)
+
+rho = (lambda_max - lambda_min) / (lambda_max + lambda_min);
+disp("Raggio spettrale del metodo di Richardson: " + rho);\end{lstlisting}
+    Output:
+    \begin{lstlisting}
+Alpha che massimizza la velocita' di convergenza: 0.5
+Raggio spettrale del metodo di Richardson: 0.92388\end{lstlisting}
+
+
+    \item Si ripeta il punto \ref{item: punto d - 24-07-2025} usando la funzione \texttt{richardson.m} per applicare il metodo iterativo di Richardson stazionario alla soluzione del sistema lineare con parametro $\alpha_{\mathrm{opt}}$ calcolato al punto precedente. Si riportino la soluzione approssimata ottenuta ed il numero di iterazioni effettuate. Sulla base dei risultati ottenuti quale dei due metodi converge più velocemente?
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Al punto \ref{item: punto d - 24-07-2025}, il metodo di iterazione aveva le seguenti caratteristiche:
+    \begin{itemize}
+        \item $x^{(0)} = \left(0, 0, 0, 0, 0, 0, 0\right)^{T}$
+        \item $tol = 10^{-7}$
+        \item $N_{\max} = 700$
+    \end{itemize}
+    Quindi, il codice MATLAB:
+    \begin{lstlisting}[language=MATLAB]
+x0 = zeros(n, 1);
+tol = 1e-7;
+n_max = 700;
+[x_rich, k_rich, err_rich] = richardson(A, b, x0, alpha_opt, tol, n_max);
+disp("Soluzione con Richardson:")
+disp(x_rich)
+disp("Numero di iterazioni: " + k_rich)
+% errore x_rich - x
+err_rich_final = norm(x_rich - x);
+disp("Errore tra soluzione esatta e soluzione con Richardson: " + err_rich_final)\end{lstlisting}
+    Output:
+    \begin{lstlisting}
+Soluzione con Richardson:
+   -3.5000
+   -6.0000
+   -7.5000
+   -8.0000
+   -7.5000
+   -6.0000
+   -3.5000
+
+Numero di iterazioni: 203
+Errore tra soluzione esatta e soluzione con Richardson: 1.7286e-06\end{lstlisting}
+    Il metodo di Gauss-Seidel ha impiegato la metà del numero di iterazioni rispetto al metodo di Richardson (103 contro 203), dimostrando che il metodo di iterazione che converge più rapidamente è Gauss-Seidel.
+\end{enumerate}
+
+\newpage
+
+\subsubsection*{Esercizio 2}
+
+Sia $f(x) = \log(5x^{2} + 1)$ definita nell'intervallo $I = \left[-2, 2\right]$. Si vuole approssimare $f$ con un polinomio interpolante $\Pi_{n} f$ di grado $n$ su $n+1$ nodi $x_{i}$ definiti su $I$. Siano inoltre $\left\{\overline{x}_{j}, \, j = 1, \dots, 701 \right\}$ 701 punti equispaziati su $I$ (estremi inclusi), per il calcolo dell'errore di interpolazione.
+
+\begin{remarkbox}
+    Prima di continuare con l'esercizio, è importante ricordare e capire il testo.
+    \begin{itemize}
+        \item Cosa si intende con ``approssimare $f$ con un polinomio interpolante $\prod_{n} f$ di grado $n$ su $n+1$ nodi $x_{i}$ definiti su $I$''? Vuol dire che:
+        \begin{itemize}
+            \item Si scelgono $n+1$ \textbf{nodi} (cioè punti distinti nell'intervallo $I = [-2, 2]$), chiamiamoli $x_0, x_1, \dots, x_n$.
+            \item Si calcolano i valori della funzione in quei nodi: $f(x_0), f(x_1),\break \dots, f(x_n)$.
+            \item Esiste ed è unico un \textbf{polinomio di grado al più} $n$ che ``passa'' per tutti questi punti, ovvero:
+            \begin{equation*}
+                \Pi_{n} f(x_i) = f(x_i), \quad i = 0, 1, \dots, n
+            \end{equation*}
+            Questo polinomio si chiama \definition{Polinomio Interpolante} di $f$ nei nodi dati.
+        \end{itemize}
+        Quindi, in altre parole, $\Pi_{n} f$ non è altro che una funzione polinomiale che coincide con $f$ in un insieme finito di punti, ed è usata per approssimare $f$ anche altrove nell'intervallo.
+
+        \highspace
+        Nota: si dice ``polinomio interpolante'' perché il polinomio \emph{interpola} la funzione, ovvero prende esattamente gli stessi valori della funzione $f$ in un insieme finito di punti (i nodi di interpolazione) e ``si inserisce'' fra questi valori, passando per essi. Inoltre, interpolare non significa approssimare. Interpolare vuol dire costruire una funzione (nel nostro caso un polinomio) che coincide \textbf{esattamente} con $f$ in punti scelti (i nodi), e la approssima negli altri.
+
+        
+        \item Perché vengono dati 701 punti equispaziati? Questi punti $\left\{\bar{x}_{j}\right\}$ non sono nodi di interpolazione. Servono, invece, come \textbf{griglia di controllo}:
+        \begin{itemize}
+            \item In ciascun punto $\bar{x}_{j}$ si calcola il valore esatto $f\left(\bar{x}_{j}\right)$.
+            \item Poi si calcola il valore approssimato usando il polinomio interpolante $\Pi_{n} f\left(\bar{x}_{j}\right)$.
+            \item La differenza:
+            \begin{equation*}
+                E\left(\bar{x}_{j}\right) = f\left(\bar{x}_{j}\right) - \Pi_{n} f\left(\bar{x}_{j}\right)
+            \end{equation*}
+            è l'\definition{Errore di Interpolazione} in quel punto.
+        \end{itemize}
+        Avendo tanti punti equispaziati (701 è un numero grande, quindi la griglia è fitta), si può stimare bene \textbf{quanto e come il polinomio interpolante si discosta da} $f$ su tutto l'intervallo $\left[-2, 2\right]$. Chiaramente, più punti vengono usati per testare, più accurata sarà la stima della \textbf{norma del massimo dell'errore}:
+        \begin{equation*}
+            \left\| f - \Pi_{n} f \right\|_{\infty} \approx \max_{1\le j \le 701} \left| f\left(\bar{x}_j\right) - \Pi_{n} f\left(\bar{x}_j\right) \right|
+        \end{equation*}
+
+
+        \item Cos'è l'errore di interpolazione? Teoricamente, per una funzione $f \in C^{n+1}$, vale la formula:
+        \begin{equation*}
+            f(x) - \Pi_{n} f(x) = \dfrac{f^{(n+1)}(\xi(x))}{(n+1)!} \displaystyle\prod_{i=0}^{n}(x - x_i)
+        \end{equation*}
+        Dove $\xi(x)$ è un punto (non noto) nell'intervallo. Questo indica che l'errore dipende:
+        \begin{enumerate}
+            \item Dalla derivata $(n+1)$-esima di $f$ (quanto $f$ è ``curva'');
+            \item E dal termine $\displaystyle\prod (x - x_{i})$ che cresce con $n$ e con la scelta dei nodi.
+        \end{enumerate}
+        Nella pratica, non potendo conoscere $\xi(x)$, si calcola l'errore numericamente sui 701 punti equispaziati.
+    \end{itemize}
+    Quindi, per riassumere: interpolazione significa costruire un polinomio che ``passa'' per i valori noti di $f$ in $n+1$ nodi. L'errore di interpolazione è la differenza $f(x) - \Pi_{n} f(x)$, stimata sui 701 punti equispaziati. Quei punti servono solo come ``griglia di test'' per misurare quanto il polinomio approssima bene la funzione sull'intero intervallo.
+\end{remarkbox}
+
+\begin{enumerate}
+    \item Fissando $n = 10$, costruire il polinomio interpolante $\Pi_{10} f$ su nodi equispaziati (estremi inclusi) e calcolare il massimo dell'errore di approssimazione sui punti $\left\{\bar{x}_{j}\right\}_{j = 1, \dots, 701}$. Riportare il risultato ottenuto e i comandi MATLAB usati.
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+    \begin{lstlisting}[language=MATLAB]
+% funzione
+f = @(x) log(5*x.^2 + 1); % funzione da approssimare
+
+% griglia di controllo x_j
+xj = linspace(-2, 2, 701);
+
+% grado del polinomio
+n = 10;
+
+% nodi
+xn = linspace(-2, 2, n + 1);
+
+% polinomio interpolante di grado n sui nodi xn
+Pf = polyfit(xn, f(xn), n);
+% massimo errore di approssimazione
+err = max(abs(f(xj) - polyval(Pf, xj)));
+disp('Massimo errore di approssimazione');
+disp(err);\end{lstlisting}
+    Output:
+    \begin{lstlisting}
+Massimo errore di approssimazione
+    0.9989\end{lstlisting}
+    Escludendo la parte di setup, la quale non ha bisogno di spiegazioni approfondite, nella parte di calcolo effettivo, si lasciano alcune osservazioni:
+    \begin{itemize}
+        \item Comando \texttt{polyfit}:
+        \begin{lstlisting}[language=MATLAB]
+Pf = polyfit(xn, f(xn), n);\end{lstlisting}
+        In una sola invocazione, esegue due compiti:
+        \begin{enumerate}
+            \item Prende i \textbf{nodi} \texttt{xn} e i valori della funzione \texttt{f(xn)};
+            \item Calcola i coefficienti del \textbf{polinomio interpolante} di grado $n$ che passa esattamente per quei punti.
+        \end{enumerate}
+        Ovviamente, si potrebbe costruire a mano con la formula di Lagrange o Newton, ma MATLAB fornisce già un API. Il risultato di questa chiamata, è un vettore riga \texttt{Pf} con i coefficienti del polinomio in forma classica:
+        \begin{equation*}
+            p(x) = Pf(1) \, x^n + Pf(2) \, x^{n-1} + \dots + Pf(n) \, x + Pf(n+1)
+        \end{equation*}
+
+
+        \item Comando \texttt{polyval}:
+        \begin{lstlisting}[language=MATLAB]
+polyval(Pf, xj)\end{lstlisting}
+        Valuta il polinomio definito da \texttt{Pf} nei punti \texttt{xj}. Quindi sta calcolando $\Pi_{10} f(\bar{x}_{j})$ per i 701 punti equispaziati nell'intervallo.
+
+
+        \item A questo punto, si hanno due vettori:
+        \begin{itemize}
+            \item \texttt{f(xj)} per i valori veri della funzione in 701 punti.
+            \item \texttt{polyval(Pf, xj)} per i valori del polinomio interpolante negli stessi 701 punti.
+        \end{itemize}
+        Per calcolare l'errore, dobbiamo fare la differenza tra i valori veri e quelli interpolati:
+        \begin{lstlisting}[language=MATLAB]
+f(xj) - polyval(Pf, xj)\end{lstlisting}
+        Il quale è il \textbf{vettore degli error puntuali} $E\left(\bar{x}_{j}\right)$. Infine, prendiamo il \textbf{massimo in valore assoluto} di questi errori, ovvero la norma infinito dell'errore di interpolazione.
+    \end{itemize}
+
+
+    \item Ripetere il punto precedente usando i nodi di Chebyshev (estremi inclusi) nell'intervallo $I$. Indicando con $\Pi_{10}^{C}f$ l'interpolante corrispondente, riportare il massimo dell'errore di approssimazione sui punti $\left\{\overline{x}_{j}\right\}_{j = 1, \dots, 701}$ e i comandi Matlab usati.
+    
+    \begin{remarkbox}
+        Alcune osservazioni:
+        \begin{itemize}
+            \item Perché introdurre i nodi di Chebyshev? Se si scelgono i \textbf{nodi equispaziati}, come è stato fatto nell'esercizio precedente, l'errore di interpolazione può diventare molto grande per funzioni un po' oscillanti, soprattutto vicino agli estremi (\definition{Fenomeno di Runge}). Per ridurre questo problema, si usano i \textbf{nodi di Chebyshev}, che non sono equispaziati: sono più \textbf{densi agli estremi} e più radi al centro.
+            
+            \item I nodi di Chebyshev di ordine $n+1$ (quindi per un polinomio di grado $n$) in un intervallo generico $\left[a,b\right]$ sono:
+            \begin{equation*}
+                x_{k} = \dfrac{a+b}{2} + \dfrac{b-a}{2}\cdot\cos\left(\dfrac{2k+1}{2(n+1)}\cdot\pi\right), \quad k = 0,1,\dots,n
+            \end{equation*}
+            Noti anche come \textbf{nodi di Chebyshev di prima specie}. Per esempio, con $\left[a,b\right] = \left[-1,1\right]$ diventano semplicemente:
+            \begin{equation*}
+                x_k = \cdot\cos\left(\dfrac{2k+1}{2(n+1)}\pi\right)
+            \end{equation*}
+            Attenzione, questi nodi sono usati nel caso in cui gli estremi \textbf{non} siano inclusi.
+
+            \item Differenza tra i nodi equispaziati e i nodi di Chebyshev:
+            \begin{itemize}
+                \item \textbf{Equispaziati}: uniformi su $\left[a,b\right]$
+                \item \textbf{Chebyshev}: più concentrati agli estremi, quindi si riducono al minimo l'effetto di oscillazioni indesiderate, e quindi garantiscono che l'errore massimo teorico sia quasi ottimale.
+            \end{itemize}
+
+            \item Con i \textbf{nodi di Chebyshev di seconda specie}, gli estremi vengono presi in considerazione:
+            \begin{equation*}
+                x_{k} = \dfrac{a+b}{2} + \frac{b-a}{2}\cdot\cos\left(\dfrac{k}{n}\cdot\pi\right), \quad k=0,\dots,n
+            \end{equation*}
+            Quindi $x_{0} = a$ e $x_{n} = b$.
+        \end{itemize}
+    \end{remarkbox}
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Il codice è identico al precedente ma differisce soltanto come si costruisce il vettore $x$:
+    \begin{lstlisting}[language=MATLAB]
+% estremi intervallo
+a = -2; b = 2;
+k = 0:n;
+
+% nodi di Chebyshev (seconda specie, estremi inclusi)
+xnC = (a+b)/2 + (b-a)/2 * cos(k/n * pi);
+% se fosse stato di prima specie:
+% xnC = (a+b)/2 + (b-a)/2 * cos((2*k+1)/(2*(n+1)) * pi);
+
+% polinomio interpolante di grado n sui nodi di Chebyshev
+PfC = polyfit(xnC, f(xnC), n);
+% massimo errore di approssimazione
+erC = max(abs(f(xj) - polyval(PfC, xj)));
+disp('Massimo errore di approssimazione con nodi di Chebyshev');
+disp(erC);\end{lstlisting}
+    Risultato:
+    \begin{lstlisting}
+Massimo errore di approssimazione con nodi di Chebyshev
+     0.060307\end{lstlisting}
+
+
+    \item Rappresentare in un unico grafico: la funzione $f(x)$, i polinomi $\Pi_{10}f$ e $\Pi_{10}^{C}f$. Caricare l'immagine generata in formato \texttt{png} con opportuna legenda.
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+
+    \begin{lstlisting}[language=MATLAB]
+figure;
+hold on;
+plot(xj, f(xj), 'r', 'DisplayName', 'funzione originale');
+plot(xj, polyval(Pf, xj), '-b', 'DisplayName', 'interp con nodi equispaziati');
+plot(xj, polyval(PfC, xj), '-g', 'DisplayName', 'interp con nodi di Chebyshev');
+legend show;
+title('Confronto tra funzione e polinomi interpolanti');
+xlabel('x');
+ylabel('y');
+grid on;
+hold off;\end{lstlisting}
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.8\textwidth]{img/24-07-2025/24-07-2025-compare.pdf}
+    \end{figure}
+
+    \newpage
+
+    \item Costruire il polinomio interpolante su nodi di Chebyshev al variare di $n = 10, 20, 30, 40$. Calcolare l'errore di interpolazione sui $701$ punti $\overline{x}_{j}$ e riportare in notazione esponenziale il vettore degli errori al variare di $n$. Quale andamento si osserva?
+    
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+    \begin{lstlisting}[language=MATLAB]
+minVal = 10;
+maxVal = 40;
+step = 10;
+errors = zeros(1, 5);
+
+for n = minVal:step:maxVal
+    k = 0:n;
+    xnC = (a+b)/2 + (b-a)/2 * cos(k/n * pi);
+    PfC = polyfit(xnC, f(xnC), n);
+    erC = max(abs(f(xj) - polyval(PfC, xj)));
+    errors(n/step) = erC;
+end
+
+disp('Errori al variare di n:');
+disp(errors);\end{lstlisting}
+    Risultato:
+    \begin{lstlisting}
+Errori al variare di n:
+     0.060307     0.004226    0.0003243   2.7112e-05\end{lstlisting}
+    Si può osservare una decrescita esponenziale dell'errore al variare di \texttt{n}.
+
+
+    \item Si introduca l'interpolante di Lagrange composito $\Pi_{k}^{H}$ con $k \ge 1$ definendo con precisione la notazione utilizzata. A partire dalla stima di convergenza dell'interpolatore Lagrangiano, si deduca la stima dell'errore di interpolazione composita in funzione di $H$ ed $k$.
+    
+    \begin{remarkbox}
+        L'interpolazione di Lagrange è un approccio diverso al problema dell'interpolazione.
+        \begin{itemize}
+            \item \important{Interpolante di Lagrange classico}. Si costruisce \textbf{un unico polinomio} $\Pi_{n} f$ di grado $n$ che interpola $f$ in $n+1$ nodi su tutto l'intervallo $\left[a,b\right]$. Ma in questo caso, se $n$ diventa grande, si hanno oscillazioni (\definition{Fenomeno di Runge}), instabilità numerica, costo alto.
+            
+            \item \important{Interpolante di Lagrange composito}. L'idea \eaccent di \textbf{non usare un unico polinomio di alto grado}, ma tanti polinomi di basso grado costruiti \textbf{pezzo per pezzo} su sottointervalli.
+            \begin{itemize}
+                \item Si divide l'intervallo $\left[a,b\right]$ in $M$ sottointervalli di ampiezza massima $H = \max \left|x_{i + 1} - x_{i}\right|$.
+                \item Su ogni sottointervallo si costruisce un \textbf{polinomio interpolante di grado} $k$ (con $k+1$ nodi per sottointervallo).
+                \item L'interpolante composito $\Pi_{k}^{H}f$ \eaccent la funzione ``a tratti'' che, su ogni sottointervallo, coincide con il polinomio interpolante locale.
+            \end{itemize}
+
+            \item \important{Convergenza e stima dell'errore}. Per l'interpolazione di Lagrange su un singolo intervallo, \eaccent noto che (se $f \in C^{k+1}$):
+            \begin{equation*}
+                \left|f(x) - \Pi_{k}f(x)\right| \le C \, h^{k+1}, \quad h = \text{ampiezza dell'intervallo}
+            \end{equation*}
+            Per la versione composita:
+            \begin{itemize}
+                \item Ogni sottointervallo ha ampiezza $\le H$;
+                \item L'errore su ciascun pezzo \eaccent $\mathcal{O}\left(H^{k+1}\right)$;
+                \item Quindi l'errore globale dell'interpolante composito $\Pi_{k}^{H}$ \eaccent anch'esso:
+                \begin{equation*}
+                    \left\| f - \Pi_{k}^{H} f \right\|_{\infty} \le C \, H^{\,k+1}
+                \end{equation*}
+            \end{itemize}
+        \end{itemize}
+    \end{remarkbox}
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione.}}} Sia $I = \left[a,b\right]$ un intervallo e sia data una \textbf{partizione} (o griglia):
+    \begin{equation*}
+        \mathcal T_H={a=x_0<x_1<\dots<x_M=b}, \qquad I_j=[x_j,x_{j+1}],\; j=0,\dots,M-1
+    \end{equation*}
+    Con \textbf{passo massimo}:
+    \begin{equation*}
+        H:=\max_{0\le j\le M-1} h_j, \qquad h_j:=x_{j+1}-x_j
+    \end{equation*}
+    Fissato un \textbf{grado} $k \ge 1$, su ciascun sottointervallo $I_{j}$, si scelgono $k+1$ \textbf{nodi locali} $\left\{x^{(i)}_j\right\}_{i=0}^k\subset I_j$ (ad es. equispaziati in $I_{j}$) e si definisce $\Pi_{k}^{H} f$ \textbf{a tratti} come il \important{polinomio di Lagrange} di grado $k$ che interpola $f$ nei nodi di $I_{j}$:
+    \begin{equation*}
+        \left(\Pi_k^H f\right)|_{I_j} \;\; := \;\; \Pi_k\left(f|_{I_j}\right)
+        \quad\text{con}\quad
+        \left(\Pi_k f\right)\left(x^{(i)}_j\right)=f\left(x^{(i)}_j\right),\; i=0,\dots,k
+    \end{equation*}
+
+    \textbf{Stima dell'errore}. Si assuma $f \in C^{k+1}\left(\left[a,b\right]\right)$. Sulla \textbf{singola} cella $I_{j}$ di ampiezza $h_{j}$ la classica stima dell'errore dell'interpolazione di Lagrange di grado $k$:
+    \begin{equation*}
+        \left\| f - \Pi_{k} f \right\|_{L^\infty \left(I_j\right)} \; \le \; C \: h_{j}^{k+1} \left\| f^{\left(k+1\right)} \right\|_{L^{\infty} \left(I_{j}\right)}
+    \end{equation*}
+    Con $C$ indipendente da $h_{j}$ (deriva dalla formula dell'errore con $\prod \left(x-x_{i}\right)$). Prendendo il massimo su tutte le celle e usando $h_{j} \le H$:
+    \begin{equation*}
+        \left\| f - \Pi_{k}^{H} f \right\|_{L^{\infty}\left(\left[a,b\right]\right)} \; \le \;
+        C \, H^{k+1} \, \left\| f^{\left(k+1\right)} \right\|_{L^{\infty}\left(\left[a,b\right]\right)}
+    \end{equation*}
+    Ossia \textbf{ordine} $\left(k+1\right)$ in $H$.
+
+    \textbf{Caso $k=1$, lineare composito}. In particolare, se $f \in C^{2}$ e si usando $k=1$ e nodi agli estremi di ogni $I_{j}$, vale:
+    \begin{equation*}
+        \left\| f - \Pi_{1}^{H} f \right\|_{\infty} \; \le \; \dfrac{H^{2}}{8} \, \left\| f'' \right\|_{\infty}
+    \end{equation*}
+    Che mostra esplicitamente l'ordine 2 in $H$. Spiegazione dettagliata e suggerimenti per ricordare questa formula si trovano a pagina \pageref{takeaways:interpolazione_composita}.
+\end{enumerate}
+
+\longline
+
+\subsubsection*{Esercizio 3}
+
+Si consideri il seguente problema di Cauchy:
+\begin{equation*}
+    \begin{cases}
+        y'(t) = \left[\dfrac{\pi \cos\left(\pi t\right)}{2 + \sin\left(\pi t\right)} - \dfrac{1}{2}\right] y(t) & t \in \left(0, 10\right) \\[1em]
+        y(0) = 2
+    \end{cases}
+\end{equation*}
+La cui soluzione esatta è $y(t) = \left(2 + \sin\left(\pi t\right)\right) e^{- t/2}$.
+\begin{enumerate}
+    \item Si riporti l'algoritmo del metodo di Eulero in avanti application al problema di Cauchy definendo con precisione tutta la notazione utilizzata. Dopo aver posto $f(t, y) = -\lambda y$, con $\lambda > 0$, si ricavi la condizione di assoluta stabilità per il metodo di Eulero in avanti.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+    \begin{enumerate}
+        \item Si ha $t \in \left[0, 10\right]$, la condizione iniziale $y(0) = 2$, e la funzione:
+        \begin{equation*}
+            f(t, y) = \left[\dfrac{\pi \cos\left(\pi t\right)}{2 + \sin\left(\pi t\right)} - \dfrac{1}{2}\right] y
+        \end{equation*}
+        Quindi:
+        \begin{itemize}
+            \item Intervallo: $t \in \left[0, 10\right]$
+            \item Numero di passi $N$
+            \item Passo, bisogna sceglierlo molto piccolo per evitare errori, quindi:
+            \begin{equation*}
+                h = \dfrac{10 - 0}{N} = \dfrac{10}{N}
+            \end{equation*}
+            \item Punti temporali su cui si approssima la soluzione:
+            \begin{equation*}
+                t_n = t_0 + n h \quad n = 0, 1, \dots, N
+            \end{equation*}
+            \item Passo iniziale identico alla condizione iniziale:
+            \begin{equation*}
+                u_0 = y(0) = 2
+            \end{equation*}
+        \end{itemize}
+
+        \item In generale, il metodo di Eulero in avanti si scrive come:
+        \begin{equation*}
+            u_{n+1} = u_{n} + h \cdot f(t_{n}, u_{n})
+        \end{equation*}
+        Dove $u_{n}$ rappresenta l'approssimazione di $y(t_{n})$ e $f(t_{n}, u_{n})$ \eaccent la pendenza della curva in quel punto, ovvero la derivata.
+
+        Nel nostro caso, si ha:
+        \begin{equation*}
+            u_{n+1} = u_{n} + h \cdot \left(
+                \dfrac{\pi \cos\left(\pi t_{n}\right)}{2 + \sin\left(\pi t_{n}\right)} - \dfrac{1}{2}
+            \right) \cdot u_{n}
+        \end{equation*}
+
+        \item A questo punto si studia la stabilità del metodo ponendo:
+        \begin{equation*}
+            f(t, y) = -\lambda y, \quad \lambda > 0
+        \end{equation*}
+        Quindi, il metodo di Eulero muta in:
+        \begin{equation*}
+            u_{n+1} = u_{n} + h \cdot \left(-\lambda u_{n}\right) = u_{n} - h\lambda u_{n} = u_{n} \cdot \left(1 - h\lambda\right)
+        \end{equation*}
+
+        \item La stabilità del metodo dipende dal fattore moltiplicativo:
+        \begin{equation*}
+            g = 1 - h\lambda
+        \end{equation*}
+        Dato che viene moltiplicato ad ogni passo. Per garantire che la soluzione numerica sia stabile (ovvero non cresca indefinitamente), si richiede che il suo valore assoluto sia minore di 1:
+        \begin{equation*}
+            |g| < 1 \quad \Rightarrow \quad |1 - h\lambda| < 1
+        \end{equation*}
+        Per definizione di valore assoluto, questo implica:
+        \begin{equation*}
+            -1 < 1 - h\lambda < 1
+        \end{equation*}
+        L'obbiettivo è isolare $h \lambda$. Per cui si deve come primo passo rimuovere il $1 - \dots$. Per fare questo, si sottrae $1$ in tutte e due le disuguaglianze:
+        \begin{equation*}
+            \left(-1\right) + \left(-1\right) < \left(1 - h\lambda\right) - 1 < 1 + \left(- 1\right) \quad \Rightarrow \quad -2 < - h\lambda < 0
+        \end{equation*}
+        A questo punto, si moltiplica per $-1$ (cambiando il verso delle disuguaglianze):
+        \begin{equation*}
+            2 > h\lambda > 0 \quad \Rightarrow \quad 0 < h\lambda < 2
+        \end{equation*}
+        Infine, dividendo per $\lambda$ (positivo, quindi non cambia il verso):
+        \begin{equation*}
+            \dfrac{1}{\lambda} \cdot 0 < \dfrac{1}{\lambda} \cdot h\lambda < \dfrac{1}{\lambda} \cdot 2 \quad \Rightarrow \quad 0 < h < \dfrac{2}{\lambda}
+        \end{equation*}
+        Quindi, la condizione di stabilità per il metodo di Eulero in avanti è:
+        \begin{equation*}
+            0 < h < \dfrac{2}{\lambda}
+        \end{equation*}
+        Dove $h$ è il passo scelto per l'iterazione e $\lambda$ è il parametro della funzione $f(t, y) = -\lambda y$.
+    \end{enumerate}
+    A pagina \hqpageref{problema-cauchy-con-eulero-avanti} si trova un riepilogo del metodo di Eulero in avanti e della sua stabilità (con una spiegazione più dettagliata).
+
+
+    \item Si riporti l'algoritmo del metodo di Eulero all'indietro con metodo di Newton applicato al problema di Cauchy, definendo con precisione tutta la notazione utilizzata.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}}
+    \begin{enumerate}
+        \item Si ha $t \in \left[0, 10\right]$, la condizione iniziale $y(0) = 2$, e la funzione:
+        \begin{equation*}
+            f(t, y) = \left[\dfrac{\pi \cos\left(\pi t\right)}{2 + \sin\left(\pi t\right)} - \dfrac{1}{2}\right] y
+        \end{equation*}
+        Quindi:
+        \begin{itemize}
+            \item Intervallo: $t \in \left[0, 10\right]$
+            \item Numero di passi $N$
+            \item Passo, ottimo se scelto piccolo, ma Eulero all'indietro non è condizionato da questo (A-stabile):
+            \begin{equation*}
+                h = \dfrac{10 - 0}{N} = \dfrac{10}{N}
+            \end{equation*}
+            \item Punti temporali su cui si approssima la soluzione:
+            \begin{equation*}
+                t_n = t_0 + n h \quad n = 0, 1, \dots, N
+            \end{equation*}
+            \item Passo iniziale identico alla condizione iniziale:
+            \begin{equation*}
+                u_0 = y(0) = 2
+            \end{equation*}
+        \end{itemize}
+
+        \item In generale, il metodo di Eulero all'indietro si scrive come:
+        \begin{equation*}
+            u_{n+1} = u_{n} + h \cdot f\left(t_{n+1}, u_{n+1}\right)
+        \end{equation*}
+        Dove $u_{n}$ rappresenta l'approssimazione di $y(t_{n})$ e $f(t_{n+1}, u_{n+1})$ è la pendenza della curva nel punto successivo, che dipende da $u_{n+1}$. Eulero all'indietro è un metodo implicito, perché $u_{n+1}$ compare sia a sinistra che a destra. Quindi, bisogna utilizzare un metodo numerico, come Newton, per risolvere l'equazione.
+
+        \item Prima di tutto, si riscrivere l'equazione in modo da ottenere una funzione $\Phi(w)$:
+        \begin{equation*}
+            \begin{array}{rcl}
+                u_{n+1} &=& u_{n} + h \cdot f\left(t_{n+1}, u_{n+1}\right) \\[.3em]
+                u_{n+1} - u_{n} - h \cdot f\left(t_{n+1}, u_{n+1}\right) &=& 0 \\[.3em]
+                \Phi(w) &=& 0 \\[.3em]
+                \Phi(w) &:=& w - u_{n} - h \cdot f\left(t_{n+1}, w\right)
+            \end{array}
+        \end{equation*}
+        Dove $w$ è la variabile incognita che si vuole trovare (cioè $u_{n+1}$). A questo punto, si può applicare il metodo di Newton per trovare lo zero di $\Phi(w)$.
+
+        \item Il metodo di Newton si scrive come:
+        \begin{equation*}
+            w^{\left(k+1\right)} = w^{\left(k\right)} - \dfrac{\Phi\left(w^{\left(k\right)}\right)}{\Phi'\left(w^{\left(k\right)}\right)}
+        \end{equation*}
+        Dove:
+        \begin{itemize}
+            \item $w^{(k)}$ è l'iterazione corrente, ovvero l'approssimazione del valore che si sta cercando.
+            \item $w^{(k+1)}$ è l'iterazione successiva, ovvero la nuova approssimazione calcolata.
+            \item $\Phi'(w^{(k)})$ è la derivata di $\Phi$ valutata in $w^{(k)}$.
+        \end{itemize}
+        Quindi, si calcola la derivata di $\Phi(w)$:
+        \begin{equation*}
+            \Phi'(w) = 1 - h \cdot \dfrac{\partial f}{\partial y}(t_{n+1}, w)
+        \end{equation*}
+        E si sostituisce nella formula di Newton:
+        \begin{equation*}
+            w^{\left(k+1\right)} = w^{\left(k\right)} - \dfrac{w^{\left(k\right)} - u_{n} - h \cdot f\left(t_{n+1}, w^{\left(k\right)}\right)}{1 - h \cdot \dfrac{\partial f}{\partial y}(t_{n+1}, w^{\left(k\right)})}
+        \end{equation*}
+        Nel problema specifico, si ha:
+        \begin{equation*}
+            f(t, y) = \left[\dfrac{\pi \cos\left(\pi t\right)}{2 + \sin\left(\pi t\right)} - \dfrac{1}{2}\right] y
+        \end{equation*}
+        Quindi, la derivata parziale di $f$ rispetto a $y$ \eaccent:
+        \begin{equation*}
+            \dfrac{\partial f}{\partial y}(t, y) = \dfrac{\pi \cos\left(\pi t\right)}{2 + \sin\left(\pi t\right)} - \dfrac{1}{2}
+        \end{equation*}
+        Sostituendo tutto nella formula di Newton, si ottiene:
+        \begin{equation*}
+            w^{\left(k+1\right)} = w^{\left(k\right)} - \dfrac{w^{\left(k\right)} - u_{n} - h \cdot \left[\dfrac{\pi \cos\left(\pi t_{n+1}\right)}{2 + \sin\left(\pi t_{n+1}\right)} - \dfrac{1}{2}\right] w^{\left(k\right)}}{1 - h \cdot \left[\dfrac{\pi \cos\left(\pi t_{n+1}\right)}{2 + \sin\left(\pi t_{n+1}\right)} - \dfrac{1}{2}\right]}
+        \end{equation*}
+        Dove $t_{n+1} = t_0 + (n+1) h$.
+        L'algoritmo del metodo iterativo di Newton è:
+        \begin{enumerate}
+            \item Si parte da una \textbf{stima iniziale} (ad esempio, $w^{(0)} = u_n$).
+            \item Si calcola $\Phi(w^{(k)})$ e la sua derivata $\Phi'(w^{(k)})$.
+            \item Si aggiorna l'approssimazione con la formula di Newton.
+            \item Si ripete fino a quando la differenza tra due iterazioni successive è minore di una tolleranza prefissata (ad esempio, $|w^{(k+1)} - w^{(k)}| < \text{tol}$).
+            \item Al termine, si prende come soluzione approssimata $u_{n+1} \approx w^{(k)}$.
+        \end{enumerate}
+        Inoltre, nel nostro problema di Cauchy, l'equazione è lineare in $y$, quindi si potrebbe risolvere direttamente senza Newton.
+    \end{enumerate}
+    A pagina \hqpageref{problema-cauchy-con-eulero-indietro} si trova un riepilogo del metodo di Eulero all'indietro con il metodo di Newton.
+
+    
+    \item Utilizzando la funzione MATLAB \texttt{eulero\_indietro.m} si risolva il problema di cauchy utilizzando il metodo di Eulero all'indietro per i valori del passo $h_{1} = 0.05$ e poi $h_{2} = 0.01$. Rappresentare sullo stesso grafico le soluzioni numeriche ottenute e confrontarle con la soluzione esatta. Commentare i risultati ottenuti e riportare tutti i comandi MATLAB usati.
+
+    \textcolor{Green3}{\textbf{\emph{Soluzione}}} Il problema di Cauchy era:
+    \begin{equation*}
+        \begin{cases}
+            y'(t) = \left[\dfrac{\pi \cos\left(\pi t\right)}{2 + \sin\left(\pi t\right)} - \dfrac{1}{2}\right] y(t) & t \in \left(0, 10\right) \\[1em]
+            y(0) = 2
+        \end{cases}
+    \end{equation*}
+    La soluzione esatta è $y(t) = \left(2 + \sin\left(\pi t\right)\right) e^{- t/2}$. Il codice MATLAB è:
+    \begin{lstlisting}[language=MATLAB]
+% problema Cauchy
+f = @(t, y) (                                           ...
+    (pi .* cos(pi .* t)) ./ (2 + sin(pi .* t)) - 1/2    ...
+) .*y;
+
+% derivata prima di f rispetto a y
+f_dy = @(t, y) (                                        ...
+    (pi .* cos(pi .* t)) ./ (2 + sin(pi .* t)) - 1/2    ...
+);
+
+min_interval = 0;
+max_interval = 10;
+cond_iniziale = 2;
+h1 = 0.05;
+h2 = 0.01;
+
+% utilizzare eulero_indietro per calcolare le approssimazioni
+[t1, y1] = eulero_indietro( ...
+    f, f_dy, min_interval, max_interval, cond_iniziale, h1 ...
+);
+[t2, y2] = eulero_indietro( ...
+    f, f_dy, min_interval, max_interval, cond_iniziale, h2 ...
+);
+
+% calcolare la soluzione esatta
+y_esatta = @(t) (2 + sin(pi .* t)) .* exp(-t/2);
+y1_esatta = y_esatta(t1);
+y2_esatta = y_esatta(t2);
+
+% calcolare l'errore
+errore1 = abs(y1 - y1_esatta);
+errore2 = abs(y2 - y2_esatta);
+
+% stampare gli errori massimi
+clc;
+fprintf('Errore massimo con h=%f: %f\n', h1, max(errore1));
+fprintf('Errore massimo con h=%f: %f\n', h2, max(errore2));
+
+% rappresentare sullo stesso grafico le soluzioni numeriche ottenute
+% e confrontarle con la soluzione esatta
+figure;
+hold on;
+plot(t1, y1, 'o-', 'DisplayName', 'Eulero indietro h=0.05');
+plot(t2, y2, 'x-', 'DisplayName', 'Eulero indietro h=0.01');
+fplot(y_esatta, [min_interval, max_interval], 'k--', 'DisplayName', 'Soluzione esatta');
+xlabel('t');
+ylabel('y(t)');
+title('Confronto tra soluzioni numeriche e soluzione esatta');
+legend;
+grid on;
+hold off;\end{lstlisting}
+    Risultato:
+    \begin{lstlisting}
+Errore massimo con h=0.050000: 0.093496
+Errore massimo con h=0.010000: 0.019042\end{lstlisting}
+    Stampando gli errori massimi si noa che l'errore con $h=0.01$ è circa 5 volte più piccolo di quello con $h=0.05$, coerente con la convergenza di ordine 1 del metodo di Eulero all'indietro. Dal grafico, si può notare che entrambe le soluzioni numeriche sono stabili e si avvicinano bene alla soluzione esatta, con quella a passo più piccolo che la segue più da vicino. Per il rapporto costo/accuratezza, $h=0.01$ è preferibile se si desidera una soluzione molto precisa. Altrimenti, $h=0.05$ offre un buon compromesso tra accuratezza e costo computazionale.
+
+    \newpage
+
+    \begin{landscape}
+        \begin{figure}[!htp]
+            \centering
+            \includegraphics[width=1.53\textwidth]{img/24-07-2025/confronto-soluzioni-eulero-indietro.pdf}
+        \end{figure}
+    \end{landscape}
+\end{enumerate}

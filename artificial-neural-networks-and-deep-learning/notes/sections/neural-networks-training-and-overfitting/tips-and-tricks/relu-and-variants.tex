@@ -1,0 +1,172 @@
+\subsubsection{ReLU and Variants}\label{sec:relu-and-variants}
+
+\begin{definitionbox}[: ReLU Activation Function]
+    The \definition{Rectified Linear Unit (ReLU)} is defined as:
+    \begin{equation}
+        g\left(z\right) = \max\left(0, z\right)
+    \end{equation}
+    And its derivative:
+    \begin{equation}
+        g'\left(z\right) = \begin{cases}
+            1, & \text{if } z > 0 \\
+            0, & \text{if } z \leq 0
+        \end{cases}
+    \end{equation}
+    So it's a \textbf{piecewise linear} function that outputs the input directly if it is positive; otherwise, it outputs zero. No exponential, no sigmoid, just a straight cutoff at zero.
+\end{definitionbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Why does it work? The powerful simplicity of the ReLU}}
+\end{flushleft}
+The ReLU activation function has become the default choice for many neural network architectures due to its simplicity and effectiveness. Here are some reasons why ReLU works so well:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Non-saturating}: for $z > 0$, the derivative is constant (1), which helps mitigate the vanishing gradient problem that plagues sigmoid and tanh activations (\autopageref{sec:activation-function-saturation}).
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Computationally cheap}: ReLU is simply a thresholding at zero, which is computationally efficient compared to sigmoid or tanh functions that require expensive exponentials.
+    
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Sparse activation}: In practice, many neurons output zero, leading to a sparse representation that can be beneficial for learning and generalization.
+    
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Fast convergence}: Empirically, networks using ReLU tend to converge faster during training compared to those using traditional activation functions.
+    
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Biological motivation}: ReLU is inspired by the behavior of real neurons, which are either activated (firing) or not (silent), resembling the ReLU activation pattern.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{So is it the perfect activation function? Not quite...}}
+\end{flushleft}
+Despite its advantages, the \textbf{biggest drawback} of ReLU is the \textbf{``dead ReLU'' problem}. The \definition{Dead ReLU Problem}, or \definition{Dying ReLU Problem}, occurs when a \textbf{significant portion of neurons in a neural network become inactive and only output zero for any input}. This happens when the weights are updated in such a way that the input to the ReLU activation function is always negative, causing the neuron to output zero and effectively ``die''.
+
+\highspace
+When a neuron dies, it stops learning because its gradient is zero (since the derivative of ReLU is zero for inputs less than or equal to zero). This can lead to a situation where a large number of neurons in the network are inactive, reducing the model's capacity to learn complex patterns in the data.
+
+\highspace
+In simple terms, if a neuron's input $z$ becomes \textbf{negative for all samples}, its output will always be zero, then the gradient will also be zero, and the neuron will be marked as dead (i.e., it will not contribute to learning anymore). This often happens with: (1) large negative biases, (2) too high learning rates, or (3) poor weight initialization (with poor we mean that many neurons start in the negative region). Hence the ned for \textbf{ReLU variants} that maintain some gradient even for negative inputs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{ReLU Variants to the Rescue}}
+\end{flushleft}
+To address the dead ReLU problem, several variants of the ReLU activation function have been proposed. Here the four most popular ones:
+\begin{enumerate}
+    \item \definition{Leaky ReLU}: a variant that \textbf{allows a small slope}, called $\alpha$, \textbf{for negative inputs} (since the standard ReLU has a slope of 0 for negative inputs). It is defined as:
+    \begin{equation}
+        g\left(z\right) = \begin{cases}
+            z, & \text{if } z > 0 \\
+            \alpha z, & \text{if } z \leq 0
+        \end{cases}
+    \end{equation}
+    where $\alpha$ is a small constant (e.g., $0.01$). This creates a small, non-zero gradient when the unit is inactive, which helps to keep the neuron active during training. It is the simplest and most \naive attempt to solve the dead ReLU problem.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Fixes dead neurons by allowing a small gradient when $z \leq 0$.
+            \item[\textcolor{Green3}{\faIcon{check}}] Keeps non-saturating property for positive inputs.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Slight computational overhead compared to standard ReLU (but still cheap).
+            \item[\textcolor{Red2}{\faIcon{times}}] The choice of $\alpha$ is arbitrary and may require tuning.
+            \item[\textcolor{Red2}{\faIcon{times}}] Still linear for negative inputs, which may not capture complex patterns.
+        \end{itemize}
+    \end{itemize}
+    
+
+    \item \definition{Parametric ReLU (PReLU)}: similar to Leaky ReLU, but instead of using a fixed small slope $\alpha$ for negative inputs, \textbf{PReLU learns the slope parameter} during training. It is defined as:
+    \begin{equation}
+        g\left(z\right) = \begin{cases}
+            z, & \text{if } z > 0 \\
+            a z, & \text{if } z \leq 0
+        \end{cases}
+    \end{equation}
+    where $a$ is a learnable parameter. This allows the model to adaptively learn the best slope for negative inputs based on the data. \hl{Useful when different neurons may benefit from different slopes}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Learns the slope for negative inputs, potentially improving performance.
+            \item[\textcolor{Green3}{\faIcon{check}}] Retains non-saturating property for positive inputs.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Introduces additional parameters to learn, increasing model complexity.
+            \item[\textcolor{Red2}{\faIcon{times}}] Slightly more computationally expensive than standard ReLU.
+        \end{itemize}
+    \end{itemize}
+    
+
+    \item \definition{Exponential Linear Unit (ELU)}: a smoother variant that \textbf{exponentially approaches a negative value} for negative inputs, defined as:
+    \begin{equation}
+        g\left(z\right) = \begin{cases}
+            z, & \text{if } z > 0 \\
+            \alpha \left(e^{z} - 1\right), & \text{if } z \leq 0
+        \end{cases}
+    \end{equation}
+    where $\alpha$ is a positive constant that controls the value to which ELU saturates for negative inputs. ELU has a smooth curve for negative inputs, which can help with learning (see \autoref{fig:relu-and-variants} \autopageref{fig:relu-and-variants}).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Smooth gradient for negative inputs (no sharp corner at zero).
+            \item[\textcolor{Green3}{\faIcon{check}}] Keeps mean activations close to zero, better convergence.
+            \item[\textcolor{Green3}{\faIcon{check}}] Reduces bias shift, improving learning dynamics.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] More computationally expensive due to the exponential function.
+            \item[\textcolor{Red2}{\faIcon{times}}] The choice of $\alpha$ may require tuning.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \definition{Scaled Exponential Linear Unit (SELU)}: a \textbf{self-normalizing} activation function that \textbf{scales the output} to maintain a mean of zero and unit variance. It is defined as:
+    \begin{equation}
+        g\left(z\right) = \lambda \cdot \begin{cases}
+            z, & \text{if } z > 0 \\
+            \alpha \left(e^{z} - 1\right), & \text{if } z \leq 0
+        \end{cases}
+    \end{equation}
+    where $\lambda$ and $\alpha$ are \textbf{predefined constants} (typically $\lambda \approx 1.0507$ and $\alpha \approx 1.6733$). Introduced with \textbf{Self-Normalizing Neural Networks} (Klambauer et al., 2017), SELU is designed to \textbf{keep the activations normalized throughout the network}, which can lead to faster convergence and improved performance.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Pros}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Self-normalizing properties help maintain stable activations.
+            \item[\textcolor{Green3}{\faIcon{check}}] Reduces the need for batch normalization (since activations are kept normalized).
+            \item[\textcolor{Green3}{\faIcon{check}}] Improves convergence speed and performance.
+        \end{itemize}
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Cons}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] More computationally expensive due to the exponential function.
+            \item[\textcolor{Red2}{\faIcon{times}}] Requires careful weight initialization to maintain self-normalizing properties.
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} p{5em} c c c p{6em} @{}}
+            \toprule
+            Activation & Formula & $g'(z < 0)$ & $g'(z > 0)$ & Notes \\
+            \midrule
+            \textbf{ReLU} & $\max(0, z)$ & $0$ & $1$ & Fast, simple, may die. \\[.3em]
+            \textbf{Leaky ReLU} & $\max\left(\alpha z, z\right)$ & $\alpha$ & $1$ & Prevents dead neurons. \\[.3em]
+            \textbf{PReLU} & $\max\left(a z, z\right)$ & $a$ (learned) & $1$ & Adaptive slope. \\[.3em]
+            \textbf{ELU} & $\begin{cases}
+                z, & z > 0 \\ \alpha \left(e^{z} - 1\right), & z \leq 0
+            \end{cases}$ & $\alpha e^{z}$ & $1$ & Smooth, mean close to 0. \\[.3em]
+            \textbf{SELU} & $\lambda \cdot \begin{cases}
+                z, & z > 0 \\ \alpha \left(e^{z} - 1\right), & z \leq 0
+            \end{cases}$ & $\lambda \alpha e^{z}$ & $\lambda$ & Self-normalizing. \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Summary of ReLU, Leaky ReLU, PReLU, ELU, and SELU.}
+    \label{tab:relu-and-variants}
+\end{table}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/neural-networks-and-overfitting/relu.pdf}
+    \caption{Comparison of ReLU and its variants: Leaky ReLU, PReLU, and ELU. Classic ReLU and Leaky ReLU are almost identical, with the Leaky having a slight slope for negative inputs. PReLU adapts its slope during training, whereas ELU provides a smooth transition for negative inputs. And SELU scales the output to maintain a mean of zero and unit variance.}
+    \label{fig:relu-and-variants}
+\end{figure}

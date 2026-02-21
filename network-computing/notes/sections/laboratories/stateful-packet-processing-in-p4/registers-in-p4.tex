@@ -1,0 +1,90 @@
+\subsubsection{Registers in P4}
+
+A \textbf{register} in P4 is a \textbf{stateful memory object} stored in the \textbf{data plane}. We can think of it as an \textbf{array of hardware}, where each element stores a value of a fixed bit-width, and the array \textbf{persists across packets}. Unlike \textbf{metadata}, registers are \textbf{not reset per packet} and they survive between pipeline invocations.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l l l @{}}
+        \toprule
+        Concept & Lifetime & Who writes it? & Purpose \\
+        \midrule
+        Metadata            & Per packet & Data plane           & Temporary computation \\[.3em]
+        Header fields       & Per packet & Data plane           & Packet content \\[.3em]
+        Tables              & Per packet & Control plane        & Match $\to$ action mapping \\[.3em]
+        \textbf{Registers}  & Persistent & \textbf{Data plane}  & Memory across packets \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison of different stateful objects in P4. Registers are \textbf{the only way} for packets to \emph{directly} update shared state in P4.}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How registers are defined in P4?}}
+\end{flushleft}
+Registers are defined \textbf{globally}, outside controls:
+\begin{lstlisting}[style=p4style]
+register<bit<32>>(1024) pkt_counter;\end{lstlisting}
+It defines a register array named \texttt{pkt\_counter} with \texttt{1024} entries, each entry stores a 32-bit value \texttt{bit<32>}. The entries are indexed from \texttt{0} to \texttt{1023} using an integer index.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Register interface (API) in P4?}}
+\end{flushleft}
+Registers are accessed through \textbf{extern methods}. The two main methods are:
+\begin{lstlisting}[style=p4style]
+register.read(out value, in index);
+register.write(in index, in value);\end{lstlisting}
+\begin{itemize}
+    \item \texttt{read} reads the value at the specified \texttt{index} and stores it in \texttt{value} (variable passed by reference).
+    \item \texttt{write} updates the value at the specified \texttt{index} with the provided \texttt{value}.
+\end{itemize}
+The operations are \textbf{explicit}, meaning that the programmer must call these methods to read or write registers. So there is no \texttt{r[i]++} syntax for incrementing a register value; instead, we would read the value, modify it in the control plane, and then write it back. This explicitness is required for hardware mapping and predictable execution.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Indirect addressing}}
+\end{flushleft}
+Registers support \textbf{indirect addressing}, which means that the index used to access the register can be computed at runtime based on packet fields or metadata:
+\begin{lstlisting}[style=p4style]
+bit<32> idx = hash(flow_key);
+register.read(counter, idx);\end{lstlisting}
+This is extremely \textbf{powerful} because it allows us to \hl{maintain state for different flows or entities without needing a separate register for each one}. For example, we can use a hash of the 5-tuple to index into a register array that counts packets per flow. This flexibility is one of the key advantages of registers in P4, enabling a wide range of stateful applications such as flow counting, rate limiting, and more complex state machines. However, it also requires \hl{careful design to avoid issues like hash collisions and to ensure that the register size is sufficient for the expected number of flows}.
+
+\highspace
+\begin{examplebox}[: Remembering a flow]
+    Suppose we want to count the number of packets for each flow defined by the 5-tuple (source IP, destination IP, source port, destination port, protocol). We can use a register array to store the packet count for each flow. The index into the register can be computed using a hash function on the 5-tuple:
+    \begin{lstlisting}[style=p4style]
+bit<32> idx;
+bit<32> count;
+
+idx = hash(src_ip, dst_ip, src_port, dst_port, proto);
+flow_reg.read(count, idx);
+count = count + 1;
+flow_reg.write(idx, count);\end{lstlisting}
+In this example, \texttt{flow\_reg} is a register array defined to hold the packet counts for different flows. We compute the index using a hash of the flow key, read the current count, increment it, and write it back to the register. This is \textbf{exactly} what heavy hitters like NetFlow and sFlow do to maintain flow statistics in hardware. However, we must be mindful of hash collisions, which can cause different flows to overwrite each other's counts. To mitigate this, we can use a larger register array or more sophisticated hashing techniques.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Parallelism and Concurrency}}
+\end{flushleft}
+Multiple packets can be processed \textbf{in parallel} in the data plane. Two packets may access the same register entry in the same clock cycle. P4 \textbf{does not guarantee atomic read-modify-write operations}, unless explicitly supported by the architecture. Therefore, registers are safe for counters and approximate statistics (i.e., they can be incremented without reading the current value), but they may \textbf{not} be suitable for complex state machines that require precise updates. For example, if two packets from the same flow arrive simultaneously and both try to update the same register entry, we may end up with a race condition. This is the main reason why \hl{P4 is used for \emph{measurement}, not transactional logic}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why no loops, pointers, or dynamic memory allocation?}}
+\end{flushleft}
+Because registers must map to \textbf{hardware SRAM or register files} (i.e., fixed-size arrays), P4 does not support dynamic memory allocation, pointers, or loops that could lead to unbounded execution time. The register size and access patterns must be known at compile time to ensure that the program can be executed at line rate. This design choice allows P4 to achieve high performance while still providing powerful stateful capabilities.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        Registers & Counters \\
+        \midrule
+        General-purpose memory & Specialized objects \\[.3em]
+        Read/Write access & Increment/decrement only \\[.3em]
+        Full control logic & Simpler but safer for concurrency \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between registers and counters in P4. Counters are a special type of register that can only be incremented or decremented, which makes them safe for concurrent updates without needing atomic operations.}
+\end{table}

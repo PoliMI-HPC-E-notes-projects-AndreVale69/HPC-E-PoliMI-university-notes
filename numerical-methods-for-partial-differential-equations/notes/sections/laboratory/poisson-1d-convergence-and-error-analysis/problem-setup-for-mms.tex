@@ -1,0 +1,133 @@
+\subsubsection{Problem Setup for MMS}\label{sec:problem-setup-for-mms}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to choose a smooth exact solution}}
+\end{flushleft}
+The key idea is to pick something we like, as long as it is smooth enough. Typical choices are \textbf{polynomials}, \textbf{trigonometric functions} (e.g. sines and cosines), or \textbf{exponentials}, because their derivatives are easy to compute.
+
+\highspace
+However, the solution must satisfy three primary requirements:
+\begin{enumerate}
+    \item The exact solution $u_\text{ex}$ must satisfy the \textbf{boundary conditions} of the problem (e.g., homogeneous Dirichlet $u(0) = u(1) = 0$).
+    \begin{examplebox}[: Choose a smooth exact solution]
+        If we pick $u_\text{ex}(x) = \sin(2 \pi x)$, it automatically vanishes at both ends:
+        \begin{equation*}
+            u_\text{ex}(0) = \sin(0) = 0, \quad u_\text{ex}(1) = \sin(2 \pi) = 0
+        \end{equation*}
+    \end{examplebox}
+    \setcounter{example}{\theexample-1}
+    
+
+    \item The exact solution $u_\text{ex}$ must be \textbf{sufficiently smooth} (at least $C^2$) so that plugging into $-u'' = f$ makes sens and the theory applies.
+    \begin{examplebox}[ (continue): Choose a smooth exact solution]
+        Taking $u_\text{ex}(x) = \sin(2 \pi x)$ is a good choice since it is infinitely differentiable:
+        \begin{equation*}
+            u_\text{ex}'(x) = 2 \pi \cos(2 \pi x), \quad u_\text{ex}''(x) = -4 \pi^2 \sin(2 \pi x) \implies u_\text{ex} \in C^\infty
+        \end{equation*}
+    \end{examplebox}
+    \setcounter{example}{\theexample-1}
+
+
+    \item It should \textbf{not belong to our FE space} (so that error is not identically zero). For example, avoid linear functions when using $r = 1$ elements.
+    \begin{examplebox}[ (continue): Choose a smooth exact solution]
+        The choice $u_\text{ex}(x) = \sin(2 \pi x)$ is suitable since it is not a polynomial and cannot be exactly represented by piecewise linear functions.
+    \end{examplebox}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Deriving the forcing term}}
+\end{flushleft}
+Once we have chosen a suitable exact solution $u_\text{ex}(x)$, we can derive the corresponding forcing term $f(x)$ by substituting $u_\text{ex}$ into the Poisson equation:
+\begin{equation*}
+    -u_\text{ex}''(x) = f(x)
+\end{equation*}
+That's our \textbf{manufactured forcing term}\footnote{%
+    Note: the manufactured forcing term is not necessarily physically meaningful, but it serves our purpose for verifying the numerical method.
+}.
+\begin{examplebox}[: Deriving the forcing term]
+    For our example $u_\text{ex}(x) = \sin(2 \pi x)$, we compute:
+    \begin{equation*}
+        u_\text{ex}''(x) = -4 \pi^2 \sin(2 \pi x) \implies f(x) = 4 \pi^2 \sin(2 \pi x)
+    \end{equation*}
+    Thus, the manufactured solution $u_\text{ex}(x) = \sin(2 \pi x)$ satisfies the Poisson equation with the forcing term $f(x) = 4 \pi^2 \sin(2 \pi x)$ and homogeneous Dirichlet boundary conditions.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Defining the PDE problem}}
+\end{flushleft}
+We can now summarize the complete PDE problem for the Method of Manufactured Solutions (\textbf{manufactured PDE}):
+\begin{equation*}
+    \begin{cases}
+        -u''(x) = 4 \pi^2 \sin(2 \pi x), & x \in (0, 1) \\
+        u(0) = 0, \\
+        u(1) = 0
+    \end{cases}
+\end{equation*}
+with the exact solution:
+\begin{equation*}
+    u_\text{ex}(x) = \sin(2 \pi x)
+\end{equation*}
+This setup allows us to implement the finite element method, compute the numerical solution $u_h$, and then compare it to the exact solution $u_\text{ex}$ to analyze convergence and error. 
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What do we gain?}}
+\end{flushleft}
+By using the Method of Manufactured Solutions:
+\begin{itemize}
+    \item We know the \textbf{exact solution} $u_\text{ex}$, allowing us to compute the error $e_h = u_\text{ex} - u_h$ directly.
+    \item We can \textbf{compute the error in different norms} (e.g., $L^2$, $H^1$) to assess the accuracy of our numerical method.
+    \item We can \textbf{check if the solver exhibits the expected convergence rates}:
+    \begin{itemize}
+        \item $e_{L^2} = O\left(h^{r+1}\right)$, means the error in the $L^2$ norm decreases proportionally to $h^{r+1}$ as the mesh is refined.
+        
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} Because the $L^2$ error is related to the smoothness of the exact solution and the order of the finite element space. As we refine the mesh (reduce $h$), the approximation becomes more accurate, leading to a faster decrease in the error.
+
+        It's obvious that more elements mean more mesh points and more computational work, but also a better approximation of the exact solution.
+
+
+        \item $e_{H^1} = O\left(h^r\right)$, means the error in the $H^1$ norm decreases proportionally to $h^r$ as the mesh is refined.
+        
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why?}} The reason behind the convergence rates is rooted in the mathematical properties of the finite element method. The $L^2$ norm measures the error in the function values, while the $H^1$ norm measures the error in both the function values and their first derivatives. As the mesh is refined, the finite element space can better approximate the exact solution, leading to a faster decrease in the $L^2$ error. However, since the $H^1$ norm also considers the derivative, which is generally less smooth than the function itself, the convergence rate is typically one order lower.
+    \end{itemize}
+\end{itemize}
+
+\highspace
+\begin{deepeningbox}[: $e_{L^2} = O\left(h^{r+1}\right)$ and $e_{H^1} = O\left(h^r\right)$]
+    These two relations are fundamental results in finite element theory, describing how the error between the exact solution and the finite element approximation behaves as the mesh is refined.
+    \begin{equation*}
+        e_{L^2} = O\left(h^{r+1}\right), \qquad e_{H^1} = O\left(h^{r}\right)
+    \end{equation*}
+    \begin{itemize}
+        \item $u(x)$: exact (analytic) solution of the PDE.
+        \item $u_{h}(x)$: finite-element approximation of degree $r$ (e.g., $r=1$ for linear elements, $r=2$ for quadratic, etc.).
+        \item $h$: characteristic \textbf{mesh size}, i.e. the largest element length. When we refine the mesh, $h \to 0$.
+        \item $e = u - u_{h}$: the \textbf{numerical error}, the difference between the exact and approximate solutions.
+        \item $O(\cdot)$: \textbf{Big-O notation}, meaning ``asymptotically bounded by''. A good tutorial here:
+        \begin{center}
+            \qrcode{https://www.geeksforgeeks.org/dsa/analysis-algorithms-big-o-analysis/}
+        \end{center}
+    \end{itemize}
+    So the goal is to understand how fast this error goes to zero as the mesh is refined ($h \to 0$).
+
+    \highspace
+    To quantify the error we use norms, which are ways to measure the size of functions. The two most common norms in FEM are:
+    \begin{itemize}
+        \item \important{$L^{2}$ norm}: measures the \textbf{averaged (integrated) error} over the domain. It is defined as:
+        \begin{equation*}
+            \left\|u - u_{h}\right\|_{L^{2}}^{2} = \left(
+                \displaystyle\int_{0}^{1} \left(u(x) - u_{h}(x)\right)^{2} \, \mathrm{d}x
+            \right)^{\frac{1}{2}}
+        \end{equation*}
+        It captures how close $u_{h}$ is to $u$ on average across the entire domain.
+
+        \item \important{$H^{1}$ norm}: measures both the \textbf{averaged error} and the \textbf{derivative error}. It is defined as:
+        \begin{equation*}
+            \left\|u - u_{h}\right\|_{H^{1}}^{2} =
+            \left\|u - u_{h}\right\|_{L^{2}}^{2} + \left\|u' - u_{h}'\right\|_{L^{2}}^{2}
+        \end{equation*}
+        This norm is more ``energetic'': it considers not only how close the functions are, but also how close their slopes (derivatives) are. This is important in many physical problems where the gradient of the solution matters (e.g., stress in mechanics).
+    \end{itemize}
+\end{deepeningbox}

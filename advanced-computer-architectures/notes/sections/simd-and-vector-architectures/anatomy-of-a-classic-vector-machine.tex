@@ -1,0 +1,61 @@
+\subsection{Anatomy of a Classic Vector Machine}
+
+When people say ``vector processor'', they usually mean \textbf{Cray-style architecture}. The model we use in class (VMIPS) is a simplified version of this design. The following are the choices that designers, especially Seymour Cray and his descendants, made, and the \textbf{reasons why they work so well for DLP}.
+
+\begin{deepeningbox}[: Honorable mention goes to Seymour Cray]
+    Seymour Cray (1925 - 1996) was an American computer architect, often called the ``\textbf{father of supercomputing}''.
+    \begin{itemize}
+        \item Worked at \textbf{Control Data Corporation (CDC)}, where he designed the \textbf{CDC 6600} (1964), considered the first successful supercomputer.
+        \item Founded \textbf{Cray Research} in the 1970s, producing the \textbf{Cray-1} (1976), the first commercially successful \textbf{vector supercomputer}.
+    \end{itemize}
+    \textbf{Cray-1 and vector processing.} Introduced the idea of \textbf{vector instructions} with \textbf{vector registers} and \textbf{vector pipelines}, exactly the model we call ``Cray-style SIMD''. His machine could perform arithmetic on entire arrays of data with unprecedented speed. Famous for the \textbf{C-shaped chassis} of the Cray-1 (actually a practical cooling solution).
+
+    \highspace
+    \textbf{Philosophy.} Believed in \textbf{simplicity and regularity} over complexity. While mainstream microprocessors pursued \textbf{ILP and caches}, Cray bet on \textbf{bandwidth, pipelines, and vector registers} for scientific workloads. Preferred \textbf{low-latency, high-throughput memory} (banked DRAM) instead of large caches.
+
+    \highspace
+    \textbf{Legacy.} The \textbf{Cray-1} defined the blueprint for vector machines (and later the VMIPS teaching model). Nearly every \textbf{vector ISA today} (RISC-V V, ARM SVE, Intel AVX-512) can trace its lineage back to Cray's principles. He is remembered not just as an engineer, but as an icon of \textbf{supercomputing culture}.
+
+    \highspace
+    \textbf{In summary}, Seymour Cray was the architect who turned the theoretical idea of SIMD into a \textbf{practical, commercial success}. His Cray-1 supercomputer (1976) pioneered \textbf{vector registers, pipelined vector units, and interleaved memory}; exactly the anatomy we're studying. That's why when we say ``Cray-style vector machine'', we're acknowledging his design as the reference model.
+\end{deepeningbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Choices designers made}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Register-to-Register Operations (Vector Registers)}. Vector instructions read source operands from \textbf{Vector Register Files (VRFs)} and write results back into VRFs.
+
+    \newpage
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why (vs memory-memory designs)}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Latency hiding}: VRFs buffer data so the pipeline can stream without stalling on memory.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Bandwidth efficiency}: Each element is loaded once into VRF, then reused for many ops (saves repeated memory fetches).
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Pipeline friendliness}: Functional Units (VFUs) consume registers element by element in order, sustaining throughput.
+    \end{itemize}
+    \item \important{Deeply Pipelined Vector Functional Units (VFUs)}. VFUs (add, multiply, divide, etc.) are \textbf{long pipelines} that accept a new element each cycle. Latency is non-zero, but throughput is what matters: one result per cycle once the pipeline is full. \hl{Thanks to element independence}, we can \textbf{pipeline very deeply without hazards}. This is what makes vector processors extremely fast on long loops: startup cost amortized across many elements.
+    \item \important{Interleaved Main Memory (Banked Memory)}
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem:}} we need to fetch/store many consecutive elements per cycle to keep pipelines busy. A single memory bank cannot deliver one word every cycle.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution:}} Split memory into \textbf{multiple banks}, each can serve one request per cycle. Addresses are spread (``interleaved'') across banks. For example, with 16 banks, consecutive words map to different banks, then we can sustain 1 word per cycle. If stride matches bank count (e.g., every access hits bank 0), conflicts happen; this is why ``prime number of banks'' or ``address hashing'' is used.
+
+    Finally, our memory provides bandwidth rather than low latency (i.e., cache-like hiding).
+    \item \important{Little or No Data Cache}, because vector memory access patterns are highly predictable (sequential, strided). Caches add overhead but bring little benefit for streaming. Interleaved DRAM banks provide enough throughput directly. However, there may be a scalar cache for scalar instructions, but the vector side bypasses it. So our memory system is simple and provides high-bandwidth thanks to vector access.
+    \item \important{Other Key Components}
+    \begin{itemize}
+        \item \textbf{Vector Mask Registers}: allow predication (some elements disabled, used in conditionals).
+        \item \textbf{Multiple lanes}: replicate VFUs to scale throughput (e.g., 4 lanes $=$ 4 elements per cycle).
+        \item \textbf{Scalar Unit}: executes scalar instructions, controls flow, handles scalar data.
+    \end{itemize}
+    
+    \newpage
+    
+    \item \important{Why these choices make sense (historical $+$ performance)}
+    \begin{itemize}
+        \item \textbf{Cray's philosophy}: don't waste transistors on speculation or\break caches; spend them on \textbf{wide datapaths and memory bandwidth}.
+        \item \textbf{Target workloads}: scientific codes with large arrays (matrix ops, PDE solvers, simulations) is the perfect match for DLP.
+        \item \textbf{Energy/performance}: much higher throughput per watt than\break OoO ILP, because no giant instruction windows, no speculative logic.
+    \end{itemize}
+\end{enumerate}

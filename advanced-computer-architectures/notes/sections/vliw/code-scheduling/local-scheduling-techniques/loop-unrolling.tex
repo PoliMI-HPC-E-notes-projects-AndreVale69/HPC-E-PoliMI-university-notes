@@ -1,0 +1,169 @@
+\subsubsection{Local Scheduling Techniques}
+
+\paragraph{Loop Unrolling}\label{paragraph: Loop Unrolling}
+
+\definition{Loop Unrolling} is a \textbf{compiler optimization} that duplicates the \textbf{body of a loop multiple times}, reducing the number of loop control instructions and exposing \textbf{more parallelism} within the loop body.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the goal?}}
+\end{flushleft}
+\begin{itemize}
+    \item To \textbf{increase the size of the basic block} inside a loop.
+    \item To \textbf{expose more independent instructions} to the scheduler.
+    \item To \textbf{reduce the number of branches and loop counters}, lowering control.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{More instruction-level parallelism (ILP)}, more instructions can be scheduled in parallel.
+    \item \textbf{Reduced loop overhead}, fewer \texttt{BNE}, \texttt{SUBI}, etc., executed per iteration.
+    \item \textbf{Better resource utilization}, more functional units are kept busy (fewer NOPs).
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Downsides}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{Increased register pressure}, more temporary values, so more registers needed.
+    \item \textbf{Increased code size}, can lead to \textbf{instruction cache misses}.
+\end{enumerate}
+
+\highspace
+\begin{examplebox}[: No Unrolling vs. Loop Unrolling]
+    Consider the following code:
+    \begin{lstlisting}[language=C]
+for (i=1000; i>0; i--)
+    x[i] = x[i] + s;
+    \end{lstlisting}
+    \begin{itemize}
+        \item No Unrolling, one iteration in Assembly:
+        \begin{lstlisting}[language=riscv]
+Loop: LD    F0, 0(R1)
+      ADD   F4, F0, F2
+      SD    F4, 0(R1)
+      SUBI  R1, R1, 8
+      BNE   R1, R2, Loop\end{lstlisting}
+        \begin{itemize}
+            \item Execution time: \textbf{10 cycles per iteration}
+            \item Efficiency: 5 instructions, 10 cycles, then \textbf{50\%} ($\text{IPC} = 0.5$)
+        \end{itemize}
+
+        \newpage
+
+        \item $4\times$ Loop Unrolling (not yet optimized):
+        \begin{lstlisting}[language=riscv]
+Loop: LD  F0,   0(R1)
+      ADD F4,   F0, F2
+      SD  F4,   0(R1)
+
+      LD  F0,  -8(R1)
+      ADD F4,  F0, F2
+      SD  F4,  -8(R1)
+
+      LD  F0, -16(R1)
+      ADD F4,  F0, F2
+      SD  F4, -16(R1)
+
+      LD  F0, -24(R1)
+      ADD F4,  F0, F2
+      SD  F4, -24(R1)
+
+      SUBI R1, R1, 32
+      BNE  R1, R2, Loop\end{lstlisting}
+        Only \textbf{true dependences} remain between \texttt{SUBI} and \texttt{BNE}. But there's a problem: we are \textbf{reusing \texttt{F0}, \texttt{F4}}, and leads to \textbf{WAW and WAR hazards}.
+    \end{itemize}
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Register Renaming to Resolve Name Dependencies}}
+\end{flushleft}
+As we saw in the previous example, there are WAW and WAR hazards due to the use of the same register during loop unrolling. To remove false dependencies (WAW and WAR), the compiler performs \textbf{register renaming}:
+\begin{lstlisting}[language=riscv]
+Loop: LD   F0,   0(R1)
+      ADD  F4,   F0, F2
+      SD   F4,   0(R1)
+
+      LD   F6,  -8(R1)
+      ADD  F8,  F6, F2
+      SD   F8,  -8(R1)
+
+      LD   F10, -16(R1)
+      ADD  F12, F10, F2
+      SD   F12, -16(R1)
+
+      LD   F14, -24(R1)
+      ADD  F16, F14, F2
+      SD   F16, -24(R1)
+
+      SUBI R1, R1, 32
+      BNE  R1, R2, Loop
+\end{lstlisting}
+Now all instructions use \textbf{unique registers}, and only \textbf{true dependencies remain}. It allows \textbf{maximum scheduling freedom}.
+\begin{itemize}
+    \item \textbf{Execution time}: 16 cycles per 4 iterations, then 4 cycles per iteration.
+    \item \textbf{Loop overhead}: 4 cycles per 4 iterations, then 1 cycle per iteration.
+    \item \textbf{Efficiency}: 14 instructions, 16 cycles, then $14 \div 16 = 87.5\%$
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{\speedIcon} \textbf{Effect on ILP}} After renaming, instructions are independent and can be \textbf{reordered or scheduled in parallel}:
+\begin{itemize}
+    \item Original loop: 1 useful instruction per cycle.
+    \item After unrolling and renaming: up to 4 useful instructions per cycle (in theory)
+\end{itemize}
+This enables \textbf{better pipelining}, \textbf{more efficient use of wide VLIW issue slots}, and \textbf{less stalling}.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{25em} @{}}
+        \toprule
+        Concept & Description \\
+        \midrule
+        Loop unrolling    & Duplicates loop body to expose more ILP.                                 \\ [.3em]
+        Benefit           & Reduces loop overhead, increases block size.                             \\ [.3em]
+        Drawback          & Increases register pressure and code size.                               \\ [.3em]
+        Register renaming & Eliminates name dependencies (WAW/WAR) to enable parallel scheduling.    \\ [.3em]
+        Result            & More efficient and parallel scheduling possible.                         \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance Metrics of Unrolling}}
+\end{flushleft}
+When applying \textbf{loop unrolling}, the goal is not just to make the code longer, it's to \textbf{execute faster}. We can measure this improvement through several performance metrics:
+\begin{itemize}
+    \item \definition{Execution Time}. The total \textbf{execution time per loop iteration} reflects how efficiently the instructions are executed.
+    \begin{itemize}
+        \item Execution time \textbf{includes} useful operations \textbf{plus stalls/NOPs}.
+        \item Lower execution time $=$ better use of ILP and scheduling.
+    \end{itemize}
+    We typically express it as:
+    \begin{equation}
+        \text{Execution time} = \dfrac{\text{Cycles to execute unrolled loop}}{\text{Number of iterations covered}}
+    \end{equation}
+
+
+    \item \definition{Loop Overhead}. Loop overhead includes \textbf{instructions that are not part of the loop's core computation}:
+    \begin{itemize}
+        \item \texttt{SUBI} (loop counter update).
+        \item \texttt{BNE} (branch).
+        \item Any \texttt{NOP} needed to avoid hazards.
+    \end{itemize}
+    \hl{Reducing overhead}:
+    \begin{itemize}
+        \item Makes more room for \textbf{useful instructions}.
+        \item Boosts \textbf{efficiency}.
+    \end{itemize}
+    In unrolling we do $4\times$ the work \textbf{but only 1 loop update}, loop overhead is \textbf{amortized} over more iterations.
+
+
+    \item \definition{Code Efficiency}. Code efficiency \textbf{quantifies how well instruction slots are used}. Defined as:
+    \begin{equation}
+        \text{Efficiency} = \dfrac{\text{Number of useful operations}}{\text{Total number of instruction slots}}
+    \end{equation}
+    This tells us \textbf{how many issue slots are actually contributing to the computation}.
+\end{itemize}

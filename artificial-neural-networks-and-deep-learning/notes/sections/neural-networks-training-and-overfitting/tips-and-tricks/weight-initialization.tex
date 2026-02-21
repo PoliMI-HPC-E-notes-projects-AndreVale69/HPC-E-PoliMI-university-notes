@@ -1,0 +1,138 @@
+\subsubsection{Weight Initialization}\label{sec:weight-initialization}
+
+When we initialize a neural network, we want activations and gradients to keep a stable scale across layers. Otherwise:
+\begin{itemize}
+    \item If weights are \textbf{too small}, signals shrink layer after layer, leading to \textbf{vanishing gradients} (vanish gradient problem, \autopageref{def:vanishing-gradient-problem}).
+    \item If weights are \textbf{too large}, signals blow up exponentially, leading to \textbf{exploding gradients} (explode gradient problem, page \hqpageref{def:exploding-gradient-problem}).
+\end{itemize}
+Hence, initialization must \textbf{preserve the variance} of signals \emph{forward} and \emph{backward} through the network.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{arrow-circle-right} \textbf{Forward-pass variance analysis}}
+\end{flushleft}
+Consider one neuron:
+\begin{equation*}
+    z_j^{(l)} = \sum_{i=1}^{n_{l-1}} w_{ji}^{(l)} h_i^{(l-1)} + b_j^{(l)} \quad \text{where} \quad h_i^{(l-1)} = g\left(z_i^{(l-1)}\right)
+\end{equation*}
+Where $h_i^{(l-1)}$ are the \textbf{activations from the previous layer}, $w_{ji}^{(l)}$ are the \textbf{weights}, $b_j^{(l)}$ is the \textbf{bias}, and $g(\cdot)$ is the \textbf{activation function}. Assume:
+\begin{itemize}
+    \item \textbf{Inputs} $h_i^{(l-1)}$ are i.i.d. (independent and identically distributed, page \pageref{def:iid}) with:
+    \begin{equation*}
+        \underbrace{\mathbb{E}\left[h_i^{(l-1)}\right]}_{\text{mean}} = 0 \quad \text{and} \quad \underbrace{\mathrm{Var}\left[h_i^{(l-1)}\right]}_{\text{variance}} = v_h
+    \end{equation*}
+    \item \textbf{Weights} $w_{ji}^{(l)}$ are i.i.d. with:
+    \begin{equation*}
+        \mathbb{E}\left[w_{ji}^{(l)}\right] = 0 \quad \text{and} \quad \mathrm{Var}\left[w_{ji}^{(l)}\right] = v_w
+    \end{equation*}
+    \item \textbf{Bias} $b_j^{(l)}$ with:
+    \begin{equation*}
+        \mathbb{E}\left[b_j^{(l)}\right] = 0 \quad \text{and} \quad \mathrm{Var}\left[b_j^{(l)}\right] = v_b
+    \end{equation*}
+\end{itemize}
+Then, the variance of $z_j^{(l)}$ is:
+\begin{equation*}
+    \mathrm{Var}\left[z_j^{(l)}\right] = n_{l-1} \cdot v_w \cdot v_h + v_b
+\end{equation*}
+Where $n_{l-1}$ is the number of neurons in layer $l-1$ (the previous layer). To keep the variance stable across layers, we want:
+\begin{equation*}
+    \mathrm{Var}\left[z_j^{(l)}\right] = \mathrm{Var}\left[h_i^{(l-1)}\right] = v_h \quad \Rightarrow \quad n_{l-1} \cdot v_w \cdot v_h + v_b = v_h
+\end{equation*}
+Assuming $v_b$ is small, we get:
+\begin{equation}\label{eq:forward-variance}
+    n_{l-1} \cdot v_w \cdot \cancel{v_h} + \cancel{v_b} = \cancel{v_h} \quad \Rightarrow \quad v_w = \dfrac{1}{n_{l-1}}
+\end{equation}
+This means we should \textbf{initialize weights with variance} $v_w = \dfrac{1}{n_{l-1}}$ \textbf{to preserve forward-pass variance}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{arrow-circle-left} \textbf{Backward-pass variance analysis}}
+\end{flushleft}
+During backpropagation, the gradient with respect to activations $\delta_i^{(l)} = \frac{\partial E}{\partial z_i^{(l)}}$ obeys:
+\begin{equation*}
+    \delta_i^{(l)} = g'\left(z_i^{(l)}\right) \sum_{j=1}^{n_{l+1}} w_{ji}^{(l+1)} \delta_j^{(l+1)}
+\end{equation*}
+Where $g'(\cdot)$ is the derivative of the activation function, and $\delta_j^{(l+1)}$ are the gradients from the next layer. Assume:
+\begin{itemize}
+    \item \textbf{Gradients} $\delta_j^{(l+1)}$ are i.i.d. with:
+    \begin{equation*}
+        \mathbb{E}\left[\delta_j^{(l+1)}\right] = 0 \quad \text{and} \quad \mathrm{Var}\left[\delta_j^{(l+1)}\right] = v_\delta
+    \end{equation*}
+    \item \textbf{Weights} $w_{ji}^{(l+1)}$ are i.i.d. with:
+    \begin{equation*}
+        \mathbb{E}\left[w_{ji}^{(l+1)}\right] = 0 \quad \text{and} \quad \mathrm{Var}\left[w_{ji}^{(l+1)}\right] = v_w
+    \end{equation*}
+    \item \textbf{Activation derivatives} $g'\left(z_i^{(l)}\right)$ are i.i.d. with:
+    \begin{equation*}
+        \mathbb{E}\left[g'\left(z_i^{(l)}\right)\right] = 0 \quad \text{and} \quad \mathrm{Var}\left[g'\left(z_i^{(l)}\right)\right] = v_{g'}
+    \end{equation*}
+\end{itemize}
+Then, the variance of $\delta_i^{(l)}$ is:
+\begin{equation*}
+    \mathrm{Var}\left[\delta_i^{(l)}\right] = n_{l+1} \cdot v_w \cdot v_\delta \cdot v_{g'}
+\end{equation*}
+Where $n_{l+1}$ is the number of neurons in layer $l+1$ (the next layer). To keep the variance stable across layers, we want:
+\begin{equation*}
+    \mathrm{Var}\left[\delta_i^{(l)}\right] = \mathrm{Var}\left[\delta_j^{(l+1)}\right] = v_\delta \quad \Rightarrow \quad n_{l+1} \cdot v_w \cdot v_\delta \cdot v_{g'} = v_\delta
+\end{equation*}
+Assuming $v_\delta$ is non-zero, we get:
+\begin{equation}\label{eq:backward-variance}
+    n_{l+1} \cdot v_w \cdot \cancel{v_\delta} \cdot v_{g'} = \cancel{v_\delta} \quad \Rightarrow \quad v_w = \dfrac{1}{n_{l+1} \cdot v_{g'}}
+\end{equation}
+This means we should \textbf{initialize weights with variance} $v_w = \dfrac{1}{n_{l+1} \cdot v_{g'}}$ \textbf{to preserve backward-pass variance}.
+
+\newpage
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{star} \textbf{The Xavier (Glorot) and He (Kaiming) Initialization}}
+\end{flushleft}
+To satisfy both forward and backward variance preservation, we can combine equations \eqref{eq:forward-variance} and \eqref{eq:backward-variance}. Exists two popular initialization schemes:
+\begin{itemize}
+    \item \definition{Xavier (Glorot) Initialization}. \textbf{Glorot \& Bengio (2010)}, two researchers from the University of Montreal, proposed a balanced compromise between forward and backward variance preservation. They combined the two equations by averaging the number of neurons in the previous and next layers:
+    \begin{equation}
+        \mathrm{Var}\left[w_{ji}^{(l)}\right] = v_w = \dfrac{2}{n_{l-1} + n_{l}}
+    \end{equation}
+    \begin{itemize}
+        \item $n_{l-1}$ is the number of input units \textbf{from} the previous layer \textbf{to} layer $l$.
+        \item $n_{l}$ is the number of output units \textbf{from} layer $l$ \textbf{to} the next layer.
+    \end{itemize}
+    It works well for activation functions like \textbf{tanh} or \textbf{sigmoid}, where both positive and negative activations are symmetric and can saturate easily. Hence, Xavier initialization keeps activations within a ``safe'' non-saturated range, reducing the change of vanishing gradients (or exploding gradients).
+
+
+    \item \definition{He (Kaiming) Initialization}. \textbf{He et al. (2015)}, researchers from Microsoft Research, proposed an initialization scheme specifically designed for \textbf{ReLU} and its variants. He proofed that with ReLU activations, only about half the neurons are active at a time (since ReLU outputs zero for negative inputs). Therefore, the effective variance of activations halves:
+    \begin{equation*}
+        \mathrm{Var}\left[h^{(l)}\right] = \dfrac{1}{2} \cdot \mathrm{Var}\left[z^{(l)}\right]
+    \end{equation*}
+    Where $h^{(l)}$ are the activations after ReLU, and $z^{(l)}$ are the pre-activation values. To compensate for this reduction, \textbf{He et al. (2015)} proposed to double the variance of weights:
+    \begin{equation}
+        \mathrm{Var}\left[w_{ji}^{(l)}\right] = v_w = \dfrac{2}{n_{l-1}}
+    \end{equation}
+    This ensures that activations after the ReLU maintain a unit variance and gradients remain stable during backpropagation.
+\end{itemize}
+In summary, both initialization methods were designed to \textbf{control the variance} of: activations during the \textbf{forward pass} and gradients during the \textbf{backward pass}. They make sure that, \emph{on average}:
+\begin{equation*}
+    \mathrm{Var}\left[z^{(l)}\right] \approx \mathrm{Var}\left[z^{(l-1)}\right] \quad \text{and} \quad \mathrm{Var}\left[\delta^{(l)}\right] \approx \mathrm{Var}\left[\delta^{(l+1)}\right]
+\end{equation*}
+So they explicitly avoid both:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] $\mathrm{Var} < 1$ (vanishing gradients)
+    \item[\textcolor{Green3}{\faIcon{check}}] $\mathrm{Var} = 1$ (stable)
+    \item[\textcolor{Red2}{\faIcon{times}}] $\mathrm{Var} > 1$ (exploding gradients)
+\end{itemize}
+The goal is a \textbf{critical regime} ($\mathrm{Var} = 1$) where the signal neither dies nor explodes. But, \hl{remember that Xavier and He initialization prevent both vanishing and exploding gradients only at the \textbf{start of training}}. During training, weights are updated, and the variance can drift away from the ideal value. Therefore, other techniques like \textbf{batch normalization} (\autopageref{sec:batch-normalization}) are often used in conjunction to maintain stable activations and gradients throughout training.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l c @{}}
+        \toprule
+        Initialization & Recommended for & Weight Variance \\
+        \midrule
+        \textbf{Xavier (Glorot)} & Sigmoid / Tanh & $\dfrac{2}{n_{in} + n_{out}}$ \\[1.4em]
+        \textbf{He (Kaiming)} & ReLU / Leaky ReLU & $\dfrac{2}{n_{in}}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of popular weight initialization schemes. $n_{in}$ is the number of input units to the layer, and $n_{out}$ is the number of output units from the layer.}
+\end{table}
+
+\noindent
+In practice, these initialization schemes significantly improve training stability and convergence speed, especially in deep networks. Modern deep learning frameworks (like \texttt{TensorFlow} and \texttt{PyTorch}) implement these initializations by default when creating layers.

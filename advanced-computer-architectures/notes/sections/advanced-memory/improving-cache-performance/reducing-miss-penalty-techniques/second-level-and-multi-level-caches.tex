@@ -1,0 +1,101 @@
+\paragraph{Second-Level and Multi-Level Caches}\label{paragraph: Second-Level and Multi-Level Caches}
+
+Even with all optimizations, an \textbf{L1 cache miss penalty} can be very large, typically \textbf{tens to hundreds of CPU cycles} if it goes directly to main memory (DRAM).
+
+\highspace
+\textbf{Idea:} Insert an \textbf{intermediate cache level} (L2, or even L3) between L1 and main memory:
+\begin{itemize}
+    \item L2 is \textbf{larger} and \textbf{slower} than L1, but much \textbf{faster} than DRAM.
+    \item L3 is even larger and slower, often shared between cores in multicore systems.
+\end{itemize}
+This hierarchy \textbf{catches many L1 misses} before they reach main memory, greatly reducing \textbf{average miss penalty}.
+
+\highspace
+Access path:
+\begin{equation*}
+    \text{CPU} \rightarrow \text{L1 Cache} \rightarrow \text{L2 Cache} \rightarrow \text{L3 Cache} \rightarrow \text{Main Memory}
+\end{equation*}
+On an L1 miss:
+\begin{enumerate}
+    \item Check L2 cache.
+    \item If hit $\rightarrow$ fetch from L2 (much faster than DRAM).
+    \item If miss $\rightarrow$ proceed to L3 or main memory.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Effect on AMAT}}
+\end{flushleft}
+Let's extend the AMAT formula for two levels:
+\begin{equation}
+    \begin{array}{rcl}
+        \text{AMAT} &=& \text{Hit Time}_{\text{L1}} + \text{Miss Rate}_{\text{L1}} \times \\ [.3em]
+        && \left(\text{Hit Time}_{\text{L2}} + \text{Miss Rate}_{\text{L2}} \times \text{Main Memory Penalty}\right)
+    \end{array}
+\end{equation}
+If \textbf{L2 has a low miss rate}, the main memory penalty is rarely paid. Even if L2 is slower than L1, it's \textbf{orders of magnitude faster} than DRAM.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Design Considerations}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{Size}
+    \begin{itemize}
+        \item L2/L3 caches are \hl{much larger} (hundreds of KB to MBs) to reduce \textbf{capacity misses}.
+        \item Larger size $=$ slower hit time $\rightarrow$ acceptable because they're not on the CPU's critical cycle path.
+    \end{itemize}
+    \newpage
+    \item \important{Inclusion Policy}
+    \begin{itemize}
+        \item \textbf{Inclusive}: L2 contains all of L1's contents (\hl{simplifies coherence in multiprocessors}).
+        \item \textbf{Exclusive}: L2 and L1 store different data (\hl{maximizes total cache capacity}).
+        \item \textbf{Non-inclusive, non-exclusive (NINE)}: No strict relationship.
+    \end{itemize}
+    \item \important{Associativity}. L2/L3 are often higher associativity (e.g., 8-way, 16-way) to minimize conflict misses.
+    \item \important{Shared vs. Private}
+    \begin{itemize}
+        \item \textbf{Private L2}: One per core (reduces access contention).
+        \item \textbf{Shared L3}: Serves multiple cores (improves sharing, helps coherence).
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{examplebox}
+    If:
+    \begin{itemize}
+        \item L1 miss rate $=$ 5\%.
+        \item L2 hit rate $=$ 90\%.
+        \item L1 miss penalty (to L2) $=$ 10 cycles.
+        \item L2 miss penalty (to DRAM) $=$ 100 cycles.
+    \end{itemize}
+    Then:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \text{AMAT} &=& \text{L1 Hit Time} + 0.05 \times (10 + 0.10 \times 100) \\ [.3em]
+            &=& \text{L1 Hit Time} + 0.05 \times (10 + 10) \\ [.3em]
+            &=& \text{L1 Hit Time} + 1
+        \end{array}
+    \end{equation*}
+    Main memory accesses are now rare, reducing overall penalty.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-offs}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{16em} | p{16em} @{}}
+        \toprule
+        Pros & Cons \\
+        \midrule
+        \textcolor{Green3}{\faIcon{check}} Large reduction in average miss penalty.     & \textcolor{Red2}{\faIcon{times}} Extra latency for L1 misses (must check L2).   \\ [.3em]
+        \textcolor{Green3}{\faIcon{check}} Reduces main memory bandwidth demand.        & \textcolor{Red2}{\faIcon{times}} Increased area and power.                      \\ [.3em]
+        \textcolor{Green3}{\faIcon{check}} Helps multi-core coherence (with inclusion). & \textcolor{Red2}{\faIcon{times}} More complexity in cache hierarchy management. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+\hl{Multi-level caches act as \textbf{latency buffers} between the fast CPU and slow DRAM}. By catching most L1 misses in L2 (and L2 misses in L3), they \textbf{drastically reduce the effective miss penalty} and improve system throughput.

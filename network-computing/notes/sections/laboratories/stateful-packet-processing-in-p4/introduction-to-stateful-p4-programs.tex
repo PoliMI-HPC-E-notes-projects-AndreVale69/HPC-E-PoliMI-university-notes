@@ -1,0 +1,72 @@
+\subsection{Stateful Packet Processing in P4}\label{sec:stateful-packet-processing-in-p4}
+
+\subsubsection{Introduction to Stateful P4 Programs}\label{sec:introduction-to-stateful-p4-programs}
+
+Most basic P4 programs are \textbf{stateless}:
+\begin{itemize}
+    \item Each packet is processed \textbf{independently} of other packets.
+    \item Decisions depend only on:
+    \begin{itemize}
+        \item Packet headers (e.g., Ethernet, IP, TCP).
+        \item Metadata computed in the current pipeline (e.g., ingress port, packet length).
+        \item Table entries installed by the control plane (e.g., forwarding rules).
+    \end{itemize}
+\end{itemize}
+This model is fast and simple, but \textbf{not sufficient} for many real network functions. Many network tasks require \textbf{memory across packets}, i.e., they need to \textbf{maintain state} about the traffic they see. Examples include:
+\begin{itemize}
+    \item Firewalls that track active connections.
+    \item Load balancers that distribute traffic based on server load.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a \emph{stateful} P4 program?}}
+\end{flushleft}
+A \definition{Stateful P4 program} is a program that \textbf{stores information derived from previous packets} and \textbf{uses that stored information} to process future packets. In other words, the data plane \emph{remembers} something about the traffic it has seen, and uses that memory to forward packets differently based on that history.
+
+\highspace
+\textcolor{Green3}{\faIcon{question} \textbf{What kind of state do we need to maintain?}} Typical examples of state in the data plane include:
+\begin{itemize}
+    \item Packet or byte counters (e.g., for traffic monitoring).
+    \item Timestamp of previous packets (e.g., for rate limiting).
+    \item Flow-specific information (e.g., 5-tuple of active connections).
+    \item Thresholds, flags, or temporary values used for decision making.
+    \item Statistics used for monitoring or detection (e.g., number of packets from a source IP).
+\end{itemize}
+This state is \textbf{persistent across packets}, \textbf{stored inside the switch}, and \textbf{accessed at line rate}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Why stateful programs are important?}}
+\end{flushleft}
+Stateful P4 programs enable \textbf{advanced network functions} that \hl{cannot be implemented with stateless processing}. For example:
+\begin{itemize}
+    \item \important{Traffic monitoring}: heavy hitter detection, flow counting, latency measurement.
+    \item \important{Load balancing}: distributing traffic based on server load or connection state.
+    \item \important{Security functions}: stateful firewalls, DDoS detection, connection tracking.
+    \item \important{Protocol support}: handling protocols that require state (e.g., TCP connection tracking).
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{memory} \textbf{Where is the state stored in a P4 program?}}
+\end{flushleft}
+This question is the core of the matter. P4 provides \textbf{stateful objects}, which live in the \textbf{data plane}, not in the control plane. These objects include:
+\begin{itemize}
+    \item \textbf{Registers}: arrays of memory cells that can store arbitrary values.
+    \item \textbf{Counters}: special registers that can only be incremented or decremented.
+    \item \textbf{Meters}: special registers that can be used for rate limiting (not explored in this course).
+    \item \textbf{Stateful tables}: tables that can be modified by the data plane itself (e.g., learning MAC addresses, not explored in this course).
+\end{itemize}
+These objects are \hl{accessed directly by the data plane} during packet processing, can be read and written by the P4 program, and persist across packets. So they are like \textbf{memory} that the data plane can use to store information about the traffic it sees.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance considerations}}
+\end{flushleft}
+Stateful objects are designed to work at \textbf{very high speed}:
+\begin{itemize}
+    \item Multiple packets may access registers or counters simultaneously.
+    \item Hardware ensures correctness within architectural limits (e.g., atomic updates, consistency).
+    \item Operations are simple and constrained (e.g., counters can only be incremented, no loops or complex data structures).
+\end{itemize}
+These objects are intentionally limited in functionality because the goal is to provide \textbf{fast, line-rate access to state} without sacrificing performance, not general-purpose programming capabilities.

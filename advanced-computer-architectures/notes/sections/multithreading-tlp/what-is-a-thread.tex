@@ -1,0 +1,122 @@
+\subsection{What is a Thread?}
+
+At the highest level, we write a \textbf{program}. When we run it, the operating system creates a \textbf{process}: an instance of that program in execution. A process has:
+\begin{itemize}
+    \item Its own \textbf{address space} (the memory image of the program: code, heap, stack, data).
+    \item \textbf{Operating system resources} (file descriptors, sockets, etc.).
+\end{itemize}
+Inside a process, we may have one or multiple \textbf{threads of execution}.
+
+\highspace
+A \definition{Thread} is the \textbf{smallest unit of execution that can be scheduled by the operating system}. Each threads has:
+\begin{itemize}
+    \item Its own \textbf{program counter} (so it knows which instruction it is about to execute).
+    \item Its own \textbf{register state} (so it can track local variables, intermediate values, return addresses).
+\end{itemize}
+But threads \textbf{share the same address space} of the process. This means:
+\begin{itemize}
+    \item They see the \hl{same code and global data}.
+    \item They can \hl{communicate} cheaply \hl{via shared memory} (no need for explicit message passing as with processes).
+    \item On the flip side, \hl{incorrect synchronization can cause data races}.
+\end{itemize}
+In short:
+\begin{itemize}
+    \item \important{Process}: \textbf{container} (resources $+$ address space).
+    \item \important{Thread}: \textbf{active execution flow} inside that container.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Thread Grain Size}}
+\end{flushleft}
+A thread is not a fixed concept, it can be very \textbf{large} (millions of instructions, like an OS thread) or very \textbf{small} (a few instructions, as in hardware fine-grain MT). The \textbf{grain size} sets the stage for the type of multithreading we are interested in at the \emph{architectural} level.
+
+\highspace
+When we talk about ``grain size'' of a thread, we are asking: ``\emph{how much work does a thread represent before we would switch to another one?}''.
+
+\highspace
+\textcolor{Green3}{\faIcon{stream} \textbf{Hardware Multithreading Typology}}
+\begin{itemize}
+    \item \phantomsection\label{def:fine-grain-thread} \definition{Fine-Grain Thread}. Represents a \textbf{very small amount of work}, maybe only a \hl{few instructions or a small function call}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Useful when we want to expose \textbf{as much parallelism as possible} (so the hardware can interleave many threads).
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] But the \textbf{overhead of switching and synchronization} increases.
+    \end{itemize}
+
+    \item \phantomsection\label{def:coarse-grain-thread} \definition{Coarse-Grain Thread}. Represents a larger unit of work, like a loop iteration or an entire function execution.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check-circle}}] Easier to \textbf{manage}, \textbf{lower synchronization overhead}.
+        \item[\textcolor{Red2}{\faIcon{times-circle}}] But \textbf{harder to keep hardware busy} if that single thread stalls (e.g., on a cache miss).
+    \end{itemize}
+\end{itemize}
+Hardware multithreading usually works with \textbf{fine- to medium-grain threads}:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] It \hl{doesn't want to wait for an operating system context switch} (thousands of cycles).
+    \item[\textcolor{Green3}{\faIcon{check}}] Instead, it keeps multiple \hl{architectural states locally} and can \hl{switch in a few cycles or even every cycle} (depending on the MT strategy).
+\end{itemize}
+So both coarse-grain and fine-grain are hardware multithreading schemes and the difference is how frequently the hardware switches between threads (coarse, only on long stalls, fine, every cycle).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{But if HW Multithreading works with fine- and medium-grain threads, why do coarse-grain threads exist?}}
+\end{flushleft}
+When hardware designers first explored multithreading, they wanted something \textbf{simple} and \textbf{cheap}. Duplicating register files for each thread is straightforward. Switching threads only when one blocks on a \emph{very long latency event} (like a DRAM miss) avoids the cost of wasting cycles in a stall.
+
+\highspace
+If a thread misses in memory, we flush or ``drain'' the pipeline, load in another thread's register, and continue. It's not cycle-by-cycle interleaving, it's ``\emph{run until we hit a brick wall, then switch}''. So Coarse-Grain makes sense in machines where:
+\begin{itemize}
+    \item Stalls are very long (hundreds of cycles).
+    \item Switching overhead (drain/refill of pipeline) is small compared to that stall.
+    \item The hardware issue width is not very wide (so we don't need multiple threads every cycle to fill slots).
+\end{itemize}
+Finally, Coarse-Grain MT exists in theory and historically (some early machines, some GPUs in specific modes), but \textbf{most commercial CPUs with multithreading today use fine or medium approaches}, often in the form of \textbf{SMT} (simultaneous multithreading, which is essentially ``very fine'' grain because multiple threads issue in the same cycle).
+\begin{itemize}
+    \item \important{Coarse-grain MT}: simple, only switches on long stalls.
+    \item \important{Fine-grain MT}: switch every cycle, great for latency hiding.
+    \item \important{Medium-grain MT}: umbrella term for designs between the two extremes (switch every few cycles or on moderate stalls).
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why can't we simply use the Operating System Context Switch?}}
+\end{flushleft}
+When the \textbf{operating system} switches between two threads (or processes), it has to:
+\begin{itemize}
+    \item Save the entire register file, program counter, and status of the old thread.
+    \item Restore the state of the new thread.
+    \item Update memory mappings, caches, etc.
+\end{itemize}
+This is called a \definitionWithSpecificIndex{context switch}{Operating System Context Switch}{}, and it usually takes \textbf{thousands of CPU cycles}. That's fine for multitasking at the OS level, but it's far too slow if our goal is to hide a cache miss (hundreds of cycles).
+
+\highspace
+\textcolor{Green3}{\faIcon{\speedIcon} \textbf{Hardware Multithreading does it differently.}} In hardware multithreading, the \textbf{processor itself} holds the state of multiple threads \emph{at the same time}.
+\begin{itemize}
+    \item Each thread has its own copy of architectural state: its own \textbf{program counter} and \textbf{register file}.
+    \item These copies are kept in hardware, ready to use.
+\end{itemize}
+So when the processor wants to change which thread is executing:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] It doesn't have to call the OS or save/restore memory.
+    \item[\textcolor{Green3}{\faIcon{check}}] It just selects another PC $+$ register file (already in hardware).
+\end{itemize}
+This takes \textbf{a few cycles or even just one cycle}, depending on the type of multithreading (coarse-grain vs fine-grain vs SMT).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why ``fine- to medium-grain'' threads?}} Because the hardware switch is so fast, the unit of work a thread can represent is very small:
+\begin{itemize}
+    \item We might switch threads every \textbf{few instructions} (medium-grain).
+    \item Or even \textbf{every cycle} (fine-grain).
+\end{itemize}
+This is in contrast to OS threads, where switching is so slow that we want to run a thread for millions of instructions before switching.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Threads Matter for Hardware Multithreading}}
+\end{flushleft}
+A superscalar or VLIW core is designed to extract ILP \textbf{within one thread}. But if that thread has stalls, or if it simply doesn't provide enough independent instructions, the processor wastes resources. If we have \textbf{multiple threads ready}, then the processor can:
+\begin{itemize}
+    \item Switch to another thread to hide latency (coarse- or fine-grain multithreading).
+    \item Or issue instructions from multiple threads in parallel (simultaneous multithreading, SMT).
+\end{itemize}
+That's why the thread abstraction is the \textbf{basic currency of multithreading at the hardware level}.

@@ -1,0 +1,147 @@
+\subsubsection{Exercise 2: Counting with BPF Maps}
+
+In this exercise, we want to:
+\begin{itemize}
+    \item Count \textbf{number of packets}.
+    \item Count \textbf{number of bytes}.
+    \item Store both as 64-bit counters.
+    \item Save them in a \textbf{BPF map}.
+    \item Read them from user-space with \texttt{bpftool}.
+    \item Print them continuously.
+\end{itemize}
+This is our first \textbf{kernel} $\leftrightarrow$ \textbf{user-space} communication exercise, and it will be the basis for all the next ones.
+
+\highspace
+Unlike the previous exercise, now state survives across packets and function calls, and user-space can read it. This is the main purpose of BPF maps: they are a key-value store that can be accessed both from kernel and user-space, and they are used to store state across function calls and packets.
+\begin{itemize}
+    \item \important{Define the structure}. We need to define a structure that will hold our counters. We can define it as follows:
+\begin{lstlisting}[language=C]
+struct datarec {
+    __u64 rx_packets;
+    __u64 rx_bytes;
+};\end{lstlisting}
+    We use \texttt{\_\_u64} to ensure that our counters are 64-bit, which is important to avoid overflow.
+
+
+    \item \important{Define the map}. We need to define a BPF map that will hold our counters. We can define it as follows:
+\begin{lstlisting}[language=C]
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, int);
+    __type(value, struct datarec);
+    __uint(max_entries, 1);
+} xdp_stats_map SEC(".maps");\end{lstlisting}
+    We use an array map with a single entry (key 0) to store our counters. The value is of type \texttt{struct datarec}, which we defined earlier. We set the map type to \texttt{BPF\_MAP\_TYPE\_ARRAY} and the maximum number of entries to 1, since we only need one entry to store our counters.
+
+
+    \item \important{Lookup the Map}. We need to lookup the map to get the current counters, update them, and then save them back to the map. We can do this as follows:
+\begin{lstlisting}[language=C]
+rec = bpf_map_lookup_elem(&xdp_stats_map, &key);
+if (!rec) {
+    return XDP_ABORTED;
+}\end{lstlisting}
+    We use the \texttt{bpf\_map\_lookup\_elem} helper function to lookup the map and get a pointer to our counters. If the lookup fails, we return \texttt{XDP\_ABORTED} to indicate an error.
+
+
+    \item \important{Accessing Packet Length}. We can access the packet length using the \texttt{data\_end} and \texttt{data} pointers. The packet length can be calculated as follows:
+\begin{lstlisting}[language=C]
+void *data_end = (void *)(long)ctx->data_end;
+void *data = (void *)(long)ctx->data;\end{lstlisting}
+    The packet length is then \texttt{data\_end - data} and we can save it in our counters:
+\begin{lstlisting}[language=C]
+__u64 bytes = data_end - data;\end{lstlisting}
+
+
+    \item \important{Update the Counters Atomically}. We need to update the counters atomically to avoid race conditions. We can use the \texttt{\_\_sync\_fetch\_and\_add} function to atomically update our counters as follows:
+\begin{lstlisting}[language=C]
+__sync_fetch_and_add(&rec->rx_packets, 1);
+__sync_fetch_and_add(&rec->rx_bytes, bytes);\end{lstlisting}
+    This will increment the packet counter by 1 and the byte counter by the length of the packet atomically.
+\end{itemize}
+Now, we can compile the XDP program using the same command as before.
+
+\highspace
+On the user-space side, we can use \texttt{bpftool} to read the counters from the map:
+\begin{itemize}
+    \item \important{Redefine the Structure}. We need to redefine the structure in user-space to match the one we defined in kernel-space. We can do this as follows:
+\begin{lstlisting}[language=C]
+struct datarec {
+    __u64 rx_packets;
+    __u64 rx_bytes;
+};\end{lstlisting}
+
+
+    \item \important{Read the Map}. We can use the following command to read the map:
+\begin{lstlisting}[language=C,mathescape=false]
+void poll_stats(struct counting_with_maps_bpf *skel) {
+    /* TODO 1: get the map file descriptor for the skeleton */
+    int map_fd = 0;
+    
+    map_fd = bpf_map__fd(skel->maps.xdp_stats_map);
+    if (map_fd < 0) {
+        log_fatal(
+            "Error while retrieving the map file descriptor"
+        );
+        exit(1);
+    }
+
+    while(true) {
+        /* TODO 2: define the value type (struct datarec) */
+        struct datarec value;
+        int key = 0;
+        int err = 0;
+        
+        /* TODO 4: get the value of the map for the key 0 */
+        err = bpf_map_lookup_elem(map_fd, &key, &value);
+        if (err != 0) {
+            log_fatal(
+                "Error while retrieving the value from map"
+            );
+            exit(1);
+        }
+
+        if (value.rx_packets == 0 && value.rx_bytes == 0) {
+            continue;
+        }
+        
+        /* TODO 5: print the number of packets received */
+        log_info(
+            "Number of packets received: %llu",
+            value.rx_packets
+        );
+        /* TODO 6: print the number of bytes received */
+        log_info(
+            "Number of bytes received: %llu",
+            value.rx_bytes
+        );
+        sleep(1);
+    }
+}\end{lstlisting}
+    \begin{enumerate}
+        \item Get the map file descriptor for the skeleton using the \texttt{bpf\_map\_\_fd} function.
+        \item Define the value type (\texttt{struct datarec}) to hold the counters.
+        \item Define the key (\texttt{0}) to access the first entry of the map.
+        \item Get the value of the map for the key \texttt{0} using the \texttt{bpf\_map\_lookup\_\break{}elem} function.
+        \item Print the number of packets received using the \texttt{rx\_packets} field of the value.
+        \item Print the number of bytes received using the \texttt{rx\_bytes} field of the value.
+    \end{enumerate}
+\end{itemize}
+Now, we can compile the user-space program and run it. We should see the number of packets and bytes received printed continuously:
+\begin{lstlisting}[mathescape=false]
+$ sudo ./counting_with_maps -i veth1
+19:25:10 INFO  counting_with_maps.c:113: XDP program will be attached to veth1 interface
+19:25:10 INFO  counting_with_maps.c:119: Got ifindex for iface: veth1, which is 9
+19:25:10 INFO  counting_with_maps.c:167: Successfully attached!
+19:25:11 INFO  counting_with_maps.c:87: Number of packets received: 1
+19:25:11 INFO  counting_with_maps.c:89: Number of bytes received: 70\end{lstlisting}
+All the packets received on the \texttt{veth1} interface will be counted and their length will be summed in the byte counter. We can generate traffic on the \texttt{veth1} interface using tools like \texttt{ping} to see the counters update in real-time.
+
+\newpage
+
+\noindent
+The full code of the exercise is available here:
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/02-CountingWithBPFMaps}
+    \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/02-CountingWithBPFMaps}{Full code on GitHub}
+\end{center}

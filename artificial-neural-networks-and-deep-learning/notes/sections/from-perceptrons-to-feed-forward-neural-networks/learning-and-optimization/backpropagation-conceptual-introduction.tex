@@ -1,0 +1,250 @@
+\subsubsection{Backpropagation (Conceptual Introduction)}\label{sec:backpropagation-conceptual-introduction}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Backpropagation exists?}}
+\end{flushleft}
+The \textbf{problem} we face is computational:
+\begin{itemize}
+    \item Gradient descent (page \pageref{sec:gradient-descent-basics}) at each iteration requires the computation of \textbf{all partial derivatives} of the loss function $E$ with respect to \textbf{all weights and biases} in the network. Formally, we need to compute (introduced in section \ref{sec:gradient-descent-basics}, page \pageref{eq:gradient-neural-network}):
+    \begin{equation*}
+        \nabla E(w) = \left\{
+            \dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} , \,
+            \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}}
+        \right\}
+    \end{equation*}
+    \item In a network with thousands of weights, each weight influences the output \emph{indirectly} through multiple layers.
+\end{itemize}
+Computing those derivatives by brute force (finite differences or manual application of the chain rule) would be \textbf{computationally expensive} and \textbf{inefficient}. We need a more efficient way to compute these gradients.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Backpropagation Concept}}
+\end{flushleft}
+\definition{Backpropagation} (or \textbf{backward propagation of errors}) is an efficient \textbf{algorithm} used to \textbf{compute the gradients} of the loss function with respect to all weights and biases \textbf{in a neural network}. It leverages the \textbf{chain rule of calculus} in a systematic, efficient way to reuse computations and propagate errors backward through the network. It is analogous to hashmaps in programming, where intermediate results are stored and reused to avoid redundant calculations.
+
+\highspace
+\begin{remarkbox}[: The Chain Rule]
+    The \definition{Chain Rule} is a fundamental rule in calculus used to compute the derivative of a composite function.
+
+    Suppose we have a \textbf{function inside another function}:
+    \begin{equation*}
+        y = f\left(g(x)\right)
+    \end{equation*}
+    We want to know how $y$ changes when we slightly change $x$. In other words, we want to find the derivative $\dfrac{\partial y}{\partial x}$. The chain rule tells us that we can break this down into two parts:
+    \begin{equation}
+        \dfrac{\partial y}{\partial x} = \dfrac{\partial y}{\partial g} \cdot \dfrac{\partial g}{\partial x}
+    \end{equation}
+    This means that to find out how $y$ changes with respect to $x$, we first find out how $y$ changes with respect to $g$ (the inner function), and then multiply that by how $g$ changes with respect to $x$. It's literally ``follow the chain'' of dependencies.
+
+    Let's see a quick example. Let's say:
+    \begin{equation*}
+        y = f\left(g(x)\right) = \left(2x + 3\right)^{2}
+    \end{equation*}
+    We can identify:
+    \begin{itemize}
+        \item Inner function: $g(x) = 2x + 3$
+        \item Outer function: $f(g) = g^{2}$
+    \end{itemize}
+    Now, we compute the derivatives:
+    \begin{itemize}
+        \item $\dfrac{\partial f}{\partial g} \left(g^{2}\right) = 2g$
+        \item $\dfrac{\partial g}{\partial x} \left(2x + 3\right) = 2$
+    \end{itemize}
+    Now, applying the chain rule:
+    \begin{equation*}
+        \dfrac{\partial y}{\partial x} = \dfrac{\partial f}{\partial g} \cdot \dfrac{\partial g}{\partial x} = 2g \cdot 2 = 4g
+    \end{equation*}
+    Finally, substituting back $g(x)$:
+    \begin{equation*}
+        \dfrac{\partial y}{\partial x} = 4(2x + 3) = 8x + 12
+    \end{equation*}
+\end{remarkbox}
+
+\highspace
+Conceptually, Backpropagation works during the training phase of a neural network. \textbf{During training phase}, there are \textbf{two complementary flows} of information:
+\begin{itemize}
+    \item \important{Forward Pass} (Input $\to$ Output): The purpose is to \textbf{measure how good the current weights are at predicting the target outputs}. The input data is passed through the network layer by layer to compute the output. During this phase, the activations of each neuron are computed and stored for later use. Formally, compute predictions $y(x;w)$ for input $x$ and weights $w$, and save intermediate activations $a^{(l)}$ for each layer $l$. Here, $a^{(l)}$ represents the activations at layer $l$:
+    \begin{equation*}
+        a^{(l)} = f\left( W^{(l)} a^{(l-1)} + b^{(l)} \right) = f(z^{(l)})
+    \end{equation*}
+    where $f$ is the activation function, $W^{(l)}$ are the weights, and $b^{(l)}$ are the biases at layer $l$.
+
+    \item \important{Backward Pass} (Output $\to$ Input): The purpose is to \textbf{know how to change weights to reduce the loss}. The error (the difference between the predicted output and the actual target) is propagated backward through the network. During this phase, the gradients of the loss function with respect to each weight and bias are computed using the chain rule, utilizing the stored activations from the forward pass. Formally, compute gradients $\dfrac{\partial E}{\partial w_{ij}^{(l)}}$ and $\dfrac{\partial E}{\partial b_{i}^{(l)}}$ for all weights and biases using the chain rule. The stored activations $a^{(l)}$ are used to compute these gradients efficiently.
+\end{itemize}
+Hence the name \textbf{backpropagation}: the error is propagated backward through the network to compute gradients efficiently. In the next pages, we will see a detailed example of how backpropagation works step by step. Formally deriving the backpropagation equations will be covered in later sections.
+
+\highspace
+\begin{examplebox}[: Numerical Example of Backpropagation Concept]
+    We'll train a \textbf{1-hidden-layer neural network} to learn the function $y = x$ for one input sample $x=1$ and target $t=0.5$. Visually, the network looks like this:
+    \begin{center}
+        \begin{tikzpicture}[->, every node/.style={font=\small}]
+            % nodes (increased sizes and spacing)
+            \node[circle,draw,minimum size=12mm] (in) at (0,0) {$x=1$};
+            \node[circle,draw,minimum size=20mm,align=center] (h)  at (4.5,0) {$\sigma(0.7) = h$\\[1pt] $h\approx0.668$\\[2pt]\small $b_{1}^{(1)}=0.3$};
+            \node[circle,draw,minimum size=20mm,align=center] (out) at (9,0) {$y=a^{(2)}$\\[1pt] $y\approx0.434$\\[2pt]\small $b_{1}^{(2)}=0.1$};
+
+            % target node placed above the output node (inside the picture)
+            \node[draw,rectangle,rounded corners,fill=yellow!10,inner sep=4pt] (target) at ($(out.north)+(0,1.0)$) {target: $t=0.5$};
+
+            % connections with weight labels
+            \draw (in) -- node[above] {$w_{11}^{(1)}=0.4$} (h);
+            \draw (h)  -- node[above] {$w_{11}^{(2)}=0.5$} (out);
+
+            % dashed vertical arrow from target down to output (avoids overlapping)
+            \draw[->, dashed, shorten >=2pt] (target.south) to[bend right=0] (out.north);
+        \end{tikzpicture}
+    \end{center}
+    The network architecture is as follows:
+    \begin{itemize}
+        \item Input layer: 1 neuron, with notation $a^{(0)} = x = 1$.
+        \item Hidden layer: 1 neuron, with a sigmoid activation function:
+        \begin{equation*}
+            g^{(1)}(a) = \sigma(a) = \dfrac{1}{1+e^{-a}}
+        \end{equation*}
+        \item Output layer: 1 neuron, with notation $y = w_{2} \cdot h + b_{2}$. Where $y$ is the output, $w_{2}$ is the weight connecting hidden to output layer, and $b_{2}$ is the bias of the output layer. The activation function is linear:
+        \begin{equation*}
+            g^{(2)}(a) = a
+        \end{equation*}
+    \end{itemize}
+    The weights and biases are initialized as follows (randomly chosen for this example):
+    \begin{itemize}
+        \item $w_{11}^{(1)} = 0.4$ (weight from input to hidden layer)
+        \item $b_{1}^{(1)} = 0.3$ (bias of hidden layer)
+        \item $w_{11}^{(2)} = 0.5$ (weight from hidden to output layer)
+        \item $b_{1}^{(2)} = 0.1$ (bias of output layer)
+    \end{itemize}
+    The learning rate $\eta$ is set to $0.1$.
+
+    \highspace
+    \important{Backpropagation Step 1: Forward Pass.} In this step, we compute the activations of the hidden and output layers given the input $a^{(0)} = x = 1$.
+    \begin{enumerate}
+        \item \textbf{Compute hidden layer activation} (net input). The neuron has the index $i=1$ in layer $l=1$ since it's the first hidden layer (equation \ref{eq:net-input}, page \pageref{eq:net-input}):
+        \begin{equation*}
+            a_{1}^{(1)} = w_{11}^{(1)} \cdot a^{(0)} + b_{1}^{(1)} = 0.4 \cdot 1 + 0.3 = 0.7
+        \end{equation*}
+        The $a_{1}^{(1)}$ calculated above is the weighted sum before activation. Now, this value is passed through the sigmoid activation function:
+        \begin{equation*}
+            h = g^{(1)}\left(a_{1}^{(1)}\right) = g^{(1)}\left(0.7\right) = \sigma(0.7) = \dfrac{1}{1 + e^{-0.7}} \approx 0.668
+        \end{equation*}
+        \item \textbf{Compute output layer activation}. Again, using equation \ref{eq:net-input} (page \pageref{eq:net-input}), we compute the net input to the output neuron:
+        \begin{equation*}
+            a_{1}^{(2)} = w_{11}^{(2)} \cdot h + b_{1}^{(2)} = 0.5 \cdot 0.668 + 0.1 \approx 0.434
+        \end{equation*}
+        But now, Since the output layer uses a linear activation function, the output is:
+        \begin{equation*}
+            y = g^{(2)}(a_{1}^{(2)}) = a_{1}^{(2)} \approx 0.434
+        \end{equation*}
+        \item \textbf{Compute the error}. The predicted output from the forward pass is $y \approx 0.434$. The error can now be computed using the target $t=0.5$. For example, using Mean Squared Error (MSE):
+        \begin{equation*}
+            E = \dfrac{1}{2} \left(t - y\right)^{2} = \dfrac{1}{2} \left(0.5 - 0.434\right)^{2} \approx 0.0022
+        \end{equation*}
+        This error quantifies how far the network's prediction is from the target.
+    \end{enumerate}
+    At the end of this step, we have stored (cached) some intermediate values needed for the backward pass:
+    \begin{itemize}
+        \item \textbf{Input activation}: $a^{(0)} = 1$
+        \item \textbf{Linear combo to hidden layer}: $a_{1}^{(1)} = w_{11}^{(1)} \cdot a^{(0)} + b_{1}^{(1)} = 0.7$
+        \item \textbf{Hidden layer activation}: $h = g^{(1)}\left(a_{1}^{(1)}\right) = \sigma\left(0.7\right) \approx 0.668$
+        \item \textbf{Linear combo to output layer}: $a_{1}^{(2)} = w_{11}^{(2)} \cdot h + b_{1}^{(2)} \approx 0.434$
+        \item \textbf{Output activation (identity)}: $y = g^{(2)}\left(a_{1}^{(2)}\right) \approx 0.434$
+        \item \textbf{Error}: $E \approx 0.0022$
+    \end{itemize}
+    \important{Backpropagation Step 2: Backward Pass.} In this step, we compute the gradients of the loss function with respect to each weight and bias using backpropagation. We use the Mean Squared Error (MSE, page \pageref{box:mse}) loss function:
+    \begin{equation*}
+        E = \dfrac{1}{2} \left(t - y\right)^{2}
+    \end{equation*}
+    Where $t$ is the target output ($t=0.5$) and $y$ is the predicted output from the forward pass ($y \approx 0.434$). We will compute the gradients layer by layer, starting from the output layer and moving backward to the hidden layer. Also, we will \textbf{denote the error term for each layer as} $\delta^{(l)}$ and we propagate it backward through the network (using the cached values from the forward pass!). Simply put, we need to find $\nabla E(w)$:
+    \begin{equation*}
+        \nabla E(w) = \left\{
+            \dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} , \,
+            \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}}
+        \right\} = \left\{
+            \dfrac{\partial \, E}{\partial \, w_{11}^{(2)}}, \,
+            \dfrac{\partial \, E}{\partial \, b_{1}^{(2)}}, \,
+            \dfrac{\partial \, E}{\partial \, w_{11}^{(1)}}, \,
+            \dfrac{\partial \, E}{\partial \, b_{1}^{(1)}}
+        \right\}
+    \end{equation*}
+    Where:
+    \begin{equation*}
+        \dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}} = \dfrac{\partial \, E}{\partial \, y} \cdot \dfrac{\partial \, y}{\partial \, a_{i}^{(l)}} \cdot \dfrac{\partial \, a_{i}^{(l)}}{\partial \, w_{ij}^{(l)}}
+        \qquad
+        \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}} = \dfrac{\partial \, E}{\partial \, y} \cdot \dfrac{\partial \, y}{\partial \, a_{i}^{(l)}} \cdot \dfrac{\partial \, a_{i}^{(l)}}{\partial \, b_{i}^{(l)}}
+    \end{equation*}
+    However, to avoid recomputing terms, we define the error term $\delta^{(l)}$ for layer $l$ as:
+    \begin{equation*}
+        \delta^{(l)} = \dfrac{\partial E}{\partial a_{i}^{(l)}} = \dfrac{\partial E}{\partial y} \cdot \dfrac{\partial y}{\partial a_{i}^{(l)}}
+    \end{equation*}
+    This allows us to express the gradients more compactly:
+    \begin{equation*}
+        \dfrac{\partial E}{\partial w_{ij}^{(l)}} = \delta^{(l)} \cdot a_{j}^{(l-1)}
+        \qquad
+        \dfrac{\partial E}{\partial b_{i}^{(l)}} = \delta^{(l)}
+    \end{equation*}
+    These equations may be unfamiliar now, but they will make sense in future sections when we derive them formally.
+    For now, let's treat them as given formulas for computing the gradients using the error terms $\delta^{(l)}$.
+
+    Now, we compute $\delta^{(l)}$ for each layer starting from the output layer and moving backward to the hidden layer.
+    The steps are as follows:
+    \begin{enumerate}
+        \item \textbf{Compute the error at the output layer}:
+        \begin{align*}
+            \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}} = \dfrac{\partial E}{\partial b_{1}^{(2)}} = \delta^{(2)} & = \dfrac{\partial E}{\partial y} \cdot \dfrac{\partial y}{\partial a_{1}^{(2)}} \\[.3em]
+                                                                                                                     & = \dfrac{\partial }{\partial y} \left( \dfrac{1}{2} (t - y)^{2} \right) \cdot 1 \\[.3em]
+                                                                                                                     & = -(t - y) \cdot 1 \\
+                                                                                                                     & = - (0.5 - 0.434) = -0.066
+        \end{align*}
+        It represents how much the output $y$ deviates from the target $t$. Here we used the output activation function value $y$ from the \textbf{cached values}.
+        \item \textbf{Compute gradients for weights and biases in the output layer}:
+        \begin{equation*}
+            \underbrace{\dfrac{\partial E}{\partial w_{11}^{(2)}}}_{\dfrac{\partial \, E}{\partial \, w_{ij}^{(l)}}} = \delta^{(2)} \cdot \underbrace{a_{1}^{(1)}}_{a_{j}^{(l-1)}} = \delta^{(2)} \cdot h \approx -0.066 \cdot 0.668 \approx -0.044
+        \end{equation*}
+        It shows how much the weight $w_{11}^{(2)}$ should be adjusted to reduce the error. It will be used to update the weight during the optimization step. Again, we used the hidden layer activation ($h \approx 0.668$) from the \textbf{cached values}. Now, also compute the gradient for the bias that is obtained directly from the previously step (also \textbf{cached}):
+        \begin{equation*}
+            \dfrac{\partial \, E}{\partial \, b_{i}^{(l)}} = \dfrac{\partial E}{\partial b_{1}^{(2)}} = \delta^{(2)} \approx -0.066
+        \end{equation*}
+        \item Compute the error at the hidden layer:
+        \begin{equation*}
+            \delta^{(1)} = \delta^{(2)} \cdot w_{11}^{(2)} \cdot g'^{(1)}\left(a_{1}^{(1)}\right)
+        \end{equation*}
+        where $g'^{(1)}(a)$ is the derivative of the sigmoid function:
+        \begin{equation*}
+            g'^{(1)}(a) = \sigma(a) \cdot \left(1 - \sigma(a)\right)
+        \end{equation*}
+        Thus,
+        \begin{equation*}
+            g'^{(1)}(0.7) = \sigma(0.7) \cdot \left(1 - \sigma(0.7)\right) \approx 0.668 \cdot \left(1 - 0.668\right) \approx 0.222
+        \end{equation*}
+        Where we used the \textbf{cached values} of the activation of the hidden layer $\sigma(0.7) \approx 0.668$ from the forward pass. Therefore,
+        \begin{equation*}
+            \delta^{(1)} \approx -0.066 \cdot 0.5 \cdot 0.222 \approx -0.0073
+        \end{equation*}
+        \item Compute gradients for weights and biases in the hidden layer:
+        \begin{equation*}
+            \dfrac{\partial E}{\partial w_{11}^{(1)}} = \delta^{(1)} \cdot a^{(0)} \approx -0.0073 \cdot 1 \approx -0.0073
+        \end{equation*}
+        \begin{equation*}
+            \dfrac{\partial E}{\partial b_{1}^{(1)}} = \delta^{(1)} \approx -0.0073
+        \end{equation*}
+    \end{enumerate}
+    \textbf{Step 3: Update Weights and Biases.} Finally, we update the weights and biases using the computed gradients and the learning rate $\eta = 0.1$ (all the gradients are \textbf{cached} from the backward pass):
+    \begin{itemize}
+        \item Update weight from hidden to output layer:
+        \begin{equation*}
+            w_{11}^{(2)} \leftarrow w_{11}^{(2)} - \eta \cdot \dfrac{\partial E}{\partial w_{11}^{(2)}} \approx 0.5 - 0.1 \cdot (-0.044) \approx 0.5044
+        \end{equation*}
+        \item Update bias of output layer:
+        \begin{equation*}
+            b_{1}^{(2)} \leftarrow b_{1}^{(2)} - \eta \cdot \dfrac{\partial E}{\partial b_{1}^{(2)}} \approx 0.1 - 0.1 \cdot (-0.066) \approx 0.1066
+        \end{equation*}
+        \item Update weight from input to hidden layer:
+        \begin{equation*}
+            w_{11}^{(1)} \leftarrow w_{11}^{(1)} - \eta \cdot \dfrac{\partial E}{\partial w_{11}^{(1)}} \approx 0.4 - 0.1 \cdot (-0.0073) \approx 0.40073
+        \end{equation*}
+        \item Update bias of hidden layer:
+        \begin{equation*}
+            b_{1}^{(1)} \leftarrow b_{1}^{(1)} - \eta \cdot \dfrac{\partial E}{\partial b_{1}^{(1)}} \approx 0.3 - 0.1 \cdot (-0.0073) \approx 0.30073
+        \end{equation*}
+    \end{itemize}
+    After this single iteration of forward and backward passes, the weights and biases have been updated to better approximate the target function $y = x$ for the input $x=1$. Repeating this process over many iterations and samples will allow the network to learn the desired mapping.
+\end{examplebox}

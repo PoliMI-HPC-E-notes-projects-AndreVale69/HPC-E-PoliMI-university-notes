@@ -1,0 +1,107 @@
+\paragraph{Compiler Optimizations (for Cache Performance)}\label{paragraph: Compiler Optimizations}
+
+Even with prefetching, a program's \textbf{structure} might still cause many cache misses. The compiler can transform the code and data layout to \textbf{increase spatial and temporal locality}, thus reducing misses \textbf{before the hardware even runs the code}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Basic Idea}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{Profile the program} to understand typical memory access patterns.
+    \item \textbf{Reorganize code} and \textbf{restructure data} so that:
+    \begin{itemize}
+        \item Related data is stored \textbf{together} (improves spatial locality).
+        \item Frequently reused data stays \textbf{in cache longer} (improves temporal locality).
+    \end{itemize}
+    \item Generate machine code that exploits these new layouts.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Techniques}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Merging Arrays}. Combine multiple arrays into one array of structures. Reduces conflict misses and improves spatial locality.
+    \begin{itemize}
+        \item \textbf{Before}
+        \begin{lstlisting}[language=c]
+int val[SIZE];
+int key[SIZE];\end{lstlisting}
+        \item \textbf{After}
+        \begin{lstlisting}[language=c]
+struct {
+    int val;
+    int key;
+} merged_array[SIZE];\end{lstlisting}
+    \end{itemize}
+    Both \texttt{val} and \texttt{key} for the same index end up in the \textbf{same cache block}.
+
+    \item \definition{Loop Interchange}. Swap the order of nested loops to match memory layout (row-major or column-major). Improves spatial locality by accessing consecutive memory locations.
+    \begin{itemize}
+        \item \textbf{Before}
+        \begin{lstlisting}[language=c]
+for (j = 0; j < 100; j++)
+    for (i = 0; i < 5000; i++)
+        x[i][j] = 2 * x[i][j];\end{lstlisting}
+        \item \textbf{After}
+        \begin{lstlisting}[language=c]
+for (i = 0; i < 5000; i++)
+    for (j = 0; j < 100; j++)
+        x[i][j] = 2 * x[i][j];\end{lstlisting}
+    \end{itemize}
+    Now accesses move \textbf{sequentially through memory}.
+
+    \item \definition{Loop Fusion}. Combine two loops that iterate over the same data into one loop. Reduces repeated loading of the same data.
+    \begin{itemize}
+        \item \textbf{Before}
+        \begin{lstlisting}[language=c]
+for (i = 0; i < N; i++)
+    A[i] = B[i] + 1;
+for (i = 0; i < N; i++)
+    C[i] = A[i] * 2;\end{lstlisting}
+        \item \textbf{After}
+        \begin{lstlisting}[language=c]
+for (i = 0; i < N; i++) {
+    A[i] = B[i] + 1;
+    C[i] = A[i] * 2;
+}\end{lstlisting}
+    \end{itemize}
+    Improves \textbf{temporal locality}, \texttt{A[i]} stays in cache between operations.
+
+    \item \definition{Loop Blocking (Tiling)}. Process data in \textbf{small chunks (blocks)} that fit in the cache. Common in matrix operations.
+    \begin{itemize}
+        \item \textbf{Before}
+        \begin{lstlisting}[language=c]
+for (i = 0; i < N; i++)
+    for (j = 0; j < N; j++)
+        process(A[i][j]);\end{lstlisting}
+        \item \textbf{After}
+        \begin{lstlisting}[language=c]
+for (ii = 0; ii < N; ii += B)
+    for (jj = 0; jj < N; jj += B)
+        for (i = ii; i < ii + B; i++)
+            for (j = jj; j < jj + B; j++)
+                process(A[i][j]);\end{lstlisting}
+    \end{itemize}
+    Improves \textbf{temporal locality}, elements in the block are reused before being evicted.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-offs}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{15em} p{15em} @{}}
+        \toprule
+        Pros & Cons \\
+        \midrule
+        \textcolor{Green3}{\faIcon{check}} Works for predictable patterns.             & \textcolor{Red2}{\faIcon{times}} Requires compiler complexity.                    \\ [.3em]
+        \textcolor{Green3}{\faIcon{check}} Reduces both compulsory \& capacity misses. & \textcolor{Red2}{\faIcon{times}} May increase code complexity \& size.            \\ [.3em]
+        \textcolor{Green3}{\faIcon{check}} No hardware cost.                           & \textcolor{Red2}{\faIcon{times}} Limited effect on unpredictable access patterns. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+Compiler optimizations restructure both \textbf{data} and \textbf{loops} to \textbf{align program access patterns with cache organization}. When combined with hardware techniques, they significantly reduce miss rate \textbf{without changing the hardware}.

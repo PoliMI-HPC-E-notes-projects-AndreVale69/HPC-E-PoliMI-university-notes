@@ -1,0 +1,264 @@
+\subsubsection{Exercise 3: Packet Parsing}
+
+In this exercise, we will write an XDP program that parses the incoming packets. The pipeline of the program will be as follows:
+\begin{enumerate}
+    \item Get \texttt{data} and \texttt{data\_end} pointers from the context.
+    \item Parse the Ethernet header and check if the packet is an IPv4 packet. If not, return \texttt{XDP\_PASS}.
+    \item Parse the IPv4 header and find the payload offset (variable header length).
+    \item If protocol is ICMP, parse the ICMP header and read \texttt{sequence} number.
+    \item If the sequence number is even, return \texttt{XDP\_DROP}, otherwise update map counters and return \texttt{XDP\_PASS}.
+\end{enumerate}
+Let's start the implementation:
+\begin{itemize}
+    \item \important{Define the map to store the counters}
+    \begin{lstlisting}[language=C, mathescape=false]
+struct datarec {
+    __u64 rx_packets;
+    __u64 rx_bytes;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, int);
+    __type(value, struct datarec);
+    __uint(max_entries, 1024);
+} xdp_stats_map SEC(".maps");\end{lstlisting}
+    We define a BPF map of type \texttt{BPF\_MAP\_TYPE\_ARRAY} to store the counters for received packets and bytes. The key is an integer, and the value is a structure containing two 64-bit unsigned integers: \texttt{rx\_packets} and \texttt{rx\_bytes}. The map can hold up to 1024 entries.
+
+    \item \important{Fix the bounds checking bun in \texttt{parse\_ethhdr()}}
+    \begin{lstlisting}[language=C, mathescape=false]
+static __always_inline int parse_ethhdr(
+    void *data,
+    void *data_end,
+    __u16 *nh_off,
+    struct ethhdr **ethhdr
+) {
+    struct ethhdr *eth = (struct ethhdr *)data;
+    int hdr_size = sizeof(*eth);
+
+    /* Byte-count bounds check;
+     * check if current pointer + size of header
+     * is after data_end.
+     */
+    /* TODO 1: Fix bound checking errors */
+    // was: if (data + 1 > data_end)
+    if ((void *)eth + hdr_size > data_end)
+        return -1;
+
+    *nh_off += hdr_size;
+    *ethhdr = eth;
+
+    return eth->h_proto; /* network-byte-order */
+}\end{lstlisting}
+    The function \texttt{parse\_ethhdr()} is used to parse the Ethernet header. It takes the data and \texttt{data\_end} pointers, a pointer to the offset of the next header, and a pointer to store the parsed Ethernet header. The function checks if the current pointer plus the size of the Ethernet header is greater than \texttt{data\_end}, which would indicate that we are trying to access memory beyond the packet data. If this check fails, it returns \texttt{-1}. Otherwise, it updates the offset and stores the parsed Ethernet header, returning the protocol field in network byte order.
+
+
+    \item \important{Implement the function \texttt{parse\_iphdr()}}
+    \begin{lstlisting}[language=C, mathescape=false]
+static __always_inline int parse_iphdr(
+    void *data,
+    void *data_end,
+    __u16 *nh_off,
+    struct iphdr **iphdr
+) {
+    struct iphdr *ip = data + *nh_off;
+    int hdr_size;
+
+    if ((void *)ip + sizeof(*ip) > data_end)
+        return -1;
+   
+    hdr_size = ip->ihl * 4;
+
+    /* Sanity check packet field is valid */
+	if(hdr_size < sizeof(*ip))
+		return -1;
+
+    /* Variable-length IPv4 header,
+       need to use byte-based arithmetic */
+	if ((void *)ip + hdr_size > data_end)
+		return -1;
+
+    // It can also be written as:
+    // if (data + *nh_off + hdr_size > data_end)
+    //    return -1;
+
+    *nh_off += hdr_size;
+    *iphdr = ip;
+
+    return ip->protocol;
+}\end{lstlisting}
+    The function \texttt{parse\_iphdr()} is used to parse the IPv4 header. It takes the data and \texttt{data\_end} pointers, a pointer to the offset of the next header, and a pointer to store the parsed IPv4 header. The function first checks if the current pointer plus the size of the IPv4 header is greater than \texttt{data\_end}. Then it calculates the actual header size using the IHL (Internet Header Length) field, which is in 32-bit words, so we multiply it by 4 to get the size in bytes. It also checks if the calculated header size is valid (at least the size of the standard IPv4 header). Finally, it checks if the current pointer plus the calculated header size is greater than \texttt{data\_end}. If all checks pass, it updates the offset and stores the parsed IPv4 header, returning the protocol field.
+
+    \item \important{Implement the function \texttt{parse\_icmphdr()}}
+    \begin{lstlisting}[language=C, mathescape=false]
+static __always_inline int parse_icmphdr(
+    void *data,
+    void *data_end,
+    __u16 *nh_off,
+    struct icmphdr **icmphdr
+) {
+   struct icmphdr *icmp = data + *nh_off;
+   int hdr_size = sizeof(*icmp);
+
+   if ((void *)icmp + hdr_size > data_end)
+      return -1;
+
+   *nh_off += hdr_size;
+   *icmphdr = icmp;
+
+   return icmp->type;
+}\end{lstlisting}
+    The function \texttt{parse\_icmphdr()} is used to parse the ICMP header. It takes the data and \texttt{data\_end} pointers, a pointer to the offset of the next header, and a pointer to store the parsed ICMP header. The function checks if the current pointer plus the size of the ICMP header is greater than \texttt{data\_end}. If this check fails, it returns \texttt{-1}. Otherwise, it updates the offset and stores the parsed ICMP header, returning the type field of the ICMP header.
+
+
+    \item \important{Implement the main XDP program}
+    \begin{lstlisting}[language=C, mathescape=false]
+SEC("xdp")
+int xdp_packet_parsing(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data = (void *)(long)ctx->data;
+
+    __u16 nf_off = 0;
+    struct ethhdr *eth;
+    int eth_type;
+    struct datarec *rec;
+    int key = 0;
+
+    bpf_printk("Packet received");
+
+    eth_type = parse_ethhdr(data, data_end, &nf_off, &eth);
+
+    if (eth_type != bpf_ntohs(ETH_P_IP))
+        goto pass;
+
+    bpf_printk("Packet is IPv4");
+
+    // Handle IPv4 and parse ICMP
+    int ip_type;
+    struct iphdr *iphdr;
+    ip_type = parse_iphdr(data, data_end, &nf_off, &iphdr);
+
+    if (ip_type != IPPROTO_ICMP)
+        goto pass;
+
+    bpf_printk("Packet is ICMP");
+
+    int icmp_type;
+    struct icmphdr *icmphdr;
+
+    icmp_type = parse_icmphdr(
+        data,
+        data_end,
+        &nf_off,
+        &icmphdr
+    );
+
+    bpf_printk("Packet is ICMP type: %d", icmp_type);
+    if (icmp_type != ICMP_ECHO)
+        goto out;
+
+    // Now let's check the sequence number
+    __u16 seq = bpf_ntohs(icmphdr->un.echo.sequence);
+
+    bpf_printk(
+        "Packet is ICMP ECHO with sequence number: %d",
+        seq
+    );
+
+    // Check if sequence number is even
+    if (seq % 2 == 0) {
+        bpf_printk(
+            "Dropping packet with even sequence number: %d",
+            seq
+        );
+        return XDP_DROP;
+    }
+
+out:
+    bpf_printk("Packet passed");
+    rec = bpf_map_lookup_elem(&xdp_stats_map, &key);
+    if (!rec) {
+        return XDP_ABORTED;
+    }
+
+    __u64 bytes = data_end - data;
+    __sync_fetch_and_add(&rec->rx_packets, 1);
+    __sync_fetch_and_add(&rec->rx_bytes, bytes);
+
+pass:
+    return XDP_PASS;
+}\end{lstlisting}
+    The main XDP program is defined in the function \texttt{xdp\_packet\_parsing}. It starts by getting the \texttt{data} and \texttt{data\_end} pointers from the context. It then initializes the offset for parsing and defines pointers for the Ethernet header and the data record.
+
+    The program first calls \texttt{parse\_ethhdr()} to parse the Ethernet header. If the packet is not an IPv4 packet, it jumps to the \texttt{pass} label to allow the packet to pass through.
+
+    If the packet is IPv4, it calls \texttt{parse\_iphdr()} to parse the IPv4 header. If the protocol is not ICMP, it again jumps to the \texttt{pass} label.
+
+    If the packet is ICMP, it calls \texttt{parse\_icmphdr()} to parse the ICMP header. If the ICMP type is not \texttt{ECHO}, it jumps to the \texttt{out} label.
+
+    Finally, it checks if the sequence number of the ICMP \texttt{ECHO} request is even. If it is even, it drops the packet. Otherwise, it updates the counters in the map and allows the packet to pass through.
+\end{itemize}
+About the user-space part:
+\begin{itemize}
+    \item \important{Redefine the \texttt{datarec} structure}
+    \begin{lstlisting}[language=C, mathescape=false]
+struct datarec {
+    __u64 rx_packets;
+    __u64 rx_bytes;
+};\end{lstlisting}
+    The user-space program also needs to define the same \texttt{datarec} structure to read the counters from the BPF map.
+
+
+    \item \important{Define the function to print the stats} (same as the previous exercise)
+    \begin{lstlisting}[language=C, mathescape=false]
+void poll_stats(struct packet_parsing_bpf *skel) {
+    /* TODO 1: get the map file descriptor for the skeleton */
+    int map_fd = 0;
+    
+    map_fd = bpf_map__fd(skel->maps.xdp_stats_map);
+    if (map_fd < 0) {
+        log_fatal(
+            "Error while retrieving the map file descriptor"
+        );
+        exit(1);
+    }
+
+    while(true) {
+        /* TODO 2: define the value type (struct datarec) */
+        struct datarec value;
+        int key = 0;
+        int err = 0;
+        
+        /* TODO 4: get the value of the map for the key 0 */
+        err = bpf_map_lookup_elem(map_fd, &key, &value);
+        if (err != 0) {
+            log_fatal(
+                "Error while retrieving the value from map"
+            );
+            exit(1);
+        }
+
+        if (value.rx_packets == 0 && value.rx_bytes == 0) {
+            continue;
+        }
+        
+        /* TODO 5: print the number of packets received */
+        log_info(
+            "Number of packets received: %llu",
+            value.rx_packets
+        );
+        /* TODO 6: print the number of bytes received */
+        log_info(
+            "Number of bytes received: %llu",
+            value.rx_bytes
+        );
+        sleep(1);
+    }
+}\end{lstlisting}
+\end{itemize}
+The full code of the exercise is available here:
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/03-PacketParsing}
+    \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/03-PacketParsing}{Full code on GitHub}
+\end{center}

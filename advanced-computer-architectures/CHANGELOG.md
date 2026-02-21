@@ -2,6 +2,17 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.1.1](#v111)
+- [v1.1.0](#v110)
+- [v1.0.3](#v103)
+- [v1.0.2](#v102)
+- [v1.0.1](#v101)
+- [v1.0.0](#v100)
+- [v0.15.0](#v0150)
+- [v0.14.0](#v0140)
+- [v0.13.0](#v0130)
+- [v0.12.0](#v0120)
+- [v0.11.0](#v0110)
 - [v0.10.0](#v0100)
 - [v0.9.0](#v090)
 - [v0.8.0](#v080)
@@ -12,6 +23,171 @@
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v1.1.1
+
+- fix: correct label for correlating branch predictors section.
+
+--------------------
+
+### v1.1.0
+
+- fix: add missing label for simultaneous multithreading definition.
+- feat: enhance definition for Branch History Table (BHT)
+- feat: add detailed explanation of Branch Target Buffer (BTB) functionality and its role in branch prediction.
+- feat: add exam solution for January 8, 2026.
+
+--------------------
+
+### v1.0.3
+
+- fix: add label definitions to 1-bit BHT section.
+- fix: trailing space after "prediction accuracy" in the May 5 exam notes.
+- feat: add a comprehensive definition and examples of aliasing, including memory, register, and branch predictor aliasing, to improve understanding of its impact on system behavior and performance.
+- feat: add cross-references to BHT and aliasing definitions.
+- feat: add detailed solution for May 5 quiz on 1-bit BHT behavior.
+- feat: add definition and explanation of data cache miss in VLIW section.
+
+--------------------
+
+### v1.0.2
+
+- fix: correct minor typo in the description of loop overhead in the exam notes. The word "changing" was split across two lines and has been corrected to appear on a single line for proper rendering.
+
+--------------------
+
+### v1.0.1
+
+- fix: correct label typo and clarify FP ops per cycle calculation
+
+--------------------
+
+### v1.0.0
+
+- add `Multiprocessors`
+  - add `What is a multiprocessor?`
+  - add `Key Design Questions`
+  - add `From single bus to interconnection networks`
+  - add `Network performance metrics`
+  - add `Classic Multiprocessor Topologies`
+  - add `Address-Space Models`
+  - add `Physical Memory Organization`
+  - add `Small-scale multicores`
+  - add `Distributed Shared Memory`
+  - add `Distributed-memory clusters`
+  - add `Communication/Programming Models`
+  - add `Why caches matter`
+  - add `Why Cache Coherence?`
+  - add `Snooping (bus-based) Protocols`
+    - add `Snoopy bus idea, broadcast, and scalability limits`
+    - add `Practicalities: duplicate tag to avoid stalling the core`
+    - add `Write-invalidate vs write-update (bandwidth vs latency)`
+    - add `MSI Protocol: Finite-State Machine (FSM)`
+    - add `MESI Protocol`
+  - add `Directory-Based Protocols`
+    - add `Basics`
+    - add `Message Types`
+    - add `Walkthroughs on a 4-node system`
+    - add `Directory FSM and Invariants`
+
+--------------------
+
+### v0.15.0
+
+- add `GPGPU Computing`
+
+--------------------
+
+### v0.14.0
+
+- add `SIMD & Vector Architectures`
+  - add `Why DLP now? Limits of ILP`
+  - add `Flynn's taxonomy`
+  - add `SIMD Architecture`
+  - add `Vector Architectures vs Generic SIMD`
+  - add `Anatomy of a Classic Vector Machine`
+  - add `VMIPS as Didactic Reference Machine`
+  - add `Case Study: DAXPY`
+  - add `Chaining, Convoys, and Chimes`
+  - add `Multiple Lanes`
+  - add `Handling Vector Lengths`
+  - add `Control Divergence Inside Loops`
+  - add `Memory System for Vectors`
+  - add `SIMD ISA Extensions vs True Vectors`
+
+--------------------
+
+### v0.13.0
+
+- add `Multithreading (TLP)`
+  - add `Introduction`
+  - add `What is a Thread?`
+  - add `Multithreading Basics`
+  - add `Hardware Support for Multithreading`
+  - add `Typology of Hardware Multithreading`
+  - add `SMT on Wide Superscalars`
+  - add `Multicore + SMT`
+
+--------------------
+
+### v0.12.0
+
+- add `Advanced Memory`
+  - add `Introduction`
+  - add `Principle of Locality`
+  - add `So, what is a cache?`
+  - add `Cache Performance Metrics`
+  - add `Cache Architecture`
+    - add `Block Placement: Where can a block be placed?`
+    - add `Block Identification: How is a block found?`
+    - add `Replacement Strategy: Which block should be replaced?`
+    - add `Write Strategy: What happens on a write?`
+  - add `Miss Penalty Reduction`
+  - add `Design Space of Cache`
+  - add `Cache Miss Classification`
+  - add `Improving Cache Performance`
+    - add `Reducing Miss Rate Techniques`
+      - add `Increasing Cache Size`
+      - add `Increasing Block Size`
+      - add `Increasing Associativity`
+      - add `Victim Cache`
+      - add `Pseudo-Associativity & Way Prediction`
+      - add `Hardware Prefetching (Instructions & Data)`
+      - add `Software Prefetching (Compiler-Controlled)`
+      - add `Compiler Optimizations (for Cache Performance)`
+    - add `Reducing Miss Penalty Techniques`
+      - add `Read Priority over Write on Miss`
+      - add `Sub-block Placement`
+      - add `Early Restart & Critical Word First`
+      - add `Non-Blocking Caches`
+      - add `Second-Level and Multi-Level Caches`
+      - add `Merging Write Buffers`
+    - add `Reducing Hit Time Techniques`
+      - add `Small and Simple L1 Caches`
+      - add `Avoid address translation (VIPT caches)`
+      - add `Pipelined Writes`
+      - add `Small Sub-Blocks for Write-Through Caches`
+    - add `Summary`
+
+--------------------
+
+### v0.11.0
+
+- add `VLIW (Very Long Instruction Word)`
+  - add `Code Scheduling`
+    - add `Scheduling Basics`
+    - add `Dependence Graph and Critical Path`
+    - add `ASAP Scheduling Algorithm (As Soon As Possible)`
+    - add `List-Based Scheduling Algorithm`
+    - add `Local vs Global Scheduling`
+    - add `Local Scheduling Techniques`
+      - add `Loop Unrolling`
+      - add `Software Pipelining`
+    - add `Global Scheduling`
+      - add `Trace Scheduling`
+      - add `Superblock Scheduling`
 
 --------------------
 

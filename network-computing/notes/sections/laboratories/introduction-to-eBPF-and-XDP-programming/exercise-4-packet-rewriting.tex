@@ -1,0 +1,215 @@
+\subsubsection{Exercise 4: Packet Rewriting}
+
+In this exercise, we will implement a simple XDP program that rewrites the destination port number of TCP and UDP packets to be one less than its original value. For example, if a packet is destined to port 80, we will rewrite it to be destined to port 79. This is a simple example of how XDP can be used to modify packets in-flight, without the need for a full TCP/IP stack.
+\begin{itemize}
+    \item \important{Define map and structure to hold packet and byte counters}
+    \begin{lstlisting}[language=C, mathescape=false]
+struct datarec {
+    __u64 rx_packets;
+    __u64 rx_bytes;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, int);
+    __type(value, struct datarec);
+    __uint(max_entries, 1024);
+} xdp_stats_map SEC(".maps");\end{lstlisting}
+    
+    \item \important{Implement \texttt{parse\_ethhdr} function to parse Ethernet header and \texttt{parse\_iphdr} function to parse IP header} (same as in Exercise 3)
+    \begin{lstlisting}[language=C, mathescape=false]
+static __always_inline int parse_ethhdr(
+    void *data,
+    void *data_end,
+    __u16 *nh_off,
+    struct ethhdr **ethhdr
+) {
+    struct ethhdr *eth = (struct ethhdr *)data;
+    int hdr_size = sizeof(*eth);
+
+    /* Byte-count bounds check; check if current pointer + size of header
+     * is after data_end.
+     */
+    if ((void *)eth + hdr_size > data_end)
+        return -1;
+
+    *nh_off += hdr_size;
+    *ethhdr = eth;
+
+    return eth->h_proto; /* network-byte-order */
+}
+
+static __always_inline int parse_iphdr(
+    void *data, 
+    void *data_end, 
+    __u16 *nh_off, 
+    struct iphdr **iphdr
+) {
+    struct iphdr *ip = data + *nh_off;
+    int hdr_size;
+
+    if ((void *)ip + sizeof(*ip) > data_end)
+        return -1;
+    
+    hdr_size = ip->ihl * 4;
+
+    /* Sanity check packet field is valid */
+    if(hdr_size < sizeof(*ip))
+        return -1;
+
+    /* Variable-length IPv4 header, need to use byte-based arithmetic */
+    if ((void *)ip + hdr_size > data_end)
+        return -1;
+
+    // It can also be written as:
+    // if (data + *nh_off + hdr_size > data_end)
+    //    return -1;
+
+    *nh_off += hdr_size;
+    *iphdr = ip;
+
+    return ip->protocol;
+}\end{lstlisting}
+
+    \item \important{Implement \texttt{parse\_udphdr} function to parse UDP header and\break \texttt{parse\_tcphdr} function to parse TCP header}
+    \begin{lstlisting}[language=C, mathescape=false]
+static __always_inline int parse_udphdr(
+    void *data,
+    void *data_end,
+    __u16 *nh_off,
+    struct udphdr **udphdr
+) {
+    struct udphdr *udp = data + *nh_off;
+    int hdr_size = sizeof(*udp);
+
+    if ((void *)udp + hdr_size > data_end)
+        return -1;
+
+    *nh_off += hdr_size;
+    *udphdr = udp;
+
+    int len = bpf_ntohs(udp->len) - sizeof(struct udphdr);
+    if (len < 0)
+        return -1;
+
+    return len;
+}
+
+static __always_inline int parse_tcphdr(
+    void *data,
+    void *data_end,
+    __u16 *nh_off,
+    struct tcphdr **tcphdr
+) {
+    struct tcphdr *tcp = data + *nh_off;
+    int hdr_size = sizeof(*tcp);
+    int len;
+
+    if ((void *)tcp + hdr_size > data_end)
+        return -1;
+
+    len = tcp->doff * 4;
+    if (len < hdr_size)
+        return -1;
+
+    /* Variable-length TCP header,
+       need to use byte-based arithmetic */
+    if ((void *)tcp + len > data_end)
+        return -1;
+    
+    *nh_off += len;
+    *tcphdr = tcp;
+
+    return len;
+}\end{lstlisting}
+    This parsing code is new, but it is very similar to the parsing code we have seen in Exercise 3. The main difference is that we need to check the length of the UDP and TCP headers, which can be variable-length. For UDP, the length is specified in the \texttt{len} field of the header, while for TCP, the length is specified in the \texttt{doff} field of the header.
+
+
+    \item \important{Implement the main XDP program to rewrite the destination port number of TCP and UDP packets}
+    \begin{lstlisting}[language=C, mathescape=false]
+SEC("xdp")
+int xdp_packet_rewriting(struct xdp_md *ctx) {
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data = (void *)(long)ctx->data;
+
+    __u16 nf_off = 0;
+    struct ethhdr *eth;
+    struct udphdr *udphdr;
+        struct tcphdr *tcphdr;
+    int eth_type;
+    struct datarec *rec;
+    int key = 0;
+    int action = XDP_PASS;
+
+    bpf_printk("Packet received");
+
+    eth_type = parse_ethhdr(data, data_end, &nf_off, &eth);
+
+    /* If the packet is ARP we should let him pass */
+    if (eth_type == bpf_ntohs(ETH_P_ARP)) {
+        action = XDP_PASS;
+        goto end;
+    }
+
+    if (eth_type != bpf_ntohs(ETH_P_IP)) {
+        action = XDP_ABORTED;
+        goto end;
+    }
+
+    bpf_printk("Packet is IPv4");
+
+    // Handle IPv4 and parse TCP and UDP headers
+    int ip_type;
+    struct iphdr *iphdr;
+    ip_type = parse_iphdr(data, data_end, &nf_off, &iphdr);
+
+    if (ip_type == IPPROTO_UDP) {
+        bpf_printk("Packet is UDP");
+        if (
+            parse_udphdr(data, data_end, &nf_off, &udphdr) < 0
+        ) {
+            action = XDP_ABORTED;
+            goto end;
+        }
+        __u16 port = bpf_htons(bpf_ntohs(udphdr->dest) - 1);
+        if (port > 0)
+            udphdr->dest = port;
+    } else if (ip_type == IPPROTO_TCP) {
+        bpf_printk("Packet is TCP");
+        if (
+            parse_tcphdr(data, data_end, &nf_off, &tcphdr) < 0
+        ) {
+            action = XDP_ABORTED;
+            goto end;
+        }
+        __u16 port = bpf_htons(bpf_ntohs(tcphdr->dest) - 1);
+        if (port > 0)
+            tcphdr->dest = port;
+    } else {
+        bpf_printk("Packet is not TCP or UDP");
+        action = XDP_ABORTED;
+        goto end;
+    }
+
+out:
+    bpf_printk("Packet passed");
+    rec = bpf_map_lookup_elem(&xdp_stats_map, &key);
+    if (!rec) {
+        return XDP_ABORTED;
+    }
+
+    __u64 bytes = data_end - data;
+    __sync_fetch_and_add(&rec->rx_packets, 1);
+    __sync_fetch_and_add(&rec->rx_bytes, bytes);
+
+end:
+    return action;
+}\end{lstlisting}
+    Here, we first parse the Ethernet header to check if the packet is an ARP packet. If it is, we let it pass without modification. If it is not an ARP packet, we check if it is an IPv4 packet. If it is not an IPv4 packet, we abort the packet. If it is an IPv4 packet, we parse the IP header to check if it is a TCP or UDP packet. If it is a TCP or UDP packet, we rewrite the destination port number to be one less than its original value. Finally, we update the packet and byte counters in the map and return the appropriate action.
+\end{itemize}
+The user-space program to load this XDP program and read the counters from the map is similar to the one we have seen in Exercise 2/3. The full code of the exercise is available here:
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/04-PacketRewriting}
+    \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/04-PacketRewriting}{Full code on GitHub}
+\end{center}

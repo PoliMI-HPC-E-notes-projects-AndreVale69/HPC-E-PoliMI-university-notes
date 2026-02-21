@@ -1,0 +1,129 @@
+\paragraph{Software Pipelining}\label{paragraph: Software Pipelining}
+
+\definition{Software Pipelining} is a scheduling technique where instructions from \textbf{different iterations} of a loop are \textbf{reordered and overlapped} to keep functional units busy every cycle.
+
+\highspace
+Instead of executing one full iteration at a time, the processor \textbf{starts a new iteration every cycle}, with different stages of previous iterations still in progress, similar to hardware pipelining.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Comparison with Loop Unrolling}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{11em} p{12em} @{}}
+        \toprule
+        \textbf{Aspect} & \textbf{Loop Unrolling} & \textbf{Software Pipelining} \\
+        \midrule
+        \textbf{Structure}          & Duplicates code                               & Keeps loop body same size                     \\ [.5em]
+        \textbf{ILP exposure}       & Gained by replicating loop body               & Gained by reordering across iterations        \\ [.5em]
+        \textbf{Code size}          & Increases (proportional to unrolling factor)  & Remains compact                               \\ [1.8em]
+        \textbf{Scheduling scope}   & Within a block                                & Across multiple iterations                    \\ [.5em]
+        \textbf{Register pressure}  & High (due to duplication)                     & Very high (many live temporaries)             \\ [.5em]
+        \textbf{Throughput}         & Good (bounded by unrolling factor)            & Potentially optimal (1 iteration per cycle)   \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison with Loop Unrolling.}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Phases of Software Pipelined Loop}}
+\end{flushleft}
+A software-pipelined loop executes in \textbf{three distinct phases}:
+\begin{enumerate}
+    \item \important{Startup (Prologue)}. Initial cycles where instructions from the \textbf{first few iterations} begin execution. Not all stages are filled yet.
+    
+    \item \important{Steady State}. The \textbf{core phase}: every cycle completes one iteration, while other iterations are in progress. This is where \textbf{ILP is fully exploited}.
+    
+    \item \important{Drain (Epilogue)}. Final cycles where instructions from the \textbf{last few iterations} finish. No new iterations start; pipeline ``drains'' out.
+\end{enumerate}
+
+\newpage
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{22em} @{}}
+        \toprule
+        Concept & Description \\
+        \midrule
+        \textbf{Software pipelining} & Reorders loop instructions from different iterations.            \\ [.3em]
+        \textbf{Objective}           & Maximize ILP by filling the execution pipeline every cycle.      \\ [.3em]
+        \textbf{Benefits}            & Compact code, steady throughput, ideal for VLIW.                 \\ [.3em]
+        \textbf{Trade-offs}          & High register pressure, scheduling complexity.                   \\ [.3em]
+        \textbf{Execution phases}    & Startup (filling), Steady (full overlap), Drain (finishing up).  \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{examplebox}[: Software Pipelining]
+    We start with the original scalar loop:
+    \begin{lstlisting}[language=riscv]
+Loop: LD    F0, 0(R1)
+      ADD   F4, F0, F2
+      SD    F4, 0(R1)
+      SUBI  R1, R1, 8
+      BNE   R1, R2, Loop\end{lstlisting}
+    \begin{enumerate}
+        \item Loads a value from memory.
+        \item Adds a scalar value \texttt{F2}.
+        \item Stores it back.
+        \item Updates the pointer.
+        \item Branches if not done.
+    \end{enumerate}
+    \textbf{Execution time} per iteration: 5-6 cycles. So only \textbf{one useful result per loop iteration}, poor ILP.
+
+    \highspace
+    To apply software pipelining, we \textbf{reorder instructions} from \textbf{different iterations} to \textbf{fill functional units}. Assume all dependencies are respected (RAW), and rename registers to avoid WAR/WAW hazards.
+    \begin{lstlisting}[language=riscv]
+LD    F0, 0(R1)      # I0
+ADD   F4, F0, F2     # I1 from previous iteration
+SD    F4, -8(R1)     # I2 from 2 iterations ago\end{lstlisting}
+    This version performs \texttt{LD} \textbf{for current iteration}, \texttt{ADD} \textbf{for previous}, \texttt{SD} \textbf{for 2 iterations ago}. This matches the \textbf{steady state} of a pipelined execution: \textbf{each cycle does useful work from 3 iterations simultaneously}. We now issue \textbf{one full result per cycle} after startup.
+
+    \highspace
+    Now let's handle address computation correctly. Assume:
+    \begin{itemize}
+        \item \texttt{R1} points to current element.
+        \item We track offset correctly for each instruction.
+    \end{itemize}
+    \begin{lstlisting}[language=riscv]
+# Prologue (Startup)
+LD    F0, 0(R1)
+
+# Loop body (Steady state)
+Loop: LD    F6, -8(R1)       # LD for next iteration
+      ADD   F4, F0, F2       # ADD from previous iteration
+      SD    F4, 0(R1)        # SD from 2 iterations ago
+      SUBI  R1, R1, 8
+      BNE   R1, R2, Loop
+      MOV   F0, F6           # prepare F0 for next ADD\end{lstlisting}
+    \begin{center}
+        \begin{tabular}{@{} l l @{}}
+            \toprule
+            Operation & From Iteration \\
+            \midrule
+            \texttt{LD F6}  & \texttt{i + 1} \\ [.3em]
+            \texttt{ADD F4} & \texttt{i}     \\ [.3em]
+            \texttt{SD F4}  & \texttt{i - 1} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \begin{itemize}
+        \item \texttt{F0} is shifted forward via \texttt{MOV}.
+        \item Pipelined stages are handled via register flow.
+        \item Control remains simple, and code is compact.
+    \end{itemize}
+    \begin{center}
+        \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+            \begin{tabular}{@{} l l l @{}}
+                \toprule
+                Version & Throughput & Notes \\
+                \midrule
+                Classic Loop        & 1 result every 5 cycles       & Poor resource utilization. \\ [.3em]
+                Pipelined (steady)  & \textbf{1 result per cycle}   & Maximized ILP. \\ [.3em]
+                Code size           & Small (no unrolling)          & More compact than unrolling. \\
+                \bottomrule
+            \end{tabular}
+        \end{adjustbox}
+    \end{center}
+\end{examplebox}

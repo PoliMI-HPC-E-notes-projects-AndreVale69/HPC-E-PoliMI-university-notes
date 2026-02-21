@@ -1,0 +1,102 @@
+\subsection{PCIe}
+
+All the operations discussed so far (RSS, RFS, aRFS, DDIO, and standard offloads) are performed by the CPU, but the CPU needs to exchange data with the network card, and this is done through the PCIe bus.
+
+\highspace
+\begin{definitionbox}[: PCIe]
+    \definition{PCIe (Peripheral Component Interconnect Express)} is the interconnect that \textbf{allows the NIC's DMA engine to transfer packet data into host memory}. It consists of a root complex and memory controller on the CPU side, and it operates using packetized transactions called TLPs. Because PCIe is itself a packet-based protocol with headers and flow control, it introduces bandwidth and latency overhead that can become a bottleneck at high network speeds.
+\end{definitionbox}
+PCIe is the \textbf{de facto standard for connecting high-speed peripherals}, such as network interface controllers (NICs), to the central processing unit (CPU). However, other system components, such as GPUs and storage devices, are also connected through PCIe. This can lead to contention for bandwidth on the PCIe bus.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{code-branch} \textbf{The Data Path Through PCIe}}
+\end{flushleft}
+When a packet arrives at the NIC, the NIC's DMA engine initiates a PCIe transaction to transfer the packet data into host memory. The CPU can then access this data for processing. After processing, if the CPU needs to send a response, it will write the response data back to host memory, and the NIC will perform another PCIe transaction to retrieve this data for transmission. The key components involved in this data path are:
+\begin{enumerate}
+    \item \important{NIC}: The network interface card that receives and transmits packets. We will discuss the NIC architecture in more detail in the next sections.
+    
+    
+    \item \important{DMA Engine}: The NIC contains a \textbf{Direct Memory Access (DMA) engine} that handles the transfer of packet data between the NIC and host memory without involving the CPU, thus offloading this task from the CPU. The DMA engine takes descriptors from RX queue, writes packet data into memory buffers, and generates PCIe transactions to transfer this data. However, the \hl{DMA engine can only transfer data at the speed of the PCIe bus, which can become a bottleneck at high network speeds}.
+    
+    
+    \item \important{PCIe}: The interconnect that allows the NIC's DMA engine to transfer packet data into host memory.
+    
+    
+    \item \important{PCIe Root Complex}: The PCIe root complex is a component of the PCIe architecture that connects the PCIe bus to the CPU and memory controller. It is the bridge between the PCIe bus, CPU, and memory controller. It receives PCIe transactions from the NIC's DMA engine and forwards them to the memory controller for access to host memory. Different CPU architectures may have different implementations of the PCIe root complex, which can affect the performance of PCIe transactions.
+    
+    
+    \item \important{Memory Controller}: The memory controller manages access to host memory and coordinates with the PCIe root complex. Writes DMA data into DRAM (host memory) and handles memory arbitration and scheduling. The performance of the memory controller can also impact the overall performance of PCIe transactions, especially when multiple devices are contending for memory access.
+    
+    
+    \item \important{Host Memory}: The memory where packet data is stored after being transferred by the NIC's DMA engine. The CPU accesses this memory to process packets and generate responses.
+\end{enumerate}
+Each \textbf{basic data unit transferred over PCIe} is called a \definition{Transaction Layer Packet (TLP)}, which consists of a header and payload. The header contains information about the transaction, such as the type of transaction (read/write), the address, and the length of the data. The payload contains the actual data being transferred. The size of TLPs can vary, but they typically range from 128 bytes to 4 KB.
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Effective Bandwidth \& Protocol Overhead}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Physical vs Effective Bandwidth}: While PCIe may have a high raw bandwidth (e.g., PCIe 4.0 $\times16$ can provide up to 32 GB/s), the \hl{effective bandwidth available for data transfer can be significantly lower due to protocol overhead}, such as TLP headers, flow control, and arbitration. This means that the actual throughput for packet data transfer may be much less than the theoretical maximum.
+
+
+    \item \textbf{The Sawtooth Pattern}:
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=.7\textwidth]{img/pcie-performance.pdf}
+        \caption{Effective PCIe bandwidth as a function of transfer size.\cite{neugebauer2018understanding} Due to the packetized nature of PCIe transactions (TLPs), small transfers suffer from significant protocol overhead, resulting in reduced effective bandwidth. As the transfer size increases, the relative header overhead decreases, and the achievable bandwidth approaches the physical limit. The characteristic sawtooth pattern arises from PCIe's maximum payload size, which forces large transfers to be segmented into multiple Transaction Layer Packets.}
+        \label{fig:pcie-performance}
+    \end{figure}
+
+    \newpage
+
+    The relationship between transfer size and effective bandwidth can be visualized as a sawtooth pattern.
+
+    For \textbf{small transfer sizes}, the \textbf{overhead of PCIe transactions is high} relative to the amount of data being transferred, resulting in \textbf{low effective bandwidth}. As the \textbf{transfer size increases}, the \textbf{effective bandwidth improves} because the \textbf{overhead is amortized} over a larger amount of data. However, \hl{beyond} a certain point, \hl{increasing the transfer size} further may not yield significant improvements in effective bandwidth due to other \hl{bottlenecks in the system} (e.g., memory controller performance, CPU processing time). This is why \hl{optimizing the size of data transfers over PCIe is crucial for achieving high performance in end-host networking}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does the sawtooth pattern occur?}} The \hl{sawtooth pattern occurs because PCIe has a maximum payload size} (e.g., 128 bytes, 256 bytes, or 512 bytes depending on the configuration). When a transfer exceeds this maximum payload size, it must be segmented into multiple TLPs, each with its own header and associated overhead. This segmentation leads to periodic drops in effective bandwidth as the transfer size crosses these thresholds, creating the characteristic sawtooth pattern in the effective bandwidth graph.
+
+    With smaller transfers, we pay header, protocol and control overhead for each TLP, which significantly reduces effective bandwidth. As transfer size increases, the overhead is amortized over more data, improving effective bandwidth until we hit the maximum payload size, at which point the transfer must be split into multiple TLPs, causing a drop in effective bandwidth and creating the sawtooth pattern.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it Sawtooth (not smooth)?}} The sawtooth pattern arises because \textbf{PCIe has a maximum payload size} (MTU-like behavior). \hl{When transfer size exceeds the maximum payload, it must be split into multiple TLPs. Each split reintroduces additional overhead} (headers, flow control), causing a drop in effective bandwidth at those points. This results in a non-smooth, sawtooth-like pattern as transfer size increases.
+
+    \begin{itemize}
+        \item Small packets:
+        \begin{itemize}[label=\textcolor{Red2}{\faIcon{times}}]
+            \item Low PCIe efficiency due to high relative overhead.
+            \item More TLP overhead per byte of data transferred.
+            \item More DMA transactions required, increasing latency and reducing throughput.
+            \item More pressure on PCIe bus and memory controller due to higher transaction rate.
+        \end{itemize}
+
+        \item Large packets:
+        \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+            \item Better effeciency as overhead is amortized over more data.
+            \item Fewer TLPs needed, reducing protocol overhead.
+            \item Higher effective bandwidth, approaching PCIe's physical limits.
+        \end{itemize}
+    \end{itemize}
+    In this context, using \hl{Standard Offloads techniques} (e.g., TSO, LRO) to aggregate small packets into larger ones can help \hl{improve PCIe efficiency} and overall network performance by reducing the number of small transfers and increasing the average transfer size, thus mitigating the impact of PCIe overhead on effective bandwidth.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{img/pcie-impact.pdf}
+    \caption{64B PCIe DMA read latency across different CPU platforms. \cite{neugebauer2018understanding} The cumulative distribution function (CDF) shows significant differences in median and tail latency between systems, highlighting the strong impact of PCIe root complex implementation on end-host performance.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How PCIe works}}
+\end{flushleft}
+PCIe lets devices and the CPU \textbf{read/write each other's memory}, but \textbf{the memories on the two sides are independent}: there is \textbf{no cache coherence} between CPU caches and device/accelerator memory. That's the key limitation of PCIe.
+\begin{enumerate}
+    \item \important{CPU does a PCIe read}. The CPU issues a \textbf{PCIe read} to fetch some \texttt{data} that lives on the device/accelerator side. We can think of this as ``CPU asks the device for a cache line / buffer''.
+    \item \important{Data is transferred to the CPU side}. The requested \texttt{data} comes back over PCIe and is placed in CPU-visible memory and/or cache hierarchy. So now the CPU has a local copy.
+    \item \important{CPU reads from cache, but can't know if device data changed}. Now the CPU can read \texttt{data} quickly from \textbf{its cache}. But critical point is that \textbf{the CPU cannot know if, in the meantime, \texttt{data} on the accelerator has changed}. Because PCIe \textbf{does not automatically invalidate/update CPU cache lines} when the device updates its memory, the CPU might be working with stale data.
+    \item \important{Device memory changes (example: NIC writes into accelerator memory)}. The device (e.g., NIC) can write new data into its own memory, but the CPU's cache still holds the old value. This can lead to \textbf{data inconsistency} if the CPU continues to read from its cache without being aware of the changes on the device side.
+    \item \important{CPU must trigger another PCIe read to be sure}. Because of the lack of cache coherence, the only safe option is for the CPU to perform another \textbf{PCIe read} to re-fetch the latest \texttt{data} from the device, ensuring that it has the most up-to-date information. This \hl{additional read incurs latency and can degrade performance}, especially if frequent updates are happening on the device side.
+\end{enumerate}
+In summary, \textbf{PCIe is non-coherent}, meaning that the \hl{CPU and device memory are not automatically synchronized}. The CPU must explicitly read from the device to get the latest data, which can lead to performance issues due to stale data and additional PCIe transactions. This is a \hl{fundamental limitation of PCIe} that affects how end-host networking systems are designed and optimized.

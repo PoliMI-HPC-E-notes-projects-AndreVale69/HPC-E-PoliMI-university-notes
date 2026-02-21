@@ -1,0 +1,98 @@
+\subsection{Receive-Side Scaling (RSS)}
+
+In the previous section, we saw how multi-queue NICs can provide multiple RX queues to feed multiple CPU cores in parallel. However, we still need \hl{a way to distribute incoming packets across these queues}. This is where \textbf{Receive-Side Scaling (RSS)} comes into play.
+
+\highspace
+\definition{Receive-Side Scaling (RSS)} is a \textbf{hardware mechanism in the NIC} that distributes incoming packets across multiple RX queues. It does this using a \textbf{hashing algorithm on packet header fields}. So instead of a static assignment of packets to queues (i.e., RX queue $i$ to CPU core $i$), RSS allows for a more dynamic and flexible distribution of packets based on their content.
+
+\highspace
+When a packet arrives:
+\begin{enumerate}
+    \item The \textbf{NIC extracts certain header fields from the packet}, such as the source and destination IP addresses, source and destination ports, and protocol type.
+
+    \item It \textbf{computes a hash value} based on these fields. The specific fields used and the hashing algorithm can be configured, but common choices include the 5-tuple of header fields:
+    \begin{itemize}
+        \item IPv4: source and destination IP addresses, source and destination ports, and protocol type.
+        \item IPv6: source and destination IP addresses, source and destination ports, and next header type.
+    \end{itemize}
+
+    \item It then \textbf{maps the hash value to one of the available RX queues}. This mapping is typically done using a modulo operation, where the hash value is divided by the number of RX queues, and the remainder determines which queue the packet goes to:
+    \begin{equation*}
+        \text{Queue Index} = \text{Hash Value} \mod \text{Number of RX Queues}
+    \end{equation*}
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why use hashing?}} Because we want packets from the same flow to go to the same RX queue, but different flows should spread across different queues. Hashing achieves both goals by using the packet header fields that uniquely identify flows.
+
+\highspace
+RSS is important because \textbf{distributes flows} across multiple CPU cores, not individual packets randomly. This is critical for performance, because if packets of the same TCP connection went to different cores, TCP state would bounce between caches, locking would increase, and performance would degrade. So \textbf{RSS preserves flow affinity} (i.e, packets of the same flow go to the same core) while still allowing for load balancing across cores.
+
+\highspace
+In summary, Receive-Side Scaling (RSS) is a NIC hardware mechanism that distributes incoming network flows across multiple RX queues by hashing selected packet header fields, enabling parallel packet processing across CPU cores.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits of RSS}}
+\end{flushleft}
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check-circle}}]
+    \item \textcolor{Green3}{\textbf{Load Distribution}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \important{Without RSS}. Even if the NIC has multiple RX queues, if packets are not distributed intelligently:
+        \begin{itemize}
+            \item Most traffic may go to a single RX queue;
+            \item That queue is processed by one CPU core;
+            \item That core becomes overloaded;
+            \item Other cores remain underutilized.
+        \end{itemize}
+        So hardware parallelism exists but is \textbf{not used effectively}.
+
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{With RSS}}. RSS ensures different flows are mapped to different RX queues, where each queue is mapped to a different CPU core. This allows:
+        \begin{itemize}
+            \item Multiple cores to process packets in parallel;
+            \item \textbf{Better CPU utilization};
+            \item \textbf{Higher throughput}.
+        \end{itemize}
+    \end{itemize}
+
+    \item \textcolor{Green3}{\textbf{Avoiding Single-Core Overload}}. This is the most critical benefit. Even with NAPI, interrupt coalescing and polling, if everything lands on one queue (and thus one core), we still \textbf{hit a per-core processing limit}. \textbf{RSS removes that bottleneck by allowing parallel processing of independent flows}. So now performance scales with:
+    \begin{equation*}
+        \text{num of CPU cores} \times \text{per-core processing capacity}
+    \end{equation*}
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Limitations of RSS}}
+\end{flushleft}
+RSS is powerful, but it is \textbf{not perfect}:
+\begin{itemize}[label=\textcolor{Red2}{\faIcon{times-circle}}]
+    \item \textcolor{Red2}{\textbf{Hash Imbalance}}. RSS distributes flows using a \textbf{hash function}. But hashing does not guarantee a perfectly even distribution of flows across queues. Some queues may receive more traffic than others, leading to \textbf{load imbalance}, also known as \textbf{hash imbalance}. This happens because hashing is statistical in nature, and the distribution of flows may not be uniform. For example, if many flows share the same source or destination IP address, they may hash to the same queue, causing that queue to become a bottleneck. Or if there are a few very large flows (e.g., a popular web server), they may dominate one queue while other queues are underutilized.
+    
+    So RSS \textbf{distributes flows, not traffic volume}. It cannot split a single heavy flow across multiple cores. So RSS works best when many flows of similar size are present.
+
+
+    \item \textcolor{Red2}{\textbf{Cache Inefficiency}}. RSS ensures that packets of the same flow go to the same RX queue. But this does not guarantee perfect cache locality.
+
+    For example, consider a flow is assigned to RX queue 2, which is processed by CPU core 2. But the application using that flow runs on CPU core 5. In this case:
+    \begin{enumerate}
+        \item Kernel processes packet on core 2
+        \item Application runs on core 5
+        \item Data must move across cores (from core 2 to core 5) for the application to access it
+        \item Cache lines migrate between cores
+    \end{enumerate}
+    This creates cache coherence traffic, memory bus pressure and performance loss. So even though RSS preserves \textbf{flow affinity at kernel level}, it does not automatically ensure \textbf{application-level affinity} to the same core (i.e., the application is not pinned to the same core that processes the flow), which can lead to cache inefficiency.
+\end{itemize}
+While RSS enables scalable packet processing by distributing flows across cores, it may suffer from hash imbalance, cannot parallelize single heavy flows, and may cause cache inefficiency when application threads run on different cores.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l @{}}
+        \toprule
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{RSS Advantage}} & \textcolor{Red2}{\faIcon{times-circle} \textbf{RSS Limitation}} \\
+        \midrule
+        Distributes flows across cores  & Cannot split a single heavy flow        \\[.3em]
+        Prevents single-core overload   & Hash imbalance possible                 \\[.3em]
+        Preserves per-flow order        & Does not guarantee application affinity \\[.3em]
+        Scales with number of cores     & May cause cache inefficiency            \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of RSS advantages and limitations.}
+\end{table}

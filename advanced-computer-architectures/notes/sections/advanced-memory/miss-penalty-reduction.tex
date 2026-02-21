@@ -1,0 +1,85 @@
+\subsection{Miss Penalty Reduction}
+
+When a cache miss happens, the CPU must fetch the required block from a lower memory level, which takes much longer than a hit. This extra time is called the \definition{Miss Penalty}. Because miss penalties can be \textbf{tens or hundreds of cycles}, \textbf{reducing them has a huge impact} on overall performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Role of the L2 Cache}}
+\end{flushleft}
+The most common way to reduce miss penalty is to introduce a \definition{Second-Level Cache (L2)} \hl{between the L1 cache and main memory}.
+
+\highspace
+Its main job is to \textbf{catch L1 cache misses} before they reach main memory. Since main memory is much slower than L1 or L2, resolving miss in L2 instead of DRAM \textbf{dramatically reduces the miss penalty}.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{warehouse}}] \textbf{Larger than L1}: typically hundreds of KB to several MB.
+    \item[\textcolor{Red2}{\faIcon{walking}}] \textbf{Slower than L1}, but still \textbf{much faster than DRAM}.
+    \item Usually \textbf{unified}: stores both instructions and data.
+    \item Implemented in \textbf{SRAM} like L1, but with slightly longer access time.
+    \item Can be \textbf{on-chip} (modern CPUs) or \textbf{off-chip} (older designs).
+\end{itemize}
+When an L1 miss occurs, instead of going directly to DRAM:
+\begin{enumerate}
+    \item \textbf{CPU request} $\rightarrow$ goes to L1 cache.
+    \item If \textbf{L1 hit} $\rightarrow$ data returned immediately.
+    \item If \textbf{L1 miss} $\rightarrow$ request sent to L2 cache.
+    \item If \textbf{L2 hit} $\rightarrow$ data returned quickly to L1 (and CPU).
+    \item If \textbf{L2 miss} $\rightarrow$ data fetched from main memory (very slow).
+\end{enumerate}
+It works because L1 caches are small (to keep them fast), so they miss more often. L2 caches are bigger and can hold more blocks, so they can keep data that L1 had to evict. This way, a \textbf{large fraction of L1 misses are ``saved'' by L2 before going to DRAM}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{AMAT in Presence of L2}}\index{AMAT in Presence of L2}
+\end{flushleft}
+Let's define:
+\begin{itemize}
+    \item $\text{HT}_{1}$ $=$ L1 hit time.
+    \item $\text{MR}_{1}$ $=$ L1 miss rate.
+    \item $\text{HT}_{2}$ $=$ L2 hit time.
+    \item $\text{MR}_{2}$ $=$ \definition{L2 Local Miss Rate} (fraction of L1 misses that also miss in L2):
+    \begin{equation}
+        \text{MR}_{2} = \dfrac{\text{L2 misses}}{\text{L1 misses}}
+    \end{equation}
+    It measures how good L2 is at catching L1 misses.
+    \item $\text{MP}_{2}$ $=$ Miss Penalty from L2 to main memory.
+    \item $\text{MR}_{1,2}$ $=$ \definition{Global Miss Rate} (to main memory):
+    \begin{equation}
+        \text{MR}_{1,2} = \text{MR}_{1} \times \text{MR}_{2} = \dfrac{\left(\text{L2 misses}\right)}{\left(\text{Total CPU Accesses}\right)}
+    \end{equation}
+    This tells us how often we actually have to access main memory.
+\end{itemize}
+The formula becomes:
+\begin{equation}
+    AMAT = \text{HT}_{1} + \text{MR}_{1} \times \left(\text{HT}_{2} + \text{MR}_{2} \times \text{MP}_{2}\right)
+\end{equation}
+Every L1 misses costs at least an \textbf{L2 access time} ($\text{HT}_{2}$). If L2 also misses ($\text{MR}_{2}$), we pay the extra penalty of going to main memory ($\text{MP}_{2}$).
+
+\begin{examplebox}[: AMAT in Presence of L2]
+    Imagine:
+    \begin{itemize}
+        \item $\text{HT}_{1} = 1$ cycle
+        \item $\text{MR}_{1} = 5\%$
+        \item $\text{HT}_{2} = 10$ cycles
+        \item $\text{MR}_{2} = 20\%$
+        \item $\text{MP}_{2} = 100$ cycles
+    \end{itemize}
+    Step-by-step:
+    \begin{enumerate}
+        \item L1 hit $\rightarrow$ 1 cycle.
+        \item L1 miss (5\% of cases) $\rightarrow$ go to L2 (10 cycles).
+        \item In 20\% of those L2 accesses $\rightarrow$ miss again and pay 100 cycles to access DRAM.
+    \end{enumerate}
+    \begin{equation*}
+        \begin{array}{rcl}
+            AMAT &=& 1 + 0.05 \times \left(10 + 0.20 \times 100\right) \\ [.3em]
+            &=& 1 + 0.05 \times \left(10 + 20\right) \\ [.3em]
+            &=& 1 + 0.05 \times 30 \\ [.3em]
+            &=& 1 + 1.5 = 2.5 \text{ cycles}
+        \end{array}
+    \end{equation*}
+    Without L2:
+    \begin{equation*}
+        AMAT = 1 + 0.05 \times 100 = 6 \text{ cycles}
+    \end{equation*}
+    L2 reduced the AMAT from \textbf{6 cycles} to \textbf{2.5 cycles}.
+\end{examplebox}

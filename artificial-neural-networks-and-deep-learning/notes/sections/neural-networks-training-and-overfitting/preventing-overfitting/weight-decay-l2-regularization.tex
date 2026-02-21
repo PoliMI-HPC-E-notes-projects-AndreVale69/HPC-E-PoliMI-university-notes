@@ -1,0 +1,271 @@
+\subsubsection{Weight Decay (L2 Regularization)}\label{sec:weight-decay-l2-regularization}
+
+The \definition{Weight Decay} (or \definition{L2 Regularization}) is a widely used technique to prevent overfitting in neural networks by adding a penalty term to the loss function that discourages large weights. This method helps to keep the model simpler and more generalizable by constraining the magnitude of the weights.
+
+\highspace
+The key idea behind weight decay is to penalize overly large weights to prevent the network from overfitting training noise. When we train a neural network, we minimize a \textbf{loss function} (e.g. MSE regression or cross-entropy for classification):
+\begin{equation*}
+    E_{\text{train}}(w) = \frac{1}{N} \sum_{i=1}^{N} \mathcal{L}\left(y_i, f\left(x_i; w\right)\right)
+\end{equation*}
+If we let the optimization freely minimize this error, the network might use \textbf{very large weights} to fit every detail, creating a complex,oscillating decision surface that produces low training error but poor generalization to unseen data (i.e., \textbf{overfitting}). To counter this, we add a \textbf{penalty on the magnitude of weights} to the loss function:
+\begin{equation*}
+    E_{\text{reg}}(w) = E_{\text{train}}(w) + \frac{\gamma}{2} \sum_{q} w_q^2
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $w_q$ is the $q$-th weight in the network.
+    \item $\gamma > 0$ is the regularization parameter that controls the strength of the penalty (sometimes called \textbf{weight decay coefficient}). A larger $\gamma$ encourages smaller weights, leading to a simpler model (more bias, less variance), while a smaller $\gamma$ allows for more complex models (less bias, more variance).
+\end{itemize}
+This makes the optimization prefer \textbf{small, smooth weights}, producing\break smoother mappings from inputs to outputs, which helps in generalization.
+
+\highspace
+In other words, the optimizer now minimizes both \textbf{error} and \textbf{weight energy}. This discourages the model from relying too heavily on any single feature or neuron, promoting a more distributed representation that is less likely to overfit the training data (the network learns gentler transformations, \textbf{simpler hypotheses}).
+
+\highspace
+\begin{definitionbox}[: Weight Decay (L2 Regularization)]
+    \definition{Weight Decay}, or \definition{L2 Regularization}, is a technique that prevents overfitting by adding a \textbf{penalty on the magnitude of the network's weights} to the loss function. The regularized loss function is:
+    \begin{equation}
+        E_{\text{reg}}(w) = E_{\text{train}}(w) + \frac{\gamma}{2} \sum_{q} w_q^2
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $E_{\text{train}}(w)$ is the original training loss (e.g., MSE or cross-entropy).
+        \item $w_q$ are the weights of the neural network.
+        \item $\gamma > 0$ is the regularization parameter controlling the strength of the penalty.
+    \end{itemize}
+    By discouraging large weights, the model learns smoother mappings and achieves better generalization, effectively limiting its complexity.
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Relation to Early Stopping}}
+\end{flushleft}
+Early Stopping limited training time to prevent overfitting (\autopageref{sec:early-stopping}), while \textbf{weight decay directly limits the magnitude of parameters}. Both methods implement the Ockham's Razor principle by favoring simpler models that generalize better, but act at different stages:
+\begin{itemize}
+    \item \textbf{Early Stopping stops training} when validation error starts to rise, so before weights can grow too large.
+    \item \textbf{Weight Decay continuously penalizes} large weights during training, keeping them small throughout the process.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/neural-networks-and-overfitting/weight-decay-plot.pdf}
+    \caption{A simulation of polynomial regression with two different fits: one without regularization (large, oscillating weights, overfitting the data) and one with L2 regularization (smaller weights, smoother fit). The L2 regularized model generalizes better to unseen data.}
+    \label{fig:weight-decay-l2-regularization}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Bayesian Interpretation (MAP vs MLE)}}
+\end{flushleft}
+When we train a neural network, we're finding parameters $w$ that best explain the data $D = \left\{x_i, y_i\right\}$, where $x_i$ are inputs and $y_i$ are outputs. There are two main approaches to estimate these parameters:
+\begin{itemize}
+    \item \textbf{Maximum Likelihood Estimation (MLE)} (\autopageref{sec:maximum-likelihood-estimation}): choose the parameters $w$ that \textbf{maximize the probability of the data given the model}:
+    \begin{equation*}
+        w_{\text{MLE}} = \arg\max_{w} P\left(D \, \mid \, w\right)
+    \end{equation*}
+    Or equivalently, minimize the negative log-likelihood (which corresponds to minimizing the training error $E_{\text{train}}(w)$):
+    \begin{equation*}
+        w_{\text{MLE}} = \arg\min_{w} -\log P\left(D \, \mid \, w\right) \equiv \arg\min_{w} E_{\text{train}}(w)
+    \end{equation*}
+    That's just the \textbf{training loss} we usually minimize (like MSE or cross-entropy).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] MLE fits the data as best as possible.
+        \item[\textcolor{Red2}{\faIcon{times}}] But it can lead to overfitting, especially with complex models and limited data. This is because MLE doesn't penalize complex parameters.
+    \end{itemize}
+
+    
+    \item \textbf{Maximum A Posteriori Estimation (MAP)}: instead of trusting data blindly, we also include \textbf{prior beliefs} about what weights are likely. Let's explain this step by step. When we use \textbf{MLE}, we're saying: ``\emph{we don't know anything about the parameters $w$; just find the ones that make the data as likely as possible}''. That's pure \textbf{data fitting}. But what if we \emph{do} have priori knowledge? For example, we might believe that weights shouldn't be too large (to avoid overfitting), and most weights should be closer to zero (the network should be simple). Then we can express this belief \textbf{probabilistically}, by giving each possible value of $w$ a \textbf{prior probability} $P(w)$ that reflects \textbf{how plausible we think that value is before seeing any data}. Here, MAP combines this belief with the observed data.
+    
+    \highspace
+    We want the \textbf{posterior probability} of the weights given the data:
+    \begin{equation*}
+        P\left(w \, \mid \, D\right) = \dfrac{P\left(D \, \mid \, w\right) P\left(w\right)}{P\left(D\right)}
+    \end{equation*}
+    \begin{itemize}
+        \item $P\left(D \, \mid \, w\right)$ is the \textbf{likelihood} of the data given weights (same as in MLE).
+        \item $P\left(w\right)$ is the \textbf{prior} probability of weights (our belief about weights before seeing data).
+        \item $P\left(w \, \mid \, D\right)$ is the \textbf{posterior} probability of weights given the data (what we believe about weights after seeing data).
+        \item $P\left(D\right)$ is the \text{evidence} (normalizing constant).
+    \end{itemize}
+    The \definition{Maximum A Posteriori (MAP)} estimation means: choose the weights $w$ that \textbf{maximize the posterior probability} $P\left(W \, \mid \, D\right)$:
+    \begin{equation*}
+        w_{\text{MAP}} = \arg\max_{w} P\left(w \, \mid \, D\right)
+    \end{equation*}
+    Using Bayes' rule, we can rewrite this as:
+    \begin{equation*}
+        w_{\text{MAP}} = \arg\max_{w} \dfrac{P\left(D \, \mid \, w\right) P\left(w\right)}{P\left(D\right)} = \arg\max_{w} P\left(D \, \mid \, w\right) P\left(w\right)
+    \end{equation*}
+    Since $P(D)$ is constant with respect to $w$, we can ignore it in the optimization. Taking logs, we get:
+    \begin{equation*}
+        w_{\text{MAP}} = \arg\max_{w} \left[ \log P\left(D \, \mid \, w\right) + \log P\left(w\right) \right]
+    \end{equation*}
+    Where the \textbf{first term} fits the data (like MLE), and the \textbf{second term} adds a \emph{regularization effect} (our prior belief about weights).
+\end{itemize}
+To \textbf{connect this to weight decay}, we need to choose a specific prior $P(w)$. A common choice is a \textbf{Gaussian prior} centered at zero:
+\begin{equation*}
+    P\left(w\right) = \prod_{q} \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\dfrac{w_q^2}{2 \sigma^2}\right)
+\end{equation*}
+This prior says that we believe weights are likely to be small (close to zero), with variance $\sigma^2$ controlling how strongly we believe this. Taking the log of this prior gives:
+\begin{equation*}
+    \log P\left(w\right) = -\sum_{q} \dfrac{w_q^2}{2 \sigma^2} + \text{constant}
+\end{equation*}
+Ignoring constants, the MAP objective becomes:
+\begin{equation*}
+    w_{\text{MAP}} = \arg\max_{w} \left[ \log P\left(D \, \mid \, w\right) - \sum_{q} \dfrac{w_q^2}{2 \sigma^2} \right]
+\end{equation*}
+Or equivalently, minimizing the negative log-posterior:
+\begin{equation*}
+    w_{\text{MAP}} = \arg\min_{w} \left[ -\log P\left(D \, \mid \, w\right) + \sum_{q} \dfrac{w_q^2}{2 \sigma^2} \right]
+\end{equation*}
+This is exactly the same as minimizing the regularized loss function with weight decay:
+\begin{equation*}
+    E_{\text{reg}}(w) = E_{\text{train}}(w) + \frac{\gamma}{2} \sum_{q} w_q^2
+\end{equation*}
+Where $\gamma = \dfrac{1}{\sigma^2}$. Thus, \textbf{weight decay can be interpreted as MAP estimation with a Gaussian prior on weights}. This Bayesian perspective shows that weight decay not only helps prevent overfitting but also incorporates prior beliefs about model simplicity into the learning process.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/neural-networks-and-overfitting/weight-decay-l2-regularization.pdf}
+    \caption{Bayesian interpretation of Weight Decay (L2 Regularization): MLE focuses solely on fitting the data, while MAP incorporates prior beliefs about weights, leading to more generalizable models. We have simulated a one-dimensional weight $w$: the \textbf{likelihood} $P\left(D \, \mid \, w\right)$ is peaked around some data-fitted value (like MLE); the \textbf{prior} $P(w)$ is a Gaussian centered at zero (we believe small weights are more likely); the \textbf{posterior} $P\left(w \, \mid \, D\right)$ combines (product) both, resulting in a peak that balances data fit and weight size.}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Gaussian Priori Explanation}}
+\end{flushleft}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is a prior over weights?}} When we train a model, we want to find good values for all weights $w_q$. If we follow a \textbf{Bayesian approach}, we say: each weight $w_q$ is a random variable, and before seeing data we have a belief about how likely different values are. This belief is encoded in a \textbf{prior distribution}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Choosing a Gaussian Prior.}} A natural, simple choice for this prior is a \textbf{Gaussian (normal) distribution} centered at zero:
+\begin{equation*}
+    P\left(w_q\right) = \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\dfrac{w_q^2}{2 \sigma^2}\right)
+\end{equation*}
+Intuitively:
+\begin{itemize}
+    \item The mean is zero, so small weights are more probable than large ones.
+    \item The variance $\sigma^2$ controls how strongly we believe this:
+    \begin{itemize}
+        \item A small $\sigma^2$ means we strongly believe weights should be close to zero (less flexibility).
+        \item A large $\sigma^2$ means we allow for larger weights (more flexibility).
+    \end{itemize}
+\end{itemize}
+Assuming independence between weights, the joint prior over all weights is:
+\begin{equation*}
+    P\left(w\right) = \prod_{q} P\left(w_q\right) = \prod_{q} \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\dfrac{w_q^2}{2 \sigma^2}\right)
+\end{equation*}
+So the prior over all weights is a multivariate Gaussian with diagonal covariance. Taking the log of this prior gives:
+\begin{equation*}
+    \log P\left(w\right) = \sum_{q} \log P\left(w_q\right) = -\dfrac{1}{2 \sigma^2} \sum_{q} w_q^2 + \text{constant}
+\end{equation*}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Combine with likelihood (training error.)}} The MAP objective (as derived earlier) is:
+\begin{equation*}
+    w_{\text{MAP}} = \arg\max_{w} \left[ \log P\left(D \, \mid \, w\right) + \log P\left(w\right) \right]
+\end{equation*}
+Equivalently, minimizing the negative log-posterior:
+\begin{equation*}
+    E_{\text{reg}}(w) = -\log P\left(D \, \mid \, w\right) - \log P\left(w\right)
+\end{equation*}
+Replace $-\log P\left(D \, \mid \, w\right)$ with the \textbf{training loss} $E_{\text{train}}(w)$, and substitute the log prior:
+\begin{equation*}
+    E_{\text{reg}}(w) = E_{\text{train}}(w) + \dfrac{1}{2 \sigma^2} \sum_{q} w_q^2 + \text{constant}
+\end{equation*}
+Define $\gamma = \dfrac{1}{\sigma^2}$, we get:
+\begin{equation*}
+    E_{\text{reg}}(w) = E_{\text{train}}(w) + \dfrac{\gamma}{2} \sum_{q} w_q^2
+\end{equation*}
+This is exactly the weight decay regularization term! Thus, assuming a Gaussian prior on weights leads directly to L2 regularization in the MAP framework.
+
+\begin{deepeningbox}[: What is a Multivariate Gaussian with Diagonal Covariance?]
+    If we have a \textbf{single weight} $w_1$, we can describe our belief about it as a \textbf{univariate Gaussian}:
+    \begin{equation*}
+        P\left(w_1\right) = \dfrac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\dfrac{\left(w_1 - 0\right)^2}{2 \sigma^2}\right)
+    \end{equation*}
+    That's just the classic bell curve centered at zero, spreading depending on $\sigma^2$.
+
+    \highspace
+    Now suppose we have \textbf{two weights} $w_1$ and $w_2$. We could model their joint belief as a \textbf{2D Gaussian distribution}:
+    \begin{equation*}
+        P\left(w_1, w_2\right) = \dfrac{1}{2 \pi \left|\Sigma\right|^{1/2}} \exp\left(-\dfrac{1}{2} \begin{bmatrix} w_1 \\ w_2 \end{bmatrix}^T \Sigma^{-1} \begin{bmatrix} w_1 \\ w_2 \end{bmatrix}\right)
+    \end{equation*}
+    Where $\Sigma$ is the \textbf{covariance matrix}. This tells us \textbf{how the two weights vary together}.
+
+    \highspace
+    The covariance matrix $\Sigma$ looks like this:
+    \begin{equation*}
+        \Sigma = \begin{bmatrix} \sigma_1^2 & \rho \sigma_1 \sigma_2 \\ \rho \sigma_1 \sigma_2 & \sigma_2^2 \end{bmatrix}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $\sigma_1^2$ and $\sigma_2^2$ are the variances of $w_1$ and $w_2$.
+        \item $\rho$ is the correlation coefficient between $w_1$ and $w_2$.
+        \begin{itemize}
+            \item If $\rho = 0$, the weights are \textbf{independent} (no correlation). This means changing $w_1$ doesn't affect $w_2$.
+            \item If $\rho \neq 0$, the weights are \textbf{correlated} (changing one affects the other). This means if $w_1$ increases, $w_2$ might also tend to increase (if $\rho > 0$) or decrease (if $\rho < 0$).
+        \end{itemize}
+    \end{itemize}
+    When we assume the weights are \textbf{independent}, we set $\rho = 0$. This simplifies the \textbf{covariance matrix to a diagonal matrix}, because the off-diagonal terms (which represent correlations) become zero:
+    \begin{equation*}
+        \Sigma = \begin{bmatrix} \sigma_1^2 & 0 & 0 & \dots \\ 0 & \sigma_2^2 & 0 & \vdots \\ 0 & 0 & \sigma_3^2 & \vdots \\ \vdots & \vdots & \vdots & \ddots \end{bmatrix}
+    \end{equation*}
+    Then the multivariate Gaussian \textbf{factorizes} into independent 1D Gaussians for each weight:
+    \begin{equation*}
+        P\left(w\right) = \prod_{q} \dfrac{1}{\sqrt{2 \pi \sigma_q^2}} \exp\left(-\dfrac{w_q^2}{2 \sigma_q^2}\right)
+    \end{equation*}
+    Each weight has its own Gaussian prior, and they don't influence each other. That's exactly what we assumed: each $w_q$ has its own $\mathcal{N}\left(0, \sigma^{2}\right)$ prior, and all weights are independent.
+
+    \highspace
+    Finally, when the covariance is diagonal ($\rho = 0$ and equal for all weights), we get:
+    \begin{equation*}
+        \Sigma = \sigma^2 I
+    \end{equation*}
+    Where $I$ is the identity matrix. This means that the log prior simplifies to:
+    \begin{equation*}
+        -\log P\left(w\right) = \dfrac{1}{2 \sigma^{2}} w^{T} w = \dfrac{1}{2 \sigma^{2}} \sum_{q} w_q^2
+    \end{equation*}
+    \hl{Which is exactly the L2 regularization term we use in weight decay!} So the assumption of a \emph{multivariate Gaussian with diagonal covariance} is what mathematically justifies the standard \textbf{weight decay formula}.
+\end{deepeningbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we choose the right regularization strength $\gamma$?}}
+\end{flushleft}
+Different values of $\gamma$ change how much we penalize large weights:
+\begin{itemize}
+    \item $\gamma = 0$ means no regularization (just MLE, prone to overfitting).
+    \item $\gamma$ small means weak regularization (allows larger weights, more complex models).
+    \item $\gamma$ large means strong regularization (forces weights to be small, simpler models).
+\end{itemize}
+So we must find the \textbf{optimal} $\gamma = \gamma^*$ that gives the \textbf{best generalization}. The idea is to split our data into:
+\begin{itemize}
+    \item A \textbf{training set} for fitting the weights $w$.
+    \item A \textbf{validation set} for evaluating performance for each candidate $\gamma$.
+\end{itemize}
+Practically:
+\begin{enumerate}
+    \item Choose a range of candidate $\gamma$ values, for example:
+    \begin{equation*}
+        \left|
+            10^{-5}, 10^{-4}, 10^{-3}, 10^{-2}, 10^{-1}, 1, 10
+        \right|
+    \end{equation*}
+    \item For each candidate $\gamma$:
+    \begin{itemize}
+        \item Train the neural network with regularized loss:
+        \begin{equation*}
+            E_{\text{reg}}(w) = E_{\text{train}}(w) + \dfrac{\gamma}{2} \sum_{q} w_q^2
+        \end{equation*}
+        \item Compute validation error on the validation set:
+        \begin{equation*}
+            E_{\text{val}}(w) = E_{\text{val}}(w) + \dfrac{\gamma}{2} \sum_{q} w_q^2
+        \end{equation*}
+    \end{itemize}
+    \item Pick the $\gamma^*$ that gives the lowest validation error:
+    \begin{equation}
+        \gamma^* = \arg\min_{\gamma} E_{\text{val}}
+    \end{equation}
+    \item Finally, retrain the network \textbf{on all data} using the selected $\gamma^*$ to get the final model.
+\end{enumerate}
+This cross-validation approach ensures we select a regularization strength that balances fitting the training data well while maintaining good generalization to unseen data.

@@ -1,0 +1,72 @@
+\paragraph{Early Restart \& Critical Word First}\label{paragraph: Early Restart and Critical Word First}
+
+Early Restart \& Critical Word First are \textbf{two related techniques} that aim to let the CPU resume execution faster \textbf{when a cache miss occurs}.
+
+\highspace
+In a normal cache miss:
+\begin{enumerate}
+    \item The cache requests the \textbf{entire block} from the next memory level.
+    \item The CPU waits until \textbf{all words} in the block have arrived.
+    \item Only then does the CPU resume execution.
+\end{enumerate}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem:}} This wastes cycles if the needed word arrivers before the rest of the block.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution:}} Send the \textbf{critical word} (the one the CPU actually requested) \textbf{first}, so execution can resume earlier.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Techniques}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Early Restart}
+    \begin{itemize}
+        \item Fetch the block \textbf{in normal order} from memory.
+        \item As soon as the \textbf{requested word} arrives, \textbf{send it to the CPU} and let it resume.
+        \item Continue transferring the rest of the block into the cache in the background.
+    \end{itemize}
+    For example:
+    \begin{itemize}
+        \item Block size: 4 words (W0, W1, W2, W3).
+        \item CPU requests W2.
+        \item Memory returns W0 $\rightarrow$ W1 $\rightarrow$ \textbf{W2} $\rightarrow$ W3.
+        \item On W2's arrival $\rightarrow$ \textbf{CPU resumes}, W3 still coming.
+    \end{itemize}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefit}}
+    \end{flushleft}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Works well when \textbf{memory returns words sequentially} in block order.
+        \item[\textcolor{Green3}{\faIcon{check}}] Reduces \textbf{CPU stall time} for some misses.
+    \end{itemize}
+
+
+    \item \definition{Critical Word First} (aka \definition{Wrapped Fetch}).
+    \begin{itemize}
+        \item When a miss occurs, \textbf{start fetching at the requested word}, then wrap around to the start of the block.
+        \item The \textbf{requested word is fetched first}, not just delivered first.
+    \end{itemize}
+    For example:
+    \begin{itemize}
+        \item Block size: 4 words (W0, W1, W2, W3).
+        \item CPU requests W2.
+        \item Memory returns \textbf{W2} $\rightarrow$ W3 $\rightarrow$ W0 $\rightarrow$ W1.
+        \item W2 is delivered to CPU immediately $\rightarrow$ stall time minimized.
+    \end{itemize}
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefit}}
+    \end{flushleft}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] More effective than Early Restart when \textbf{requested word is late in block order}.
+        \item[\textcolor{Green3}{\faIcon{check}}] Particularly useful when \textbf{miss penalty is dominated by first-word latency}.
+    \end{itemize}
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trade-offs}}
+    \end{flushleft}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Controller Complexity}: Critical Word First requires non-sequen\-tial wrap-around fetch logic.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Lower Spatial Locality Use}: If other words are needed soon, reordering fetch might not help.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Memory Bus Efficiency}: Some memory systems prefer sequential transfers for efficiency.
+    \end{itemize}
+\end{itemize}
+Both Early Restart and Critical Word First \textbf{reduce miss penalty} by \textbf{delivering the requested word sooner}, but Critical Word First goes further by \textbf{fetching it first} from memory.

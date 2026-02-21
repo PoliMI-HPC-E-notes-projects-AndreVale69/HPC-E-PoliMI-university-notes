@@ -1,0 +1,90 @@
+\subsection{Memory System for Vectors}
+
+Vector machines can \textbf{consume and produce data at very high rates} (e.g., one element per cycle per lane). This puts enormous pressure on memory. To keep up, their memory subsystems were designed differently from scalar machines.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{memory} \textbf{Memory Banks}}
+\end{flushleft}
+Instead of a single wide memory, \hl{vector processors use} \textbf{multiple memory banks} (interleaving). Each bank can provide one word per cycle. By spreading addresses across banks, the system can serve many concurrent loads/stores. Addresses are distributed across banks in a round-robin way:
+\begin{equation}
+    \text{Bank number} = \dfrac{\text{Address}}{\text{WordSize}} \mod \#\text{ banks}
+\end{equation}
+So ideally, when we load a vector, all elements land in different banks (full parallelism).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why Memory Banks?}} Because if we need to fetch 64 elements of a vector, we don't want to wait 64 cycles serially. Instead, with 64 banks, each element can come from a different bank, so potentially all 64 delivered in parallel (after latency).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Stride (\texttt{LVWS})}}
+\end{flushleft}
+\hl{Access pattern in vector loads is often not contiguous}. \definition{Stride} is the spacing between consecutive vector elements in memory.
+\begin{itemize}
+    \item Stride $=$ 1, contiguous elements (row-major array).
+    \item Stride $=$ $k$, every $k$-th element (e.g., column of a matrix stored row-major).
+\end{itemize}
+The instruction used is: \texttt{LVWS V1, (R1, R2)}. This means to load the vector into V1, starting at the base address R1 and with a stride of R2. This allows vector processors to efficiently access \textbf{matrix columns} or other non-unit stride data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Bank Conflicts}}
+\end{flushleft}
+A \definition{Bank Conflict} happens when \textbf{two or more consecutive elements of a vector map to the same bank} in the same cycle.
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] Those banks cannot serve multiple requests simultaneously.
+    \item[\textcolor{Red2}{\faIcon{times}}] Accesses to that bank must be \textbf{serialized}, introducing \textbf{stalls}.
+    \item[\textcolor{Red2}{\faIcon{times}}] Effective throughput drops dramatically.
+\end{itemize}
+The number of distinct banks used per stride access is given by:
+\begin{equation}
+    \dfrac{\#\text{ banks}}{\gcd \left(\text{stride}, \#\text{ banks}\right)}
+\end{equation}
+If stride and $\#$ banks are relatively prime (greatest common denominator $=$ 1), we get full parallelism. If gcd is greater than 1, then the effective parallelism is reduced.
+
+\highspace
+\begin{examplebox}[: Analogy]
+    Imagine we have 8 supermarket checkout lanes (banks).
+    \begin{itemize}
+        \item If 8 shoppers each choose a different lane, then everyone checks out in parallel.
+        \item If all 8 shoppers choose lane 0 (stride 8 case), then they must queue sequentially, wasting the other 7 lanes.
+    \end{itemize}
+    That queuing is bank conflict.
+\end{examplebox}
+
+\highspace
+Bank conflicts occur when stride addressing causes multiple vector elements to hit the same memory bank in the same cycle. They \textbf{serialize memory access} and can reduce effective bandwidth from ``\emph{one element per cycle per bank}'' to just ``\emph{one element per cycle total}''.
+
+\highspace
+\begin{examplebox}[: Access Patterns and Bank Conflicts]
+    Bank conflicts explain why accessing arrays along the dimension that is contiguous in memory (row-major rows, column-major columns) is better for performance, and why such loops are easier to parallelize.
+
+    \highspace
+    \important{Contiguous (stride $=$ 1).} If we access memory in \textbf{row-major order} (like C arrays), and we walk \textbf{across the row} (columns), each successive element is one word away in memory. This is stride $=$ 1. With interleaved banks, each element lands in a different bank, so \textbf{no conflict, maximum throughput}. \hl{This is why compilers and programmers try to vectorize \textbf{inner loops over contiguous elements}}.
+
+    \highspace
+    \important{Jumping by row (stride $=$ row length).} Now imagine we want to traverse \textbf{a column} of the matrix in row-major memory. Each new element is \texttt{RowSize} words apart. If \texttt{RowSize} is, say, 128 and we have 8 banks: $128 \mod 8 = 0$. Then, every column element maps to the \textbf{same bank}. Result: massive conflict and serialized access. \hl{This is why column accesses are ``bad'' in row-major layout}.
+
+    \highspace
+    \important{Fixes}
+    \begin{enumerate}
+        \item \textbf{Change traversal order}: Access the array in row order (contiguous) instead of column order, if possible.
+        
+        \newpage
+
+        \item \textbf{Padding}: Add 1 dummy element at the end of each row ($\texttt{RowSize}\break = 129$ instead of 128). Now $\text{stride} = 129$. $\gcd\left(129, 8\text{ banks}\right) = 1$, then data spreads evenly and no conflict.
+        \item \textbf{Different layout}: Use \textbf{column-major} (like Fortran/Matlab) if our algorithm accesses columns more often. Or even more advanced formats (tiling, SoA vs AoS).
+    \end{enumerate}
+    So, to avoid stalls, we usually want to access \textbf{consecutive addresses in memory} ($\text{stride} = 1$). But when our algorithm forces non-unit strides (e.g., columns in row-major storage), we may need \textbf{padding or different layout} to spread accesses across banks.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Sparse Access: Gather and Scatter}}
+\end{flushleft}
+Dense vectors are nice, but real applications often need \textbf{sparse matrices}. Elements are not stored contiguously; instead, we have an \textbf{index vector} that tells us where to fetch/store each element.
+\begin{itemize}
+    \item \definition{Gather}: Load a vector from non-contiguous memory locations given by an index vector.
+    \item \definition{Scatter}: Store a vector into non-contiguous locations given by an index vector.
+\end{itemize}
+This makes vector processors \textbf{flexible}: they can handle irregular data layouts too, though with more overhead.

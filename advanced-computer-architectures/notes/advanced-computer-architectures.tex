@@ -24,7 +24,7 @@
 \usepackage{listings}
 \usepackage{url}
 \usepackage{qrcode}
-\usepackage{fontawesome5}
+\usepackage{fontawesome5}           % https://fontawesome.com/v5/search?ic=free&o=r
 \usepackage{ragged2e}
 \usepackage{cite}                   % references
 \usepackage{imakeidx}               % index
@@ -36,9 +36,14 @@
 \usepackage{fancyhdr}
 \usepackage{soul}                   % highlight text (as a highlighter)
 \usepackage{adjustbox}              % avoid table overfull
+\usepackage{changepage}
+\usepackage{pdflscape}   % rotates the page in the PDF viewer
 \usepackage{tikz}
-% \usetikzlibrary{positioning}
-\usetikzlibrary{arrows.meta, positioning, calc}
+\usetikzlibrary{automata,arrows.meta,positioning,calc,decorations.pathmorphing}
+\tikzset{
+    bus/.style = {->, decorate, draw=Red3, decoration={snake, amplitude=0.5mm, segment length=2.5mm}},
+}
+
 
 % ~ Dark Mode ~
 % \usepackage{pagecolor}      % For background color
@@ -105,12 +110,14 @@
     sd,
     offset,
     beq,
-    bne
+    bne,
     j,
     jr,
     nop,
     sub,
-    and
+    subi,
+    and,
+    mov
   },
   sensitive=false, % keywords are not case-sensitive
   morecomment=[l]{\#}, % l is for line comment
@@ -177,14 +184,67 @@
 \newcommand{\highspace}{\vspace{1.2em}\noindent}
 % I never remember every icon, so I use custom commands to do this
 \newcommand{\speedIcon}{tachometer-alt}
+\newcommand{\naive}{naïve }
+\newcommand{\Naive}{Naïve }
 \newcommand{\definitionWithSpecificIndex}[3]{\textcolor{Red3}{\textbf{#1}}\index{#2}\index{#3}}
+% -----------------------------------------------------------------------------
+% \hqlabel{<label>}{<text>}
+%
+% Purpose:
+%   Create a combined LaTeX label and a hyperref hypertarget at the same spot.
+%
+% Arguments:
+%   #1 (label) - Identifier for the target and \label. Provide a short,
+%                unique name (no surrounding braces). This is the value used
+%                with \ref, \pageref or \hyperlink.
+%   #2 (text)  - Visible text placed at the target location (can contain text
+%                and simple formatting commands).
+%
+% Example:
+%   % Place a labeled target named "sec:intro" whose visible title is "Intro"
+%   \hqlabel{sec:intro}{Intro}
+%
+% Notes:
+%   - The label must be unique within the document.
+%   - Using the same identifier for both \label and \hypertarget ensures
+%     consistent referencing for both LaTeX cross-references and hyperref links.
+% -----------------------------------------------------------------------------
 \newcommand{\hqlabel}[2]{\label{#1}\hypertarget{#1}{#2}}
+% -----------------------------------------------------------------------------
+% \hqpageref{<label>}
+%
+% Purpose:
+%   Shortcut macro that prints the page number of the labelled location and makes
+%   that page number a clickable hyperlink to the labelled anchor.
+%
+% Arguments:
+%  - #1: label key (the same key used with \label{...} or any anchor created by hyperref)
+%
+% Behavior:
+%  - Expands to the page number associated with <label> and wraps it in a hyperlink
+%    pointing to the corresponding anchor.
+%
+% Example:
+%  - To reference the page number of a section labelled "sec:intro":
+%    See section \ref{sec:intro} on page \hqpageref{sec:intro}.
+%
+% Requirements / Notes:
+%  - Requires hyperref (or an equivalent package providing hyperlink anchors and
+%    \hypergetpageref) to be loaded.
+%  - The label must create an anchor (typical \label after a \section or after
+%    a \phantomsection when needed).
+%  - Document must be compiled twice to ensure page references are up-to-date.
+%  - Use when you want a compact, clickable page-number reference (e.g. "see p. 5").
+% -----------------------------------------------------------------------------
 \newcommand{\hqpageref}[1]{\hyperlink{#1}{\hypergetpageref{#1}}}
 \newcommand{\answer}{\textcolor{Green3}{\textbf{\emph{Answer: }}}}
-\newcommand{\version}{v0.10.0}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\version}{v1.1.1}
 
 % \includeonly{
-%   % sections/exams/2025/may-5,
+%   sections/bibliography-and-index,
+%   sections/exams/2026/january-8,
+%   sections/exams/2025/may-5,
 %   sections/exams/2025/february-11
 % }
 
@@ -193,6 +253,7 @@
     \newcounter{definition}[section]
     \newcounter{example}[section]
     \newcounter{takeaways}[section]
+    \newcounter{remark}[section]
     
     \newtcolorbox[use counter = definition]{definitionbox}[1][]{%
         breakable,
@@ -229,6 +290,15 @@
         fonttitle=\bfseries,
         title={Deepening#1} %
     }
+
+    \newtcolorbox[use counter = remark]{remarkbox}[1][]{%
+      breakable,
+      enhanced,
+      colback=blue!5!white,
+      colframe=blue!75!black,
+      fonttitle=\bfseries,
+      title={Remark \thetcbcounter #1} %
+  }
 	
     %%%%%%%%%%%%%%%
     % Notes cover %
@@ -350,10 +420,116 @@
     \include{sections/vliw/introduction}
     \include{sections/vliw/data-dependences}
     \include{sections/vliw/statically-scheduled-processors}
+    \include{sections/vliw/code-scheduling/code-scheduling}
+    \include{sections/vliw/code-scheduling/scheduling-basics}
+    \include{sections/vliw/code-scheduling/dependence-graph-and-critical-path}
+    \include{sections/vliw/code-scheduling/asap-scheduling-algorithm}
+    \include{sections/vliw/code-scheduling/list-based-scheduling-algorithm}
+    \include{sections/vliw/code-scheduling/local-vs-global-scheduling}
+    \include{sections/vliw/code-scheduling/local-scheduling-techniques/loop-unrolling}
+    \include{sections/vliw/code-scheduling/local-scheduling-techniques/software-pipelining}
+    \include{sections/vliw/code-scheduling/global-scheduling-techniques/trace-scheduling}
+    \include{sections/vliw/code-scheduling/global-scheduling-techniques/superblock-scheduling}
+
+    %%%%%%%%%%%%%%%%%%%
+    % Advanced Memory %
+    %%%%%%%%%%%%%%%%%%%
+    \include{sections/advanced-memory/introduction}
+    \include{sections/advanced-memory/principle-of-locality}
+    \include{sections/advanced-memory/so-what-is-a-cache}
+    \include{sections/advanced-memory/cache-performance-metrics}
+    \include{sections/advanced-memory/cache-architecture/cache-architecture}
+    \include{sections/advanced-memory/cache-architecture/block-placement}
+    \include{sections/advanced-memory/cache-architecture/block-identifiation}
+    \include{sections/advanced-memory/cache-architecture/replacement-strategy}
+    \include{sections/advanced-memory/cache-architecture/write-strategy}
+    \include{sections/advanced-memory/miss-penalty-reduction}
+    \include{sections/advanced-memory/design-space-of-cache}
+    \include{sections/advanced-memory/cache-miss-classification}
+    \include{sections/advanced-memory/improving-cache-performance/improving-cache-performance}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/increasing-cache-size}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/increasing-block-size}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/increasing-associativity}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/victim-cache}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/pseudo-associativity-and-way-prediction}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/hardware-prefetching}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/software-prefetching}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-rate-techniques/compiler-optimizations}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-penalty-techniques/read-priority-over-write-on-miss}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-penalty-techniques/sub-block-placement}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-penalty-techniques/early-restart-and-critical-word-first}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-penalty-techniques/non-blocking-caches}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-penalty-techniques/second-level-and-multi-level-caches}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-miss-penalty-techniques/merging-write-buffers}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-hit-time-techniques/small-and-simple-L1-caches}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-hit-time-techniques/avoid-address-translation}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-hit-time-techniques/pipelined-writes}
+    \include{sections/advanced-memory/improving-cache-performance/reducing-hit-time-techniques/small-sub-blocks-for-write-through-caches}
+    \include{sections/advanced-memory/improving-cache-performance/summary}
+
+    %%%%%%%%%%%%%%%%%%%%%%%%
+    % Multithreading (TLP) %
+    %%%%%%%%%%%%%%%%%%%%%%%%
+    \include{sections/multithreading-tlp/introduction}
+    \include{sections/multithreading-tlp/what-is-a-thread}
+    \include{sections/multithreading-tlp/multithreading-basics}
+    \include{sections/multithreading-tlp/hardware-support-for-multithreading}
+    \include{sections/multithreading-tlp/typology-of-hardware-multithreading}
+    \include{sections/multithreading-tlp/smt-on-wide-superscalars}
+    \include{sections/multithreading-tlp/multicore-smt}
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % SIMD & Vector Architectures %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \include{sections/simd-and-vector-architectures/why-dlp-now}
+    \include{sections/simd-and-vector-architectures/flynns-taxonomy}
+    \include{sections/simd-and-vector-architectures/simd-architecture}
+    \include{sections/simd-and-vector-architectures/vector-architectures-vs-generic-simd}
+    \include{sections/simd-and-vector-architectures/anatomy-of-a-classic-vector-machine}
+    \include{sections/simd-and-vector-architectures/vmips-as-didactic-reference-machine}
+    \include{sections/simd-and-vector-architectures/case-study-daxpy}
+    \include{sections/simd-and-vector-architectures/chaining-convoys-and-chimes}
+    \include{sections/simd-and-vector-architectures/multiple-lanes}
+    \include{sections/simd-and-vector-architectures/handling-vector-lengths}
+    \include{sections/simd-and-vector-architectures/control-divergence-inside-loops}
+    \include{sections/simd-and-vector-architectures/memory-system-for-vectors}
+    \include{sections/simd-and-vector-architectures/simd-isa-extensions-vs-true-vectors}
+
+    %%%%%%%%%%%%%%%%%%%
+    % GPGPU Computing %
+    %%%%%%%%%%%%%%%%%%%
+    \include{sections/gpgpu-computing}
+
+    %%%%%%%%%%%%%%%%%%%
+    % Multiprocessors %
+    %%%%%%%%%%%%%%%%%%%
+    \include{sections/multiprocessors/what-is-a-multiprocessor}
+    \include{sections/multiprocessors/key-design-questions}
+    \include{sections/multiprocessors/from-single-bus-to-interconnection-networks}
+    \include{sections/multiprocessors/network-performance-metrics}
+    \include{sections/multiprocessors/classic-multiprocessor-topologies}
+    \include{sections/multiprocessors/address-space-models}
+    \include{sections/multiprocessors/physical-memory-organization}
+    \include{sections/multiprocessors/small-scale-multicores}
+    \include{sections/multiprocessors/distributed-shared-memory}
+    \include{sections/multiprocessors/distributed-memory-clusters}
+    \include{sections/multiprocessors/communication-programming-models}
+    \include{sections/multiprocessors/why-caches-matter}
+    \include{sections/multiprocessors/why-cache-coherence}
+    \include{sections/multiprocessors/snooping-bus-based-protocols/snoopy-bus-idea-broadcast-and-scalability-limits}
+    \include{sections/multiprocessors/snooping-bus-based-protocols/practicalities-duplicate-tag-to-avoid-stalling-the-core}
+    \include{sections/multiprocessors/snooping-bus-based-protocols/write-invalidate-vs-write-update}
+    \include{sections/multiprocessors/snooping-bus-based-protocols/msi-finite-state-machine-protocol}
+    \include{sections/multiprocessors/snooping-bus-based-protocols/mesi-protocol}
+    \include{sections/multiprocessors/directory-based-protocols/basics}
+    \include{sections/multiprocessors/directory-based-protocols/message-types}
+    \include{sections/multiprocessors/directory-based-protocols/walkthroughs-on-a-4-node-system}
+    \include{sections/multiprocessors/directory-based-protocols/directory-fsm-and-invariants}
 
     %%%%%%%%%
     % Exams %
     %%%%%%%%%
+    \include{sections/exams/2026/january-8}
     \include{sections/exams/2025/may-5}
     \include{sections/exams/2025/february-11}
 

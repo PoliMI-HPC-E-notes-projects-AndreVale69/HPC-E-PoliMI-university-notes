@@ -1,0 +1,176 @@
+\subsection{Real-World Deployments}
+
+In this section, we explore real-world deployments of Layer 4 load balancing in datacenters. We will discuss how major companies (Meta, Alibaba, Microsoft, Google) implement L4 load balancing to enhance the performance and reliability of their services. Although the principles are the same (scaling traffic, connection affinity, high availability), their \textbf{architectural choices} differ in how packets are handled and returned.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{facebook} \textbf{Meta (Facebook)}}
+\end{flushleft}
+Meta uses \textbf{multi-tier L4 load balancers} to manage traffic. The architecture consists of:
+\begin{itemize}
+    \item \textbf{Edge L4 Load Balancers}: near the Internet handle (north-south) traffic.
+    \item \textbf{Internal L4 Load Balancers}: handle east-west traffic between services inside the datacenter.
+\end{itemize}
+Their system emphasizes \textbf{scalability} (tens of millions of concurrent TCP connections) and \textbf{low tail latency} (minimizing packet processing delay). Meta architectures is based on \textbf{Direct Server Return (DSR)} for efficient packet handling: the load balancer forwards incoming packets to the backend server, which then sends the response directly to the client, bypassing the load balancer on the return path. This allows the LB to handle only \emph{incoming} packets, multiplying throughput capacity.
+
+\highspace
+\begin{definitionbox}[: Direct Server Return (DSR)]\label{definition: Direct Server Return (DSR)}
+    \definition{Direct Server Return (DSR)} is a load balancing technique where the load balancer forwards incoming requests to backend servers, but the \hl{responses are sent directly from the backend servers to the clients, bypassing the load balancer on the return path}. This approach reduces the load on the load balancer and can improve response times.
+\end{definitionbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Alibaba}}
+\end{flushleft}
+Alibaba Cloud employs \textbf{hierarchical L4 load balancer} built on programmable switches\footnote{
+    Programmable Switches are network devices that can be programmed to perform custom packet processing tasks, allowing for more flexible and efficient handling of network traffic (page \pageref{section: Programmable Switches}). An example of a programmable switch is one that supports the P4 programming language (page \pageref{subsection: Data Plane Programming and P4}), which enables users to define how packets are processed and routed within the switch.
+} and smart NICs\footnote{
+    \definition{Smart NICs (Network Interface Cards)} are advanced network interface cards that offload processing tasks from the CPU, such as packet filtering, load balancing, and encryption, to improve overall system performance. They often include programmable processors and memory to handle complex networking functions directly on the NIC. They differ from traditional NICs, which primarily handle basic data transmission and reception without additional processing capabilities.
+}. Alibaba's architecture often uses \textbf{NAT-style\break translation}.
+
+\highspace
+\definition{NAT (Network Address Translation)} is a mechanism that lets a device (like a router or load balancer) \textbf{rewrite the source or destination IP address and port} of packets as they pass through. We can think of it as the ``middleman'' that changes addresses so packets can move between different network zones. In a datacenter, the \textbf{load balancer acts as the NAT device}. When a client connects to the \textbf{Virtual IP (VIP)} of a service:
+\begin{enumerate}
+    \item The \textbf{load balancer receives the packet} with destination set to the VIP.
+    \item It \textbf{rewrites the destination IP and/or port} to point to one of the backend servers (e.g., \code{10.0.1.5}).
+    \item It \textbf{remembers the mapping} between the original connection (client IP and port, VIP) and the chosen backend.
+    \item When the server replies, the LB reverses the translation, changing the source back to the VIP before sending the packet back to the client.
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why Alibaba's technique stand out?}} Alibaba's strength isn't just ``\emph{using NAT}'', it's \textbf{how they scale it}. They use \textbf{programmable switches} to handle the NAT translations at line rate, allowing them to manage millions of connections efficiently. The switches can perform the address rewriting directly in hardware, which is much faster than doing it in software on a traditional server-based load balancer. Furthermore, the \textbf{hierarchical design} allows them to distribute the load across multiple layers of switches:
+\begin{itemize}
+    \item \textbf{Edge / Border Switches}: the first programmable switches that packets hit after entering the datacenter from the Internet. They handle \textbf{VIP addressing}, perform \textbf{DNAT} (Destination NAT, map the VIP to a backend servers's internal IP), and optionally \textbf{SNAT} on replies (Source NAT, rewrite server's source IP to VIP). These edge switches are typically \textbf{programmable ASICs} (like Barefoot Tofino) running \textbf{P4 pipelines} that apply NAT rules.
+
+    \textcolor{Green3}{\faIcon{check-circle}} Programmable hardware ensures \textbf{line-rate performance} (Terabits per second throughput with microsecond latency).
+    \item \textbf{Aggregation / Spine Switches}: sometimes, Alibaba distributes part of the load-balancing logic here for \textbf{scalability and redundancy}. These switches \textbf{don't rewrite IPs} but may decide \emph{which edge switch} performs the NAT for a given VIP.
+
+    \textcolor{Green3}{\faIcon{check-circle}} Distributing logic across the spine layer avoids bottlenecks and allows fast failover.
+    \item \textbf{Top-of-Rack (ToR) switches or SmartNICs (optional)}: for internal east-west traffic, NAT or load-balancing functions might also run \textbf{closer to servers}. Some deployments offload L4 NAT to \textbf{programmable NICs} (SmartNICs or DPUs). The NIC performs per-flow NAt or flow steering to local microservices.
+
+    \textcolor{Green3}{\faIcon{check-circle}} Improves \textbf{locality} and offloads the central fabric for internal traffic between tenants or containers.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{microsoft} \textbf{Microsoft (Azure)}}
+\end{flushleft}
+Azure's technique stands out \textbf{because it takes a very different design philosophy} compared to Alibaba, Meta, or Google. While Alibaba and Meta focus on \textbf{scaling L4 load balancing in hardware}, \textbf{Microsoft prioritizes control, observability, and integration} with the cloud platform, even at the cost of higher per-connection overhead.\phantomsection\label{def:tcp-termination}
+
+\highspace
+Microsoft's Azure load balancers, particularly \textbf{Ananta}\cite{patel2013ananta} and its successors, are based on \textbf{TCP termination}. That means the \textbf{load balancer actually participates in the TCP connection} instead of simply forwarding packets. With ``\emph{TCP termination}'', we mean that when a client connects to a service VIP:
+\begin{enumerate}
+    \item The \textbf{load balancer itself accepts the TCP connection} from the client (acting as the server).
+    \item Then, it \textbf{creates a new TCP connection} from itself to the chosen backend VM (acting as the client).
+    \item It \textbf{relays data} between these two independent connections.
+\end{enumerate}
+Essentially, the LB ``splits'' the connection into two halves:
+\begin{equation*}
+    \begin{array}{rll}
+        \text{Client} \longrightarrow & \text{TCP connection \#1} & \longrightarrow \\[.5em]
+        & [\text{Load Balancer}] & \longrightarrow \\[.5em]
+        & \text{TCP connection \#2} & \longrightarrow \text{Backend Server}
+    \end{array}
+\end{equation*}
+This design gives Azure \textbf{full control over every connection}, which brings several major advantages:
+\begin{itemize}
+    \item \important{Fine-grained control and observability}. Since the LB manages both TCP endpoints, it can:
+    \begin{itemize}
+        \item Apply \textbf{custom congestion control} or \textbf{rate limiting} per connection.
+        \item Collect \textbf{precise telemetry} (latency, throughput, retransmissions, etc.).
+        \item Perform \textbf{real-time health checks} of backend VMs.
+        \item Easily integrate with monitoring systems and Service Level Agreements (SLAs).
+    \end{itemize}
+    Other architectures (like DSR or NAT) can't easily measure latency or detect slow clients, because replies bypass them or just transit statelessly.
+
+    \item \important{Simplified policy enforcement}. With full TCP state:
+    \begin{itemize}
+        \item The LB can apply \textbf{firewall rules}, \textbf{TLS termination}, or \textbf{security policies} directly.
+        \item It can perform \textbf{connection-based authentication}, \textbf{DDoS protection}, or \textbf{application-layer filtering}.
+    \end{itemize}
+    This makes it ideal for a multi-tenant cloud like Azure, where \textbf{isolation and security} are top priorities.
+    
+    \item \important{Fault tolerance and VM mobility}. Because the LB terminates connections, it can seamlessly:
+    \begin{itemize}
+        \item \textbf{Migrate backend VMs} or \textbf{reroute traffic} without breaking client sessions.
+        \item If a backend VM crashes, the LB can retransmit or buffer data instead of immediately closing the client connection.
+        \item This ensures \textbf{connection continuity} during failures or scaling\break events.
+    \end{itemize}
+    
+    \item \important{Software-defined integration}. Azure's L4 LB is part of a \textbf{software-defined network (SDN)} stack:
+    \begin{itemize}
+        \item It's implemented in \textbf{virtualized routers} and \textbf{software agents} running across Azure hosts.
+        \item The system can scale horizontally, multiple LB instances share the same VIP pool, coordinated by a central SDN controller.
+        \item The architecture is \textbf{cloud-native}: it integrates with virtual networks (VNets), security groups, and VM scaling.
+    \end{itemize}
+\end{itemize}
+Azure deliberately accepts the performance overhead of maintaining per-\break connection state in exchange for \textbf{fine-grained connection management, security, and SLA compliance}, critical in a public cloud. This technique stands out because it \textbf{prioritizes control and observability over raw scalability}, integrating the load balancer tightly into the software-defined cloud fabric.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{google} \textbf{Google}}
+    \phantomsection\label{def:maglev}
+\end{flushleft}
+Google's design is widely studied because it represents one of the \textbf{cleanest, most elegant, and most scalable software-defined L4 load balancing architectures ever built}: \textbf{the Maglev system} (published at NSDI 2016)\cite{eisenbud2016maglev}.
+
+\highspace
+\important{Maglev} is Google's \textbf{L4 load balancer}, used for both:
+\begin{itemize}
+    \item \textbf{External traffic} (from users on the Internet to Google services like Search, Gmail, YouTube).
+    \item \textbf{Internal traffic} (service-to-service communication inside Google's datacenters).
+\end{itemize}
+It's a \textbf{software-based, distributed, stateless load balancer} (data-plane stateless but control-plane stateful) running on commodity servers, yet it handles \textbf{millions of requests per second} with near-zero downtime. Maglev's architecture stands out because it combines several key principles:
+\begin{itemize}
+    \item \important{Stateless design}. Unlike Azure's stateful approach, \textbf{Maglev is stateless}:
+    \begin{itemize}
+        \item It doesn't keep per-flow connection tables.
+        \item Any Maglev instance can process any packet of any connection.
+    \end{itemize}
+    \emph{How?} Because it uses \textbf{deterministic consistent hashing} to map flows to backends. Each Maglev node computes the same hash:
+    \begin{equation*}
+        \text{server} = \text{hash}\left(\code{src\_ip}, \code{src\_port}, \code{dst\_ip}, \code{dst\_port}, \code{protocol}\right) \mod N
+    \end{equation*}
+    Where $N$ is the number of backend servers, fixed across all Maglev nodes. This ensures \textbf{consistent flow affinity} without storing any state.
+    So, even if packets of the same TCP connection hit different Maglev nodes, they'll all pick the \textbf{same backend server} deterministically. The result: no flow state to replicate or synchronize between load balancers, then huge scalability.
+
+
+    \item \important{Distributed horizontally}. Instead of one centralized LB, Google deploys \textbf{hundreds of Maglev instances} across datacenters. They share the same \textbf{VIP configuration}. The \textbf{Anycast routing} mechanism ensures that packets to a VIP are automatically distributed among available Maglev nodes (closest or least loaded). If one \textbf{Maglev node fails}, \textbf{traffic automatically reroutes to others}, so no DNS change, no service interruption.
+
+
+    \item \important{Software-based on commodity servers}. Maglev runs on standard Linux servers, not on custom ASICs or SmartNICs. This allows rapid updates, integration with Google's SDN control plane, and uniform deployment across global regions. \textbf{High elasticity}: \hl{spin up or remove Maglev instances dynamically as load changes}.
+
+
+    \item \important{Direct Server Return (DSR)}. Like Meta, Google uses \textbf{DSR (Direct Server Return)}:
+    \begin{itemize}
+        \item Maglev handles \textbf{incoming} traffic only.
+        \item The \textbf{reply traffic} (from backend servers to clients) \textbf{bypasses the LB} and goes directly out to the Internet.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check-circle}} \textcolor{Green3}{\textbf{Benefit}}: Doubles throughput capacity because LBs don't handle response packets.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle}} \textcolor{Red2}{\textbf{Trade-off}}: Harder to monitor replies and handle asymmetric routing, but Google solves this with deep in-network telemetry and strict network control.
+\end{itemize}
+\textcolor{Green3}{\faIcon{exchange-alt}} A \textbf{typically request flow} looks like this:
+\begin{enumerate}
+    \item A user on the Internet sends a request to a Google service (e.g., Gmail) using a \textbf{VIP (Virtual IP)} address.
+    \item The request hits the \textbf{nearest Maglev instance} (via Anycast routing).
+    \item The Maglev node computes the hash of the packet's five-tuple and selects a backend server.
+    \item It \textbf{forwards the packet} to the chosen backend server.
+    \item The backend server processes the request and \textbf{sends the response directly} to the user, bypassing Maglev.
+\end{enumerate}
+\textcolor{Green3}{\faIcon{check-circle}} Google solved two of the hardest problems in distributed L4 load balancing:
+\begin{enumerate}
+    \item \textbf{Consistency without state replication}, all nodes make identical decisions locally.
+    \item \textbf{Scalability without single points of failure}, we can add/remove Maglev instances instantly.
+\end{enumerate}
+Essentially, Maglev turned load balancing from a \textbf{hardware bottleneck} into a \textbf{stateless, horizontally-scalable software service}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{lightbulb} \textbf{Key Takeaways}}
+\end{flushleft}
+All big players (Meta, Alibaba, Microsoft, Google) rely on \textbf{L4 load balancing} as a cornerstone on their datacenter edge. They differ in \textbf{where they keep state} and \textbf{how they return packets}:
+\begin{itemize}
+    \item \textbf{Meta and Google} use \textbf{Direct Server Return (DSR)}, maximizing throughput by letting backend servers reply directly to clients.
+    \item \textbf{Alibaba} employs \textbf{NAT-style translation} using \textbf{programmable switc-\- es} and \textbf{SmartNICs} to handle millions of connections at line rate.
+    \item \textbf{Microsoft Azure} takes a different approach with \textbf{TCP termination}, where the LB fully manages each connection.
+\end{itemize}
+Each architecture reflects different priorities: \textbf{scalability and performance} (Meta, Google), \textbf{hardware efficiency} (Alibaba), or \textbf{control and security} (Microsoft). Understanding these trade-offs helps us appreciate the complexity and innovation behind modern datacenter load balancing.

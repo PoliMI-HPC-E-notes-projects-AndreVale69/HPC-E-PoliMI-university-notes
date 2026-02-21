@@ -1,0 +1,88 @@
+\subsubsection{Dropout (Stochastic Regularization)}\label{sec:nn-dropout-stochastic-regularization}
+
+Even with weight decay and early stopping, large networks can still \textbf{overfit} because \textbf{neurons learn to co-adapt} too much. For example, neuron $A$ might learn to rely on neuron $B$ being active to make its predictions. If $B$ overfits, then $A$ will also overfit. We need a way to \textbf{force independence} among neurons, to make the network robust to missing or noisy signals.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Idea.}} During training, we \textbf{randomly ``drop'' neurons} (i.e., set their output to 0) with a certain probability $p$, independently at each training iteration.
+\begin{itemize}
+    \item Each forward pass uses a \textbf{different random subnetwork}.
+    \item The model can't rely on any specific neuron always being present, so it must learn \textbf{redundant representations}.
+\end{itemize}
+\hl{Without dropout}, the activation of neuron $j$ in layer $l$ is:
+\begin{equation*}
+    h_j^{(l)} = g\left( \sum_{i} w_{ij}^{(l)} h_i^{(l-1)} + b_j^{(l)} \right)
+\end{equation*}
+\begin{itemize}
+    \item $h_{i}^{(l-1)}$ are the activations from the previous layer.
+    \item $w_{ij}^{(l)}$ are the weights connecting neuron $i$ in layer $l-1$ to neuron $j$ in layer $l$.
+    \item $b_j^{(l)}$ is the bias term for neuron $j$ in layer $l$.
+    \item $g(\cdot)$ is the activation function (e.g., tanh, sigmoid).
+\end{itemize}
+\definition{Dropout} introduces a random \textbf{mask} $m_j^{(l)}$ for each neuron, sampled from a \textbf{Bernoulli distribution} with parameter $p$ (the probability of \textbf{keeping} the neuron). Formally:
+\begin{equation}
+    m_j^{(l)} \sim \text{Bernoulli}(p) \Rightarrow m_j^{(l)} = \begin{cases}
+        1 & \text{with probability } p \text{ neuron is kept} \\
+        0 & \text{with probability } 1-p \text{ neuron is dropped}
+    \end{cases}
+\end{equation}
+Then we define the \textbf{new (masked) activation} as:
+\begin{equation}
+    \tilde{h}_j^{(l)} = m_j^{(l)} \cdot h_j^{(l)}
+\end{equation}
+\begin{itemize}
+    \item $h_j^{(l)}$ is the activation of neuron $j$ in layer $l$.
+    \item $m_j^{(l)}$ is a dropout mask (binary mask, 1 $=$ keep neuron, 0 $=$ drop neuron).
+    \item $p$ is the probability of \textbf{keeping} a neuron (typically $p=0.5$ for hidden layers, $p=0.8-0.9$ for input layer).
+    \item $\tilde{h}_j^{(l)}$ is the \textbf{post-dropout activation} of neuron $j$ in layer $l$.
+\end{itemize}
+
+\begin{definitionbox}[: Dropout]
+    \definition{Dropout} is a regularization technique where, \emph{during training}, \textbf{each neuron is randomly dropped} (set to zero) with probability $1-p$, independently of other neurons. This \textbf{prevents co-adaptation of neurons} and encourages the network to learn robust features.
+
+    \highspace
+    Formally, for neuron $j$ in layer $l$:
+    \begin{equation*}
+        m_j^{(l)} \sim \text{Bernoulli}(p) \quad \Rightarrow \quad m_j^{(l)} = \begin{cases}
+            1 & \text{with probability } p \\
+            0 & \text{with probability } 1-p
+        \end{cases}
+    \end{equation*}
+    \begin{equation*}
+        \tilde{h}_j^{(l)} = m_j^{(l)} \cdot h_j^{(l)}
+    \end{equation*}
+    Where $\tilde{h}_j^{(l)}$ is the post-dropout activation.
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What happens during training vs testing}}
+\end{flushleft}
+During \textbf{training}, we apply dropout as described above, randomly dropping neurons with probability $1-p$. This forces the network to learn robust features that do not rely on any specific neuron. Formally, during training:
+\begin{equation*}
+    \tilde{h}_j^{(l)} = m_j^{(l)} \cdot h_j^{(l)}
+\end{equation*}
+
+\highspace
+During \textbf{testing}, we do not apply dropout. Instead, we use the full network (i.e., \textbf{all neurons are active}) and \textbf{scale the activations (or weights) by the probability} $p$ to account for the fact that fewer neurons were active during training. This ensures that the output distribution remains consistent between training and testing. Formally, during testing:
+\begin{equation}
+    h_j^{(l)} \leftarrow p \cdot h_j^{(l)}
+\end{equation}
+This is called also \definition{Weight Scaling Rule}.
+
+\begin{examplebox}[: Dropout in a Simple Neural Network]
+    Suppose a layer has a 5 neurons with activations:
+    \begin{equation*}
+        h^{(l)} = \left[0.4, 0.7, 0.3, 0.1, 0.9\right]
+    \end{equation*}
+    And we set dropout probability $p=0.6$ (i.e., 60\% chance to keep each neuron), and we randomly sample masks:
+    \begin{equation*}
+        m^{(l)} = \left[1, 0, 1, 0, 1\right]
+    \end{equation*}
+    During training, the post-dropout activations are:
+    \begin{equation*}
+        \tilde{h}^{(l)} = m^{(l)} \cdot h^{(l)} = \left[0.4, 0, 0.3, 0, 0.9\right]
+    \end{equation*}
+    During testing, we use the full activations scaled by $p$ (each neuron’s activation is multiplied by $0.6$):
+    \begin{equation*}
+        h^{(l)} \leftarrow p \cdot h^{(l)} = \left[0.24, 0.42, 0.18, 0.06, 0.54\right]
+    \end{equation*}
+\end{examplebox}

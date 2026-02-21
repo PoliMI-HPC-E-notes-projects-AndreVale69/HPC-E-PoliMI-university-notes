@@ -1,0 +1,232 @@
+\subsection{Perceptron Learning Algorithm}
+
+After understanding how modern feed-forward neural networks are trained\break (through \textbf{gradient descent}, \textbf{backpropagation}, and \textbf{MLE}), we now return to the \textbf{first learning rule ever proposed} for neural models: the \textbf{Perceptron Learning Algorithm} (PLA), introduced by Frank Rosenblatt in 1957.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why study this old algorithm after learning about modern techniques?}}
+\end{flushleft}
+Because it is actually the \textbf{ancestor} of the entire modern training framework we just saw (gradient descent, error minimization, MLE, backpropagation). In simple terms, backpropagation didn't appear out of nowhere: it is a generalization of the Perceptron rule. Rosenblatt's 1957 perceptron was the \textbf{first algorithm} that \emph{learned from data autonomously}. It introduced three ideas that survive today in modern deep learning:
+\begin{enumerate}
+    \item \important{Weighted sum of inputs $\to$ decision}. The perceptron \textbf{computes a weighted sum of its inputs and applies a threshold to decide its output} (0 or 1). This is the basis of all neural networks. We have already formalized this as:
+    \begin{equation*}
+        a = w^{T} x + b
+    \end{equation*}
+
+    \item \important{Error-based correction}. The perceptron \textbf{updates its weights based on the error it makes on each training example}. This is the core idea of learning from data, which we have seen in modern networks through loss functions and gradient descent.
+
+    \item \important{Iterative improvement}. The perceptron learning \textbf{algorithm iteratively adjusts its weights over multiple passes through the training data}, refining its decision boundary. This iterative process is fundamental to modern training algorithms, including stochastic gradient descent.
+\end{enumerate}
+Every deep learning model, even a transformer, still rests on these same principles.
+
+\highspace
+\begin{remarkbox}[: What is an algebraic hyperplane?]
+    In $\mathbb{R}^{d}$ a (linear) \definition{Hyperplane} is the set of points $x \in \mathbb{R}^{d}$ that satisfy a single linear equation of the form:
+    \begin{equation*}
+        w^{T} x + w_0 = 0
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $w \in \mathbb{R}^{d}$ is the \textbf{normal vector} (perpendicular to the hyperplane).
+        \item $w_{0}$ is the \textbf{bias/offset} shifting the hyperplane from the origin (or $b$ in our notation).
+        \item The \textbf{signed distance} of any point $x$ from the hyperplane is given by:
+        \begin{equation*}
+            d\left(x, \Pi\right) = \dfrac{w^{T} x + w_{0}}{\lVert w \rVert}
+        \end{equation*}
+        Its \textbf{sign} tells the side of the hyperplane; its \textbf{magnitude} is the perpendicular distance.
+    \end{itemize}
+    For a linear classifier (perceptron), we assign class by the sign:
+    \begin{equation*}
+        \text{class}(x) = \operatorname{sign}\left(w^{T} x + w_0\right)
+    \end{equation*}
+    In 2D, a hyperplane is a line (see below). In the following figure, the hyperplane separates two classes of points in $\mathbb{R}^{2}$. Two example points are projected perpendicularly onto the hyperplane to illustrate their distances.
+    \begin{center}
+        \includegraphics[width=\textwidth]{img/perceptron/hyperplane.pdf}
+    \end{center}
+\end{remarkbox}
+
+\highspace
+The perceptron learning algorithm is designed for \textbf{binary classification tasks} where the data is \textbf{linearly separable}. It iteratively adjusts the weights of the perceptron based on the errors it makes on the training data, aiming to find a hyperplane that separates the two classes. So, \hl{we want to derive an \textbf{error function} that expresses how \emph{wrong} the perceptron is, such that we can later minimize it using a gradient-based rule}.
+\begin{enumerate}
+    \item \important{Start from the \emph{algebraic hyperplane}}. For a linear classifier, the decision boundary is a\textbf{hyperplane}:
+    \begin{equation*}
+        w^{T} x + w_{0} = 0
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $w$ is the normal vector to the plane (its orientation).
+        \item $w_{0}$ is the bias term (offset from the origin).
+        \item $x$ is an input vector (sample).
+    \end{itemize}
+    Every point $x_i$ can lie:
+    \begin{itemize}
+        \item \textbf{Above the plane} if $w^{T} x_i + w_{0} > 0$ (positive side, class $+1$).
+        \item \textbf{Below the plane} if $w^{T} x_i + w_{0} < 0$ (negative side, class $-1$).
+        \item \textbf{On the plane} if $w^{T} x_i + w_{0} = 0$ (neutral).
+    \end{itemize}
+    The value calculated by $w^{T} x_i + w_{0}$ is called the \textbf{activation}, \textbf{algebraic distance} or \textbf{net input} (page \pageref{eq:net-input}):
+    \begin{equation*}
+        a_i = w^{T} x_i + w_{0}
+    \end{equation*}
+    
+
+    \item \important{Encode class labels as $t_i \in \left\{+1, -1\right\}$}
+    \begin{itemize}
+        \item If a sample belongs to the positive class, set $t_i = +1$.
+        \item If it belongs to the negative class, set $t_i = -1$.
+    \end{itemize}
+    Then the \textbf{predicted class} (the output of the perceptron) is given by:
+    \begin{equation*}
+        \hat{y}_i = \operatorname{sign}\left(a_i\right) = \operatorname{sign}\left(w^{T} x_i + w_{0}\right)
+    \end{equation*}
+    
+
+    \item \important{Determine whether a sample is correct or misclassified}. We multiply the predicted \emph{algebraic distance} by the true label $t_i$:
+    \begin{equation*}
+        t_i \cdot a_i \Rightarrow t_i \cdot \left(w^{T} x_i + w_{0}\right)
+    \end{equation*}
+    This product indicates correctness:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l l p{12em} @{}}
+            \toprule
+            \textbf{Case} & \textbf{Expression} & \textbf{Meaning} \\
+            \midrule
+            Correctly classified    & $t_i \left(w^{T} x_{i} + w_0\right) > 0$ & Sample lies on the correct side of the hyperplane. \\[.3em]
+            Misclassified           & $t_i \left(w^{T} x_{i} + w_0\right) < 0$ & Sample lies on the wrong side. \\[.3em]
+            Exactly on the boundary & $t_i \left(w^{T} x_{i} + w_0\right) = 0$ & Neutral (rare case). \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    So this single product already \emph{encodes correctness} of the classification.
+
+
+    \item \important{Define the \emph{set of misclassified samples}}. We now define the set of misclassified samples $M$ as:
+    \begin{equation*}
+        M = \left\{ i \, \mid \, t_i \left(w^{T} x_{i} + w_0\right) < 0 \right\}
+    \end{equation*}
+    These are the indices of samples that are on the wrong side of the hyperplane (i.e., misclassified).
+
+
+    \item \important{Measure ``how wrong'' those samples are}. Each misclassified point $x_i$ with $i \in M$ lies at a \textbf{signed distance} from the hyperplane given by:
+    \begin{equation*}
+        d_i = \dfrac{w^{T} x_i + w_0}{\left|w\right|}
+    \end{equation*}
+    Since the point is misclassified, $t_i \cdot \left(w^{T} x_i + w_0\right) < 0$, so the signed distance is \textbf{negative} (i.e., it's on the wrong side). To simplify, we can just use the \textbf{activation} $a_i = w^{T} x_i + w_0$ as a measure of error (ignoring the normalization by $\left|w\right|$). This simplification isn't a problem because it only scales the error, not its direction.
+
+
+    \item \important{Build an  error function using those distances}. To quantify the total error made by the perceptron, we sum the negative activations of all misclassified samples. So, we want a scalar function $D\left(w, w_0\right)$ that:
+    \begin{itemize}
+        \item Is \textbf{positive} when there are misclassifications.
+        \item Is \textbf{zero} when all samples are correctly classified.
+        \item Increases when misclassified points are further from the decision boundary.
+    \end{itemize}
+    Simply summing the negative activations of misclassified points achieves this:
+    \begin{equation*}
+        D\left(w, w_0\right) = - \sum_{i \in M} t_i \cdot \left(w^{T} x_i + w_0\right)
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $w^{T} x_i + w_0$ is the algebraic distance (activation) of sample $i$ from the hyperplane.
+        \item $t_i$ is the true label ($+1$ or $-1$) that flips the sign for misclassified points (flipping it makes it negative when misclassified).
+        \item The negative sign in front ensures that $D$ is positive when there are misclassifications (since $t_i \cdot \left(w^{T} x_i + w_0\right) < 0$ for misclassified points).
+        \item The sum over $i \in M$ aggregates the errors from all misclassified samples.
+    \end{itemize}
+    So this function is \textbf{large when many points are misclassified or far away}, and \textbf{zero when all points are correctly classified}.
+
+
+    \item \important{Objective: Minimize this error function}. The perceptron learning algorithm aims to find weights $w$ and bias $w_0$ that minimize the error function $D\left(w, w_0\right)$. Formally:
+    \begin{equation*}
+        \min_{w, w_0} D\left(w, w_0\right) = \min_{w, w_0} \left( - \sum_{i \in M} t_i \cdot \left(w^{T} x_i + w_0\right) \right)
+    \end{equation*}
+    Minimizing $D$ will push $t_i \cdot \left(w^{T} x_i + w_0\right)$ to be \textbf{positive} for all samples, meaning all points will be \textbf{correctly classified}.
+\end{enumerate}
+Now that we have defined the error function $D\left(w, w_0\right)$ that quantifies how wrong the perceptron is, we can proceed to derive the \textbf{Perceptron Learning Algorithm} by finding a way to update the weights $w$ and bias $w_0$ to minimize this error. This will involve computing the gradients of $D$ with respect to $w$ and $w_0$, and using these gradients to iteratively adjust the parameters in the direction that reduces the error. In simple terms, we have developed the recipe (the error function) and now we will derive the cooking instructions (the learning rule).
+\begin{enumerate}
+    \item \important{Compute the gradient}. We'll compute the \textbf{partial derivatives} with respect to $w$ and $w_0$:
+    \begin{align*}
+        \dfrac{\partial D}{\partial w}  &= - \sum_{i \in M} t_i \cdot \dfrac{\partial \left(w^T x_i + w_0\right)}{\partial w} \\[.3em]
+                                        &= - \sum_{i \in M} t_i \cdot x_i
+    \end{align*}
+    \begin{align*}
+        \dfrac{\partial D}{\partial w_0}&= - \sum_{i \in M} t_i \cdot \dfrac{\partial \left(w^T x_i + w_0\right)}{\partial w_0} \\[.3em]
+                                        &= - \sum_{i \in M} t_i \cdot 1
+    \end{align*}
+
+
+    \item \important{Apply gradient descent}. Gradient descent updates parameters \textbf{in the direction opposite to the gradient} to minimize the error:
+    \begin{equation*}
+        w^{\left(\text{new}\right)} = w^{\left(\text{old}\right)} - \eta \cdot \dfrac{\partial D}{\partial w}
+    \end{equation*}
+    \begin{equation*}
+        w_0^{\left(\text{new}\right)} = w_0^{\left(\text{old}\right)} - \eta \cdot \dfrac{\partial D}{\partial w_0}
+    \end{equation*}
+    Where $\eta$ is the learning rate (a small positive constant). Substituting the partial derivatives calculated earlier:
+    \begin{equation*}
+        w^{\left(\text{new}\right)} = w^{\left(\text{old}\right)} - \eta \cdot \left(- \sum_{i \in M} t_i \cdot x_i\right) = w^{\left(\text{old}\right)} + \eta \cdot \sum_{i \in M} t_i \cdot x_i
+    \end{equation*}
+    \begin{equation*}
+        w_0^{\left(\text{new}\right)} = w_0^{\left(\text{old}\right)} - \eta \cdot \left(- \sum_{i \in M} t_i\right) = w_0^{\left(\text{old}\right)} + \eta \cdot \sum_{i \in M} t_i
+    \end{equation*}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trying to optimize over all misclassified points at once.}}\label{warn:perceptron-batch} Here, we are happy to see that the updates \textbf{add contributions from all misclassified points}, pushing the weights and bias in the direction that reduces their error (i.e., moves \emph{all} misclassified points to the correct side of the hyperplane $\sum_{i \in M} t_i \cdot x_i$ and $\sum_{i \in M} t_i$).
+    
+    However, this approach can be \hl{computationally expensive for large\break datasets since it requires summing over all misclassified points in each update}. Furthermore, there is \hl{no randomness}, which can lead to slow convergence and getting stuck in suboptimal solutions. To address these issues, we can add a pinch of \textbf{stochasticity} to the learning process.
+    
+
+    \item \important{Make it \emph{stochastic}}.\label{def:stochastic-gradient-descent} The word ``stochastic'' means ``\emph{involving randomness or uncertainty}''. It comes from the Greek ``\emph{stochastikos}'', meaning ``\emph{able to guess}'' or ``\emph{randomly determined}''. So a \textbf{stochastic process} is one that includes random variables or random choices; instead, a \textbf{deterministic process} always behaves the same way for the same inputs (no randomness). In neural networks, \textbf{stochastic} means that we don't \textbf{compute the gradient} using \emph{all} training data at once, but rather we approximate it \textbf{using a \emph{subset}} (or even a single sample). This introduces a bit of \emph{random noise} in each update, but makes learning faster and more dynamic.
+    
+    In perceptron learning algorithm, computing the whole sum over all misclassified points $M$ can be expensive and inefficient, especially for large datasets. Instead, we can update \textbf{one misclassified point at a time}:
+    \begin{align*}
+        w^{\left(\text{new}\right)} &= w^{\left(\text{old}\right)} + \eta \cdot t_i \cdot x_i \\[.3em]
+        w_0^{\left(\text{new}\right)} &= w_0^{\left(\text{old}\right)} + \eta \cdot t_i
+    \end{align*}
+    \begin{itemize}
+        \item $t_i \cdot x_i$ are the points in the direction that will move $x_i$ to the correct side of the hyperplane.
+        \item $\eta > 0$ is the \textbf{learning rate} (small step size).
+    \end{itemize}
+    This approach is called \definition{Stochastic Gradient Descent (SGD)} (or\break \definition{Batch Gradient Descent} with batch size 1, where the \textbf{batch size is the number of samples used to compute the gradient at each step}) because we use a single (or a few) random samples to approximate the gradient, rather than the full dataset.
+    
+    This makes the learning process more efficient and allows the perceptron to adapt quickly to new data because each update is based on the most recent misclassification and not the entire dataset at once. See the \autoref{fig:perceptron-stochastic-vs-batch} for an illustration of stochastic vs full-batch updates (\autopageref{fig:perceptron-stochastic-vs-batch}).
+
+
+    \item \important{Interpret geometrically}. We can interpret the updates geometrically:
+    \begin{itemize}
+        \item \textbf{Case 1: Point correctly classified}. If $t_i \cdot \left(w^{T} x_i + w_0\right) > 0$, no update is made.
+        \item \textbf{Case 2: Point misclassified}. If $t_i \cdot \left(w^{T} x_i + w_0\right) < 0$, then update using:
+        \begin{align*}
+            w &\leftarrow w + \eta \cdot t_i \cdot x_i \\[.3em]
+            w_0 &\leftarrow w_0 + \eta \cdot t_i
+        \end{align*}
+        This pushes the hyperplane \textbf{towards the misclassified point}, reducing its error $D\left(w, w_0\right)$.
+    \end{itemize}
+    Intuitively:
+    \begin{itemize}
+        \item If $t_i = +1$ (positive class), the point is misclassified, so we \textbf{add} $x_i$ to $w$ to move the hyperplane closer to $w$.
+        \item If $t_i = -1$ (negative class) and the point is misclassified, we \textbf{subtract} $x_i$ from $w$ to move the hyperplane away from $w$.
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=\textwidth]{img/perceptron/stochastic.pdf}
+    \caption{An illustration example of stochastic updates vs full-batch updates. The contours are the \textbf{MSE loss} for a simple linear regression in parameter space $\left(a, b\right)$. \textbf{Batch Gradient Descent} follows a smooth path (solid line) using the \textbf{full dataset gradient} each step, while \textbf{Stochastic Gradient Descent} (dashed line) takes a more erratic path using \textbf{individual sample gradients}, leading to faster but noisier convergence.}
+    \label{fig:perceptron-stochastic-vs-batch}
+\end{figure}
+
+\begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Perceptron Learning Algorithm}]
+// Init
+Initialize $w$, $w_0$ = small random values
+Set learning rate $\eta > 0$
+// Training loop
+while not converged:
+    for each training sample $(x_i, t_i)$:
+        // Compute activation
+        $a_i = w^T x_i + w_0$
+        // If misclassified update weights and bias
+        if $t_i \cdot a_i \leq 0$:
+            $w \leftarrow w + \eta \cdot t_i \cdot x_i$
+            $w_0 \leftarrow w_0 + \eta \cdot t_i$
+\end{lstlisting}

@@ -1,0 +1,189 @@
+\subsubsection{Hyperparameter Tuning}\label{sec:hyperparameter-tuning}
+
+After understanding \textbf{Early Stopping} (which stops training at the right moment), we now focus on \textbf{choosing the right model itself}; that is, deciding \emph{how big}, \emph{how deep}, \emph{how fast}, and \emph{how regularized} the network should be. This process is called \textbf{Hyperparameter Tuning}, and it's a \textbf{crucial step to control overfitting and improve generalization}.
+
+\begin{definitionbox}[: Hyperparameter Tuning]
+    \definition{Hyperparameter Tuning} is the process of \textbf{selecting the best model configuration}, that is, the combination of hyperparameters (such as the number of layers, neurons, learning rate, regularization, strength, etc.). That yields the \textbf{lowest validation error} and thus the best generalization ability.
+
+    \highspace
+    Unlike \textbf{parameters} (weights and biases), which are learned automatically during training, \textbf{hyperparameters} control \emph{how} learning occurs and \emph{how complex} the model can be.
+
+    \highspace
+    The optimal configuration:
+    \begin{equation}
+        \theta^{*} = \underset{\theta_{i}}{\arg\min} \; E_{\text{val}}\left(\theta_{i}\right)
+    \end{equation}
+    is chosen by \textbf{comparing validation errors} across candidate models, often within a cross-validation framework to reduce bias.
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Parameters vs. Hyperparameters}}
+\end{flushleft}
+The definition above highlights the distinction between \textbf{parameters} and \textbf{hyperparameters}:
+\begin{itemize}
+    \item \important{Parameters}: These are the internal \textbf{weights and biases} of the neural network that are \textbf{learned during training through optimization algorithms} like gradient descent. They directly influence the model's predictions, so they determine the function learned by the network.
+    \item \important{Hyperparameters}: These are \textbf{external configurations set before training begins}. They include choices like the:
+    \begin{itemize}
+        \item \textbf{Number of layers}: This determines the depth of the network. More layers can capture more complex patterns but may also lead to overfitting.
+        \item \textbf{Number of neurons per layer}: This controls the width of the network. More neurons can model more complex functions but increase the risk of overfitting.
+        \item \textbf{Learning rate}: This is a crucial hyperparameter that controls how much to change the model in response to the estimated error each time the model weights are updated.
+        \item \textbf{Batch size}: This defines the number of training examples utilized in one iteration. Smaller batch sizes can provide a more accurate estimate of the gradient but take longer to train. We have seen this in the \textbf{Stochastic Gradient Descent} (\emph{batch gradient descent}, \autoref{warn:perceptron-batch}, \autopageref{warn:perceptron-batch})
+        \item \textbf{Regularization strength $\gamma$}: This controls the amount of regularization applied to the model to prevent overfitting. Higher values impose a stronger penalty on large weights. We will see this in future sections.
+        \item \textbf{Dropout rate}: This defines the fraction of neurons to drop during training to prevent overfitting. A higher dropout rate means more neurons are ignored during each training iteration. Also this will be covered in future sections.
+    \end{itemize}
+    Hyperparameters are set \textbf{manually} by the user or \textbf{automatically}\break through hyperparameter optimization techniques (e.g., grid search, random search, Bayesian optimization). They control \emph{how} the model learns and \emph{how complex} it can become, thus affecting its ability to generalize to unseen data.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is Hyperparameter tuning important? And why does it matter for overfitting?}}
+\end{flushleft}
+Hyperparameter tuning is essential for several reasons, especially in the context of overfitting. It determines the \textbf{model's capacity to learn from data} and its ability to generalize to unseen examples.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{9.7em} l l @{}}
+        \toprule
+        \textbf{Hyperparameter} & \textbf{Low Value} & \textbf{High Value} \\
+        \midrule
+        Number of layers/neurons & Underfitting (too simple) & Overfitting (too complex) \\[.3em]
+        Learning rate & Slow convergence & Unstable or overfitting \\[.3em]
+        Regularization strength $\gamma$ & Weak penalty, overfit & Too strong, underfit \\[.3em]
+        Dropout rate & Too little regularization & Too much, underfit \\
+        \bottomrule
+    \end{tabular}
+    \caption{Impact of Hyperparameter Values on Model Performance.}
+    \label{tab:hyperparameter-impact}
+\end{table}
+
+\noindent
+In geneal, \textbf{too low values} of hyperparameters can lead to \textbf{underfitting}, where the model is too simple to capture the underlying patterns in the data. Conversely, \textbf{too high values} can lead to \textbf{overfitting}, where the model learns the training data too well, including its noise and outliers, resulting in poor generalization to new data. So tuning them correctly is essential to reach the \textbf{sweet spot} of generalization.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Hyperparameter Tuning Algorithm}}
+\end{flushleft}
+The \definition{Hyperparameter Tuning Algorithm} is not a real algorithm per se, but rather a \textbf{conceptual framework} for selecting the best hyperparameters based on validation performance. The input are:
+\begin{itemize}
+    \item A \textbf{set $\Theta$ of possible hyperparameter configurations}:
+    \begin{equation*}
+        \Theta = \left\{\theta_1, \theta_2, \dots, \theta_M\right\}
+    \end{equation*}
+    Where each $\theta_i$ is a specific combination of hyperparameter values (e.g., number of layers, learning rate, regularization strength, etc.), and $M$ is the total number of configurations to evaluate.
+    \item A \textbf{training dataset} $\mathcal{D}_{\text{train}}$ used to train the model for each hyperparameter configuration.
+    \item A \textbf{validation dataset} $\mathcal{D}_{\text{val}}$ used to evaluate the model's performance for each configuration. Here we assume that our dataset is large enough to be split into training and validation sets. If not, cross-validation techniques can be employed to make the most of limited data (hold-out method \autopageref{sec:hold-out-validation}, k-fold \autopageref{sec:k-fold-cross-validation} or leave-one-out cross-validation \autopageref{sec:leave-one-out-cross-validation}, or nested cross-validation \autopageref{sec:nested-cross-validation}).
+\end{itemize}
+The procedure is as follows:
+\begin{enumerate}
+    \item \important{Define candidate configurations}. Choose which hyperparameter combinations to evaluate. Each configuration $\theta_i$ should specify values for all relevant hyperparameters. For example, number of layers, number of neurons per layer, learning rate, regularization strength, etc.
+    \item \important{For each configuration $\theta_i \in \Theta$}:
+    \begin{enumerate}
+        \item \important{Train} a neural network using $\mathcal{D}_{\text{train}}$ with the hyperparameters specified by $\theta_i$. This involves initializing the model, performing forward and backward passes, and updating weights according to the chosen optimization algorithm (we will see this in future sections).
+        \item \important{Evaluate} its performance on the \textbf{validation set} $\mathcal{D}_{\text{val}}$ to compute the validation error $E_{\text{val}}(\theta_i)$. This error metric could be mean squared error, cross-entropy loss, accuracy, etc., depending on the task. If using cross-validation, average the validation errors across all folds to get a robust estimate.
+    \end{enumerate}
+    \item \important{Compare validation errors}. Identify the configuration that gives the \textbf{lowest validation error}:
+    \begin{equation*}
+        \theta^{*} = \underset{\theta_{i} \in \Theta}{\arg\min} \; E_{\text{val}}\left(\theta_{i}\right)
+    \end{equation*}
+    \item \important{Select the best model}. Keep the model trained with the optimal hyperparameters $\theta^{*}$, or retrain it from scratch using the \textbf{union of training} and \textbf{validation data} with the chosen hyperparameters to maximize the data available for learning.
+    \item \important{(optional) Final test}. Evaluate the chosen model on a \textbf{separate test set} $\mathcal{D}_{\text{test}}$ to estimate its generalization performance on unseen data.
+\end{enumerate}
+The output of this procedure is the \textbf{optimal hyperparameter configuration} $\theta^{*}$ that minimizes the validation error, along with the \textbf{trained model} that can be used for predictions on new data, and an \textbf{estimate of its generalization performance} (from validation or test set).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to choose candidate hyperparameter configurations?}}
+\end{flushleft}
+In practice, candidate hyperparameter configurations are not chosen manually because this would be too time-consuming and inefficient. Instead, we use \textbf{automatic search methods} to explore the hyperparameter space effectively.
+
+\highspace
+Once we define the set of hyperparameters we want to tune, the following methods \textbf{automatically explore} different configurations and identify which one minimizes the \textbf{validation error} (or maximizes validation accuracy, depending on the task). The three classical methods are:
+\begin{enumerate}
+    \item \definition{Grid Search} (\hl{Exhaustive Search on a Discrete Grid}). This method evaluates the model on \textbf{all possible combinations} of a predefined set of hyperparameter values. For example, we define a \textbf{grid} for each hyperparameter:
+    \begin{equation*}
+        \eta \in \left\{0.001, 0.01, 0.1\right\} \qquad
+        \gamma \in \left\{0.01, 0.1, 1.0\right\} \qquad
+        \text{layers} \in \left\{2, 3, 4\right\} \qquad
+        \dots
+    \end{equation*}
+    Then the algorithm trains a model for \textbf{every combination} of these values:
+    \begin{equation*}
+        \Theta = \left\{\left(\eta, \gamma, \text{layers, \ldots}\right) \, \mid \, \eta \in \{\ldots\}, \,\gamma \in \{\ldots\}, \,\text{layers} \in \{\ldots\}, \, \ldots\right\}
+    \end{equation*}
+    After training and evaluating each configuration, the one with the lowest validation error is selected (minimum $E_{\text{val}}$).
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Simple and systematic.
+            \item[\textcolor{Green3}{\faIcon{check}}] Parallelizable and easy to implement.
+        \end{itemize}
+        \item[\textcolor{Red3}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Limitations}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Computationally expensive (combinations grow exponentially\break with more hyperparameters). Also, parallelizable only if enough resources are available.
+            \item[\textcolor{Red2}{\faIcon{times}}] Many evaluations wasted on unimportant regions of the hyperparameter space.
+            \item[\textcolor{Red2}{\faIcon{times}}] Works well only with a \emph{few} hyperparameters or \emph{coarse grids}.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \definition{Random Search} (\hl{Stochastic Sampling of Hyperparameter Space}). Instead of evaluating all combinations, this method \textbf{randomly samples} hyperparameter configurations from specified distributions. For example, we define ranges or distributions for each hyperparameter:
+    \begin{align*}
+        \eta &\sim \text{Uniform}(0.001, 0.1) \\[.3em]
+        \gamma &\sim \text{LogUniform}(0.01, 1.0) \\[.3em]
+        \text{layers} &\sim \text{DiscreteUniform}\{2, 3, 4\} \\[.3em]
+        & \ldots
+    \end{align*}
+    Then the algorithm samples $N$ configurations randomly:
+    \begin{equation*}
+        \Theta = \left\{\theta_1, \theta_2, \dots, \theta_N\right\}
+    \end{equation*}
+    After training and evaluating each sampled configuration, the one with the lowest validation error is selected. This method is \textbf{much more efficient than grid search}, because typically only a few hyperparameters significantly impact performance.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] Covers the search space more efficiently.
+            \item[\textcolor{Green3}{\faIcon{check}}] Works better for high-dimensional spaces.
+            \item[\textcolor{Green3}{\faIcon{check}}] Can easily add or extend hyperparameters.
+        \end{itemize}
+        \item[\textcolor{Red3}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Limitations}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Still blind, don't use information from previous trials.
+            \item[\textcolor{Red2}{\faIcon{times}}] May miss the best configuration by chance.
+        \end{itemize}
+    \end{itemize}
+
+
+    \item \definition{Bayesian Optimization} (\hl{Probabilistic Model-Based Search}, \hl{Learning from Past Trials}). The idea is simple yet powerful. Model the function:
+    \begin{equation*}
+        f\left(\theta\right) = E_{\text{val}}\left(\theta\right)
+    \end{equation*}
+    As an \textbf{unknown function} (black box) and use \textbf{probabilistic reasoning} to decide which hyperparameters to test next. The steps are:
+    \begin{enumerate}
+        \item Use previous evaluations to build a \textbf{probabilistic surrogate model} (e.g. a Gaussiano Process, Tree Parzen Estimator, etc.) that approximates the relationship between hyperparameters and validation error ($f(\theta)$).
+        \item Define an \textbf{acquisition function} (e.g. Expected Improvement, Upper Confidence Bound, etc.) that quantifies the potential benefit of evaluating a new configuration based on the surrogate model. It balances \textbf{exploration} (trying uncertain areas) and \textbf{exploitation} (focusing on promising areas).
+        \item Choose the next configuration $\theta_{\text{next}}$ to evaluate by maximizing the acquisition function (i.e., the configuration that is expected to yield the most improvement).
+        \item Now, train the model with $\theta_{\text{next}}$, evaluate its validation error\break $E_{\text{val}}(\theta_{\text{next}})$, and update the surrogate model with this new data point.
+        \item Repeat steps 2-4 until a stopping criterion is met (e.g., a maximum number of evaluations or convergence).
+    \end{enumerate}
+    This method is not a naive search; it \textbf{learns from past evaluations} to make informed decisions about which hyperparameters to test next, leading to more efficient optimization.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Advantages}}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Much fewer evaluations} needed for good performance.
+            \item[\textcolor{Green3}{\faIcon{check}}] Adapts search intelligently (guided by prior results).
+            \item[\textcolor{Green3}{\faIcon{check}}] Suitable for \textbf{expensive models} (deep networks, large datasets).
+        \end{itemize}
+        \item[\textcolor{Red3}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Limitations}}
+        \begin{itemize}
+            \item[\textcolor{Red2}{\faIcon{times}}] Implementation complexity (requires probabilistic modeling).
+            \item[\textcolor{Red2}{\faIcon{times}}] Needs a meaningful continuous search space (discrete hyperparameters can be tricky).
+            \item[\textcolor{Red2}{\faIcon{times}}] Slower per iteration (but far fewer iterations needed).
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+These methods follow the same underlying goal: \textbf{minimize the validation error} by efficiently exploring the hyperparameter space
+\begin{equation*}
+    \theta^{*} = \underset{\theta_{i} \in \Theta}{\arg\min} \; E_{\text{val}}\left(\theta_{i}\right)
+\end{equation*}
+But they differ in \textbf{\emph{how} they select candidate configurations} to evaluate, balancing exploration and exploitation in different ways.

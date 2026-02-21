@@ -1,0 +1,128 @@
+\subsubsection{MESI Protocol}\label{section: mesi-protocol}
+
+The \definition{MESI Protocol} appeared in the early 1980s, notably with the Intel 486 (1989) being one of the first commercial CPUs to implement MESI. It was a natural refinement of MSI, created by \textbf{computer architects studying snooping coherence} for scalable multiprocessors. The design goal: reduce \textbf{bus contention}, improve \textbf{latency of private writes}, and keep protocols \textbf{simple enough for hardware implementation}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem with MSI}}
+\end{flushleft}
+In MSI, whenever a processor brings a block into the cache after a \textbf{Read Miss}, it always goes to \textbf{Shared (S)}, even if no one else has that block (see FSM diagram, page \pageref{fig: msi-finite-state-machine}). But in that case, the cache \emph{knows} it is the only copy (because the bus transaction didn't see any sharer response). Yet, MSI still marks it as ``Shared'', which forces:
+\begin{itemize}
+    \item An unnecessary \textbf{Invalidate} on the next write (wasting bandwidth). Because the block is in state S (shared), the \hl{next write must issue a trigger to invalidate other caches}, even though there are no other caches with that block.
+    \item Extra latency before the processor can write. Because the block is in state S (shared), the \hl{next write must wait for the Invalidate to complete before it can proceed}, even though there are no other caches with that block.
+\end{itemize}
+So MSI wasted both \textbf{bandwidth} (spurious invalidations) and \textbf{time} (delayed private writes).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{MESI Solution}}
+\end{flushleft}
+To solve this problem, MESI adds a new state called \textbf{Exclusive (E)}. The key idea is that when a processor brings a block into the cache after a \emph{Read Miss}, it can go to state \textbf{Exclusive (E)} if \emph{no other cache has that block}. This capture the common case:
+\begin{itemize}
+    \item \textbf{Most memory blocks are private} (i.e., not shared). For example, stack data and many heap objects are private to a single thread; or local variables in a function are private to that function; or unique data structures used by a single thread are private to that thread.
+    \item \textbf{If a block is private and clean, the cache should not need to notify other caches on a write}. Instead, it can silently transition to \emph{Modified (M)} without any bus transaction. This saves both bandwidth (no spurious invalidations) and time (no delayed writes).
+\end{itemize}
+Thus, \emph{Read Misses} can go to state \textbf{Exclusive (E)} if no other cache has that block, and then the next write can transition to \textbf{Modified (M)} without any bus transaction (silently). \hl{This optimization is the main benefit of MESI over MSI}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{MESI States}}
+\end{flushleft}
+MESI has four states:
+\begin{itemize}
+    \item \textbf{Modified (M)}: The cache line is present only in the current cache and has been modified (is dirty). Memory is stale.
+    \item \textbf{Exclusive (E)}: The cache line is present only in the current cache and is clean (matches memory). The cache can silently transition to \emph{Modified (M)} on a write.
+    \item \textbf{Shared (S)}: The cache line may be present in other caches and is clean (matches memory).
+    \item \textbf{Invalid (I)}: The cache line is not valid (not present in the cache).
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{19em} @{}}
+        \toprule
+        \textbf{State} & \textbf{Description} \\
+        \midrule
+        \important{Modified (M)}    & Valid, dirty, owned exclusively. Must write back to memory on eviction. \\[.3em]
+        \important{Exclusive (E)}   & Valid, clean, owned exclusively. Can be promoted to M without bus transaction. \\[.3em]
+        \important{Shared (S)}      & Valid, clean, may be in other caches. \\[.3em]
+        \important{Invalid (I)}     & Not valid or not present in cache. \\
+        \bottomrule
+    \end{tabular}
+    \caption{MESI Cache States.}
+    \label{table: mesi-states}
+\end{table}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Key Transitions (compared to MSI)}}
+\end{flushleft}
+The MESI protocol modifies some transitions from MSI and adds new ones:
+\begin{itemize}
+    \item \textbf{On a Read Miss}
+    \begin{itemize}
+        \item If no other cache responds, we need to fetch from memory $\rightarrow$ \textbf{E} (instead of S in MSI).
+        \item If some cache responds $\rightarrow$ \textbf{S}.
+    \end{itemize}
+    \item \textbf{On a Write Hit}
+    \begin{itemize}
+        \item \textbf{S} $\to$ \textbf{M} with bus invalidate (same as MSI).
+        \item \textbf{E} $\to$ \textbf{M} silently (no bus invalidate).
+    \end{itemize}
+    \item \textbf{On snooped requests}
+    \begin{itemize}
+        \item \textbf{E} $\to$ \textbf{S} if another processor reads.
+        \item \textbf{E} $\to$ \textbf{I} if another processor writes.
+    \end{itemize}
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[shorten >=1pt,node distance=5cm,auto,every path/.style={>={Triangle[scale=1.5]}}]
+        \node[state,initial]    (I)                                 {\code{I}};
+        \node[state]            (S)     [right=of I]                {\code{S}};
+        \node[state]            (M)     [below=of I]                {\code{M}};
+        \node[state]            (E)     [right=of M]                {\code{E}};
+        \node[state,initial]    (I2)    [below=2cm of E]          {\code{I*}};
+
+        % --- local triggers (straight edges)
+        \path[->]
+            (M)     edge [loop below]                 node {Read/Write Hit} ()
+            (E)     edge [loop right]                 node {Read Hit} ()
+            (S)     edge [loop right]                 node {Read Hit} ()
+            (E)     edge                              node {Write Hit} (M)
+            (S)     edge [bend left=25]               node {Write Hit$^{1}$} (M)
+            (I2)    edge [bend left=40]               node {Read Miss$^{2}$} (E)
+            (I)     edge [bend left=40]               node {Read Miss$^{3}$} (S)
+            (I)     edge [bend left=10]               node [above right] {W. Miss$^{4}$} (M);
+
+        % --- snooped bus requests (wavy edges)
+        \path
+            (S) edge [bus, loop above]              node                {\textcolor{Red3}{\emph{Read Miss}}} ()
+            (M) edge [bus, bend left=10]            node [right]        {\textcolor{Red3}{\emph{Read Miss}}} (S)
+            (M) edge [bus, bend left=40]            node [above]        {\textcolor{Red3}{\emph{W. Miss/Inv.}}} (I)
+            (E) edge [bus]                          node [right]        {\textcolor{Red3}{\emph{Read Miss}}} (S)
+            (E) edge [bus, bend left=40]            node                {\textcolor{Red3}{\emph{Write Miss/Inv.}}} (I2)
+            (S) edge [bus]                          node                {\textcolor{Red3}{\emph{Write Miss/Inv.}}} (I);
+    \end{tikzpicture}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{\definition{MESI Protocol: Finite-State Machine (FSM)}. The states are: \code{M} (Modified), \code{E} (Exclusive), \code{S} (Shared), \code{I} (Invalid), and \code{I*} (Invalid, copy of state \code{I} for clarity; they are the same state). The transitions are triggered by local processor actions (solid arrows) or snooped bus transactions (wavy arrows). Notes:
+    \begin{itemize}
+        \item $^{1}$ If the block is in state \code{S}, a write hit must issue an invalidate on the bus before transitioning to \code{M};
+        \item $^{2}$ If no other cache has the block, it transitions to \code{E};
+        \item $^{3}$ If another cache has the block, it transitions to \code{S};
+        \item $^{4}$ Fetch data from memory via the bus (read-exclusive) and invalidate other caches.
+    \end{itemize}}
+    \label{fig: mesi-finite-state-machine}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When to Write Back to Memory?}}
+\end{flushleft}
+In MESI, a cache \textbf{writes back to memory only when evicting a dirty block}, i.e. when a line in \textbf{M (Modified)} is replaced or must be supplied to another core.
+\begin{itemize}
+    \item \textbf{Eviction of an M line}. If the cache needs to evict a line in \textbf{Modified (M)}, it must \textbf{write it back to memory} (because memory is stale). Transition from M $\to$ I, with write-back.
+    \item \textbf{Snooped Read Miss while in M}. Another processor requests the line. Our cache supplies the data (since memory is stale). Transition from M $\to$ S, with write-back.
+    \item \textbf{Snooped Write Miss / Invalidate while in M}. Another processor wants ownership of the line. Our cache must \textbf{write back the block to memory} before invalidating its copy. Transition from M $\to$ I, with write-back.
+\end{itemize}
+There is absolutely no need to write back to memory when transitioning from \textbf{E (Exclusive)}, \textbf{S (Shared)}, or \textbf{I (Invalid)} states, since these states are clean (memory is up-to-date) or invalid (not present in cache). In other words, \textbf{the only time a write-back is needed is when evicting a dirty block in M state}.

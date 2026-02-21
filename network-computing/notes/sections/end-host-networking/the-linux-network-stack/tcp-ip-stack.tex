@@ -1,0 +1,35 @@
+\subsubsection{TCP/IP Stack}
+
+The \textbf{TCP/IP stack} is the core component of the Linux network stack responsible for processing packets according to the TCP/IP protocol suite. It handles tasks such as reliable transport, ordering, congestion control, and flow control. It is the final stage in the receive path before packets are delivered to the application. After GRO and Netfilter have processed the packet, it enters the TCP/IP stack for protocol processing.
+\begin{equation*}
+    \text{NIC} \rightarrow \text{Driver} \rightarrow \text{GRO} \rightarrow \text{Netfilter} \rightarrow \text{TCP/IP} \rightarrow \text{Socket} \rightarrow \text{Application}
+\end{equation*}
+At this stage, the packet is an \texttt{sk\_buff} structure possibly containing merged packets from GRO, and it has passed through any applicable Netfilter rules. Now the kernel must handle \textbf{transport-layer logic}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does the TCP/IP stack do?}} It performs several critical functions:
+\begin{itemize}
+    \item \textbf{Generating ACKs}: for TCP packets, the stack generates ACKs to acknowledge received segments and maintain reliable communication.
+    
+    
+    \item \textbf{Updating the congestion window}: the stack updates the congestion window based on ACKs and network conditions to control the sending rate.
+    
+    
+    \item \textbf{Checking TCP checksum}: the stack verifies the integrity of TCP segments by checking the TCP checksum, ensuring that corrupted packets are detected and discarded.
+    
+    
+    \item \textbf{Managing retransmissions}: if a packet is lost or an ACK is not received within a timeout, the stack handles retransmissions to ensure reliable delivery.
+    
+    
+    \item \textbf{Maintaining flow state}: the stack keeps track of the state of each TCP connection, including sequence numbers, ACK numbers, and connection states (e.g., \texttt{ESTABLISHED}, \texttt{CLOSE\_WAIT}).
+    
+    
+    \item \textbf{Handling out-of-order segments}: when packets arrive out of order, the stack buffers and reorders them before delivering data to the application, ensuring correct in-order delivery.
+    
+    
+    \item \textbf{Flow control (receive window)}: the stack manages the receive window to control the flow of data from the sender, preventing buffer overflow and ensuring efficient data transfer.
+    
+    
+    \item \textbf{Managing timers}: the stack manages various timers (e.g., retransmission timer, delayed ACK timer) to ensure timely processing of packets and efficient communication.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Performance Implications}}: The TCP/IP stack is reliable, ordered, congestion-controlled, and flow-controlled, which means it must perform complex processing for each packet. This includes hash lookup for socket matching, TCP state management, congestion window adjustments, ACK scheduling, timer management, and buffer reassembly. This is not simple parsing; this is \textbf{stateful protocol machinery} (i.e., it must maintain and update state for each connection). As a result, the TCP/IP stack can be a \textbf{significant source of CPU overhead}, especially at high packet rates or with many active connections. The complexity of the TCP/IP stack is one of the main reasons why optimizations like GRO and Netfilter are important to reduce the load on this stage of the receive path.

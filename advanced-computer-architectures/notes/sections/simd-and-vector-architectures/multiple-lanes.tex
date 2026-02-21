@@ -1,0 +1,57 @@
+\subsection{Multiple Lanes}
+
+So far, in our vector model (VMIPS) we assumed:
+\begin{itemize}
+    \item Each \textbf{vector functional unit (VFU)} handles \textbf{one element per cycle}.
+    \item A vector of length $n$ therefore takes $n$ cycles to process (plus pipeline latency).
+\end{itemize}
+This is simple, but it \hl{limits throughput}. If $n = 64$, a single vector add still requires $\approx 64$ cycles, even if FUs are fully pipelined.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The idea of multiple lanes}}
+\end{flushleft}
+To scale performance, we \textbf{replicate the hardware pipelines into lanes}.
+\begin{itemize}
+    \item Each lane is an \textbf{independent datapath} with its own \textbf{slice of the vector register file} and functional unit(s).
+    \item If we have $L$ lanes, then $L$ \textbf{elements can be processed per cycle}.
+    \item Vector length $n$ then takes $\left\lceil \dfrac{n}{L} \right\rceil$ cycles.
+\end{itemize}
+This is analogous to \textbf{SIMD width} in modern processors.
+
+\highspace
+\begin{examplebox}
+    Suppose:
+    \begin{itemize}
+        \item Vector length (VL) $=$ 64
+        \item We want to execute $Y[i] = a \cdot X[i] + Y[i]$
+    \end{itemize}
+    \begin{enumerate}
+        \item With \textbf{1 lane}:
+        \begin{itemize}
+            \item Each element takes 1 cycle.
+            \item Multiply: 64 cycles.
+            \item Add: 64 cycles.
+            \item Total dominated by vector length.
+        \end{itemize}
+        \item With \textbf{4 lane}:
+        \begin{itemize}
+            \item Each cycle, 4 elements are processed in parallel.
+            \item Multiply: 16 cycles.
+            \item Add: 16 cycles.
+            \item Execution shrinks by a factor of 4.
+        \end{itemize}
+    \end{enumerate}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{microchip} \textbf{Architectural consequences}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Vector Register File (VRF)}. Must provide more ports: each lane needs \textbf{read and write} access. \hl{Bandwidth grows with number of lanes}.
+    \item \important{Load/Store Unit}. Needs to deliver multiple words per cycle. Often paired with \textbf{interleaved/banked memory} to sustain bandwidth.
+    \item \important{Instruction semantics}. ISA does \textbf{not} change: the programmer still writes \texttt{ADDV}, \texttt{MULV} etc. The hardware executes them faster thanks to wider lanes.
+\end{itemize}
+This is why vector machines are said to scale ``transparently'' with hardware width, unlike scalar unrolling.

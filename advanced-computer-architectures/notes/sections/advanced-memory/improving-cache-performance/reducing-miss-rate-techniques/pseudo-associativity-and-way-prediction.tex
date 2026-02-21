@@ -1,0 +1,199 @@
+\paragraph{Pseudo-Associativity \& Way Prediction}\label{paragraph: Pseudo-Associativity and Way Prediction}
+
+Increasing associativity reduces \textbf{conflict misses}, but it also \textbf{slows down the hit time} because the cache must compare \textbf{more tags in parallel}.
+
+\highspace
+These techniques aim to \textbf{get some of the benefits of associativity} \hl{without paying the full hit-time penalty}.
+\begin{itemize}
+    \item \definition{Way Prediction} (for Set-Associative Caches).
+    
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Problem with Set-Associative Caches.}} In an \textbf{n-way set-associative cache}:
+    \begin{itemize}
+        \item Each \textbf{set} has $n$ \textbf{ways} (cache lines).
+        \item When we access memory, we:
+        \begin{enumerate}
+            \item Find the correct \textbf{set} using the index bits.
+            \item \textbf{Compare the tag} against all $n$ ways in parallel to see if one matches (a \emph{hit}).
+        \end{enumerate}
+    \end{itemize}
+    The main issue, however, is that comparing all $n$ ways in parallel requires $n$ \textbf{comparators} and $n$ \textbf{tag lookups} per cycle. This \textbf{increases both power consumption and access time}.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The Idea of Way Prediction.}} Instead of checking \emph{all} ways at once, \textbf{predict} which may is likely to have the block:
+    \begin{itemize}
+        \item Hardware keeps a ``\textbf{way predictor}'' (like a small table) that records the \emph{last used way} for each set. The \definition{Way Predictor Table (WPT)}:
+        \begin{itemize}
+            \item \textbf{Indexed by}: the \textbf{set index bits} from the address.
+            \item \textbf{Entry size}: enough bits to encode one of the $n$ ways. For example, 4-way cache, need 2 bits per entry.
+            \item \textbf{Storage size}:
+            \begin{equation*}
+                \text{Number of sets} \times \text{Bits per entry}
+            \end{equation*}
+            \item \textbf{Contents}: ``\emph{Last hit way}'' for that set.
+        \end{itemize}
+        Visually:
+
+        \begin{table}[!htp]
+            \centering
+            \begin{tabular}{@{} c c c @{}}
+                \toprule
+                Set Index & Predict Way (2 bits) & Meaning \\
+                \midrule
+                0   & 00    & Way 0 \\ [.3em]
+                1   & 10    & Way 2 \\ [.3em]
+                2   & 01    & Way 1 \\ [.3em]
+                3   & 11    & Way 3 \\ [.3em]
+                4   & 10    & Way 2 \\ [.3em]
+                5   & 00    & Way 0 \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+
+        Each row corresponds to a set in the cache. The Predicted Way column stores a small code (2 bits here) telling which way is most likely to have the next hit for that set. The Meaning column shows the human-readable interpretation of those bits (Way 0, Way 1, etc.). This tiny table sits alongside the cache, indexed by the same set index bits as the cache itself.
+
+        For example, 4-way cache with 1024 sets:
+        \begin{itemize}
+            \item Index bits: 10 bits (for 1024 sets).
+            \item Way encoding: 2 bits.
+            \item Way Predictor Table size: $1024 \times 2 = 2048$ bits $\approx 256$ bytes.
+        \end{itemize}
+
+        \item When accessing memory:
+        \begin{enumerate}
+            \item \textbf{Address split}:
+            \begin{itemize}
+                \item \textbf{Tag bits}.
+                \item \textbf{Index bits}, select set in both the cache and WPT.
+            \end{itemize}
+            \item \textbf{WPT lookup}: read the predicted way (e.g., ``\emph{Way 2}'').
+            \item \textbf{Access predicted way}: fetch \textbf{tag} and \textbf{data} from only that way.
+            \item \textbf{Tag check}:
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{check}}] If tag matches $\rightarrow$ \textcolor{Green3}{\faIcon{check}} \textbf{Correct Prediction Hit}.
+                \item[\textcolor{Red2}{\faIcon{times}}] If tag mismatches $\rightarrow$ \textcolor{Red2}{\faIcon{times}} \textbf{Prediction Failure}:
+                \begin{enumerate}
+                    \item The \textbf{remaining $n-1$ ways} in the same set are read sequentially or in parallel (depends on design) to locate the block.
+                    \item \textbf{Two possibilities}:
+                    \begin{itemize}
+                        \item \textbf{Block is found in one of these ways} $\rightarrow$ \definition{Mispredic\-tion-Hit}. For example, predicted \emph{Way 2}, but the block is in \emph{Way 0} (same set!).
+                        \item \textbf{Block not found in any way} $\rightarrow$ \emph{Miss} $\rightarrow$ fetch from lower level (L2, DRAM).
+                    \end{itemize}
+                \end{enumerate}
+                The WPT is \textbf{updated only on hits}.
+            \end{itemize}
+        \end{enumerate}
+        \begin{examplebox}
+            Let's assume a \textbf{4-way set-associative cache}, with:
+            \begin{equation*}
+                \text{WPT}\left(\text{Set } 12\right) = \text{Way } 3
+            \end{equation*}
+            \begin{itemize}
+                \item \textbf{Access 1 - Correct Prediction Hit}
+                \begin{itemize}
+                    \item Address $\rightarrow$ Set 12, Tag matches \emph{Way 3} $\rightarrow$ Data returned in 1 cycle.
+                    \item WPT(12) stays \emph{Way 3}.
+                \end{itemize}
+                \item \textbf{Access 2 - Misprediction-Hit}
+                \begin{itemize}
+                    \item Address $\rightarrow$ Set 12, WPT says \emph{Way 3}.
+                    \item Tag mismatch $\rightarrow$ Search remaining ways: Check \emph{Way 0} $\rightarrow$ match found.
+                    \item Data returned with $+1$ cycle penalty.
+                    \item Update WPT(12) $=$ \emph{Way 0}.
+                \end{itemize}
+                \newpage
+                \item \textbf{Access 3 - Miss}
+                \begin{itemize}
+                    \item Address $\rightarrow$ Set 12, WPT says \emph{Way 0}.
+                    \item Tag mismatch $\rightarrow$ Search remaining ways: No match $\rightarrow$ Miss.
+                    \item Load block into \emph{Way 2} (chosen by LRU).
+                    \item Update WPT(12) $=$ \emph{Way 2}.
+                \end{itemize}
+            \end{itemize}
+            This \textbf{predict} $\rightarrow$ \textbf{check predicted way} $\rightarrow$ \textbf{search specific alternative way(s)} $\rightarrow$ \textbf{update table} loop is the real hardware logic.
+        \end{examplebox}
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this Works.}} Many programs have \textbf{temporal locality}, so if a block is in the cache now, it will likely still be in the cache when accessed again. This means the \textbf{last used way} for a set is often the \textbf{next} way that will be hit. Accuracy of way prediction can be 80-95\%, so most accesses are fast.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Reduces \textbf{power} (only one way read at a time for most hits).
+        \item[\textcolor{Green3}{\faIcon{check}}] Potentially reduces \textbf{access time} (one comparator instead of $n$).
+        \item[\textcolor{Green3}{\faIcon{check}}] Keeps the \textbf{flexibility} of set-associative caches.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Penalty} for misprediction: 1-2 extra cycles.
+        \item[\textcolor{Red2}{\faIcon{times}}] Needs \textbf{way predictor table} (small overhead).
+        \item[\textcolor{Red2}{\faIcon{times}}] Works best when there's strong locality, worse with random access.
+    \end{itemize}
+
+    \highspace
+    \begin{examplebox}[: The Hotel Room Analogy]
+        Imagine a big hotel with \textbf{many floors} (\textbf{\emph{sets}}) and \textbf{several rooms per floor} (\textbf{\emph{ways}}).
+        \begin{itemize}
+            \item Each \textbf{guest} is like a \textbf{data block}.
+            \item We are the \textbf{CPU}, looking for a specific guest.
+        \end{itemize}
+
+        \begin{flushleft}
+            \textcolor{Red2}{\faIcon{times-circle} \textbf{Without way prediction}}
+        \end{flushleft}
+        Every time we visit a floor, we knock on the door of \textbf{every single room} on that floor in parallel to see if our guest is inside.
+        \begin{itemize}
+            \item Fast in a weird ``everyone answers at once'' way,
+            \item But it's noisy, energy-draining, and requires a lot of ``staff'' to knock on all doors simultaneously.
+        \end{itemize}
+
+        \begin{flushleft}
+            \textcolor{Green3}{\faIcon{check-circle} \textbf{With way prediction}}
+        \end{flushleft}
+        The receptionist keeps a \textbf{small notebook} (the \textbf{\emph{way predictor}}) that remembers \textbf{the last room each guest stayed in} on each floor.
+        \begin{itemize}
+            \item When we arrive at a floor, the receptionist says: ``Last time this guest was on this floor, they were in \textbf{Room 3}''.
+            \item We knock \textbf{only on Room 3} first.
+            \begin{itemize}
+                \item If they're still there $\rightarrow$ we're done in 1 knock (fast, quiet).
+                \item If they've moved $\rightarrow$ we knock on the other doors (a little slower).
+            \end{itemize}
+        \end{itemize}
+
+        \begin{flushleft}
+            \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it works}}
+        \end{flushleft}
+        Guests usually stay in the \textbf{same room} until checkout (\textbf{\emph{temporal locality}}). Even if they move, most of the time we guess right, so we save knocking on every door.
+
+        \highspace
+        Way prediction is \textbf{not} about magically knowing where \emph{new guests} will go, it's about remembering where \textbf{current guests} are likely to be, and checking there first.
+    \end{examplebox}
+
+
+    \item \definition{Pseudo-Associativity} (or \definition{Column-Associativity}, for Direct-Mapped caches) is a clever trick to make a direct-mapped cache behave a bit like a 2-way set-associative cache without doubling the parallel hardware.
+    
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Problem it solves.}} A \textbf{direct-mapped cache} has \textbf{exactly one possible location} for each memory block. If two blocks map to the same line, they constantly evict each other (\textbf{conflict misses}). A \textbf{2-way set-associative cache} would fix that, but it requires:
+    \begin{itemize}
+        \item Two tag comparisons in parallel.
+        \item Two data arrays to read in parallel.
+        \item More area, power, and complexity.
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The Idea of Pseudo-Associativity.}} Instead of having two ways checked in parallel, a pseudo-associative cache checks them \textbf{sequentially}:
+    \begin{itemize}
+        \item For each index, store \textbf{two possible locations} (primary and secondary).
+        \item On an access:
+        \begin{enumerate}
+            \item \textbf{Check the primary location} (like a normal direct-mapped cache). If tag matches $\rightarrow$ \textbf{hit} in 1 cycle.
+            \item If not a match $\rightarrow$ check the \textbf{secondary location} (the ``pseudo-way'').
+            \begin{itemize}
+                \item If tag matches $\rightarrow$ \textbf{hit} but with an extra cycle of latency.
+                \item If still no match $\rightarrow$ miss $\rightarrow$ fetch from lower memory.
+            \end{itemize}
+        \end{enumerate}
+    \end{itemize}
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{How the secondary location is found.}} Often, the secondary location is \textbf{another index computed from the address} (e.g., by flipping the MSB of the index or XORing certain bits). This ensures that if two blocks map to the same primary index, they \emph{probably} don't also share the same secondary index.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why it works.}} Most accesses still hit in the primary location, so it is fast. If there's a conflict, there's a good cache the block is in the secondary location, then conflict miss avoided, but with slightly higher hit time. Greatly reduces \textbf{conflict misses} with little extra hardware compared to a full set-associative design.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Key Difference}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{Way Prediction}: Works for set-associative caches $\rightarrow$ reduces hit time.
+    \item \textbf{Pseudo-Associativity}: Works for direct-mapped $\rightarrow$ reduces conflict misses.
+\end{itemize}
+Both techniques are \textbf{hybrid approaches}. They try to \textbf{combine the speed of direct-mapped} with the \textbf{miss rate benefits of associativity}. Best suited for designs where \textbf{hit time is critical} and full associativity is too costly.

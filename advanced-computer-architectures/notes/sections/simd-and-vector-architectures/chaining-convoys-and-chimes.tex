@@ -1,0 +1,68 @@
+\subsection{Chaining, Convoys, and Chimes}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Problem}}
+\end{flushleft}
+In scalar pipelines we saw that \textbf{data dependencies} (RAW hazards) cause \textbf{stalls} unless we can forward results. In vector processors, something similar happens: many vector instructions in a loop depend on one another. For example, in DAXPY, the \texttt{ADDV} depends on the result of \texttt{MULV}. So we must understand:
+\begin{itemize}
+    \item \emph{How do dependent vector instructions overlap?}
+    \item \emph{How do we count the execution time (cycles) in the presence of vector dependencies?}
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Convoys}}
+\end{flushleft}
+A \definition{Convoy} is the set of vector instructions that can \textbf{start in the same cycle}, because they use different functional units (FUs).
+\begin{itemize}
+    \item Vector machines usually have multiple \textbf{pipelines} (for load/store, multiply, add, etc.).
+    \item Instructions in the same convoy can all \textbf{start together}, each in its own pipeline.
+\end{itemize}
+However only \textbf{one vector instruction per FU} per convoy. Order must respect dependencies. Convoys is like \textbf{issue packets} in VLIW, but dynamic.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Chimes}}
+\end{flushleft}
+A \definition{Chime} is one \textbf{round of execution of a convoy}.
+\begin{itemize}
+    \item Think of it as: one ``tick'' in which all FUs execute one element of their vector instruction.
+    \item The \textbf{number of chimes} is the \textbf{length of the vector instruction sequence} (in convoys), \underline{not} the number of elements.
+    \item For example, if we need 3 convoys to cover all instructions in a loop, then execution takes \textbf{3 chimes $\times$ vector length}.
+\end{itemize}
+Chimes is ``time steps'' of a vector loop execution.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Chaining}}
+\end{flushleft}
+\hl{Without} \definition{Chaining}, dependent vector instructions \textbf{must wait until the whole vector result is written back} before the consumer starts. With chaining: as soon as the \textbf{first element} of the producer is available, it can be forwarded to the consumer's FU. This allows \textbf{overlap of dependent vector ops}, element by element. It's the \textbf{vector analogue of scalar forwarding}. The result is fewer convoys and chimes and much lower latency.
+
+\begin{examplebox}[: DAXPY revisited]
+    Let's model $Y[i] = a \cdot X[i] + Y[i]$.
+    \begin{enumerate}
+        \item \textbf{Instructions}
+        \begin{itemize}
+            \item Load vector $X$.
+            \item Load vector $Y$.
+            \item Multiply vector ($a \cdot X$).
+            \item Add vector ($\text{result} + Y$).
+            \item Store result.
+        \end{itemize}
+        \item \textbf{Convoys without chaining}
+        \begin{itemize}
+            \item Convoy 1: Load $X$, Load $Y$.
+            \item Convoy 2: Multiply.
+            \item Convoy 3: Add.
+            \item Convoy 4: Store.
+            \item 4 convoys $\rightarrow$ 4 chimes $\times$ vector length.
+        \end{itemize}
+        \item \textbf{Convoys with chaining}
+        \begin{itemize}
+            \item Convoy 1: Load $X$, Load $Y$.
+            \item Convoy 2: Multiply $+$ Add (because chaining allows overlap).
+            \item Convoy 3: Store.
+            \item 3 convoys $\rightarrow$ 3 chimes $\times$ vector length.
+        \end{itemize}
+    \end{enumerate}
+\end{examplebox}

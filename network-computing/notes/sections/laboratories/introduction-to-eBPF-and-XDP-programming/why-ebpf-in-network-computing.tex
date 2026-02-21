@@ -1,0 +1,72 @@
+\subsection{Introduction to eBPF and XDP Programming}\label{sec:intro-ebpf-xdp}
+
+\subsubsection{Why eBPF in Network Computing}
+
+Before touching \textbf{syntax, maps, or XDP}, we need to answer a simple question: \textbf{\emph{why does eBPF even exist, and why is it relevant for modern networks?}}
+
+\highspace
+For a long time, networking research focused on \textbf{the network itself}: routers, switches, and the middleboxes (e.g., firewalls, load balancers) that process packets as they traverse the network. But in \textbf{datacenters and clouds}, something changed: we control the \textbf{end hosts} (servers), the \textbf{kernel}, the \textbf{NIC}, and we deploy software \textbf{much faster} than the traditional hardware upgrade cycles. So the end-host becomes the \textbf{most flexible place to innovate}.
+
+\highspace
+For example, think about what happens to a packet when it reaches a server. Every packet must cross:
+\begin{enumerate}
+    \item NIC
+    \item Driver
+    \item Kernel networking stack
+    \item Userspace application
+\end{enumerate}
+If we can intercept packets early, we can drop unwanted traffic, measure flows, rewrite headers or enforce policies. And we can do it \textbf{without touching the network fabric}. That's end-host programmability: the \hl{ability to run custom code on the server to process packets as they arrive, directly at the end host, instead of relying only on fixed kernel or network behavior}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why eBPF vs kernel modules vs user-space?}}
+\end{flushleft}
+Now we have a good motivation for end-host programmability, but why eBPF? Why not just write a kernel module or a user-space program?
+\begin{itemize}
+    \item \textbf{User-space networking} (e.g., DPDK, netmap) means processing network packets in user-space applications instead of inside the kernel networking stack. In other words, the packet is delivered \textbf{to a user program}, and \emph{that program} decides what to do with it.
+    
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros:}} easy to write and debug, no risk of crashing the kernel, and can leverage user-space libraries and tools.
+
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons:}} Packets must cross the kernel boundary to reach the user-space program, which adds latency and overhead. Also, it requires context switching between kernel and user-space, copies of packet data, and may not be suitable for high-performance applications.
+
+    It is too slow for high-rate packet processing.
+
+
+    \item \textbf{Kernel modules} are pieces of code that can be loaded into the kernel to extend its functionality. They run in kernel space and have direct access to kernel data structures and functions.
+
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Pros:}} can achieve high performance since they run in kernel space, and can directly manipulate kernel data structures.
+
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Cons:}} writing kernel modules is complex and error-prone, and a bug can crash the entire system. They also require recompilation and loading into the kernel, which is less flexible than eBPF.
+
+
+    \item \textbf{eBPF} (extended Berkeley Packet Filter) is a technology that allows \textbf{running sandboxed programs in the kernel without the need for kernel modules}. eBPF programs are verified for safety before execution, and they can be attached to various hooks in the kernel, including network events. It was designed to sit exactly in the middle of the spectrum between user-space and kernel modules:
+    \begin{table}[!htp]
+        \centering
+        \begin{tabular}{@{} l c @{}}
+            \toprule
+            Property & eBPF \\
+            \midrule
+            Runs in kernel              & \textcolor{Green3}{\faIcon{check}} \\[.2em]
+            Safe by design              & \textcolor{Green3}{\faIcon{check}} \\[.2em]
+            Dynamically loaded          & \textcolor{Green3}{\faIcon{check}} \\[.2em]
+            No kernel patches           & \textcolor{Green3}{\faIcon{check}} \\[.2em]
+            Near line-rate performance  & \textcolor{Green3}{\faIcon{check}} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{So, what does XDP have to do with it?}}
+\end{flushleft}
+We will talk about XDP in the next sections, but the short answer is that \textbf{XDP (eXpress Data Path)} is a specific use case of eBPF that allows us to run eBPF programs at the earliest point in the packet processing pipeline, right after the NIC receives a packet.
+\begin{equation*}
+    \text{NIC} \rightarrow \underbrace{\text{Driver}}_{\text{XDP hook}} \rightarrow \text{Kernel} \rightarrow \text{Socket} \rightarrow \text{User-space application}
+\end{equation*}
+This means we can achieve \textbf{line-rate packet processing} and make decisions on packets before they even enter the kernel networking stack, which is crucial for high-performance applications like DDoS mitigation, load balancing, and traffic filtering.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Performance \& Safety Trade-offs}}
+\end{flushleft}
+eBPF makes a \emph{deal} with the kernel: it allows us to \textbf{run custom code in the kernel}, but it \textbf{enforces strict safety checks} to prevent crashes and security issues. This means that while we can achieve near line-rate performance, we also have to work within the constraints of the eBPF verifier, which may reject programs that are too complex or unsafe. However, this trade-off is what makes eBPF a powerful tool for network computing: it gives us the flexibility to innovate at the end host while maintaining the stability and security of the system.

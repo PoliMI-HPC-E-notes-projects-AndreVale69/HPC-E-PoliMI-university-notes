@@ -26,6 +26,7 @@
 \usepackage{qrcode}
 \usepackage{fontawesome5}
 \usepackage{ragged2e}
+\usepackage{soul}                   % highlight text (as a highlighter)
 \usepackage{cite}                   % references
 \usepackage{imakeidx}               % index
 \makeindex[program=makeindex, columns=1,
@@ -33,6 +34,8 @@
            intoc,
            options={-s index-style.ist}]
 \usepackage{fancyhdr}
+\usepackage{pdflscape}   % rotates the page in the PDF viewer
+\usepackage{tikz}
 
 %\pdfcompresslevel=0
 %\pdfobjcompresslevel=0
@@ -60,6 +63,54 @@
     tabsize=2
 }
 \lstset{style=mystyle}
+
+% define language for listings for CMakeLists.txt
+\lstdefinelanguage{CMake}{
+    morekeywords={cmake_minimum_required, project, find_package, add_executable,
+                  add_library, target_link_libraries, include_directories,
+                  set, option, if, else, elseif, endif, foreach, endforeach,
+                  message, return, function, macro, include, list, string,
+                  file, install, configure_file, add_custom_command,
+                  add_custom_target, enable_language, enable_testing,
+                  add_test, find_program, find_file, find_library,
+                  find_path, mark_as_advanced, set_property, get_property,
+                  get_filename_component, math, try_compile, try_run,
+                  export, export_library_dependencies, target_include_directories,
+                  target_compile_definitions, target_compile_options,
+                  target_sources, target_link_options, check_cxx_compiler_flag,
+                  check_c_compiler_flag, check_include_file, check_include_file_cxx,
+                  check_library_exists, check_symbol_exists, check_type_size,
+                  check_struct_size, check_function_exists, check_cxx_source_compiles,
+                  check_c_source_compiles, check_cxx_source_runs, check_c_source_runs,
+                  cmake_parse_arguments, cmake_policy, cmake_host_system_information,
+                  cmake_language, cmake_path, cmake_version, cmake_dependent_option,
+                  cmake_print_properties, cmake_print_variables, cmake_server,
+                  cmake_trace, cmake_trace_expand, cmake_untrace, cmake_parse_json,
+                  % ------------------------------------------------------------
+                  % deal.II specific commands
+                  deal_ii_initialize_cached_variables,
+                  deal_ii_setup_target,
+                  % ------------------------------------------------------------
+                  add_definitions, NOT, AND, OR, STREQUAL, STRING, CACHE},
+    % add different colors for VERSION, REQUIRED, etc. for example purple
+    morekeywords=[2]{VERSION, STATUS, HINTS},
+    keywordstyle=[2]\color{blue}\bfseries,
+    sensitive=true,
+    morecomment=[l]{\#},
+    morestring=[b]",
+    morestring=[b]',
+}
+
+\lstdefinelanguage{prm}{
+    morekeywords={set, include, subinclude, loop, endl, comment, endcomment,
+                  if, elseif, else, endif, entry, declare_entry, parse_input,
+                  get, get_integer, get_double, get_bool, get_list,
+                  Patterns, Anything, Integer, Double, Bool},
+    sensitive=true,
+    morecomment=[l]{\#},
+    morestring=[b]",
+    morestring=[b]',
+}
 
 
 % thanks Mico: https://tex.stackexchange.com/a/60218/312896
@@ -93,18 +144,34 @@
 \newtheorem{theorem}{\textcolor{Red3}{\underline{Theorem}}}
 \renewcommand{\qedsymbol}{QED}
 \newcommand{\dquotes}[1]{``#1''}
+\newcommand{\code}[1]{\texttt{#1}}
+% I never remember every icon, so I use custom commands to do this
+\newcommand{\speedIcon}{tachometer-alt}
 \newcommand{\longline}{\noindent\rule{\textwidth}{0.4pt}}
+\newcommand{\important}[1]{\textcolor{red}{\textbf{#1}}}
 \newcommand{\circledtext}[1]{\raisebox{.5pt}{\textcircled{\raisebox{-.9pt}{#1}}}}
 \newcommand{\definition}[1]{\textcolor{Red3}{\textbf{#1}}\index{#1}}
 \newcommand{\example}[1]{\textcolor{Green4}{\textbf{#1}}}
 \newcommand{\highspace}{\vspace{1.2em}\noindent}
-\newcommand{\version}{v0.2.0}
+% returns the example counter value
+\newcommand{\theexample}{\value{example}}
+\newcommand{\hqlabel}[2]{\label{#1}\hypertarget{#1}{#2}}
+\newcommand{\hqpageref}[1]{\hyperlink{#1}{\hypergetpageref{#1}}}
+\newcommand{\version}{v0.4.0}
+
+% \includeonly{
+%     sections/laboratory/poisson-1d-convergence-and-error-analysis/why-convergence-and-error-analysis,
+%     sections/laboratory/poisson-1d-convergence-and-error-analysis/problem-setup-for-mms,
+%     sections/laboratory/poisson-1d-convergence-and-error-analysis/what-changes-from-the-first-poisson-1d-solver,
+%     sections/bibliography-and-index
+% }
 
 
 \begin{document}
     \newcounter{definition}[section]
     \newcounter{example}[section]
     \newcounter{exercise}[section]
+    \newcounter{remark}[section]
     
     \newtcolorbox[use counter = definition]{definitionbox}[1][]{%
         breakable,
@@ -131,6 +198,15 @@
         colframe=Green4!75!black,
         fonttitle=\bfseries,
         title={Example \thetcbcounter#1} %
+    }
+
+    \newtcolorbox[use counter = remark]{remarkbox}[1][]{%
+      breakable,
+      enhanced,
+      colback=blue!5!white,
+      colframe=blue!75!black,
+      fonttitle=\bfseries,
+      title={Remark \thetcbcounter #1} %
     }
 
     \newtcolorbox[]{deepeningbox}[1][]{%
@@ -177,6 +253,32 @@
     \include{sections/basic-concepts/numerical-methods}
     \include{sections/basic-concepts/from-mathematical-to-numerical-problem/the-mathematical-problem}
     \include{sections/basic-concepts/from-mathematical-to-numerical-problem/the-numerical-problem}
+
+    %%%%%%%%%%%%%%
+    % Laboratory %
+    %%%%%%%%%%%%%%
+    \include{sections/laboratory/introduction}
+    \include{sections/laboratory/fem-for-poisson-1d/what-is-the-poisson-equation}
+    \include{sections/laboratory/fem-for-poisson-1d/problem-definition}
+    \include{sections/laboratory/fem-for-poisson-1d/weak-formulation}
+    \include{sections/laboratory/fem-for-poisson-1d/galerkin-formulation}
+    \include{sections/laboratory/fem-for-poisson-1d/finite-element-formulation/constructing-the-finite-element-space-vh}
+    \include{sections/laboratory/fem-for-poisson-1d/finite-element-formulation/from-vh-to-discrete-problem}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/install-and-setup}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/program-structure}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/general-structure}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/header-file}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/setup-turning-math-objects-into-dealii-objects}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/assemble-compute-a-and-f}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/solve-phase}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/output-phase}
+    \include{sections/laboratory/fem-for-poisson-1d/implementation-in-dealii/extensions}
+    \include{sections/laboratory/poisson-1d-convergence-and-error-analysis/why-convergence-and-error-analysis}
+    \include{sections/laboratory/poisson-1d-convergence-and-error-analysis/problem-setup-for-mms}
+    \include{sections/laboratory/poisson-1d-convergence-and-error-analysis/what-changes-from-the-first-poisson-1d-solver}
+    \include{sections/laboratory/poisson-1d-convergence-and-error-analysis/non-smooth-manufactured-case}
+    \include{sections/laboratory/poisson-1d-convergence-and-error-analysis/typical-pitfalls-and-debugging-checklist}
+    \include{sections/laboratory/poisson-1d-convergence-and-error-analysis/extensions-function-parser}
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%
     % Bibliography and index %

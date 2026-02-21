@@ -1,0 +1,360 @@
+\paragraph{Avoid address translation (VIPT caches)}\label{paragraph: Avoid address translation - VIPT}
+
+\begin{remarkbox}[: Virtual Page and Physical Page]\label{remarkbox: VA and PP}
+    Before starting this chapter, we need to review some concepts from the Operating Systems topic. The VIPT and VIVT caches are based on virtual and physical pages. But what are these pages, exactly?
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why paging exists}}
+    \end{flushleft}
+    Programs think they have a \textbf{large, continuous address space} (from 0 up to $2^{32}$ or $2^{64}$). In reality, RAM is \textbf{finite} and fragmented. Paging is the Operating System and Hardware mechanism that:
+    \begin{itemize}
+        \item Divides memory into \textbf{fixed-size blocks}.
+        \item Maps \textbf{virtual addresses} (from the program's point of view) onto \textbf{physical addresses} (real RAM).
+    \end{itemize}
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{book} \textbf{Virtual Page (VP)}}
+    \end{flushleft}
+    A \definition{Virtual Page (VP)} is a block of the \textbf{virtual address space}. All virtual pages have the same fixed size (commonly 4 KB, but can be larger like 2 MB, 1 GB). Each process has its \textbf{own set of virtual pages} that ensures \textbf{isolation} (process \emph{A} can't see \emph{B}'s memory). Think of a virtual page as \textbf{a numbered box in the program's illusion of memory}.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{book} \textbf{Physical Page (Frame)}}
+    \end{flushleft}
+    A \definition{Physical Page} (often called a \definition{Frame}) is a block of \textbf{physical RAM} of the same size as a virtual page. The OS maps virtual pages to physical frames. Multiple virtual pages (from different processes, or even the same process) may map to the \textbf{same physical frame} (shared memory). So a physical page is \textbf{a real storage slot in RAM}.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{link} \textbf{Virtual $\xrightarrow{\text{to}}$ Physical mapping}}
+    \end{flushleft}
+    Translation is stored in the \textbf{page table} (per process). Each entry contains:
+    \begin{equation*}
+        \text{Virtual Page Number (VPN)} = \text{Physical Frame Number (PFN)} + \text{flags}
+    \end{equation*}
+    The \textbf{page offset} (low-order bits) is unchanged. For example, (4 KB pages, then 12-bit offset):
+    \begin{itemize}
+        \item \textbf{VA} $=$ \texttt{[VPN | Offset]} $=$ \texttt{0x7FFE1 | 0x234}
+        \item Page table: \texttt{VPN 0x7FFE1} $\rightarrow$ \texttt{PFN 0x01AB0}
+        \item \textbf{PA} $=$ \texttt{[PFN | Offset]} $=$ \texttt{0x01AB0 | 0x234}
+    \end{itemize}
+
+    \newpage
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why the offset doesn't change}}
+    \end{flushleft}
+    Memory is divided into \textbf{pages} of fixed size (e.g. 4 KB). A page is like a \textbf{block of consecutive bytes}. The \textbf{page offset} tells us \emph{where inside that page} the byte/word lives. When the OS translates a \textbf{virtual page} to a \textbf{physical frame}, it only changes the \textbf{page number part} (VPN to PFN). The \textbf{offset inside the page stays identical}, because the location inside the block doesn't change. So the mapping looks like this:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \text{Virtual Address}  &=& \texttt{[}\underbrace{\texttt{VPN}}_{\text{translated}}\texttt{ | }\underbrace{\texttt{Offset}}_{\text{same}}\texttt{]} \\ [1.3em]
+            \text{Physical Address} &=& \texttt{[}\underbrace{\texttt{PFN}}_{\text{translated}}\texttt{ | }\underbrace{\texttt{Offset}}_{\text{same}}\texttt{]}
+        \end{array}
+    \end{equation*}
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What the offset is for}}
+    \end{flushleft}
+    The offset is the \textbf{position inside the page}. For example, if page size is 4 KB, that is $2^{12}$ bytes, then the offset is $12$ bits. It tells us: ``\emph{go to byte \#X inside this 4 KB block}''. So the \hl{VPN} chooses \textbf{which block of memory} and the \hl{offset} chooses \textbf{which byte within that block}.
+
+    \highspace
+    Think of a city with identical hotel buildings, each having rooms numbered 0-4095. The \textbf{hotel building number} is like the page number (VPN $\xrightarrow{\text{to}}$ PFN translation may change this). The \textbf{room number inside the hotel} is like the page offset, it never changes. If we were in room \texttt{0x234} before translation, we'll still be in room \texttt{0x234} after translation, just in a different hotel building.
+
+    \highspace
+    \begin{examplebox}[: Offset]
+        Imagine:
+        \begin{itemize}
+            \item Page size $=$ 4 KB
+            \item Virtual Address $=$ \texttt{0x7FFE\_1234}
+        \end{itemize}
+        Breakdown:
+        \begin{itemize}
+            \item VPN $=$ \texttt{0x7FFE1}
+            \item Offset $=$ \texttt{0x234}
+        \end{itemize}
+        Page table says: VPN \texttt{0x7FFE1} $\xrightarrow{\text{to}}$ PFN \texttt{0x01AB0}. So physical address is \texttt{0x01AB0\_234}. Notice the \textbf{low 12 bits} (\texttt{0x234}) didn't change.
+    \end{examplebox}
+
+    \newpage
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{book} \textbf{Quick Summary}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{Virtual Page (VP)}: block in program's virtual memory.
+        \item \textbf{Physical Page (Frame)}: block in actual RAM.
+        \item \textbf{Page offset}: same in both, ensures byte position inside page.
+        \item \textbf{Page table}: maps VP $\rightarrow$ Physical Frame.
+    \end{itemize}
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Analogy}}
+    \end{flushleft}
+    \begin{itemize}
+        \item Virtual Pages $=$ hotel room numbers on a booking site (illusion of continuous availability).
+        \item Physical Pages $=$ real hotel rooms across different hotels (real memory).
+        \item Page table $=$ reception desk list mapping booking numbers to actual room keys.
+        \item TLB (see the explanation below) $=$ post-it note with our current room key to avoid asking the receptionist each time.
+    \end{itemize}
+\end{remarkbox}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The problem.}} Modern CPUs use \textbf{virtual addresses} (what our program sees) instead of physical addresses (actual DRAM locations). The mapping from virtual to physical is done by the \textbf{page table} in memory. But doing a page table lookup in memory \textbf{every time} would be \textbf{too slow} (extra memory access per instruction!).
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{The solution.}} The \definition{Translation Lookaside Buffer (TLB)} is a \textbf{small, fast cache} that stores the \textbf{most recent virtual-to-physical address translations}. On every memory access:
+\begin{enumerate}
+    \item CPU generates a \textbf{virtual address}.
+    \item The \textbf{TLB is checked} to see if the translation is cached.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{TLB hit} $\rightarrow$ use physical address immediately.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{TLB miss} $\rightarrow$ walk the page table in memory (slow), then insert result into TLB.
+    \end{itemize}
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Another Problem...}}
+\end{flushleft}
+If we always wait for the TLB before touching the cache, every cache hit would be delayed by the \textbf{TLB translation time}. For example:
+\begin{itemize}
+    \item Cache hit time alone: 1 cycle.
+    \item TLB lookup: 1 cycle.
+    \item Sequential: 2 cycles hit time, this doubles the critical latency.
+\end{itemize}
+Since cache hits happen the vast majority of the time ($> 90\%$), even one extra cycle is a \textbf{huge slowdown}. The motivation is simple: we want to \textbf{avoid adding TLB latency to every cache hit}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The Solution: Virtually Indexed, Physically Tagged (VIPT) Caches}}
+\end{flushleft}
+A \definition{Virtually Indexed, Physically Tagged (VIPT) Cache} is a cache design where:
+\begin{itemize}
+    \item The \textbf{index} (which set to look at) is taken from the \textbf{virtual address}.
+    \item The \textbf{tag} (to confirm if it's the right block) comes from the \textbf{physical address} after TLB translation.
+\end{itemize}
+This allows:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Cache access to start immediately} using the virtual address.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Correctness guaranteed} by checking the physical tag once translation is ready.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How VIPT Works}}
+\end{flushleft}
+\begin{enumerate}
+    \item CPU issues a \textbf{virtual address}.
+    \item The cache controller uses the \textbf{index bits from the virtual address} to pick a cache set right away (no need to wait for TLB).
+    \setcounter{enumi}{\theenumi}
+    \item Meanwhile, the \textbf{TLB} translates the virtual page number into the physical page number.
+    \item The \textbf{physical tag} is compared against the tags stored in the chosen set.
+    \item If there's a match $\rightarrow$ \textbf{cache hit}.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{But wait. Why does VIPT use an index and a tag?}}
+\end{flushleft}
+\begin{itemize}
+    \item If we wait for the TLB before cache access $\rightarrow$ \textbf{slow} (extra cycle or two).
+    \item If we skip the TLB and just use virtual addresses in the cache (Virtually Indexed, Virtually Tagged design, VIVT) $\rightarrow$ \textbf{synonyms problem}.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Synonyms Problem}}
+\end{flushleft}
+Virtual memory allows \textbf{different Virtual Addresses (VAs)} to map to the \textbf{same Physical Address (PA)}. This can happen with: shared memory between processes; memory-mapped files; multiple mappings (aliases) of the same physical page. So \textbf{two VAs can point to the same PA}.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is this a problem for caches?}} Suppose the cache is indexed/tagged by \textbf{virtual address (VIVT design)}:
+\begin{itemize}
+    \item \texttt{VA1} $\rightarrow$ \texttt{PA = 0x1000}
+    \item \texttt{VA2} $\rightarrow$ \texttt{PA = 0x1000} (alias, same physical page)
+\end{itemize}
+But since the cache only sees the \emph{virtual tags}:
+\begin{itemize}
+    \item \texttt{VA1} might go into Set 3 with Tag \texttt{VA1}.
+    \item \texttt{VA2} might go into Set 7 with Tag \texttt{VA2}.
+\end{itemize}
+Now the \emph{same physical memory block} is \hl{duplicated} in two cache lines.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Where is the danger?}} Imagine:
+\begin{itemize}
+    \item CPU writes to \texttt{VA1} (updates cache line in Set 3).
+    \item CPU later reads \texttt{VA2} (different cache line in Set 7).
+\end{itemize}
+As a result, the CPU gets \textbf{obsolete data}, because the write through \texttt{VA1} wasn't visible via \texttt{VA2}. That breaks memory coherence, which is unacceptable.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{How VIPT avoids this.}} In a \textbf{VIPT cache}:
+\begin{itemize}
+    \item \textbf{Index} comes from \textbf{page offset bits} (same in VA and PA; see the remark box on page \pageref{remarkbox: VA and PP}).
+    \item \textbf{Tag} checked against physical address (after TLB).
+\end{itemize}
+So even if \texttt{VA1} and \texttt{VA2} differ in their higher bits, as long as they map to the same PA:
+\begin{itemize}
+    \item They land in the \textbf{same set} (because offset bits are identical, same in Virtual Address and Physical Address).
+    \item And only one of them matches in the tag comparison (because tag uses PA, not VA).
+\end{itemize}
+Result: no duplication, no stale data.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is ``the offset doesn't change'' essential for VIPT?}} Since offset bits are guaranteed to be identical between VA and PA: we can safely use them to index into the cache before translation finishes. No risk of mismatch. That's the \hl{page offset trick}.
+
+\highspace
+\begin{examplebox}[: Why is VIPT better than VIVT?]
+    Imagine:
+    \begin{itemize}
+        \item Page size $=$ 4 KB, then 12-bit page offset.
+        \item Cache block size $=$ 64 B, then 6-bit block offset.
+        \item Cache $=$ 4 KB, direct-mapped $\rightarrow$ needs 64 sets $\rightarrow$ 6 index bits.
+    \end{itemize}
+    So address breakdown:
+    \begin{equation*}
+        \begin{array}{rcl}
+            \text{Virtual Address (VA)} &=& \left[\text{Virtual Page Number} \,\,\, | \,\,\, \text{Page Offset}\right] \\ [.3em]
+            \text{Page Offset (12 bits)} &=& \left[\text{Index} (6) \,\,\, | \,\,\, \text{Block offset} (6)\right] \\
+        \end{array}
+    \end{equation*}
+    Translation:
+    \begin{itemize}
+        \item VA upper bits (Virtual Page Number) $\rightarrow$ via TLB $\rightarrow$ Physical Page Number (PPN).
+        \item Page Offset stays the same in VA and PA.
+    \end{itemize}
+
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Case: Two aliases}}
+    \end{flushleft}
+    Suppose the OS maps two different virtual pages to the \textbf{same physical page} (shared memory):
+    \begin{itemize}
+        \item \texttt{VA1 = 0x4000\_1234} $\rightarrow$ PA $=$ \texttt{0x1000\_1234}
+        \item \texttt{VA2 = 0x8000\_1234} $\rightarrow$ PA $=$ \texttt{0x1000\_1234}
+    \end{itemize}
+    Both point to the same physical memory at \texttt{0x1000\_1234}.
+
+    \begin{flushleft}
+        \textcolor{Red2}{\faIcon{times} \textbf{If cache is Virtually Indexed, Virtually Tagged (VIVT)}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \texttt{VA1} index $=$ bits $[11:6]$ of \texttt{0x4000\_1234} $\rightarrow$ suppose $=$ \texttt{Set 10}.
+        \item \texttt{VA2} index $=$ bits $[11:6]$ of \texttt{0x8000\_1234} $\rightarrow$ suppose $=$ \texttt{Set 42}.
+    \end{itemize}
+    So:
+    \begin{itemize}
+        \item \texttt{VA1} loads physical block $\rightarrow$ stored in \texttt{Set 10} with \texttt{Tag = VA1}.
+        \item \texttt{VA2} loads the same physical block $\rightarrow$ stored in \texttt{Set 42} with \texttt{Tag = VA2}.
+    \end{itemize}
+    Now the same physical data lives \textbf{twice} in the cache. If CPU writes through \texttt{VA1}, the copy in \texttt{Set 42} (\texttt{VA2}) is stale, then \hl{synonym problem}!
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check} \textbf{If cache is Virtually Indexed, Physically Tagged (VIPT)}}
+    \end{flushleft}
+    Index still comes from Page Offset bits $[11:6]$. Since \texttt{VA1} and \texttt{VA2} share the \textbf{same Page Offset} (\texttt{0x234}), they both map to \texttt{Set 10}. Tag check uses \textbf{Physical Page Number} (\texttt{0x1000}) from TLB. So:
+    \begin{itemize}
+        \item \texttt{VA1} loads block $\rightarrow$ goes into \texttt{Set 10}, \texttt{Tag = 0x1000}.
+        \item \texttt{VA2} accesses $\rightarrow$ goes to \texttt{Set 10}, \texttt{Tag = 0x1000} $\rightarrow$ \textbf{hits the same line}.
+    \end{itemize}
+    Only one copy exists, consistent for both aliases, then \hl{synonym problem solved}!
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{check-circle} \textbf{Key takeaway}}
+    \end{flushleft}
+    \begin{itemize}
+        \item \textbf{Virtually Indexed, Virtually Tagged (VIVT)}: Index and tag from Virtual Address, then duplicates possible.
+        \item \textbf{Virtually Indexed, Physically Tagged (VIPT)}: Index from Virtual Address's page offset (safe), tag from Physical Address, then no duplicates.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Ok, now we can sleep peacefully knowing that the Synonym Problem has been solved.}}
+\end{flushleft}
+\hl{Not at all!} There is still a \textbf{second problem}, the \textbf{cache size restriction}, which comes directly from the bit-level math of VIPT.
+
+\highspace
+First, let's review how indexing works. Cache indexing uses some bits of the \textbf{address}:
+\begin{equation*}
+    \texttt{[ Tag | Index | Block Offset ]}
+\end{equation*}
+\begin{itemize}
+    \item \textbf{Block Offset}: selects the byte/word inside the cache line (e.g. 6 bits for 64B line).
+    \item \textbf{Index}: selects the cache set (which row of the cache to look at).
+    \item \textbf{Tag}: checked against stored tag to confirm it's the right line.
+\end{itemize}
+We said:
+\begin{itemize}
+    \item The \textbf{index bits must come only from the Page Offset} (because those bits are identical in VA and PA).
+    \item BUT, if the cache needs \emph{more index bits} than what fits inside the Page Offset, we'll accidentally use \textbf{VPN bits}, which may change after translation, then \hl{synonym problem reappears}.
+\end{itemize}
+Therefore, we \textbf{must restrict the cache size} to ensure that the index bits are a subset or a set of the page offset bits.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{The Cache Size Restriction formula}}
+\begin{equation}
+    \begin{array}{rcl}
+        \text{Cache size per way} & \leq & \text{Page size} \\ [.3em]
+        \text{Total cache size} \div \text{Associativity} & \leq & \text{Page size}
+    \end{array}
+\end{equation}
+Why? Because the size of the cache and the associativity is equal to indexing per way. If that exceeds the page size, then the index needs bits outside the page offset.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How CPUs deal with this}}
+\end{flushleft}
+Designers choose \textbf{L1 sizes and associativity} carefully so the restriction is met. For example, many modern CPUs use 32 KB, 8-way L1 caches with 4 KB pages, that is safe, because $4$ KB $\times$ 8 $=$ 32 KB. Higher-level caches (L2, L3) are usually \textbf{physically indexed, physically tagged (PIPT)}, so they don't suffer this limitation.
+
+\highspace
+So the second problem is VIPT is only safe if the cache isn't ``\emph{too big per way}''. Otherwise, synonym issues come back.
+
+\highspace
+\begin{examplebox}[: Second VIPT problem]
+    Imagine:
+    \begin{itemize}
+        \item Page size $=$ 4 KB $=$ $2^{12}$ $=$ 12 offset bits.
+        \item Block size $=$ 64 B $2^6$ $=$ 6 block offset bits.
+    \end{itemize}
+    That leaves 6 bits from the offset for \textbf{indexing}. So \textbf{64 sets per way} max. Now, if cache is 32 KB, 4-way associative, we have 8 KB per way:
+    \begin{itemize}
+        \item Needs 7 index bits.
+        \item But offset gave us only $12 - 6 = 6$ safe index bits.
+        \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] 1 index bit would come from VPN, so potential synonym!
+    \end{itemize}
+    So max L1 size in this case:
+    \begin{equation*}
+        \text{Page size (4 KB)} \times \text{Associativity (4)} = 16\, \text{KB}
+    \end{equation*}
+    If we want a 32 KB VIPT L1 cache, we must increase associativity (e.g., 8-way).
+\end{examplebox}
+
+\highspace
+\begin{takeawaysbox}[: VIPT Caches]
+    \begin{itemize}
+    \item \textbf{Motivation:} Avoid adding TLB latency to every cache hit.
+    \item \textbf{VIPT Idea:} 
+        \begin{itemize}
+        \item Use \textbf{virtual address offset bits} to index the cache (safe, identical in VA and PA).
+        \item Use \textbf{physical address bits} (after TLB) for tag comparison.
+        \end{itemize}
+    \item \textbf{Synonym Problem:} Two different VAs can map to the same PA. 
+        \begin{itemize}
+        \item In VIVT: block duplicated in different sets → stale data risk.
+        \item In VIPT: same offset ensures same set; physical tag ensures one unique copy.
+        \end{itemize}
+    \item \textbf{Page Offset Trick:} Offset doesn’t change in VA→PA mapping, so it can safely be used for indexing.
+    \item \textbf{Cache Size Restriction:} 
+        \[
+        \frac{\text{Cache size}}{\text{Associativity}} \leq \text{Page size}
+        \]
+        Otherwise index bits may come from VPN, reintroducing synonym issues.
+    \item \textbf{Practical Note:} CPUs carefully size L1 caches (e.g., 32KB, 8-way with 4KB pages is safe). 
+            Higher-level caches (L2, L3) are usually PIPT.
+    \end{itemize}
+\end{takeawaysbox}

@@ -1,0 +1,126 @@
+\subsubsection{List-Based Scheduling Algorithm}\label{subsubsection: List-Based Scheduling Algorithm}
+
+The \definition{List-Based Scheduling Algorithm} is a realistic and practical scheduling technique that improves over ASAP by taking into account \textbf{resource constraints}.
+
+\highspace
+Unlike ASAP (which assumes infinite resources), \textbf{list-based scheduling}:
+\begin{itemize}
+    \item Works with a limited number of functional units (ALU, MUL, etc.).
+    \item Ensures that at each cycle:
+    \begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+        \item We \textbf{do not oversubscribe} any hardware unit.
+        \item We only schedule instructions \textbf{whose operands are ready}.
+    \end{itemize}
+\end{itemize}
+This reflects \textbf{real hardware limitations} in VLIW superscalar, or statically scheduled pipelined processors.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Algorithm Steps}}
+\end{flushleft}
+At each cycle, the algorithm maintains a \definition{Ready Set}, similar to ASAP. But now, when multiple instructions are ready, and \textbf{not all can be scheduled} in parallel, it must \textbf{choose} based on a \textbf{priority}.
+\begin{enumerate}
+    \item Build the dependence graph.
+    \item Compute \textbf{priorities} for all nodes (typically with longest-path-to-sink). Nodes closer to the end of the graph are \textbf{more critical} (less slack). The compiler calculates for each instruction:
+    \begin{equation*}
+        \text{priority}\left(i\right) = \text{Max path length from } i \text{ to a sink node}
+    \end{equation*}
+    Higher priority, more urgent to schedule.
+    \item Initialize the \textbf{Ready Set} with nodes that have no predecessors.
+    \item For each cycle:
+    \begin{itemize}
+        \item While resources are available and Ready Set is not empty:
+        \begin{itemize}
+            \item Pick the \textbf{highest-priority instruction} that fits into available resources.
+            \item Assign it to the current cycle.
+            \item Mark it as scheduled
+        \end{itemize}
+        \item Update the Ready Set: add successors whose dependencies are now satisfied.
+    \end{itemize}
+    \item Repeat until all instructions are scheduled.
+\end{enumerate}
+
+\newpage
+
+\begin{examplebox}[: List-Based Scheduling Algorithm]
+    Consider the following dependence graph:
+    \begin{center}
+        \begin{tikzpicture}[node distance=1cm, >=stealth]
+            \node[circle, draw] (a) {$a \left(\times\right)$};
+            \node[circle, draw, below=of a] (b) {$b \left(+\right)$};
+            \node[circle, draw, below=of b] (c) {$c \left(+\right)$};
+
+            \node[circle, draw, right=of a] (d) {$d \left(\times\right)$};
+            \node[circle, draw, right=of b] (e) {$e \left(-\right)$};
+
+            \node[circle, draw, right=of e] (f) {$f \left(\text{St}\right)$};
+            
+            \node[circle, draw, right=of f] (g) {$g \left(-\right)$};
+
+            \draw[->] (a) -- (d);
+            \draw[->] (b) -- (e);
+            \draw[->] (c) -- (f);
+            \draw[->] (e) -- (f);
+            \draw[->] (d) -- (g);
+            \draw[->] (f) -- (g);
+        \end{tikzpicture}
+    \end{center}
+    Each node has the corresponding operation in brackets. For example, ``St'' is the store operation. Multiply operations take three latency cycles; ALU operations (addition and subtraction) take one; and the store operation takes two.
+
+    \highspace
+    \begin{minipage}{0.35\textwidth}
+        \centering
+        \begin{tabular}{@{} c | c @{}}
+            \toprule
+            \multicolumn{2}{c}{Ready List} \\
+            \midrule
+            \textbf{Cycle} & \textbf{Ready List} \\
+            \midrule
+            1 & $a$, $b$, $c$ \\
+            2 & $c$, $e$ \\
+            3 & $e$ \\
+            4 & $d$, $f$ \\
+            5 & \\
+            6 & \\
+            7 & $g$ \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.6\textwidth}
+        \centering
+        \begin{tabular}{@{} c | c | c | c | c @{}}
+            \toprule
+            \multicolumn{5}{c}{Resource Reservation Table} \\
+            \midrule
+            \textbf{Cycle} & \textbf{ALU1} & \textbf{L/S} & \textbf{MUL} \\
+            \midrule
+            1 & $b$ &       & $a$   \\
+            2 & $c$ &       & $a$   \\
+            3 & $e$ & $f$   & $a$   \\
+            4 &     & $f$   & $d$   \\
+            5 &     &       & $d$   \\
+            6 &     &       & $d$   \\
+            7 & $g$ &       &       \\
+            \bottomrule
+        \end{tabular}
+    \end{minipage}
+
+    \begin{center}
+        \begin{tabular}{@{} c | c | c | c @{}}
+            \toprule
+            \multicolumn{4}{c}{VLIW Code} \\
+            \midrule
+            \textbf{Cycle} & \textbf{ALU1} & \textbf{L/S} & \textbf{MUL} \\
+            \midrule
+            1 & $b$   &   & $a$ \\
+            2 & $c$   &   &   \\
+            3 & $e$   &   &   \\
+            4 &     & $f$ & $d$ \\
+            5 &     &   &   \\
+            6 &     &   &   \\
+            7 & $g$   &   &   \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+\end{examplebox}

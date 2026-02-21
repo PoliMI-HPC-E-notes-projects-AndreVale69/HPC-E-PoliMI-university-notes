@@ -1,0 +1,96 @@
+\paragraph{Superblock Scheduling}
+
+\definition{Superblock Scheduling} is an evolution of \textbf{Trace Scheduling}, designed to simplify speculation management while still providing \textbf{high ILP} for \textbf{VLIW} or statically scheduled superscalar processors.
+
+\highspace
+It is a \textbf{global instruction scheduling technique} that extends Trace Scheduling, with two key design changes:
+\begin{enumerate}
+    \item It restricts code regions to have \textbf{only one entry point}.
+    \item It allows \textbf{multiple exits}.
+\end{enumerate}
+This enables the compiler to \textbf{aggressively schedule instructions across basic blocks}, including across branches, but with \textbf{simpler and safer control-flow management} than full trace scheduling.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Superblocks vs Traces}}
+\end{flushleft}
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{11em} p{11em} @{}}
+        \toprule
+        Feature & \textbf{Trace} Scheduling & \textbf{Superblock} Scheduling \\
+        \midrule
+        Entry points        & Multiple (any predecessor block).         & \textbf{Single entry point} (one predecessor).            \\ [.5em]
+        Exit points         & Multiple.                                 & Multiple.                                                 \\ [.5em]
+        Control flow        & General, complex.                         & \textbf{Simplified, controlled}.                          \\ [.5em]
+        Speculation         & Really aggressive, harder to manage.             & More manageable.                                          \\ [.5em]
+        Compensation code   & May be needed on both sides of branches.  & Needed only on \textbf{one side} (outside the superblock).\\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this useful?}}
+\end{flushleft}
+In trace scheduling, we may have \textbf{multiple entry points} into the trace, which means any speculative movement of instructions must be \textbf{repaired in many paths} (with compensation code). In \hl{Superblock Scheduling}, by \textbf{enforcing a single-entry rule}, and using \textbf{tail duplication} to eliminate side entries, the compiler can:
+\begin{itemize}[label=\textcolor{Green3}{\faIcon{check}}]
+    \item Speculate more \textbf{safely}.
+    \item Insert \textbf{fewer compensation instructions}.
+    \item Retain most of the \textbf{performance benefit} of traces.
+    \item Keep control flow \textbf{more manageable}.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Typical Structure of a Superblock}}
+\end{flushleft}
+A \textbf{superblock} is a \textbf{linear sequence of basic blocks} that:
+\begin{itemize}
+    \item Starts from a \textbf{unique entry point}.
+    \item Ends at \textbf{multiple potential exists}.
+    \item Is built around a \textbf{frequently executed path} (like a hot loop body or branch).
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{How is it built?}}
+    \end{flushleft}
+    \begin{enumerate}
+        \item \textbf{Profiling} (or prediction) selects a hot path.
+        \item \definition{Tail Duplication} is applied to remove alternative entries. Compiler \textbf{duplicates the tails} (exit blocks) of a region, because this ensures all control flow into the superblock happens from \textbf{a single point}.
+        \item The resulting region becomes a \textbf{superblock} (safe to schedule aggressively).
+    \end{enumerate}
+\end{itemize}
+We can think of it as a \textbf{safer, more controlled trace}, scheduled to maximize instruction-level parallelism (ILP) on VLIW or superscalar machines.
+
+\highspace
+\begin{examplebox}[: Superblock]
+    Original code:
+    \begin{lstlisting}[language=c]
+if (x > 0)
+    A = B + C;
+else
+    A = D + E;\end{lstlisting}
+    We want to \textbf{schedule more instructions in parallel}. But the compiler sees a branch:
+    \begin{itemize}
+        \item In one path: \texttt{A = B + C}
+        \item In the other: \texttt{A = D + E}
+    \end{itemize}
+    To do \textbf{Superblock Scheduling}, we assume that \textbf{the first path} (\texttt{x > 0}) \textbf{is more frequent} (we get this from profiling).
+
+    \begin{enumerate}
+        \item We take the \textbf{most frequent path} (\texttt{x > 0}).
+        \item We include its block: \texttt{A = B + C}.
+        \item We move it \textbf{before the branch}, so it's scheduled early (speculative move).
+        \item We make the region a \textbf{superblock}: a linear code region with one entry.
+        \begin{lstlisting}[language=c]
+A = B + C         // speculated! Scheduled early
+if (x <= 0)
+    A = D + E     // compensation code\end{lstlisting}
+    \end{enumerate}
+    Now:
+    \begin{itemize}
+        \item If the branch is \emph{not taken} (\texttt{x > 0}), then \texttt{A = B + C} is correct.
+        \item If the branch \emph{is taken} (\texttt{x $\le$ 0}), then we \textbf{fix \texttt{A}} using compensation code.
+    \end{itemize}
+    It is called a ``superblock'' because we treat that piece of code as one large block when scheduling. The compiler: optimizes this region together, tries to issue as many instructions per cycle as possible, and assumes most of the time the ``hot path'' will be followed.
+\end{examplebox}

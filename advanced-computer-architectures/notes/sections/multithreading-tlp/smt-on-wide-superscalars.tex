@@ -1,0 +1,50 @@
+\subsection{SMT on Wide Superscalars}
+
+A superscalar is a CPU that can issue multiple instructions per cycle from a single thread. A wide superscalar is a very wide design, e.g., 4-issue, 6-issue, even 8-issue (e.g., AMD Zen). However, there is a problem: a single thread's ILP is limited, so many of those issue slots remain \textbf{unused} (the ``white bubbles'' we saw in the diagrams).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Problem of Wide Superscalars}}
+\end{flushleft}
+Designers wanted to make processors that can issue \textbf{4, 6, or even 8 instructions per cycle}. But a \textbf{single thread rarely has enough ILP} to keep all slots filled. Out-of-order execution helps, but it cannot magically invent independent instructions beyond the program's inherent limits. Result: even wide OoO cores show \textbf{empty issue slots} (low utilization).
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution:}} SMT (Simultaneous Multithreading) is a hardware technique in which \textbf{multiple threads} of execution \textbf{share the same core at the same time}. Instructions from different threads can be issued in the same cycle, side by side. With a \textbf{wide superscalar core} (e.g., 4-issue OoO), instead of depending on one thread to fill three slots, \textbf{SMT allows multiple threads to supply instructions in the same cycle}. So the SMT logic is added to the existing wide superscalar design.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why SMT Helps}}
+\end{flushleft}
+\textbf{Simultaneous Multithreading (SMT)} allows multiple threads to \textbf{share the same cycle}:
+\begin{itemize}
+    \item One cycle: Thread A issues 3 instructions, Thread B issues 1.
+    \item Next cycle: Thread A is stalled, Thread B fills 4 slots.
+\end{itemize}
+SMT \textbf{combines ILP and TLP}:
+\begin{itemize}
+    \item If a thread has enough ILP $\rightarrow$ it uses many slots.
+    \item If not $\rightarrow$ other threads ``fill in the gaps''.
+\end{itemize}
+This is why SMT fits naturally with wide superscalars: the more slots we have, the more room there is for multiple threads to share.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Typical Speedups}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Throughput benefit:}} a 2-way SMT core (two hardware threads per core) often achieves \textbf{20-30\% more throughput} on multithreaded workloads. It is \textbf{not a} $\mathbf{2\times}$ \textbf{speedup} because threads still complete for shared caches and functional units.
+
+
+    \item[\textcolor{Red2}{\faIcon{\speedIcon}}] \textcolor{Red2}{\textbf{Single-thread performance:}} can degrade slightly when SMT is active (competition for caches, branch predictor pollution). But most Operating Systems allow us to disable SMT per workload if latency is critical.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{charging-station} \textbf{Energy and} \faIcon{microchip} \textbf{Area Trends}}
+\end{flushleft}
+Adding SMT costs relatively \textbf{little extra hardware}:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{plus-circle}}] Duplicate register files, rename tables, PCs.
+    \item[\textcolor{Green3}{\faIcon{share-alt}}] Execution units, caches, memory system are shared.
+\end{itemize}
+Energy per instruction \textbf{improves}: more work is done with the same datapath. But cache contention can increase \textbf{miss rates}, sometimes hurting performance if workloads are not well-balanced.

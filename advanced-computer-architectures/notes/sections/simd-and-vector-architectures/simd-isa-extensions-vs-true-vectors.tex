@@ -1,0 +1,50 @@
+\subsection{SIMD ISA Extensions vs True Vectors}
+
+Starting from the mid-1990s, general-purpose CPUs (x86, ARM, PowerPC) added \textbf{SIMD instruction sets}: Intel MMX (1996), then SSE, AVX, AVX-512; ARM NEON. They let a scalar CPU operate on \textbf{short fixed-width vectors} packed into a register (128-, 256-, 512-bit). Each instruction applies the same op to several elements in parallel (e.g., 4 doubles in AVX2, 8 doubles in AVX-512).
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} p{8em} | p{12em} | p{12em} @{}}
+    \toprule
+    \textbf{Aspect} & \textbf{True Vector Machines (Cray, VMIPS)} & \textbf{SIMD ISA Extensions (SSE/AVX)} \\
+    \midrule
+    \textbf{Vector length} & Arbitrary, controlled by\vfill \textbf{VLR}, up to MVL. & Fixed by hardware\vfill register width (e.g., 4, 8, 16 elements). \\ [.5em]
+
+    \textbf{Scalability} & Same code runs efficiently if hardware MVL increases (e.g., 64 $\rightarrow$ 128 elements). & Code must be recompiled or rewritten when register width changes (e.g., SSE 128-bit vs AVX 256-bit). \\ [.5em]
+
+    \textbf{Memory access} & Rich modes: \textbf{unit stride}, \textbf{non-unit stride (LVWS)}, \textbf{gather/scatter}. & Limited: mostly contiguous aligned loads/stores; gather/scatter only in AVX-512 (slower). \\ [.5em]
+
+    \textbf{Masking /\vfill\break Predication} & Supported via \textbf{vector mask registers}. & Only added in AVX-512 ($k$-mask registers); older SIMD had no clean predication. \\ [.5em]
+
+    \textbf{Instruction count} & One vector instruction covers VL operations, regardless of MVL. & One instruction covers only as many elements as fit in the register; multiple instructions needed for longer vectors. \\ [.5em]
+
+    \textbf{Loop handling} & Elegant with \textbf{strip mining $+$ VLR} $\Rightarrow$ same loop handles any size. & Leftovers require scalar ``remainder loop'' or separate vector cleanup. \\ [.5em]
+
+    \textbf{Philosophy} & Architecturally first-class vector model. & Scalar ISA ``extended'' with packed data ops \\
+    \bottomrule
+    \end{tabular}
+    \caption{Comparison between True Vector Machines and SIMD ISA Extensions.}
+\end{table}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{What we \emph{gain} with SIMD extensions}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Compatibility with scalar CPUs}}: no need for separate vector hardware, just extra datapaths in the same ALU pipeline.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Widespread adoption}}: present in all modern CPUs $\rightarrow$ compilers and libraries can target them.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Good for multimedia/data-parallel kernels}}: audio, video, ML inner loops.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{What we \emph{lose} compared to true vectors}}
+\end{flushleft}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Lack of flexibility}}: fixed width means code isn't performance-portable across future wider registers.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{More compiler complexity}}: must generate special loops for remainders.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Limited memory addressing}}: strided or sparse accesses are clumsy (or impossible pre-AVX-512).
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Fewer instructions}}: vector ISAs had elegant rich semantics; SIMD extensions are ``bolt-ons'' with awkward encodings.
+\end{itemize}

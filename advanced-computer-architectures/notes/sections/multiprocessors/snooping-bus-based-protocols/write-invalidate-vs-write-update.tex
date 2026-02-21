@@ -1,0 +1,31 @@
+\subsubsection{Write-invalidate vs write-update (bandwidth vs latency)}\label{sec:write-invalidate-vs-write-update}
+
+When a processor writes a new value into its cache, \textbf{other caches may also hold that block}. \hl{How do we keep them consistent?} Two families of protocol exist:
+\begin{itemize}
+    \item \definition{Write-Invalidate protocol}
+    \begin{itemize}
+        \item Before performing the write, the processor sends an \textbf{invalidate message} on the bus.
+        \item All other caches that hold the block mark it as \code{Invalid}.
+        \item Now the writer has \textbf{exclusive ownership} of the block.
+        \item Subsequent writes to the block are \textbf{local only} (no more bus traffic) until another processor requests the block.
+    \end{itemize}
+    Bus traffic is generated \emph{only} on the \textbf{first write} to a block shared by multiple caches. Multiple consecutive writes are \emph{silent} (great if a processor writes a lot to the same location).
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Latency trade-off.}} A reader that later wants the block must fetch the updated version from the writer or from memory, which introduces \emph{latency}.
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Usage.}} Dominant in practice (e.g., MSI/MESI) and good for \textbf{write-intensive workloads} (spatial/temporal locality exploited).
+
+    
+    \item \definition{Write-Update protocol} (or \definition{Write-Broadcast protocol})
+    \begin{itemize}
+        \item On every write, the processor broadcasts the \textbf{new value} to all caches that hold the block.
+        \item Each cache updates its local copy immediately.
+        \item Memory is usually updated too.
+    \end{itemize}
+    Every single write produces \textbf{bus traffic}. Bad if one processor is writing many times to the same block.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Latency trade-off.}} readers never see stale data: if they access later, they already have the fresh value. Good for \textbf{read-mostly workloads} where a variable is written by one processor but read by many others.
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Usage.}} Rare in modern multiprocessors (too much bandwidth cost), but more common in small-scale systems or in some \textbf{vector machines / GPUs} where data are broadcasted naturally
+\end{itemize}
+In summary, \textbf{invalidate} protocol saves bandwidth, dominant in modern designs; instead, \textbf{update} protocol lowers read latency but consumes lots of bandwidth. The \textbf{invalidate vs update} decision is one of the core trade-offs in coherence protocol design.

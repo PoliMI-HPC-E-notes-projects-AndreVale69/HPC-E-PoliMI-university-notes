@@ -1,0 +1,186 @@
+\subsubsection{Write Strategy: \emph{What happens on a write?}}\label{subsubsection: write strategy}
+
+When the CPU writes to a memory address and the block is cached, we must decide:
+\begin{enumerate}
+    \item \textbf{Where does the write go?} (\emph{Write Policies})
+    \begin{itemize}
+        \item Only in the cache?
+        \item In both cache and main memory?
+    \end{itemize}
+    \item \textbf{What if the address is not in the cache?} (\emph{Write Miss Policies})
+    \begin{itemize}
+        \item Do we bring it into the cache before writing?
+        \item Or write directly to memory without caching it?
+    \end{itemize}
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Step 1: Write Policies (\emph{Where does the write go?})}}
+\end{flushleft}
+\begin{itemize}
+    \item \definitionWithSpecificIndex{Write-Through}{Cache Write Policies: Write-Through}{}. The value is written \textbf{to both}:
+    \begin{itemize}
+        \item The cache block (if present).
+        \item The corresponding location in main memory.
+    \end{itemize}
+    This ensures that the \textbf{memory} is always \textbf{up to date}. But it needs a \textbf{write buffer} to avoid stalling the CPU while memory is updated.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Simpler} to implement.
+        \item[\textcolor{Green3}{\faIcon{check}}] Memory always \textbf{coherent} with cache.
+        \item[\textcolor{Red2}{\faIcon{times}}] More \textbf{memory traffic} (every write goes to memory).
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Slower} overall \textbf{if no write buffer}.
+    \end{itemize}
+
+    \item \definitionWithSpecificIndex{Write-Back}{Cache Write Policies: Write-Back}{}. The value is written \textbf{only to cache}. The modified cache block is marked \textbf{dirty} (with a \definition{Dirty Bit}). And the main memory is updated \textbf{only when the dirty block is evicted}.
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] Less \textbf{memory traffic} (multiple writes to same block cost only one memory update).
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Faster in write-intensive workloads}.
+        \item[\textcolor{Red2}{\faIcon{times}}] More \textbf{complex} (need dirty bits and eviction logic).
+        \item[\textcolor{Red2}{\faIcon{times}}] Main memory may be \textbf{out of date} until eviction.
+    \end{itemize}
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Step 2: Write Miss Policies (\emph{What if the block is NOT in the cache?})}}
+\end{flushleft}
+\begin{itemize}
+    \item \definitionWithSpecificIndex{Write Allocate}{Cache Write Miss Policies: Write Allocate}{} (aka \definitionWithSpecificIndex{Fetch on Write}{Cache Write Miss Policies: Fetch on Write}{}). On a write miss:
+    \begin{enumerate}
+        \item Load the block into the cache (same as a read miss).
+        \item Then perform the write in the cache.
+    \end{enumerate}
+    \textbf{Good for temporal locality}: if we write once, we might write again soon.
+
+    \item \definitionWithSpecificIndex{No Write Allocate}{Cache Write Miss Policies: No Write Allocate}{} (aka \definitionWithSpecificIndex{Write Around}{Cache Write Miss Policies: Write Around}{}). On a write miss, \textbf{do not} load block into cache, but write directly to main memory. So, skip the cache and go directly to the main memory. \textbf{Good when writes are rare or sequential} (no need to keep data around).
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l p{16em} @{}}
+        \toprule
+        Cache Policy & Write Miss Policy & Why \\
+        \midrule
+        \textbf{Write-Back}     & Write Allocate    & Writes are kept in cache, so allocate makes sense. \\ [.3em]
+        \textbf{Write-Through}  & No Write Allocate & Avoids unnecessary block fetch before write. \\
+        \bottomrule
+    \end{tabular}
+    \caption{Typical combinations in real systems.}
+\end{table}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l l @{}}
+        \toprule
+        Aspect & Write-Through & Write-Back \\
+        \midrule
+        Write Location   & Cache $+$ Memory  & Cache only               \\ [.3em]
+        Memory Coherence & Always up to date & Updated only on eviction \\ [.3em]
+        Memory Traffic   & High              & Low                      \\ [.3em]
+        Complexity       & Low               & High (dirty bit)         \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l l @{}}
+        \toprule
+        Miss Policy & Write Allocate & No Write Allocate \\
+        \midrule
+        Action on Miss   & Bring block into cache   & Write directly to memory  \\ [.3em]
+        Best With        & Write-Back               & Write-Through             \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{clock} \textbf{Write Operation Timeline}}
+\end{flushleft}
+We'll use:
+\begin{itemize}
+    \item \textbf{CPU}: issuing a write to memory address \texttt{X}.
+    \item \textbf{Cache}: may or may not contain block \texttt{X}.
+    \item \textbf{Memory}: slower DRAM.
+\end{itemize}
+\begin{enumerate}
+    \item \textbf{Write Hit} (data is already in cache).
+    \begin{itemize}
+        \item \important{Write-Through}
+        \begin{enumerate}
+            \item CPU writes new data into cache line for block \texttt{X}.
+            \item Cache immediately sends the same write to main memory.
+            \item Memory is always \textbf{coherent} (same as cache).
+        \end{enumerate}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{clock}}] \textcolor{Green3}{\textbf{Latency}}: cache hit time (plus background memory update if write buffer exists).
+            \item[\textcolor{Green3}{\faIcon{traffic-light}}] \textcolor{Green3}{\textbf{Memory traffic}}: \textbf{1 write} to memory.
+        \end{itemize}
+
+        \item \important{Write-Back}
+        \begin{enumerate}
+            \item CPU writes new data into cache line for block \texttt{X}.
+            \item Set \textbf{dirty bit $=$ 1} for that cache line.
+            \item Main memory is \textbf{not updated now}, will be updated when block \texttt{X} is evicted.
+        \end{enumerate}
+        \begin{itemize}
+            \item[\textcolor{Green3}{\faIcon{clock}}] \textcolor{Green3}{\textbf{Latency}}: just the cache hit time.
+            \item[\textcolor{Green3}{\faIcon{traffic-light}}] \textcolor{Green3}{\textbf{Memory traffic}}: \textbf{0 writes} now (delayed until eviction).
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Write Miss} (data is not in cache).
+    \begin{itemize}
+        \item \important{Case A: Write Allocate}
+        \begin{itemize}
+            \item \textbf{Write-Back $+$ Write Allocate} (\emph{most common}):
+            \begin{enumerate}
+                \item Cache fetches block \texttt{X} from memory into a cache line.
+                \item CPU writes new data into cache line.
+                \item Dirty bit is set.
+                \item Memory is updated \textbf{later} when block is evicted.
+            \end{enumerate}
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{traffic-light}}] \textcolor{Green3}{\textbf{Memory traffic}}: \textbf{1 block read} (fetch) + \textbf{1 block write} later at eviction.
+            \end{itemize}
+
+            \item \textbf{Write-Through $+$ Write Allocate}:
+            \begin{enumerate}
+                \item Cache fetches block \texttt{X} from memory into cache.
+                \item CPU writes into cache line.
+                \item Cache immediately writes to main memory as well.
+            \end{enumerate}
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{traffic-light}}] \textcolor{Green3}{\textbf{Memory traffic}}: \textbf{1 block read} $+$ \textbf{1 word write} immediately.
+            \end{itemize}
+        \end{itemize}
+
+        \newpage
+
+        \item \important{Case B: No Write Allocate}
+        \begin{itemize}
+            \item \textbf{Write-Through $+$ No Write Allocate} (\emph{common combination}):
+            \begin{enumerate}
+                \item Cache does not load block \texttt{X}.
+                \item CPU writes directly to memory.
+                \item Cache content is unchanged.
+            \end{enumerate}
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{traffic-light}}] \textcolor{Green3}{\textbf{Memory traffic}}: \textbf{1 word write} only.
+            \end{itemize}
+
+            \item \textbf{Write-Back $+$ No Write Allocate}:
+            \begin{enumerate}
+                \item Cache does not load block \texttt{X}.
+                \item CPU writes directly to memory.
+                \item Cache content is unchanged.
+            \end{enumerate}
+            \begin{itemize}
+                \item[\textcolor{Green3}{\faIcon{traffic-light}}] \textcolor{Green3}{\textbf{Memory traffic}}: \textbf{1 word write} only, no dirty bit set.
+            \end{itemize}
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}

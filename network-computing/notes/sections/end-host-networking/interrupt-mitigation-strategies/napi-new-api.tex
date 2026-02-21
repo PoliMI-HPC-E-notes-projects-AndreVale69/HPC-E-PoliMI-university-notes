@@ -1,0 +1,68 @@
+\subsubsection{NAPI (New API)}\label{sec:napi-new-api}
+
+Although \emph{interrupt coalescing} is a powerful technique for mitigating receive livelock, it has its limitations when the packet rate is extremely high. To address this issue, \emph{polling} was introduced as an alternative to interrupts. However, polling can waste CPU cycles when the packet rate is low.
+
+\highspace
+The obvious question then becomes: \textbf{\emph{can we dynamically switch between the two approaches based on the current load?}} This is where \textbf{NAPI (New API)} comes into play.
+
+\begin{definitionbox}[: NAPI (New API)]
+    \definition{NAPI (New API)} is a \textbf{hybrid mechanism} that combines the benefits of both \textbf{interrupts coalescing} and \textbf{polling}. It \textbf{dynamically switches} between the two approaches \textbf{based on the current load}, allowing for efficient handling of network traffic while minimizing CPU overhead.
+\end{definitionbox}
+
+\noindent
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does NAPI work?}}
+\end{flushleft}
+The NAPI process can be divided into three main phases:
+\begin{enumerate}[label=\textbf{Phase \alph*)}, leftmargin=*]
+    \item \important{Low traffic (interrupt mode)}. A packet arrives, and the NIC generates an interrupt. The CPU enters the interrupt handler, which processes the packet and checks the current load. This is identical to the traditional interrupt-driven approach.
+
+
+    \item \important{High traffic detected (switch to polling mode)}. If the interrupt handler sees that many packets are waiting to be processed (indicating high load), or the RX ring (\autopageref{def:rx-descriptor-ring}) is not empty after processing a packet, then the kernel \textbf{disables further interrupts for that RX queue} and \textbf{switches to polling mode}. In polling mode, the CPU actively polls the RX ring for new packets, processing them in batches without receiving interrupts for each packet. This allows for higher throughput and better performance under heavy load.
+
+
+    \item \important{Load decreases (return to interrupt mode)}. When the RX is drained (or budget, i.e., the maximum number of packets to process in one polling cycle, is reached), the kernel \textbf{re-enables interrupts} for that RX queue and returns to interrupt mode. This allows the system to efficiently handle low traffic without wasting CPU cycles on polling.
+\end{enumerate}
+So \textbf{NAPI behaves dinamically} based on the current load, using interrupts for low traffic and polling for high traffic, thus optimizing performance across a wide range of network conditions.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why NAPI is better than pure polling}}
+\end{flushleft}
+Pure \textbf{polling always spin} (i.e., it continuously checks for new packets), which can lead to \textbf{high CPU usage} even when there are no packets to process. It is really \textbf{bad for power consumption} and can \textbf{degrade the performance of other applications running on the same system}.
+
+\highspace
+Instead, \textbf{NAPI only polls when there is a high load} of incoming packets, and it \textbf{reverts to interrupts when the load decreases}. This dynamic switching allows NAPI to efficiently handle varying network traffic while minimizing CPU overhead and power consumption, making it a superior solution compared to pure polling. So NAPI is a \textbf{controlled polling model}:
+\begin{itemize}[label={\textcolor{Green3}{\faIcon{check}}}]
+    \item \textcolor{Green3}{\textbf{Stability at high load}}: NAPI can handle high traffic without overwhelming the CPU, as it switches to polling mode when necessary.
+    \item \textcolor{Green3}{\textbf{Efficiency at low load}}: NAPI minimizes CPU usage when the traffic is low by using interrupts, which allows the CPU to perform other tasks without being unnecessarily occupied with polling.
+    \item \textcolor{Green3}{\textbf{Avoids livelock}}: By dynamically switching between interrupts and\break polling, NAPI helps prevent the receive livelock problem that can occur with pure interrupt-driven approaches under high load.
+    \item \textcolor{Green3}{\textbf{Avoids permanent busy waiting}}: NAPI does not continuously poll when there are no packets to process, which helps reduce power consumption and allows other applications to run efficiently on the same system.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{What actually happens inside Linux?}}
+\end{flushleft}
+Each RX queue has:
+\begin{itemize}
+    \item A \textbf{``\emph{poll}'' function} (i.e., a callback) that is \hl{called when the kernel decides to switch} to polling mode.
+    \item A \textbf{processing ``\emph{budget}''} (i.e., the \hl{maximum number of packets to process in one polling cycle}).
+\end{itemize}
+And they are used as follows:
+\begin{itemize}
+    \item When the kernel is in polling mode, it repeatedly calls the \emph{poll function} until the RX queue is drained or the \emph{processing budget} is reached.
+
+    \item Once the polling cycle is complete (i.e., either the RX queue is empty or the budget is exhausted), the kernel checks if there are still packets to process.
+
+    \item If there are, it continues polling.
+    
+    \item Otherwise, it re-enables interrupts and returns to interrupt mode.
+\end{itemize}
+So the ``\emph{budget}'' prevents starvation of other tasks (i.e., it ensures that the CPU does not spend too much time polling and allows other applications to run smoothly). Without the ``\emph{budget}'', the CPU could be stuck in a polling loop for an extended period, leading to high latency for other tasks and potential performance degradation.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Why is it called ``New API''?}}
+\end{flushleft}
+It was called ``\textbf{New API}'' because, at the time it was introduced (early 2000s), it replaced the old Linux network driver interface. It was new relative to the previous interrupt-only driver model and to the old driver callbacks. The name has persisted even though it is now the standard approach for handling network traffic in Linux, and it is no longer considered ``new'' in the current context.

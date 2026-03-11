@@ -90,7 +90,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Foundations of Operations Research</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=685067" target="_blank">Braz Pascoal Marta Margarida</a></td>
         <td><ul>
@@ -122,13 +122,14 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Numerical Methods for Partial Differential Equations</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=986&aa=2024&n_docente=Quarteroni%20Alfio%20Maria&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Quarteroni Alfio Maria</a></td>
         <td><ul>
             <li><a href="numerical-methods-for-partial-differential-equations">Course Details</a></li>
             <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.4.0</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NM4PDE-labs">Lab Codes</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/nmpde-wave-equation-solver">Wave Equation Solver Project</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -144,7 +145,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Quantum Computing</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=50107&__pj0=0&__pj1=17a2888e991ec95240e9455a5fe4df75" target="_blank">Cremonesi Paolo</a></td>
         <td><ul>
@@ -154,7 +155,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Quantum Physics</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=67166" target="_blank">Finazzi Marco</a></td>
         <td><ul>

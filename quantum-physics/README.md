@@ -1,4 +1,4 @@
-# (2024/2025) Quantum Physics
+# (2024/2025) and (2025/2026) Quantum Physics
 The notes are taken from the books required for the course: 
 
 - A. Berera and L.D. Debbio. _Quantum Mechanics_. Cambridge University Press, 2021.

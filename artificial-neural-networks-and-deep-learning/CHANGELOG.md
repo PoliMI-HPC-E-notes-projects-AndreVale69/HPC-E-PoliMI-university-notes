@@ -49,6 +49,7 @@
 - improve `Sigmoid` description (saturation regions and derivative behavior) ([507eafd](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/507eafda571fc96f21ee8f5fe4e1a31063cef1e9), [c8d5878](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/c8d5878197edc282b937b8b9969280756f85dcd2))
 - improve clarity in `Multi-Class Classification` section ([dd2ea95](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/dd2ea9557389774c906ce34b39c8a66975b2314b))
 - improve clarity in `Error Minimization and Loss Function` section ([8cdd7be](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/8cdd7be86ae3cf56803dc97184b5882f1bbf7f72))
+- clarify the distinction between `Loss Function` and aggregated `Error Function` in `Error Minimization and Loss Function` ([7d7a8ee](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/7d7a8ee44311f3c7f9aa21a289f7f42fb32fde6f))
 - correct `Universal Approximation Theorem` formulation and related explanation ([726dd36](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/726dd36a5a0e286934532ce75aa0914a4ac3486a))
 - fix layout by adjusting document `headheight` ([abb36b6](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/abb36b6ca761f4d87ea8de2d11ccd07b336a9452))
 

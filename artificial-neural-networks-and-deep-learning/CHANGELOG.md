@@ -40,16 +40,16 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
-- add `Biological neuron diagram` and update `Historical Context` (`460a8a773fec9896cfea6c0a35e8cd88edfe4124`)
-- add `Imagenet 2012 breakthrough details` and related citation (`9b716149a2b07ace05e0fca9ed7c9ba798835dae`)
-- add `Deepening box` on `tanh` convergence advantages (`3e83700449fd6fc7602743f994a10c80fdb8b230`)
-- fix capitalization in `Modern Pattern Recognition (Pre-DL)` section (`3a3031e46c33ee1c40f1dd73f9cab8aaa9f55f5a`)
-- fix capitalization in `Garbage in $\to$ garbage out` phrase (`5c501307d4c0f84d3ac1620906ca49518c15d024`)
-- refine and rephrase `Historical Context` (AI/NN split and deep learning placement in AI history) (`02705a5ee140df16d2bdf823e784857a01a0050d`, `5ab37034013eef618a0f830f23346452b40f1265`, `4be070a307efabf95dee24acf747b38020389d52`)
-- improve `Sigmoid` description (saturation regions and derivative behavior) (`507eafda571fc96f21ee8f5fe4e1a31063cef1e9`, `c8d5878197edc282b937b8b9969280756f85dcd2`)
-- improve clarity in `Multi-Class Classification` section (`dd2ea9557389774c906ce34b39c8a66975b2314b`)
-- correct `Universal Approximation Theorem` formulation and related explanation (`726dd36a5a0e286934532ce75aa0914a4ac3486a`)
-- fix layout by adjusting document `headheight` (`abb36b6ca761f4d87ea8de2d11ccd07b336a9452`)
+- add `Biological neuron diagram` and update `Historical Context` ([460a8a7](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/460a8a773fec9896cfea6c0a35e8cd88edfe4124))
+- add `Imagenet 2012 breakthrough details` and related citation ([9b71614](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/9b716149a2b07ace05e0fca9ed7c9ba798835dae))
+- add `Deepening box` on `tanh` convergence advantages ([3e83700](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3e83700449fd6fc7602743f994a10c80fdb8b230))
+- fix capitalization in `Modern Pattern Recognition (Pre-DL)` section ([3a3031e](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3a3031e46c33ee1c40f1dd73f9cab8aaa9f55f5a))
+- fix capitalization in `Garbage in $\to$ garbage out` phrase ([5c50130](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5c501307d4c0f84d3ac1620906ca49518c15d024))
+- refine and rephrase `Historical Context` (AI/NN split and deep learning placement in AI history) ([02705a5](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/02705a5ee140df16d2bdf823e784857a01a0050d), [5ab3703](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5ab37034013eef618a0f830f23346452b40f1265), [4be070a](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/4be070a307efabf95dee24acf747b38020389d52))
+- improve `Sigmoid` description (saturation regions and derivative behavior) ([507eafd](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/507eafda571fc96f21ee8f5fe4e1a31063cef1e9), [c8d5878](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/c8d5878197edc282b937b8b9969280756f85dcd2))
+- improve clarity in `Multi-Class Classification` section ([dd2ea95](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/dd2ea9557389774c906ce34b39c8a66975b2314b))
+- correct `Universal Approximation Theorem` formulation and related explanation ([726dd36](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/726dd36a5a0e286934532ce75aa0914a4ac3486a))
+- fix layout by adjusting document `headheight` ([abb36b6](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/abb36b6ca761f4d87ea8de2d11ccd07b336a9452))
 
 --------------------
 

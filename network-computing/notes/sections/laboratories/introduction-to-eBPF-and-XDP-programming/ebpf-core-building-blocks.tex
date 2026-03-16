@@ -1,0 +1,117 @@
+\subsubsection{eBPF Core Building Blocks}
+
+In this section, we will explore the core building blocks of eBPF programs, which include maps, helper functions, and the eBPF instruction set. Understanding these components is crucial for developing efficient and effective eBPF programs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{eBPF Maps}}
+\end{flushleft}
+\textbf{eBPF maps} are kernel-resident data structures that allow eBPF programs to \textbf{store and retrieve state across multiple executions}.
+
+\highspace
+The problem with eBPF programs is that they are \textbf{event-driven} and run \textbf{only when an event happens}; once they return, \textbf{their stack is gone}. So without maps, every packet would be processed in isolation, no counters, no flow tracking, no connection state, etc. Maps solve this by providing a \textbf{persistent state} stored \textbf{inside the kernel} and shared across program invocations.
+
+\highspace
+Conceptually, every eBPF map is a \textbf{key-value store}, where the key and value have \textbf{fixed sizes} defined at load time (i.e., when the eBPF program is loaded into the kernel). Even though maps feel like normal hash tables or arrays, they are actually \textbf{kernel objects} accessed only through \textbf{helper functions}. The characteristics of maps are as follows:
+\begin{itemize}
+    \item \textbf{Lifetime}: maps live \textbf{independently} of program execution. They exist as long as they are not explicitly destroyed.
+    \item \textbf{Sharing}: multiple eBPF programs can share the same map. So user-space programs can access maps created by eBPF programs. This enables a clean split between \textbf{data plane} (eBPF program) and \textbf{control plane} (user-space application).
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How do eBPF programs access maps?}} eBPF programs \textbf{cannot directly deference maps} (i.e., they cannot use normal pointer operations to access map data). Instead, they must use \textbf{helper functions} provided by the kernel. This design ensures safety, because helper calls are well-defined in the kernel, which controls synchronization and access patterns. Therefore, the verifier can guarantee that map accesses are safe and do not lead to undefined behavior.
+
+\highspace
+\textcolor{Green3}{\faIcon{code} \textbf{Common map types.}} Now let's look at the map types we will be using in this course:
+\begin{itemize}
+    \item \important{Array maps} are \textbf{fixed-size array where keys are integers from $0$ to $N-1$}. They are very fast, simple and the memory is allocated upfront (i.e., when the map is created). They are ideal for global counters (e.g., total packets processed), configuration values (e.g., sampling rate), or small lookup tables (e.g., protocol numbers to names). It is like a global static array inside the kernel.
+
+
+    \item \important{Hash maps} are key-value hash tables where the keys can be structs (e.g., flow identifiers). The insertions and removals are dynamic, but at the cost of slightly higher overhead than arrays. However, they are extremely flexible and often used for flow tracking (e.g., counting packets per flow), connection state (e.g., TCP connection tracking), or per-client statistics (e.g., bytes sent per IP address). It is like a dynamic hash table inside the kernel.
+
+
+    \item \important{Per-CPU maps} deserve a special mention. \textbf{Each CPU gets its own copy of the map}, which eliminates contention between CPUs\footnote{Multiple CPUs trying to access the same memory location at the same time, which can lead to performance degradation} and the needs for locks. They exist because eBPF programs often run on many CPUs simultaneously, and without per-CPU maps, they would have to contend for access to shared data structures, which can lead to performance degradation. However, the \textbf{trade-off of this design is that the values must be aggregated}\footnote{Combining the values from all CPU copies to get a single result, such as summing counters across CPUs} later (usually in user-space) to get a global view of the data. They are ideal for high-performance counters (e.g., packets processed per CPU), latency measurements (e.g., per-CPU histograms), or any scenario where contention is a concern. It is like having a separate copy of the map for each CPU, which can be accessed without locks, but requires aggregation to get global results.
+\end{itemize}
+
+\longline
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Helper Functions}}
+\end{flushleft}
+Helper Functions are \textbf{predefined kernel functions that eBPF programs are allowed to call in order to interact with the kernel}. We remarked that eBPF programs cannot call arbitrary kernel functions, so instead of full kernel access, they get a \textbf{restricted set of approved helper functions} that provide specific functionalities.
+
+\highspace
+\textcolor{Green3}{\faIcon{code} \textbf{Typical helpers we will use.}} Some of the most common helper functions we will use in this course include:
+\begin{itemize}
+    \item \important{Map helpers} are the most common. They allow eBPF programs to \textbf{lookup}, \textbf{update}, and \textbf{delete} an element.
+    \begin{equation*}
+        \texttt{key} \rightarrow \texttt{helper chosen} \rightarrow \texttt{value}
+    \end{equation*}
+    These helpers are essential for stateful programs.
+    \begin{itemize}
+        \item \textbf{Read semantics}. Lookup helpers return a pointer to the value associated with the key, or NULL if the key is not found. The eBPF program can read the value through this pointer, but it cannot modify it directly (i.e., it cannot write to the memory location). This design allows multiple eBPF programs to read the same value concurrently without conflicts, while ensuring that updates are controlled and safe.
+        \item \textbf{Update semantics}. Update helpers allow the eBPF program to modify the value associated with a key, or insert a new key-value pair if the key does not exist. This operation is controlled and safe, ensuring that concurrent updates do not lead to inconsistencies.
+    \end{itemize}
+    This distinction between read and update semantics is crucial because lookup gives us a pointer with tracked bounds (i.e., the verifier knows the size of the value and can ensure that the program does not read or write out of bounds), while update allows us to modify the map's contents in a controlled manner.
+
+
+    \item \important{Packet redirection helpers} are used when forwarding packets, for load balancing, or when sending packets to another interface.
+    
+
+    \item \important{Time helpers} are used to get kernel time, implement timeouts, or measure interval durations. They are crucial for connection expiration, rate limiting, or latency measurements.
+
+
+    \item \important{Checksum helpers} are used for rewriting packet headers and maintaining protocol correctness.
+\end{itemize}
+
+\longline
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{How to create modular eBPF programs? Tail Calls}}
+\end{flushleft}
+eBPF programs have limits: the stack is small (512 bytes), the number of instructions is limited (usually 4096), and the verifier checks for safety, which can make complex programs difficult to write. To overcome these limitations, eBPF provides a mechanism called \textbf{tail calls} to \textbf{split large logic into multiple programs}.
+
+\highspace
+Imagine we are implementing a firewall, or a load balancer, or a TCP connection tracker, or a multi-protocol parser. Soon we will hit the instruction limit, or stack limit, or just have a very complex program that is hard to verify. Without tail calls, we would have to cram everything into a single program, which increases risk of verifier rejections and makes the code harder to maintain. \hl{Tail calls allow an eBPF program to transfer execution to another eBPF program without returning.}
+
+\begin{definitionbox}[: Tail Call]
+    A \definition{Tail Call} is a controlled jump from one eBPF program to another, using a special map called a \textbf{program array}.
+
+    \highspace
+    It works like this:
+    \begin{enumerate}
+        \item Program $A$ runs.
+        \item $A$ decides to delegate some work (e.g., because it has reached the instruction limit, or wants to separate logic).
+        \item $A$ performs a tail call to program $B$.
+        \item Program $B$ executes immediately, without returning to $A$.
+        \item Program $A$ never resumes, so it must not rely on any state after the tail call.
+    \end{enumerate}
+    This is different from a normal function call, where the caller expects to return and continue execution. In a tail call, the caller effectively transfers control to the callee and does not expect to return.
+\end{definitionbox}
+
+\noindent
+Tail calls allow us to create \textbf{program chains}, where a sequence of eBPF programs can be executed in order, each handling a specific part of the logic. It's similar to a \textbf{pipeline inside the kernel}. For example:
+\begin{enumerate}
+    \item A packet arrives.
+    \item Program $A$ parses the Ethernet header and decides to tail call program $B$.
+    \item Program $B$ parses the IP header and decides to tail call program $C$.
+    \item Program $C$ parses the TCP header and makes a decision (e.g., allow, drop, redirect).
+\end{enumerate}
+This modular approach is powerful because:
+\begin{itemize}
+    \item \textbf{Instruction limit workaround}. Instead of one huge program, we can have multiple smaller programs that together implement the full logic.
+    \item \textbf{Modular architecture}. Each program can focus on a specific task (e.g., parsing a specific protocol), making the code easier to understand and maintain.
+    \item \textbf{Dynamic behavior}. We can change the program chain at runtime by updating the program array map, allowing for dynamic updates to the processing logic without needing to reload the entire program.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Important constraints.}} Tail calls are not free. There are limits:
+\begin{itemize}
+    \item \textbf{Maximum number of tail calls per packet is usually 32}. This means that a packet can only be passed through a chain of 32 programs before it must be processed or dropped.
+    
+    \item \textbf{No return to the caller}. Once a tail call is made, the caller program cannot resume execution. This means that any state or logic in the caller after the tail call will never be executed, so it must be designed accordingly.
+    
+    \item \textbf{Stack is not shared between programs}. Each program has its own stack, so data that needs to be shared across programs must be stored in maps or passed through registers (with limitations).
+    
+    \item \textbf{Must use a special map type (program array)}. Tail calls require a program array map, which is a special type of map that holds references to eBPF programs. The caller program uses this map to specify which program to tail call based on an index.
+\end{itemize}
+Despite these constraints, tail calls are a powerful tool for building complex eBPF applications while keeping the code modular and maintainable. However, simple programs that do not require modularity or do not hit instruction limits may not need to use tail calls at all.
+
+\highspace
+In summary, \hl{tail calls allow an eBPF program to transfer execution to another eBPF program without returning}, enabling modular design and scalable program chaining while preserving verifier constraints.

@@ -1,0 +1,61 @@
+\subsubsection{Polling}
+
+\definition{Polling} replaces this question ``\emph{NIC, tell me when a packet arrives}'', with ``\emph{CPU, repeatedly check whether packets have arrived}''. So instead of the NIC \textbf{pushing} work to the CPU via interrupts, the CPU \textbf{pulls} work by checking the RX ring buffer periodically.
+
+\highspace
+\begin{definitionbox}[: Polling]
+    \definition{Polling} is a \textbf{packet reception mechanism} in which the \textbf{CPU repeatedly checks the network receive queues for incoming packets} instead of being notified by hardware interrupts.
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How can the CPU ``actively check'' for packets?}}
+\end{flushleft}
+There are only \textbf{two possible ways} a CPU can check something:
+\begin{enumerate}
+    \item Check once, then go do something else;
+    \item Check repeatedly, in a loop.
+\end{enumerate}
+The \textbf{first option} is useless for polling, because if the CPU checks once and finds no packets, it will go do something else and miss any packets that arrive later. So the only viable option is the \textbf{second one} (polling), in which the CPU \textbf{spins in a loop}, repeatedly checking the RX ring buffer for new packets.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does polling \emph{necessarily} imply busy waiting?}} To detect packets via polling, the CPU must \textbf{continuously check} the RX ring buffer. It executes something like this:
+\begin{lstlisting}[language=C, caption={Polling loop checking for packets.}]
+while (true) {
+    if (rx_ring_buffer_has_packet()) {
+        process_packet();
+    }
+}
+\end{lstlisting}
+This loop does not block, does not sleep, does not wait for an event. Instead, the CPU is \textbf{always running} this loop, which is the definition of \definition{Busy Waiting}: the \textbf{CPU runs a loop that repeatedly checks the RX descriptors without sleeping or stopping}. So the CPU is always active (busy), never idle and never waiting for an event.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why does polling avoid livelock, and when is it useful?}}
+\end{flushleft}
+With polling there are \textbf{no interrupts}, so no interrupt storms can occur, or context switches due to interrupts. The CPU is always in control, and can decide how often to check for packets. This \textbf{eliminates livelock} caused by interrupt storms. The receive path becomes \textbf{stable and predictable}, because the CPU is not interrupted by the NIC.
+
+\newpage
+
+\noindent
+The polling is a \textbf{good idea} when:
+\begin{itemize}
+    \item Packet arrival rate is \textbf{very high}.
+    \item There is \textbf{always work to do}.
+    \item Dedicating a CPU core to networking is acceptable.
+\end{itemize}
+Some typical examples where polling is useful: high-performance servers, packet processing appliances, NFV (Network Function Virtualization) systems, software routers, user-space networking stacks (e.g., DPDK, netmap). In these scenarios, the CPU would be busy anyway, so polling avoids the overhead of interrupts and context switches, leading to better performance and lower latency.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What are the downsides of polling?}}
+\end{flushleft}
+Polling is \textbf{not always a good idea}, it's a \hl{trade-off between CPU utilization and latency}. It is wasteful when:
+\begin{itemize}
+    \item Traffic is \textbf{bursty or low}.
+    \item Packets arrive infrequently.
+    \item CPU cycles are valuable for other tasks.
+\end{itemize}
+In these cases, polling can lead to \textbf{high CPU usage} even when there are no packets to process, wasting power and resources. Also, if the traffic is low, the CPU may spend a lot of time checking for packets that are not there, leading to inefficiency.
+
+\highspace
+In summary, polling \textbf{avoids} receive \textbf{livelock} by eliminating interrupts and letting the CPU actively check for incoming packets, providing \textbf{high throughput} and \textbf{low latency}, but at the \textbf{cost of increased CPU usage} and \textbf{potential inefficiency under low traffic} conditions.

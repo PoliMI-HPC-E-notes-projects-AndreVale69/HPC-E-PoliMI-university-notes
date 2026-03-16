@@ -1,0 +1,30 @@
+\subsubsection{Fault Handling}
+
+Now we address the \textbf{obvious skepticism}: ``\emph{centralized scheduling is a single point of failure, and thus not robust}''. This is a valid concern, but the authors show that Fastpass is not naive.
+
+\highspace
+Fastpass explicitly considers three types of failures:
+\begin{itemize}
+    \item \important{Arbiter Failure} is the biggest concern. If the arbiter crashes:
+    \begin{itemize}
+        \item Endpoints stop receiving scheduling decisions.
+        \item No one is allowed to send data.
+        \item The network is effectively frozen.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{check}} \textbf{Fastpass Solution}: The \hl{arbiter is replicated.} There is a \textbf{primary} and a \textbf{secondary arbiter}. The secondary keeps a replicated view of state. The state is ``soft'' replicated, meaning that the secondary may be slightly behind the primary. \hl{If the primary fails, the secondary takes over.} This solution is extremely fast, and the authors show that the failover time is \textbf{approximately 1-2 ms}, which is negligible compared to the typical flow completion time of 10-100 ms.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is ``Soft State''?}} ``Soft State'' means the \hl{arbiter does not maintain permanent, hard, complex state.} Instead, it tracks outstanding requests (i.e, which flows are active, which paths are allocated, etc.). If \hl{something is lost}, endpoints can \hl{re-request scheduling decisions}, and the \hl{arbiter can reconstruct the state} from these requests. So the system tolerates lost messages, partial scheduling loss, and temporary inconsistency between the primary and secondary.
+    
+    
+    \item \important{Network Failure}. If a link fails or a core switch fails, the arbiter:
+    \begin{itemize}
+        \item Updates topology view (i.e., which links/switches are down).
+        \item Stops assigning that path (color) to new flows.
+        \item Recomputes scheduling with remaining links/switches.
+    \end{itemize}
+    \hl{Since the arbiter controls path selection, it can avoid failed components immediately.}
+    
+    
+    \item \important{Control Message Loss}. If a scheduling message is lost, the endpoint does not transmit data. The endpoint will eventually timeout and re-request scheduling decisions.
+\end{itemize}
+In summary, Fastpass is designed to be robust against failures, and the authors show that the failover time for the arbiter is negligible compared to flow completion times.

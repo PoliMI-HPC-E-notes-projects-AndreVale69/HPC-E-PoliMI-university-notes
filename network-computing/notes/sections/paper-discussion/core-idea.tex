@@ -1,0 +1,70 @@
+\subsection{Core Idea}
+
+The key idea of Fastpass is simple but disruptive: \textbf{move congestion control and path selection from distributed decisions to centralized scheduling}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Traditional Datacenter Network Model}}
+\end{flushleft}
+In the traditional datacenter network model:
+\begin{itemize}
+    \item \textbf{Transmission timing}: controlled by endpoints. TCP adjusts congestion window based on loss (classic TCP) or ECN marks (DCTCP). Reaction is local and reactive.
+    \item \textbf{Path selection}: determined independently by switches. Typically ECMP hashing. Switches do not coordinate globally.
+\end{itemize}
+So the system is distributed, reactive, and best-effort (i.e., no guarantees on latency or throughput). The congestion is handled \emph{after} it happens, and path selection is oblivious to current network conditions.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Fastpass Model}}
+\end{flushleft}
+Fastpass introduces a \textbf{central arbiter} that decides:
+\begin{itemize}
+    \item \textbf{When} a packet may be transmitted.
+    \item \textbf{Which path} that packet will take through the network.
+\end{itemize}
+Endpoints do not send packets directly. Instead, they:
+\begin{itemize}
+    \item Request transmission slots from the arbiter.
+    \item Receive permission for a specific timeslot (e.g., 10ms from now) and a specific path (e.g., through switch A, B, C).
+    \item Send only in that assigned timeslot and path.
+\end{itemize}
+This changes everything.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.9\textwidth]{img/fastpass-arch.pdf}
+    \caption{Simple view of a two-tier datacenter network with Fastpass. The central arbiter schedules packets across the network, ensuring no oversubscription and minimal queuing.}
+\end{figure}
+
+\highspace
+The core innovation of Fastpass is moving from distributed, reactive congestion control to centralized, proactive per-packet scheduling. A central arbiter determines both the transmission time and path of every packet, ensuring that \hl{links are never oversubscribed (i.e., no congestion) and queues remain near zero (i.e., no queuing delay)}. This transforms the network into a scheduled switching fabric rather than a best-effort packet network.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{The ``Zero-Queue'' Philosophy}}
+\end{flushleft}
+Fastpass has a very ambitious goal: \textbf{eliminate persistent queueing inside the network}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Traditional Philosophy.}} In traditional networks:
+\begin{itemize}
+    \item Multiple senders transmit packets simultaneously.
+    \item They independently choose rate and path.
+    \item If more packets arrive than a link can transmit, they are buffered in queues.
+    \item Buffers absorb bursts (i.e., transient congestion) but can lead to persistent queues if traffic is consistently high.
+\end{itemize}
+So queueing is not an accident; it is a consequence of lack of coordination and independent decisions. TCP reacts \emph{after} the queue grows.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Fastpass Philosophy.}} Instead of allowing bursts and absorbing them with buffers, Fastpass ensures:
+\begin{itemize}
+    \item A packet is transmitted \textbf{only when the path is guaranteed free}.
+    \item No link ever receives more packets than it can forward in that timeslot.
+\end{itemize}
+Therefore:
+\begin{itemize}[label={\textcolor{Green3}{\faIcon{check}}}]
+    \item \textbf{No oversubscription}: The arbiter schedules packets so that the total demand on any link never exceeds its capacity.\footnote{Oversubscription occurs when multiple packets are sent to the same link at the same time, causing congestion. It is different from incast, which is a specific scenario where many senders transmit to the same receiver, overwhelming its incoming link. Fastpass eliminates oversubscription in general, thus also preventing incast.}
+    \item \textbf{No queue buildup}: Since packets are scheduled in advance, no packets are queued at any switch.
+    \item \textbf{No persistent congestion}: The network operates at or below capacity, so congestion is effectively eliminated.
+\end{itemize}
+Queues shrink to near zero, and this is confirmed by measurements in the paper. A datacenter network with a standard TCP (with ECMP routing), under high network load, with realistic traffic patterns, will have a \hl{median queue size of 4.35 MB, while Fastpass achieves a median queue size of 18 KB, which is a $240\times$ reduction.} This is very important because if a link is 10 Gbps, 4.35 MB of queue corresponds to about 3.5 ms of queuing delay, while 18 KB corresponds to about 15 microseconds, which is negligible.

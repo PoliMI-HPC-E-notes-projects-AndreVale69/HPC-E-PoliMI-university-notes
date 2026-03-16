@@ -1,0 +1,47 @@
+\subsection{The Receive Livelock Problem}\label{sec:the-receive-live-lock-problem}
+
+In the simplest receive model (\autopageref{sec:life-of-a-packet-inside-a-server}):
+\begin{enumerate}
+    \item A packet arrives at the Network Interface Card (NIC).
+    \item The NIC DMA-writes the packet into main memory.
+    \item The NIC raises an \textbf{interrupt (IRQ)}.
+    \item The CPU stops what it is doing and handles the packet. 
+\end{enumerate}
+This happens \textbf{for every packet}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why does this become a problem?}} Interrupts are \textbf{expensive} because they preempt running tasks, flush CPU pipelines, pollute caches, and force context switches. At low packet rates this is fine and the overhead is negligible. However, at high packet rates (e.g., 10 Gbps and beyond), the CPU may spend \textbf{most of its time just handling interrupts} and very little time is left for \emph{actual packet processing}. The CPU becomes the bottleneck, not the NIC. \textbf{Interrupt cost scales with packet rate, not with packet size}; many small packets are much worse than fewer large ones.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is Receive Livelock}}
+\end{flushleft}
+\definition{Receive Livelock} \textbf{is a situation where the CPU spends all its time handling receive interrupts but makes no forward progress in processing packets}. The system is busy, active, and consuming CPU, but \textbf{not productive}. It is called \emph{livelock} because unlike a \emph{deadlock} where the system is stuck doing nothing, here the system is busy doing something (handling interrupts) but not making progress. In other words, the cpu is \emph{alive}, but \textbf{stuck reacting}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question} \textbf{What is the CPU actually doing?}} In receive livelock, the CPU handles an interrupt, processes \emph{very few} packets, immediately receives another interrupt, and repeats endlessly. It never gets enough uninterrupted time to drain the RX ring buffer and deliver packets to applications.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why throughput can drop to zero}}
+\end{flushleft}
+The most counterintuitive aspect of receive livelock is that \textbf{as the packet rate increases, the throughput can actually drop to zero}. This is counterintuitive because we might expect more incoming packets to lead to more processed packets. However, in receive livelock, the CPU becomes overwhelmed with interrupts and is unable to process packets effectively. The vicious cycle is:
+\begin{enumerate}
+    \item High packet arrival rate.
+    \item NIC generates many interrupts.
+    \item CPU spends most cycles on interrupt handling.
+    \item Very little packet processing is completed.
+    \item RX ring fills up.
+    \item NIC cannot DMA new packets.
+    \item Packets get dropped.
+\end{enumerate}
+As result, despite a high arrival rate, the effective throughput (packets successfully processed) can \textbf{plummet to zero} because the CPU is too busy handling interrupts to make any progress on actual packet processing. So \textbf{the system is interrupt-bound, not bandwidth-bound}. This is why faster NICs alone do \textbf{not} solve the problem.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{history} \textbf{Historical Context}}
+\end{flushleft}
+Receive livelock was identified in the late 1990s and early 2000s on networks that were much slower than today's 10/40/100 Gbps links. However, modern NICs are 1,000 times faster, yet CPUs did not scale in interrupt efficiency at the same rate. Today, we have 25/40/100+ Gbps NICs, microservices with many small packets, and virtualized, multi-tenant systems. However, the \textbf{conditions for livelock are easier to reach than ever before}.
+
+\highspace
+In summary, receive livelock is a critical challenge in high-speed networking where the CPU becomes overwhelmed with interrupts, leading to a situation where it is busy but not productive. In the next sections, we will explore various techniques to mitigate this problem and improve packet processing efficiency.

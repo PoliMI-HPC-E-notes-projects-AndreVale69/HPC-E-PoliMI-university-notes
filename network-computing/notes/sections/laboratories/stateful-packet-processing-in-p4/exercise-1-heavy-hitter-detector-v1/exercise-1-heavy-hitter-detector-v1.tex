@@ -1,0 +1,50 @@
+\subsubsection{Exercise 1: Heavy Hitter Detector v1}
+
+In this first exercise, we will build a \textbf{stateful P4 switch} that:
+\begin{itemize}
+    \item Counts how many packets each \textbf{source IP} sends,
+    \item And \textbf{drops all packets} from that source once a \textbf{threshold} is exceeded.
+\end{itemize}
+This is a very simple \textbf{heavy hitter detector}.
+
+\begin{definitionbox}[: Heavy Hitter]
+    A \definition{Heavy Hitter} is a traffic source (e.g., a host, flow, or application) that contributes a \textbf{disproportionately large amount of traffic compared to others}, typically exceeding a predefined threshold in terms of packet count or byte volume over a given observation period.
+\end{definitionbox}
+
+\noindent
+The network is composed of a single switch \texttt{s1} that enforces the heavy hitter detection policy, and three hosts \texttt{h1}, \texttt{h2}, and \texttt{h3} that generate traffic.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.65\textwidth]{img/ex1-lab2-p4.pdf}
+    \caption{Network topology for Exercise 1.}
+\end{figure}
+
+\noindent
+Before heavy hitter logic, the switch must forward \textbf{all packets from \texttt{h1}, \texttt{h2} and \texttt{h3} to \texttt{h4}}. This part is \textbf{stateless} and can be implemented with a simple \texttt{table} that matches on the destination IP address and forwards packets to the correct port (like in the previous sections).
+
+\highspace
+In \textbf{v1}, a heavy hitter is defined as a \textbf{source IP address} that sends \textbf{more than $N$ packets}, where $N$ \textbf{is a threshold set by the controller} (i.e., the control plane). This first version of the heavy hitter detector is very simple and has some limitations:
+\begin{itemize}
+    \item The \hl{classification key is only the IPv4 source address}. In real scenarios, we might want to consider other fields (e.g., destination IP, ports, protocol) or even combinations of fields (e.g., 5-tuples).
+
+    \item The \hl{metric} used to identify heavy hitters is the \hl{number of packets}. In practice, we might want to consider other metrics (e.g., number of bytes, flow duration) or even more complex ones (e.g., rate of traffic).
+
+    \item The \hl{threshold is static} and \hl{set by the control plane}. In real scenarios, we might want to have dynamic thresholds that adapt to traffic patterns or use more sophisticated algorithms (e.g., machine learning) to identify heavy hitters.
+
+    \item The switch \hl{only drops packets} from heavy hitters and will \hl{never accept them again}, even if they stop sending traffic for a while. In practice, we might want to have a more flexible policy that allows heavy hitters to recover after some time or based on certain conditions.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Stateful logic (what memory do we need?)}}. This is the first question we should ask ourselves when designing a stateful P4 program: \textbf{what state do we need to maintain to implement the desired behavior?} In this case, for each \textbf{source IP}, we must remember:
+\begin{enumerate}
+    \item \emph{How many packets have arrived so far?} This is necessary to determine if the source IP is a heavy hitter or not. We can store this information in a \textbf{register array}, where each entry corresponds to a source IP address and contains the packet count.
+    \item \emph{Whether the threshold has already been exceeded or not?} This is necessary to decide whether to drop packets from that source IP or not. We can store this information in another \textbf{register array}, where each entry corresponds to a source IP address and contains a boolean value indicating if the threshold has been exceeded.
+\end{enumerate}
+So for \textbf{each incoming IPv4 packet}, we need to:
+\begin{enumerate}
+    \item Extract source IP address from the packet header.
+    \item Compute an index from source IP address (e.g., using a hash function) to access the corresponding entries in the register arrays.
+    \item Read packet counter from register array: \texttt{register[index]}.
+    \item If packet counter is greater than threshold, drop the packet and set the boolean register to true: \texttt{register[index] = true}. Otherwise, forward the packet and increment the packet counter: \texttt{register[index]++}.
+\end{enumerate}

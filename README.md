@@ -32,7 +32,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=154207" target="_blank">Silvano Cristina</a></td>
         <td><ul>
             <li><a href="advanced-computer-architectures">Course Details</a></li>
-            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.0.0</a></li>
+            <li><a href="advanced-computer-architectures/notes/advanced-computer-architectures.pdf">PDF v1.1.1</a></li>
             <li><a href="advanced-computer-architectures/notes/formulary.pdf">Formulary</a></li>
         </ul></td>
     </tr>
@@ -64,6 +64,8 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><ul>
             <li><a href="artificial-neural-networks-and-deep-learning">Course Details</a></li>
             <li><a href="artificial-neural-networks-and-deep-learning/notes/artificial-neural-networks-and-deep-learning.pdf">PDF v0.4.0</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-1">Challenge 1</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-2">Challenge 2</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -73,7 +75,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=717400" target="_blank">Botti Michele</a></td>
         <td><ul>
             <li><a href="calcolo-numerico">Course Details</a></li>
-            <li><a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF v1.1.0</a></li>
+            <li><a href="calcolo-numerico/notes/calcolo-numerico.pdf">PDF v1.2.0</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -88,7 +90,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Foundations of Operations Research</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=685067" target="_blank">Braz Pascoal Marta Margarida</a></td>
         <td><ul>
@@ -97,13 +99,14 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         </ul></td>
     </tr>
     <tr>
-        <td align="center">❌</td>
+        <td align="center">✅</td>
         <td>2024/2025</td>
         <td>Network Computing</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=867640&aa=2024&lang=IT&jaf_currentWFID=main" target="_blank">Antichi Gianni</a></td>
         <td><ul>
             <li><a href="network-computing">Course Details</a></li>
-            <li><a href="network-computing/notes/network-computing.pdf">PDF v0.6.0</a></li>
+            <li><a href="network-computing/notes/network-computing.pdf">PDF v1.0.0</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/network-computing-project">eBPF Project</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -119,13 +122,14 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Numerical Methods for Partial Differential Equations</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&lang=IT&k_doc=986&aa=2024&n_docente=Quarteroni%20Alfio%20Maria&tab_ricerca=1&jaf_currentWFID=main" target="_blank">Quarteroni Alfio Maria</a></td>
         <td><ul>
             <li><a href="numerical-methods-for-partial-differential-equations">Course Details</a></li>
             <li><a href="numerical-methods-for-partial-differential-equations/notes/numerical-methods-for-partial-differential-equations.pdf">PDF v0.4.0</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/NM4PDE-labs">Lab Codes</a></li>
+            <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/nmpde-wave-equation-solver">Wave Equation Solver Project</a></li>
         </ul></td>
     </tr>
     <tr>
@@ -141,7 +145,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Quantum Computing</td>
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=50107&__pj0=0&__pj1=17a2888e991ec95240e9455a5fe4df75" target="_blank">Cremonesi Paolo</a></td>
         <td><ul>
@@ -151,7 +155,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025</td>
+        <td>2024/2025<br>2025/2026</td>
         <td>Quantum Physics</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=67166" target="_blank">Finazzi Marco</a></td>
         <td><ul>

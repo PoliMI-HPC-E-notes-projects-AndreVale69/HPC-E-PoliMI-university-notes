@@ -1,0 +1,68 @@
+\subsubsection{XDP: eXpress Data Path}\label{sec:xdp}
+
+\definition{XDP (eXpress Data Path)} is an eBPF hook\footnote{%
+    A predefined point inside the Linux kernel where an eBPF program can be attached and executed when a specific event occurs.%
+} that \textbf{allows programs to run at the earliest possible point in the Linux networking receive path}, directly in the network driver. This definition contains the most important word: \emph{earliest}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Hook point location.}} To understand XDP, we must understand where it is located in the Linux networking stack. The receive path of a network packet in Linux can be divided into several stages (simplified for clarity):
+\begin{enumerate}
+    \item \textbf{NIC (Network Interface Card) receives the packet:} The packet arrives at the network interface card, which is responsible for handling the physical layer of the network communication.
+    
+    
+    \item \textbf{Driver processing:} The NIC's driver processes the packet, which may involve tasks such as DMA (Direct Memory Access) to transfer the packet data into memory.
+
+    \hl{Here is where XDP operates.} It allows eBPF programs to be attached directly to the driver, enabling them to process packets immediately after they are received by the NIC, before any further processing occurs in the kernel.
+
+
+    \item \textbf{SKB (Socket Buffer) allocation:} After the driver processes the packet, it typically allocates a socket buffer (SKB) to hold the packet data for further processing in the kernel.
+
+
+    \item \textbf{Kernel networking stack:} The packet is then processed by the kernel's networking stack, which includes various layers such as IP, TCP/UDP, and application-level processing.
+
+
+    \item \textbf{Socket layer:} If the packet is destined for a local application, it is delivered to the socket layer, where it can be read by user-space applications.
+    
+
+    \item \textbf{User space applications:} Finally, the packet is delivered to user-space applications that are listening for incoming network traffic.
+\end{enumerate}
+XDP runs \textbf{before} the kernel builds the SKB (\texttt{sk\_buff}), which makes it very fast (since it avoids the overhead of SKB allocation and processing), very low overhead (since it operates at the driver level), and very powerful (since it can make decisions about the packet before any kernel processing occurs).
+
+\highspace
+\textcolor{Green3}{\faIcon{balance-scale} \textbf{Comparison with TC and Netfilter hooks.}} To further understand the significance of XDP, let's compare it with other eBPF hook points in the Linux networking stack, such as TC (Traffic Control) and Netfilter hooks.
+\begin{itemize}
+    \item \important{Netfilter} is a framework in the Linux kernel that provides hooks for packet filtering and manipulation. Netfilter operates at a higher level in the networking stack, \textbf{after the SKB has been allocated}. This means that while Netfilter allows for powerful packet processing capabilities, it incurs more overhead compared to XDP, as it requires the kernel to allocate and manage SKBs.
+
+    \item \important{TC (Traffic Control)} is another eBPF hook point that operates at the ingress and egress points of network interfaces. TC allows for more advanced traffic shaping and policing capabilities compared to XDP, but it also operates at a higher level in the networking stack, \textbf{after the SKB has been allocated}. This means that while TC provides more flexibility in terms of traffic management, it also incurs more overhead compared to XDP.
+
+    \item \important{XDP} operates at the earliest point in the receive path, directly in the driver, \textbf{before any SKB allocation}. This allows XDP to process packets with minimal overhead, making it ideal for high-performance use cases such as DDoS mitigation, load balancing, and packet filtering.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Execution Modes}}
+\end{flushleft}
+XDP can operate in different execution modes, which determine how the eBPF program is executed and what capabilities it has:
+\begin{enumerate}
+    \item \important{Native Mode (Driver Mode)} is the \textbf{preferred execution mode} for XDP:
+    \begin{itemize}
+        \item \textbf{Runs directly in the NIC driver}, providing the lowest latency and highest performance.
+        \item Requires support from the NIC driver, which may not be available for all hardware.
+        \item Offers the most powerful capabilities, as it can access the packet data directly and make decisions before any kernel processing occurs.
+        \item Uses XDP memory modeling, which allows for efficient packet processing without the overhead of SKB allocation.
+    \end{itemize}
+
+    \item \important{Generic Mode} is the \textbf{fallback execution} mode for XDP:
+    \begin{itemize}
+        \item Works even if the driver does not support native XDP, by running the eBPF program in a more generic context.
+        \item Implemented \textbf{inside the kernel stack} (after SKB allocation), which means it incurs more overhead compared to native mode.
+        \item It is useful for testing and development purposes, but it is not recommended for production use due to its higher latency and lower performance compared to native mode.
+    \end{itemize}
+
+    \item \important{Offloaded Mode} is an \textbf{advanced execution} mode for XDP:
+    \begin{itemize}
+        \item Program \textbf{runs directly on the NIC hardware}.
+        \item Requires special hardware SmartNIC support, which is not widely available.
+        \item Highest performance, as it offloads packet processing to the NIC, freeing up CPU resources for other tasks.
+    \end{itemize}
+    This is closer to P4-style hardware programming, where the packet processing logic is implemented directly on the NIC hardware, providing the best performance and lowest latency. However, it requires specialized hardware support and usually is used in high-performance environments such as data centers and cloud providers.
+\end{enumerate}

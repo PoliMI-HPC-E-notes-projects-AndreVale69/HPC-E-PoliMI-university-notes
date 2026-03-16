@@ -1,0 +1,115 @@
+\subsection{Summary}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{Core Problems Addressed}}
+\end{flushleft}
+Layer-4 load balancing in datacenter and edge environments is fundamentally shaped by a small set of \textbf{core problems} that arise from the interaction between TCP semantics, large-scale traffic, and system failures (\autopageref{sec:datacenter-layer-4-load-balancing}).
+\begin{enumerate}
+    \item The first and most critical problem is \textbf{connection affinity} (\autopageref{def:connection-affinity}). Since user-facing traffic is predominantly carried over TCP, all packets belonging to the same connection must be consistently forwarded to the same backend server. Violating this requirement breaks TCP state, leading to retransmissions or connection resets. Ensuring affinity is therefore a strict correctness constraint rather than an optimization.
+
+    \item The second problem is \textbf{uniform load distribution}. A load balancer must spread incoming connections across available servers to avoid overloading individual backends and underutilizing others. However, perfect uniformity is difficult to achieve in practice due to heterogeneous traffic patterns, variable request sizes, and differences in server performance. As a result, load balancing mechanisms must balance fairness with practical feasibility.
+
+    \item Finally, \textbf{failure handling} plays a central role in L4 load balancer design. Backend servers, load balancers, and network components can fail or be reconfigured frequently, especially in edge deployments. The system must handle these events without causing widespread connection disruption or long recovery times. Effective failure handling therefore requires mechanisms that limit the impact of changes and allow the system to recover quickly and predictably.
+\end{enumerate}
+Layer-4 load balancing is constrained by strict connection semantics, imperfect load distribution, and frequent failures, making \textbf{robustness and determinism central design concerns}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Design Spectrum}}
+\end{flushleft}
+Layer-4 load balancing solutions can be understood as points along a \textbf{design spectrum}, defined by \hl{how much state they maintain} and \hl{how they trade off optimality, scalability, and robustness}.
+\begin{itemize}
+    \item At one end of the spectrum lie \textbf{stateless, hash-based load balancers} (e.g. Stateless Cheetah \autopageref{sec:stateless-cheetah-key-idea}). These systems map connections to backend servers using a deterministic hash of packet headers, without storing per-flow state.
+    
+    \textcolor{Green3}{\faIcon{check}} Stateless designs are attractive because they scale well, are easy to replicate, and recover quickly from failures.
+    
+    \textcolor{Red2}{\faIcon{times}} However, they suffer from significant drawbacks when the backend set changes, as even small reconfigurations can cause a large fraction of active connections to be remapped, leading to connection disruption.
+    
+
+    \item At the opposite end are \textbf{stateful load balancers} (e.g., Maglev \autopageref{def:maglev}), which explicitly maintain per-flow tables mapping each active connection to a server.
+    
+    \textcolor{Green3}{\faIcon{check}} This approach provides strong \emph{connection affinity} and fine-grained control.
+    
+    \textcolor{Red2}{\faIcon{times}} But it comes at the cost of high memory usage, limited scalability, and complex failure recovery. Reconstructing large state tables after failures can be slow and operationally challenging, making purely stateful designs difficult to deploy at scale.
+
+
+    \item Between these two extremes lie \textbf{hybrid approaches}, such as \textbf{Cheetah} (\autopageref{sec:cheetah}) and \textbf{Faild} (\autopageref{sec:faild-production-l4-load-balancer}), which combine deterministic mapping with a limited and carefully managed use of state. These designs aim to preserve connection affinity and reduce disruption during reconfiguration while avoiding the scalability and recovery issues of fully stateful systems. By selectively introducing state only where it provides clear benefits, hybrid solutions strike a balance between robustness, performance, and operational simplicity.
+\end{itemize}
+
+
+\begin{figure}[!htp]
+    \centering
+    \resizebox{\linewidth}{!}{
+        \begin{tikzpicture}[
+            font=\small,
+            box/.style={
+                draw, rounded corners=6pt, align=left,
+                inner sep=6pt, text width=0.76\linewidth
+            },
+            axis/.style={line width=0.9pt},
+            arrow/.style={->, line width=0.9pt},
+            lab/.style={font=\small\bfseries}
+        ]
+
+            % --- Boxes ---
+            \node[box] (stateless) {
+                \textbf{Stateless (hash-based)}\\
+                Deterministic mapping from flow headers to backend, without per-flow state.\\
+                \textcolor{Green3}{\faIcon{check} \textbf{Pros:}} scalable, easy replication, fast restart/recovery.\\
+                \textcolor{Red2}{\faIcon{times} \textbf{Cons:}} backend changes can remap many active connections (disruption).
+            };
+
+            \node[box, below=9mm of stateless] (hybrid) {
+                \textbf{Hybrid (Cheetah, Faild)}\\
+                Mostly deterministic mapping, plus \emph{limited/bounded} state to reduce disruption.\\
+                \textcolor{Green3}{\faIcon{check} \textbf{Pros:}} better affinity preservation under churn, practical operations.\\
+                \textcolor{Red2}{\faIcon{times} \textbf{Cons:}} more complexity than pure stateless, needs careful state design.
+            };
+
+            \node[box, below=11mm of hybrid] (stateful) {
+                \textbf{Stateful (per-flow tables)}\\
+                Explicit flow$\rightarrow$server state stored at the load balancer.\\
+                \textcolor{Green3}{\faIcon{check} \textbf{Pros:}} strong affinity and control, stable under backend churn.\\
+                \textcolor{Red2}{\faIcon{times} \textbf{Cons:}} large memory footprint, complex failure recovery.
+            };
+
+            % --- Vertical axis aligned to the left of the boxes ---
+            \coordinate (A) at ([xshift=-0.7cm]stateless.west);
+            \coordinate (B) at ([xshift=-0.7cm]stateful.west);
+
+            \draw[axis] (B) -- (A);
+
+            % markers aligned with box centers
+            \fill ([xshift=-0.7cm]stateless.west |- stateless.center) circle (2.0pt);
+            \fill ([xshift=-0.7cm]hybrid.west   |- hybrid.center)   circle (2.0pt);
+            \fill ([xshift=-0.7cm]stateful.west |- stateful.center) circle (2.0pt);
+
+            % labels on the left
+            \node[lab, anchor=east] at ([xshift=-0.9cm]stateless.west |- stateless.center) {Stateless};
+            \node[lab, anchor=east] at ([xshift=-0.9cm]hybrid.west   |- hybrid.center)   {Hybrid};
+            \node[lab, anchor=east] at ([xshift=-0.9cm]stateful.west |- stateful.center) {Stateful};
+
+            % connectors
+            \draw[arrow] ([xshift=-0.7cm]stateless.west |- stateless.center) -- (stateless.west);
+            \draw[arrow] ([xshift=-0.7cm]hybrid.west   |- hybrid.center)   -- (hybrid.west);
+            \draw[arrow] ([xshift=-0.7cm]stateful.west |- stateful.center) -- (stateful.west);
+
+        \end{tikzpicture}
+    }
+    \caption{Layer-4 load balancing design spectrum: stateless vs hybrid vs stateful approaches.}
+    \label{fig:l4lb-design-spectrum}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Research vs Production}}
+\end{flushleft}
+The comparison between \textbf{research proposals} and \textbf{production systems} highlights how Layer-4 load balancing design priorities change when moving from idealized models to real-world deployments (\autopageref{sec:faild-vs-research-proposals}).
+\begin{itemize}
+    \item Research systems such as \important{Cheetah} (\autopageref{sec:cheetah}) focus on achieving \textbf{clean theoretical properties}. By remaining stateless, they offer \hl{strong guarantees on determinism and bounded connection remapping when the backend set changes}. These designs are elegant and analytically appealing, as they allow precise reasoning about behavior under controlled assumptions. In stable environments, they can provide \hl{efficient load distribution while minimizing disruption} in a mathematically principled way.
+    
+
+    \item Production systems like \important{Faild} (\autopageref{sec:faild-production-l4-load-balancer}), on the other hand, are driven by \textbf{operational constraints} rather than theoretical optimality. In edge deployments, failures, restarts, and reconfigurations are frequent, and systems must continue operating under imperfect conditions. Faild therefore adopts a pragmatic approach, allowing a limited amount of state and favoring simple, predictable mechanisms. The goal is not to achieve perfect uniformity or minimal remapping, but to \hl{ensure stable behavior, fast recovery, and ease of operation}.
+\end{itemize}
+This contrast shows that while research proposals advance our understanding of what is theoretically possible, production systems must optimize for robustness, debuggability, and long-term maintainability. As a result, production load balancers often sacrifice elegance in favor of reliability and simplicity. In other words, \textbf{Cheetah represents the elegance of theory, while Faild represents the realities of production: both are valuable, but they solve fundamentally different problems} (Cheetah for ideal conditions, Faild for messy real-world environments).

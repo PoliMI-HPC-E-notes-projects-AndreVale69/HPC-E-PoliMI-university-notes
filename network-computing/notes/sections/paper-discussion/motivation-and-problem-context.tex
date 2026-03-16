@@ -1,0 +1,51 @@
+\section{Paper Discussion: Fastpass}
+
+In this section, we will discuss the paper \textit{Fastpass: A Centralized ``Zero-Queue'' Datacenter Network} \cite{10.1145/2740070.2626309}, which was published in 2013 by researchers from MIT and Facebook. The paper discussion is part of the oral exam for the course on Network Computing.
+
+\subsection{Motivation and Problem Context}
+
+\textbf{Fastpass} starts from a simple but powerful observation started in the introduction of the paper: \hl{in datacenters, queueing dominates end-to-end latency.} Let's unpack what that means.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Core Problem: Queueing}}
+\end{flushleft}
+In traditional datacenter networks:
+\begin{itemize}
+    \item End-hosts control sending rate (TCP congestion control);
+    \item Switches independently route packets (ECMP, Equal-Cost Multi-Path, \autopageref{subsection: Equal Cost Multi Path (ECMP)});
+    \item Congestion is handled reactively (loss-based or ECN-based congestion control used by DCTCP, \autopageref{section: Congestion Control}).
+\end{itemize}
+To maintain high utilization, switches use buffers to absorb bursts (i.e., queueing). However, buffers introduce queue buildup, variable delays, and tail latency spikes (\autopageref{section: Why TCP is Problematic in Datacenters}). Even if average delay is small, the \textbf{99th or 99.9th percentile latency remains high} and that's what matters for distributed applications.\footnote{%
+    A \textbf{percentile} tells us the value below which a certain percentage of observations fall. For example, if we say 99th percentile latency is 4 ms, it means that 99\% of the requests have latency less than or equal to 4 ms, while 1\% of the requests have latency greater than 4 ms. In datacenters, we care about tail latency (e.g., 99th percentile) because even a small fraction of slow requests can significantly impact overall performance and user experience.%
+}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Tail Latency Explosion}}
+\end{flushleft}
+Datacenter applications are often:
+\begin{itemize}
+    \item \textbf{Partition-aggregate workloads}: a request is partitioned into multiple sub-requests that are processed in parallel across many servers, and the overall latency is determined by the slowest sub-request (the tail).
+    \item \textbf{Search-like queries}: a search query may involve multiple servers, and the response time is determined by the slowest server's response.
+    \item \textbf{RCP fan-out/fain-in patterns} (i.e., Remote Procedure Calls): a request may trigger multiple RPCs to different servers, and the overall latency is determined by the slowest RPC.
+\end{itemize}
+In all these cases, \textbf{tail latency dominates overall performance}. Even if the average latency is low, a small fraction of requests experiencing high latency can significantly degrade user experience and application performance. Also, \hl{TCP cannot tightly control tail latency because it reacts after congestion occurs, which is too late to prevent queue buildup and latency spikes.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Incast Problem}}
+\end{flushleft}
+Another specific problem in datacenters is the \textbf{incast problem}, which occurs when a large number of servers simultaneously send data to a single receiver, causing a burst of traffic that overwhelms the receiver's buffer and leads to packet loss and increased latency. This is common in partition-aggregate workloads where many servers respond to a single request. TCP's reactive congestion control can exacerbate this problem, as it may not react quickly enough to prevent buffer overflow, leading to significant performance degradation. \hl{Fastpass aims to eliminate incast \textbf{by construction}, since only one packet per link per timeslot is allowed.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Poor Fairness Under TCP}}
+\end{flushleft}
+TCP's congestion control can lead to unfair bandwidth allocation among flows, especially in scenarios with many short flows and a few long flows. Short flows may experience high latency due to queueing caused by long flows, while long flows may dominate the bandwidth. This unfairness can degrade performance for latency-sensitive applications. \hl{Fastpass instead enforces farness at MTU-level granularity (i.e., one packet per timeslot), which can provide better fairness among flows.}
+
+\highspace
+In summary, the deeper issue is architectural: \textbf{TCP's end-to-end congestion control and distributed routing lead to queueing, which causes high tail latency.} Fastpass proposes a radically different approach: \textbf{\emph{what if we abandon distributed congestion control and instead schedule every packet centrally?}} Instead of reacting to congestion, it \textbf{prevents congestion from ever forming}.
+
+\highspace
+It is important because modern datacenter applications are partition-aggregate and latency-sensitive. The overall application response time is determined by the slowest sub-request, so tail latency is critical. Since queueing dominates end-to-end latency in datacenters, even small queue buildup causes large tail delays. Moreover, multiple heterogeneous workloads share the same network, and TCP provides only coarse fairness. \hl{Fastpass aims to eliminate queueing by design and provide predictable latency and fine-grained resource allocation.}

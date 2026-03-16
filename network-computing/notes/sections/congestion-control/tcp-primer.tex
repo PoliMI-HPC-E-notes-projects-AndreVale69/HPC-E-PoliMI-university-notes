@@ -1,0 +1,154 @@
+\subsection{TCP Primer}
+
+TCP does two completely different things:
+\begin{enumerate}
+    \item \textbf{Reliability}: TCP ensures that data is delivered reliably, in order, and without duplication. It achieves this through mechanisms such as \hl{acknowledgments}, \hl{retransmissions}, and \hl{sequence numbers}.
+    \item \textbf{Congestion Control}: TCP implements congestion control algorithms to prevent network congestion and ensure fair bandwidth allocation among multiple connections. It adjusts the rate of data transmission based on network conditions, such as packet loss or round-trip time, to avoid overwhelming the network.
+\end{enumerate}
+These are logically separate mechanisms but implemented together in the TCP protocol. Since congestion control is implemented in TCP, let's recall what TCP does and where congestion control fits inside it.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{3-Way Handshake (Connection Setup)}}
+\end{flushleft}
+TCP uses a three-way handshake to establish a connection between a client and a server. This process involves the following steps:
+\begin{enumerate}
+    \item The client sends a \texttt{SYN} (synchronize) packet to the server to initiate the connection.
+    \item The server responds with a \texttt{SYN-ACK} (synchronize-acknowledgment) packet to acknowledge the client's request and indicate that it is ready to establish the connection.
+    \item The client sends an \texttt{ACK} (acknowledgment) packet back to the server to complete the handshake and establish the connection.
+\end{enumerate}
+This handshake ensures that both parties are ready to communicate and \textbf{agree on initial sequence numbers} for the data that will be transmitted.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why 3 steps?}} Because both sides must agree on initial sequence numbers and confirm bidirectional communication. This ensures \hl{no half-open connection} and \hl{no old delayed packets from previous sessions}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Sequence Numbers}}
+\end{flushleft}
+Now the critical part. TCP does \textbf{NOT} send ``packets'' as we think of them. Instead, TCP sends a \textbf{stream of bytes}. The sequence numbers in TCP refer to the byte stream, not to individual packets. Each byte in the stream is assigned a unique sequence number, and TCP uses these sequence numbers to ensure that data is delivered in order and without duplication.
+
+\highspace
+For example, if we send 1000 bytes of data starting from byte 1, the next segment must start with byte 1001.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this powerful?}} Because it allows TCP to handle \textbf{retransmissions} and \textbf{out-of-order delivery} effectively. If a packet is lost, TCP can retransmit the missing bytes based on the sequence numbers. If packets arrive out of order, TCP can reorder them correctly using the sequence numbers. This is the core of TCP's reliability mechanism, and it is separate from congestion control, which manages the rate of data transmission to prevent network congestion.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{ACKs (Acknowledgments)}}
+\end{flushleft}
+\textbf{TCP uses acknowledgments to confirm the receipt of data}. When a receiver gets a segment of data, it sends an ACK back to the sender with the sequence number of the next expected byte. This allows the sender to know which bytes have been successfully received and which may need to be retransmitted.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Retransmissions}}\phantomsection\label{sec:tcp-retransmissions}
+\end{flushleft}
+\hl{What happens if a segment is lost?} There are two possibilities:
+\begin{enumerate}
+    \item \textcolor{Red2}{\faIcon{times-circle} \textbf{Timeout (RTO - Retransmission Timeout)}}: If the sender does not receive an ACK for a segment within a certain time frame, it assumes the segment was lost and retransmits it.
+    \item \textcolor{Green3}{\faIcon{check-circle} \textbf{Fast Retransmit}} is better because it allows TCP to detect packet loss more quickly by monitoring duplicate ACKs. So if a segment is lost, the receiver will send duplicate ACKs for the last successfully received segment, and after receiving 3 duplicate ACKs, the sender can infer that a segment was lost and retransmit it immediately without waiting for a timeout.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why 3 duplicate ACKs?}} Because it is a heuristic that balances sensitivity to packet loss with robustness against out-of-order delivery. If TCP were to react to every duplicate ACK, it might trigger unnecessary retransmissions due to out-of-order packets, which can happen in high-speed networks. By waiting for 3 duplicate ACKs, TCP can be more confident that a packet loss has occurred rather than just an out-of-order delivery.
+\end{enumerate}
+This mechanism allows TCP to recover from packet loss efficiently, which is crucial for maintaining reliable communication over the network.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How much data can the sender inject into the network?}}
+\end{flushleft}
+TCP does \textbf{not} send unlimited data. It maintains a window of unacknowledged data that can be in flight\footnote{
+    In-flight data refers to the data that has been sent by the sender \textbf{but has not yet been acknowledged by the receiver}. This is the data that is currently traversing the network and has not yet been confirmed as received.
+} at any given time:
+\begin{equation*}
+    \text{Maximum in-flight data} \leq \text{window size}
+\end{equation*}
+In modern TCP there are actually two windows:
+\begin{itemize}
+    \item \important{rwnd (receiver window)}: This is the amount of data the receiver is willing to accept. It is advertised by the receiver in the ACKs.
+    \item \important{cwnd (congestion window)} \hl{is the maximum amount of data the sender is allowed to have in flight.} It is measured in bytes or MSS (Maximum Segment Size) units. For example, if cwnd is 10 MSS, the sender can have at most 10 segments in flight before receiving ACKs.
+\end{itemize}
+For congestion control, \textbf{we care only about cwnd}, which is the sender's congestion window. The congestion window is also called \hl{``sliding window''} because as ACKs are received, the window slides forward, allowing more data to be sent. So if the cwnd is larger, the sender can inject more data into the network before waiting for ACKs. If the cwnd is smaller, the sender must wait for ACKs more frequently, which can reduce throughput but also helps to prevent congestion in the network. \hl{Controlling the size of the congestion window is a key aspect of TCP's congestion control mechanism.} All congestion control algorithms work by adjusting the congestion window size based on network conditions, such as packet loss or round-trip time, to optimize throughput while avoiding congestion.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Bandwidth-Delay Product (BDP)}}
+\end{flushleft}
+The \definition{Bandwidth-Delay Product (BDP)} is a critical concept in understanding TCP performance. It represents the \textbf{amount of data that can be in transit in the network at any given time}. The BDP is calculated as:
+\begin{equation}
+    \text{BDP} = \text{Bandwidth} \times \text{Round-Trip Time (RTT)}
+\end{equation}
+The Bandwidth-Delay Product (BDP) indicates the \textbf{optimal amount of data that should be in flight to fully utilize the available bandwidth without causing congestion}. If the congestion window (cwnd) is smaller than the BDP:
+\begin{equation*}
+    \text{cwnd} < \text{BDP}
+\end{equation*}
+The \hl{sender cannot fully utilize the network capacity}, resulting in suboptimal throughput.
+
+\highspace
+Conversely, if the congestion window (cwnd) is larger than the BDP:
+\begin{equation*}
+    \text{cwnd} > \text{BDP}
+\end{equation*}
+Congestion and packet loss may occur, which can \hl{degrade performance}. Therefore, TCP's congestion control algorithms aim to \hl{adjust the congestion window size to match the BDP}, ensuring efficient data transmission while avoiding congestion. In data centers, where bandwidth is typically very high and RTT is very low, the BDP can be quite small. This means that TCP needs to maintain detailed control over the congestion window to achieve optimal performance; otherwise, a small misconfiguration can lead to significant performance degradation.
+
+\highspace
+\textcolor{Green3}{\faIcon{database} \textbf{Connect to Datacenters.}} Traditional TCP increases the congestion window (cwnd) aggressively and only detects congestion when packets are lost. This means that the cwnd grows until the buffers are full, resulting in large queues before TCP detects congestion. This is not ideal for data centers, where short queues are preferred to minimize latency. Therefore, modern TCP variants used in data centers (like DCTCP) use more sophisticated congestion control algorithms that can detect congestion earlier (e.g., using Explicit Congestion Notification - ECN) and adjust the congestion window more smoothly. This maintains low latency while maximizing throughput.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-line} \textbf{Slow Start}}
+\end{flushleft}
+Despite the name, it is \textbf{not slow at all}. It is actually \emph{very aggressive}. But, \textcolor{Green3}{\faIcon{question-circle} \textbf{why do we need slow start?}} When a TCP connection begins, the sender has \textbf{no idea} about:
+\begin{itemize}
+    \item Available bandwidth
+    \item RTT stability
+    \item Buffer size
+    \item Current congestion
+\end{itemize}
+\emph{So what should it do?} It must \hl{probe the network capacity to find out how much data it can send without causing congestion.} This is where the \textbf{slow start} algorithm comes into play:
+\begin{enumerate}
+    \item \textbf{Initial Condition}: The congestion window (cwnd) starts at a small value, typically 1 MSS (Maximum Segment Size). This means that the sender can only send one segment of data before waiting for an acknowledgment (ACK).
+    \item \textbf{Exponential Growth}: The rule is simple: for every ACK received, the congestion window (cwnd) increases by 1 MSS:
+    \begin{equation*}
+        \text{cwnd} = \text{cwnd} + 1 \text{ MSS}
+    \end{equation*}
+    Since each ACK corresponds to one segment being acknowledged, the congestion window effectively doubles every round-trip time (RTT). For example:
+    \begin{itemize}
+        \item After the first RTT, $\text{cwnd} = 2\text{ MSS}$
+        \item After the second RTT, $\text{cwnd} = 4\text{ MSS}$
+        \item After the third RTT, $\text{cwnd} = 8\text{ MSS}$
+        \item After the fourth RTT, $\text{cwnd} = 16\text{ MSS}$
+    \end{itemize}
+    That's why it is exponential growth and very aggressive.
+    \item \textbf{Stopping Criterion}: The slow start phase continues until:
+    \begin{equation*}
+        \text{cwnd} \geq \text{ssthresh (slow start threshold)}
+    \end{equation*}
+    When the congestion window (cwnd) reaches or exceeds the slow start threshold (ssthresh), TCP assumes congestion may be occurring and \textbf{reduces the congestion window to a smaller value} (often 1 MSS) and enters the \textbf{congestion avoidance phase} (next page), where it increases the congestion window more slowly (e.g., linearly) to avoid causing congestion.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why ``slow start'' is problematic in datacenters?}} Because it is \textbf{too aggressive}. In data centers where bandwidth is high and round-trip time (RTT) is low, the congestion window can grow quickly, leading to buffer overflow and increased latency before TCP detects congestion. The fundamental structural problem is that the slow start algorithm probes the network capacity by increasing the congestion window exponentially until packet loss occurs. However, TCP only learns the network capacity when the buffer is full, so the queue must first build up. This is not ideal for data centers, where low latency is crucial.
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Congestion Avoidance}}
+\end{flushleft}
+This phase starts when the congestion window (cwnd) reaches the slow start threshold (ssthresh):
+\begin{equation*}
+    \text{cwnd} \geq \text{ssthresh}
+\end{equation*}
+So we switch to a more careful rule: \textbf{increase slowly to avoid overshooting the network capacity}. The most common congestion avoidance algorithm is \definition{Additive Increase, Multiplicative Decrease (AIMD)}.
+It is a simple yet effective algorithm that \textbf{adjusts the congestion window (cwnd) based on network conditions}, allowing TCP to find a balance between maximizing throughput and minimizing congestion. The AIMD algorithm is divided into two phases:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{arrow-up}}] \textbf{Additive Increase}: For every ACK received, the congestion window (cwnd) increases by a small amount, typically 1 MSS per RTT:
+    \begin{equation}
+        \text{cwnd} = \text{cwnd} + \frac{1 \text{ MSS}}{\text{cwnd}}
+    \end{equation}
+    This results in a \hl{linear increase of the congestion window over time}, allowing TCP to probe for additional bandwidth without causing congestion.
+
+    \item[\textcolor{Red2}{\faIcon{arrow-down}}] \textbf{Multiplicative Decrease}: If a packet loss is detected (e.g., through a timeout or receiving three duplicate ACKs), TCP assumes congestion has occurred and reduces the congestion window (cwnd) multiplicatively, typically by halving it:
+    \begin{equation}
+        \text{cwnd} = \frac{\text{cwnd}}{2}
+    \end{equation}
+    This allows TCP to \hl{quickly reduce the load on the network and alleviate congestion}.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Problem with AIMD in datacenters}}: even in congestion avoidance, TCP still detects congestion via loss. It happens only when the buffer is full. So TCP \emph{always} allows queues to grow large before it detects congestion, which is \hl{not ideal for data centers} where low latency is crucial.

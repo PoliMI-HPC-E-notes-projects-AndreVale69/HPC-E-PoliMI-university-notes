@@ -1,0 +1,299 @@
+\subsubsection{Exercise 1: The first eBPF program}
+
+A minimal XDP program is just a function that:
+\begin{itemize}
+    \item Receives \texttt{struct xdp\_md *ctx} as an argument, which is the execution context of the XDP program (see \autopageref{sec:xdp_execution_context}).
+    
+    \item Optionally inspects packet bytes via \texttt{ctx->data} and \texttt{ctx->data\_end}\break pointers, which point to the start and end of the packet data, respectively.
+    
+    \item \textbf{Returns an XDP return code} (see \autopageref{sec:xdp_return_codes}), which is an integer that indicates how the kernel should process the packet after the XDP program finishes executing.
+\end{itemize}
+At the beginning of the laboratory, we don't even need parsing the packet bytes, just returning a constant already proves the whole pipeline works.
+
+\highspace
+Our kernel program \texttt{hello\_world.bpf.c} is compiled by clang into an ELF object file (commonly named \texttt{hello\_world.bpf.o}) that contains: eBPF bytecode, map definitions (if any) and program section metadata. We don't run this file, we \textbf{load} it into the kernel, which verifies the eBPF bytecode and, if it is valid, creates a new eBPF program in the kernel with the same logic as our C code.
+
+\highspace
+Finally, the program is attached to an interface's \textbf{XDP hook}. Once attached, it runs on every packet received by that interface, and our return code decides the fate of the packet.
+
+\highspace
+In this first exercise, we will write the classic ``\emph{Hello, World!}'' program of the eBPF world: an XDP \hl{program that print ``\emph{Hello World from BPF!}'' for every packet received by the interface, then returns \texttt{XDP\_PASS} to let the packet continue its normal processing in the kernel.} Let's start:
+\begin{enumerate}
+    \item \important{Topology} (\emph{what is happening in the network?}). The exercise gives us a simple bash script:
+    \begin{lstlisting}[language=bash,mathescape=false]
+#!/bin/bash
+
+# include helper.bash file: used to provide some common function across testing scripts
+source "${BASH_SOURCE%/*}/../../libs/helpers.bash"
+
+# function cleanup: is invoked each time script exit (with or without errors)
+function cleanup {
+  set +e
+  delete_veth 1
+}
+trap cleanup ERR
+
+# Enable verbose output
+set -x
+
+cleanup
+# Makes the script exit, at first error
+# Errors are thrown by commands returning not 0 value
+set -e
+
+# Create a network namespace and a veth pair
+create_veth 1
+sudo ifconfig veth1 10.0.0.254/24 up\end{lstlisting}
+    This script creates a new network namespace and a \texttt{veth} pair, then assigns an IP address to one of the \texttt{veth} interfaces. The other interface is left without an IP address and is used to load our XDP program. To execute the script, we can run:
+\begin{lstlisting}[language=bash,mathescape=false]
+chmod +x create-topo.sh
+./create-topo.sh\end{lstlisting}
+    \begin{deepeningbox}[: What is a \texttt{veth}?]
+        \texttt{veth} (virtual Ethernet) is a \emph{pair} of virtual network interfaces that behave like a cable. When a packet is sent to one end of the pair, it immediately appears on the other end. It's like a patch cable but entirely inside the Linux kernel, no physical NIC is involved.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does Linux have \texttt{veth} pairs?}} Because Linux supports \textbf{network namespaces}. A namespace is basically a completely isolated network stack. Each namespace has its own interfaces, routing tables, firewall rules, ARP tables, etc. But namespaces cannot communicate unless we connect them. And how do we connect two namespaces? With a \texttt{veth} pair!
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{What does the script above do?}} The line \texttt{create\_veth 1} creates a new namespace (let's call it \texttt{ns1}) and a \texttt{veth} pair (\texttt{veth1} and \texttt{veth1-peer}). It puts \texttt{veth1} in the default namespace and \texttt{veth1-peer} in \texttt{ns1}. Then, it assigns the IP address \texttt{10.0.0.254/24} to \texttt{veth1}. This means that \texttt{veth1} can be used to send packets to \texttt{ns1} and vice versa, but only if we use the correct IP address and routing rules. In our case, we will use \texttt{veth1} to load our XDP program and test it by sending packets from \texttt{ns1}.
+
+        \highspace
+        So the topology becomes:
+        \begin{center}
+            \begin{tikzpicture}[
+                %font=\small,
+                box/.style={draw, rounded corners, thick, inner sep=6pt, align=center},
+                iface/.style={draw, thick, inner sep=3pt, align=center},
+                cable/.style={thick, dashed},
+            ]
+
+                % Boxes
+                \node[box] (root) {Root namespace};
+                \node[box, below=2.2cm of root] (ns1) {Namespace \texttt{ns1}};
+
+                % Interfaces
+                \node[iface, right=2.5cm of root] (veth1) {\texttt{veth1}\\\footnotesize 10.0.0.254/24};
+                \node[iface, right=2.5cm of ns1]  (veth1_) {\texttt{veth1-peer}\\\footnotesize 10.0.0.1/24};
+
+                % Connect namespace boxes to interfaces
+                \draw[thick] (root.east) -- (veth1.west);
+                \draw[thick] (ns1.east) -- (veth1_.west);
+
+                % Virtual cable between veth pair
+                \draw[cable] (veth1.south) -- node[right, align=center] {\footnotesize virtual\\\footnotesize ethernet cable} (veth1_.north);
+            \end{tikzpicture}
+        \end{center}
+        And we can do:
+        \begin{lstlisting}[language=bash,mathescape=false]
+ip netns exec ns1 ping 10.0.0.254\end{lstlisting}
+        To send packets from \texttt{ns1} to \texttt{veth1}, which will be processed by our XDP program, since it is attached to \texttt{veth1}.
+
+        \highspace
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need this topology?}} We want:
+        \begin{itemize}
+            \item A packet to be \textbf{generated somewhere};
+            \item To travel through a \textbf{real interface} (not loopback) so that it can be processed by our XDP program;
+        \end{itemize}
+        Without touching our real network interfaces (like \texttt{eth0}), which could cause problems if we mess up with the XDP program. So we need a packet sender, a real interface, a packet receiver and all isolated from our real network. That's exactly what the \texttt{veth} pair and the network namespace give us.
+
+        \highspace
+        So a \texttt{veth} pair simulates a \textbf{cable between two machines}. We can think of two physical machines connected by a cable:
+        \begin{center}
+            \begin{tikzpicture}[
+                %font=\small,
+                box/.style={draw, rounded corners, thick, inner sep=6pt, align=center},
+                iface/.style={draw, thick, inner sep=3pt, align=center},
+                cable/.style={thick, dashed},
+            ]
+
+                % Boxes
+                \node[box] (host1) {Host 1};
+                \node[box, right=5cm of host1] (host2) {Host 2};
+
+                % Interfaces
+                \node[iface, below=0.5cm of host1] (eth0) {\texttt{eth0}\\\footnotesize 10.0.0.1/24};
+                \node[iface, below=0.5cm of host2] (eth0_) {\texttt{eth0}\\\footnotesize 10.0.0.2/24};
+
+                % Connect hosts to interfaces
+                \draw[thick] (host1.south) -- (eth0.north);
+                \draw[thick] (host2.south) -- (eth0_.north);
+
+                % Cable between interfaces
+                \draw[cable] (eth0.east) -- (eth0_.west);
+            \end{tikzpicture}
+        \end{center}
+        If Host 1 sends a packet, it physically travels through the cable and arrives at Host 2. The \texttt{veth} pair simulates this behavior, but instead of a physical cable, it's a virtual one inside the kernel. So when Host 1 sends a packet, it goes through the virtual cable and arrives at Host 2, just like in the physical case.
+
+        \highspace
+        Finally, XDP runs on packet \textbf{receives}, inside the driver. It does \textbf{NOT} run when a packet is sent. So we need a packet to be sent from one namespace (\texttt{ns1}), arrive at an interface (\texttt{veth1}), trigger the receive path, and execute our XDP program. That's why we need this topology.
+    \end{deepeningbox}
+
+    \item \important{eBPF program} (\emph{what does the program do?}). We will write a simple XDP program in C that prints a message for every packet received.
+    \begin{lstlisting}[language=C,mathescape=false,caption={\texttt{hello\_world.bpf.c}}]
+#include <stdio.h>
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
+
+SEC("xdp")
+int xdp_prog_simple(struct xdp_md *ctx) {
+   //TODO: Implement the BPF program
+   bpf_printk("Hello World from BPF!");
+   return XDP_PASS;
+}
+
+char LICENSE[] SEC("license") = "Dual BSD/GPL";\end{lstlisting}
+    The \texttt{SEC("xdp")} \hl{macro tells the compiler that this function must be attached to the XDP hook}. Without this, the program won't be loaded as XDP.
+
+    The \texttt{bpf\_printk} is a \hl{helper function} that allows us to print debug messages from the kernel. The message will be visible in the kernel logs, which we can read with \texttt{dmesg} or:
+\begin{lstlisting}[language=bash,mathescape=false]
+sudo cat /sys/kernel/debug/tracing/trace_pipe\end{lstlisting}
+    Finally, we return \texttt{XDP\_PASS} to let the packet continue its normal processing in the kernel. If we returned \texttt{XDP\_DROP}, the packet would be dropped immediately and never reach the network stack.
+
+    \item \important{Compile the Program} (\emph{is it valid?}). We will compile our C code into an eBPF object file using clang. The command is:
+\begin{lstlisting}[language=bash,mathescape=false]
+make\end{lstlisting}
+    Clang will compile our C code into eBPF bytecode and create an ELF object file named \texttt{hello\_world.bpf.o} inside the \texttt{.output} directory. Then, \texttt{bpftool} automatically will generate a skeleton file named \texttt{hello\_world\break{}.skel.h} that contains the necessary code to load and attach our XDP program from user space.
+
+
+    \item \important{Loading the Program into the Kernel}. Inside \texttt{hello\_world.c}, we have:
+\begin{lstlisting}[language=C,mathescape=false,caption={\texttt{hello\_world.c}}]
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/resource.h>
+#include <bpf/bpf.h>
+#include <bpf/btf.h>
+#include <bpf/libbpf.h>
+#include <fcntl.h>
+#include <assert.h>
+#include <linux/if_link.h>
+
+#include <argparse.h>
+#include <net/if.h>
+
+#ifndef __USE_POSIX
+#define __USE_POSIX
+#endif
+#include <signal.h>
+
+#include "log.h"
+
+// Include skeleton file
+#include "hello_world.skel.h"
+
+// ...
+
+int main(int argc, const char **argv) {
+    // ...
+    /* Open BPF application */
+    skel = hello_world_bpf__open();
+    if (!skel) {
+        log_fatal("Error while opening BPF skeleton");
+        exit(1);
+    }
+
+    /* Set program type to XDP */
+    bpf_program__set_type(skel->progs.xdp_prog_simple, BPF_PROG_TYPE_XDP);
+
+    /* Load and verify BPF programs */
+    if (hello_world_bpf__load(skel)) {
+        log_fatal("Error while loading BPF skeleton");
+        exit(1);
+    }
+
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = &sigint_handler;
+
+    if (sigaction(SIGINT, &action, NULL) == -1) {
+        log_error("sigation failed");
+        goto cleanup;
+    }
+
+    if (sigaction(SIGTERM, &action, NULL) == -1) {
+        log_error("sigation failed");
+        goto cleanup;
+    }
+
+    xdp_flags = 0;
+    xdp_flags |= XDP_FLAGS_DRV_MODE;
+
+    /* Attach the XDP program to the interface */
+    int err = bpf_xdp_attach(
+        ifindex_iface,
+        bpf_program__fd(skel->progs.xdp_prog_simple),
+        xdp_flags,
+        NULL
+    );
+
+    if (err) {
+        log_fatal(
+            "Error while attaching the XDP program to the interface"
+        );
+        goto cleanup;
+    }
+
+    log_info("Successfully attached!");
+
+    // Sleep forever
+    while (1) {
+        sleep(1);
+    }
+}\end{lstlisting}
+    This could look intimidating at first, but it's just a lot of boilerplate code to load and attach our XDP program. The important part is:
+    \begin{itemize}
+        \item \textbf{Open skeleton}: \texttt{hello\_world\_bpf\_\_open()} reads the ELF object file generated by clang and prepares the eBPF program for loading.
+        
+
+        \item \textbf{Load program (verifier runs here)}: \texttt{hello\_world\_bpf\_\_load()} loads the eBPF bytecode into the kernel. During this step, the kernel's eBPF verifier checks the program for safety and correctness. If the program is invalid, it will be rejected and an error will be returned.
+        
+
+        \item \textbf{Attach to interface}:
+        \begin{lstlisting}[language=C,mathescape=false]
+int err = bpf_xdp_attach(
+    ifindex_iface,
+    bpf_program__fd(skel->progs.xdp_prog_simple),
+    xdp_flags,
+    NULL
+);\end{lstlisting}
+        This function attaches our XDP program to the specified network interface. The first argument is the interface index (we can get it with \texttt{if\_nametoindex("veth1")}), the second is the file descriptor of our XDP program, the third is a set of flags (we use \texttt{XDP\_FLAGS\_DRV\_MODE} to specify that we want to use driver mode), and the last one is for error handling (we pass \texttt{NULL} for now).
+    \end{itemize}
+
+
+    \item \important{Testing}. We run the topology, if not already running, and then execute our user space program:
+\begin{lstlisting}[language=bash,mathescape=false]
+# Run the topology script if not already running
+chmod +x create-topo.sh
+./create-topo.sh
+# Run the user space program to load and attach the XDP program
+sudo ./hello_world -i veth1\end{lstlisting}
+\begin{lstlisting}[mathescape=false]
+$ sudo ./hello_world -i veth1
+18:28:29 INFO  hello_world.c:72: XDP program will be attached to veth1 interface
+18:28:29 INFO  hello_world.c:78: Got ifindex for iface: veth1, which is 3
+18:28:29 INFO  hello_world.c:126: Successfully attached!\end{lstlisting}
+    Now we watch the kernel logs:
+    \begin{lstlisting}
+sudo su
+cat /sys/kernel/debug/tracing/trace_pipe\end{lstlisting}
+    And in another terminal, we send packets from \texttt{ns1} to \texttt{veth1}:
+\begin{lstlisting}[mathescape=false]
+$ ping 10.0.0.1 -c 1
+PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
+64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=1.18 ms
+
+--- 10.0.0.1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 1.175/1.175/1.175/0.000 ms\end{lstlisting}
+    In the kernel logs, we should see:
+\begin{lstlisting}[mathescape=false]
+ping-9618      [001] ..s2.  7268.496773: bpf_trace_printk: Hello World from BPF!
+ping-9618      [001] ..s2.  7268.496996: bpf_trace_printk: Hello World from BPF!
+ksoftirqd/1-24 [001] ..s1.  7273.572710: bpf_trace_printk: Hello World from BPF!\end{lstlisting}
+    This means that our XDP program is correctly attached to \texttt{veth1} and is executing for every packet received by that interface, printing our message in the kernel logs.
+\end{enumerate}
+The full code of the exercise is available here:
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/01-FirstBPFProgram}
+    \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/tree/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/ebpf-labs/lab_1/01-FirstBPFProgram}{Full code on GitHub}
+\end{center}

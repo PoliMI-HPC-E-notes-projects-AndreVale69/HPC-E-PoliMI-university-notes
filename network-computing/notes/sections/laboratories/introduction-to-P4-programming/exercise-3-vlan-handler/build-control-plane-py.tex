@@ -1,0 +1,50 @@
+\paragraph{Build \texttt{control\_plane.py}}
+
+The \texttt{control\_plane.py} file is responsible for implementing the control plane logic of the VLAN handler. It is more complex than Exercise 2 because it needs to handle both tagged and untagged packets, and perform more complex logic based on the VLAN ID. The code is structured as follows:
+\begin{lstlisting}[language=Python]
+from p4utils.utils.helper import load_topo
+from p4utils.utils.sswitch_p4runtime_API import SimpleSwitchP4RuntimeAPI
+
+topo = load_topo('topology.json')
+controllers = {}
+
+for switch, data in topo.get_p4rtswitches().items():
+    controllers[switch] = SimpleSwitchP4RuntimeAPI(data['device_id'], data['grpc_port'],
+                                                  p4rt_path=data['p4rt_path'],
+                                                  json_path=data['json_path'])
+
+controller = controllers['s1']     
+
+controller.table_clear('vlan_table')
+controller.table_add('vlan_table', 'forward', ['2'], ['2'])
+controller.table_add('vlan_table', 'forward', ['20'], ['2'])
+controller.table_add('vlan_table', 'forward', ['3'], ['3'])
+controller.table_add('vlan_table', 'forward', ['30'], ['3'])
+controller.table_add('vlan_table', 'forward', ['4'], ['4'])
+controller.table_add('vlan_table', 'forward', ['40'], ['4'])
+
+controller.table_clear('port_to_vlan')
+controller.table_add('port_to_vlan', 'add_vlan_hdr', ['2'], ['2'])
+controller.table_add('port_to_vlan', 'add_vlan_hdr', ['3'], ['3'])
+controller.table_add('port_to_vlan', 'add_vlan_hdr', ['4'], ['4'])\end{lstlisting}
+This code does the following:
+\begin{itemize}
+    \item We skip the topology loading part, which is similar to Exercise 2. We load the topology from \texttt{topology.json} and create a controller for the switch \texttt{s1}.
+    
+    
+    \item For this exercise, we have two tables:
+    \begin{itemize}
+        \item \texttt{vlan\_table}. This table is for traffic \textbf{from \texttt{h1} (tagged side)} to \textbf{hosts} \texttt{h2}/\texttt{h3}/\texttt{h4} (\textbf{untagged side}). So it maps something (a match key) to the output port. In a VLAN handler, the natural match key is usually the \textbf{VLAN ID (VID)} extracted from the VLAN tag, and the action parameter is \textbf{egress port}. So conceptually VID $\to$ output port.
+
+        \item \texttt{port\_to\_vlan}. This is for the \textbf{return direction}. Traffic from \texttt{h2}/\texttt{h3}/\texttt{h4} to \texttt{h1} arrives \textbf{untagged}, but the exercise requires that when it goes back to \texttt{h1} it is \textbf{tagged} with the VLAN corresponding to the source side.
+    \end{itemize}
+    
+    
+    \item The rules we add to the tables are as follows:
+    \begin{itemize}
+        \item For \texttt{vlan\_table}, we add rules that map VLAN IDs 2, 20 to port 2; VLAN IDs 3, 30 to port 3; and VLAN IDs 4, 40 to port 4. This means that if a packet arrives on port 1 with VLAN ID 2 or 20, it will be forwarded to port 2; if it has VLAN ID 3 or 30, it will be forwarded to port 3; and if it has VLAN ID 4 or 40, it will be forwarded to port 4. If the VLAN ID is not in the table, it will be forwarded to port 2 by default (as per the P4 program logic).
+
+        \item For \texttt{port\_to\_vlan}, we add rules that say: if a packet arrives on port 2, add VLAN header with VID 2; if it arrives on port 3, add VLAN header with VID 3; if it arrives on port 4, add VLAN header with VID 4. This means that when traffic from \texttt{h2} (port 2) goes back to \texttt{h1}, it will be tagged with VLAN ID 2; traffic from \texttt{h3} (port 3) will be tagged with VLAN ID 3; and traffic from \texttt{h4} (port 4) will be tagged with VLAN ID 4.
+    \end{itemize}
+    VLAN IDs (20, 30, 40) represent logical networks used to classify traffic, while port numbers (2, 3, 4) represent physical switch outputs; the control plane maps VLAN IDs to ports to implement VLAN-based forwarding.
+\end{itemize}

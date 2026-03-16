@@ -1,0 +1,57 @@
+\subsection{NIC Driver}
+
+As we know, the NIC driver is responsible for sending and receiving packets on the network, as well as other functions such as interrupt handling and DMA management. In this section, however, we will summarize the NIC driver's main functions and explain how it interacts with the operating system and hardware.
+
+\highspace
+The \definition{NIC Driver} is \textbf{software} that runs in the kernel, but it interacts closely with the \textbf{hardware} (the NIC) to perform its functions. It abstracts away the hardware details and provides a standardized interface for the kernel to send and receive packets. In other words, it is the \textbf{bridge between hardware and the kernel networking stack}. Its job is to:
+\begin{itemize}
+    \item Communicate with the NIC hardware to send and receive packets.
+    \item Manage descriptor rings (\autopageref{def:rx-descriptor-ring}) for efficient packet processing.
+    \item Convert raw packets into kernel data structures (e.g., \texttt{sk\_buff}) for the networking stack.
+    \item Inject packets into the Linux networking stack for further processing (e.g., routing, filtering).
+\end{itemize}
+When a packet is received:
+\begin{itemize}
+    \item \textbf{NIC} hardware writes the packet data into a pre-allocated buffer (managed by the driver).
+    \item \textbf{DMA} is used to transfer the packet data from the NIC to memory without CPU intervention.
+    \item \textbf{Memory} barriers ensure proper ordering of memory operations between the NIC and CPU.
+    \item \textbf{Driver} creates an \texttt{sk\_buff} structure to represent the packet in the kernel and passes it to the networking stack.
+    \item \texttt{sk\_buff} is a kernel data structure that holds packet data and metadata (e.g., length, protocol information).
+    \item \textbf{Networking stack} processes the packet (e.g., routing, filtering) and may generate a response packet.
+\end{itemize}
+The driver sits between the NIC (hardware) and the kernel stack (software), ensuring that packets are efficiently transferred and processed. It abstracts away the hardware details, allowing the kernel to focus on higher-level networking functions.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Step-by-Step Receive Process}}
+\end{flushleft}
+\begin{enumerate}
+    \item \important{NIC writes a packet via DMA}. The NIC receives a packet from the network and uses its DMA engine to write the packet into a pre-allocated buffer in memory. This buffer is part of the RX descriptor ring, which the driver has set up to manage incoming packets. The descriptor is updated to indicate that a new packet has arrived and is ready for processing. Note that the NIC does \textbf{not notify the application} directly; instead, it only updates the descriptor metadata to indicate that a packet has been received (\autopageref{sec:interrupt-mitigation-strategies}).
+    
+    
+    \item \important{Driver reads RX descriptor ring}. The driver checks the RX descriptor ring (either via interrupt or polling) to see if any new packets have been received. If it finds a descriptor marked as ``\emph{packet received}'', it reads the metadata to determine the packet's location in memory and its length. Each descriptor contains a buffer address, a packet length and a status flag. \hl{This is the first CPU interaction in the receive process.}
+    
+    
+    \item \important{Allocate \texttt{sk\_buff} (skb)}. The driver allocates an \texttt{sk\_buff} structure to represent the received packet in the kernel. The \texttt{sk\_buff} is a data structure used by the Linux kernel to manage network packets, containing pointers to the packet data, metadata (e.g., length, protocol information) and other fields needed for processing. The driver initializes the \texttt{sk\_buff} with the DMA buffer and metadata fields from the RX descriptor. This \textbf{operation is not free} because it involves memory allocation, metadata initialization and linking to internal kernel structures. \hl{At high packet rates, this can become a bottleneck} if not optimized.
+    
+    
+    \item \important{Clear descriptor entry}. After processing the received packet, the driver marks the descriptor as free and re-adds the buffer to the RX descriptor ring for future packets. From this point on, the NIC can reuse this buffer for new incoming packets. This \hl{step is crucial for continuous packet reception}, as it ensures that the driver maintains a pool of available buffers for the NIC to write into.
+    
+    
+    \item \important{Pass skb to upper layers}. Finally, the driver calls \texttt{netif\_receive\_skb} to pass the \texttt{sk\_buff} up the Linux networking stack for further processing (e.g., routing, filtering). The \texttt{netif\_receive\_skb} function is responsible for delivering the packet to the appropriate protocol handlers and eventually to the application layer. This step involves additional processing overhead as the packet traverses through various layers of the networking stack.
+\end{enumerate}
+The \textbf{NIC driver typically uses NAPI (New API)} for packet reception, combining interrupt-driven and polling mechanisms to improve performance under high load (see \autopageref{sec:napi-new-api}). However, even with NAPI, the driver allocates an \texttt{sk\_buff} for each received packet. The kernel processes the packet, and the CPU must perform context switches to handle it, which can lead to performance issues at high packet rates. Thus, while \hl{NAPI improves scalability, it does \textbf{not} eliminate kernel overhead} or CPU involvement in packet processing.
+
+\newpage
+
+\noindent
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why the Driver is a Bottleneck?}} The driver performs several operations for each received packet, including:
+\begin{itemize}
+    \item Reading the RX descriptor to get packet metadata.
+    \item Allocating an \texttt{sk\_buff} structure for the packet.
+    \item Initializing metadata fields in the \texttt{sk\_buff}.
+    \item Managing the RX descriptor ring (marking descriptors as free).
+    \item Calling functions to pass the packet up the networking stack.
+\end{itemize}
+At high packet rates (e.g., 10 million packets/sec), even small overhead per packet can add up to significant CPU load. The driver becomes a bottleneck because it \textbf{must perform these operations} for every packet, and the \textbf{CPU must handle the resulting interrupts and context switches}. This is why optimizing the driver and reducing per-packet overhead is crucial for achieving high performance in network applications.

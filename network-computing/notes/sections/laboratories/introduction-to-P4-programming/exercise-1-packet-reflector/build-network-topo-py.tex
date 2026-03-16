@@ -1,0 +1,107 @@
+\paragraph{Build \texttt{network\_topo.py}}
+
+Before writing code, let's understand what \texttt{network\_topo.py} is supposed to do. It is a Python script that doesn't implement packet logic, but rather it \textbf{creates the virtual network and loads our P4 program into the switch}. So its responsibilities are only:
+\begin{enumerate}
+    \item Create hosts and switches,
+    \item Connect them with links,
+    \item Tell the switch \textbf{which P4 program to run},
+    \item Start the network.
+\end{enumerate}
+The actual packet processing logic is defined in the P4 program, not in this script. So we will write \texttt{network\_topo.py} to set up the environment, and then we will write the P4 program to define how packets are processed within the switch.
+\begin{enumerate}
+    \item \important{Import the right API}. We use \textbf{P4-Utils}, which wraps Mininet for P4 experiments.
+    \begin{lstlisting}[language=Python]
+from p4utils.mininetlib.network_API import NetworkAPI\end{lstlisting}
+    The class \texttt{NetworkAPI} is a \textbf{high-level interface} that abstracts away the details of Mininet and BMv2, allowing us to create hosts, switches, links, and load P4 programs with simple method calls.
+
+
+    \item \important{Create the network object}. We create an instance of \texttt{NetworkAPI} to manage our network.
+    \begin{lstlisting}[language=Python]
+network = NetworkAPI()\end{lstlisting}
+    Now we have a \textbf{network object} that we can use to create hosts, switches, and links, and to load our P4 program.  At this point, we have an empty network with no hosts or switches.
+
+
+    \item \important{Set log level}. We set the log level to \texttt{info} to see more detailed output when we run the script.
+    \begin{lstlisting}[language=Python]
+network.setLogLevel('info')\end{lstlisting}
+    This will allow us to see more information about what the script is doing, which is helpful for debugging and understanding the flow of the program.
+
+
+    \item \important{Enable debugging helpers}. We enable debugging helpers to get more insights into the network behavior.
+    \begin{lstlisting}[language=Python]
+net.enablePcapDumpAll()
+net.enableLogAll()\end{lstlisting}
+    They give us the dump of all packets in pcap format (which we can analyze with Wireshark) and detailed logs of all events in the network. This is crucial for understanding how packets are processed and for debugging our P4 program.
+
+
+    \item \important{Enable Mininet CLI}. We enable the Mininet CLI to interact with the network after it is set up.
+    \begin{lstlisting}[language=Python]
+network.enableCLI()\end{lstlisting}
+    This allows us to run commands on the hosts and switches, inspect the network state, and test our P4 program interactively. Without this, the network would start and exit immediately.
+
+
+    \item \important{Add the P4 switch}. We add a switch to the network and specify the P4 program it should run.
+    \begin{lstlisting}[language=Python]
+switch = network.addSwitch('s1')\end{lstlisting}
+    This creates a \textbf{virtual switch node} named \texttt{s1} in our network. This switch will later run BMv2 (the software switch) with the P4 program we will define. At this point, we have a switch in our network (P4-capable), but it is not yet connected to any hosts.
+
+
+    \item \important{Tell the switch which P4 program to use}. We specify the P4 program that the switch should run.
+    \begin{lstlisting}[language=Python]
+switch.setP4Source('s1', 'packet_reflector.p4')\end{lstlisting}
+    This line is crucial because it says ``switch \texttt{s1}, when you start, load and run the P4 program defined in \texttt{packet\_reflector.p4}''. What happens under the hood:
+    \begin{enumerate}
+        \item P4 compiler is invoked,
+        \item BMv2 is started,
+        \item Compiled program is loaded.
+    \end{enumerate}
+    If this line is missing or wrong, the switch runs with \textbf{no logic} and packets go nowhere. So this is how we tell the switch what to do with packets.
+
+
+    \item \important{Add the host}. We create a host and connect it to the switch.
+    \begin{lstlisting}[language=Python]
+host = network.addHost('h1')\end{lstlisting}
+    This creates a \textbf{virtual Linux host} named \texttt{h1} in our network. This host will be able to send and receive packets. At this point, we have a host in our network, but it is not yet connected to the switch.
+
+
+    \item \important{Connect host and switch}. We create a link between the host and the switch.
+    \begin{lstlisting}[language=Python]
+network.addLink(host, switch)\end{lstlisting}
+    This creates a \textbf{virtual Ethernet link} between the host \texttt{h1} and the switch \texttt{s1}. Now the host can send packets to the switch, and the switch can send packets back to the host. This is essential for our packet reflector to work, as we need the host to be able to send packets to the switch and receive the reflected packets back.
+
+
+    \item \important{Set L2 behavior}. We set the switch to operate in Layer 2 mode.
+    \begin{lstlisting}[language=Python]
+switch.setL2()\end{lstlisting}
+    This configures the switch to operate at Layer 2 (Ethernet level), which is appropriate for our packet reflector. It is needed because we are working with Ethernet frames and we want the switch to process packets based on their Ethernet headers. This is important for our P4 program, which will parse Ethernet headers and reflect packets based on that.
+
+
+    \item \important{Start the network}. Finally, we start the network to run the switch and hosts.
+    \begin{lstlisting}[language=Python]
+network.startNetwork()\end{lstlisting}
+    This line starts the Mininet network, which in turn starts the BMv2 switch with our P4 program loaded and the host ready to send packets. After this line, the network is up and running, and we can interact with it using the CLI or run our test script to verify that the packet reflector is working correctly.
+\end{enumerate}
+The complete \texttt{network\_topo.py} script will look like this:
+\begin{lstlisting}[language=Python]
+from p4utils.mininetlib.network_API import NetworkAPI
+
+network = NetworkAPI()
+
+# Network general options
+network.setLogLevel('info')
+network.enablePcapDumpAll()
+network.enableLogAll()
+network.enableCli()
+
+# Network definition
+switch = network.addP4Switch('s1')
+network.setP4Source('s1', 'packet_reflector.p4')
+host = network.addHost('h1')
+
+# Assignment strategy
+network.addLink(switch, host)
+
+# Nodes general options
+network.l2()
+network.startNetwork()
+\end{lstlisting}

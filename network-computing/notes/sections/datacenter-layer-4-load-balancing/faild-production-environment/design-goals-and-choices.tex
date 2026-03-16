@@ -1,0 +1,69 @@
+\subsubsection{Design Goals and Choices}
+
+Faild was designed with a \textbf{production-first mindset}, where correctness, predictability, and ease of operation take precedence over theoretical optimality. The design goals reflect the realities of operating a large-scale edge infrastructure.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{Design Goals of Faild}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Production-first design}. Faild prioritizes \textbf{stable behavior under real workloads} and failure scenarios observed in practice. Design choices are validated by deployment experience and operational feedback. The system avoids mechanisms that are difficult to debug, require strong global coordination, or depend on idealized assumptions. So the \textbf{production environment drives the design}.
+
+
+    \item \important{Simplicity over theoretical optimality}. Faild accepts \textbf{slight load imbalances} and \textbf{suboptimal resource utilization} \hl{if they lead to simpler, more predictable behavior}. The system favors \textbf{straightforward mechanisms} that are easy to implement, reason about, and maintain over complex algorithms that may achieve marginally better performance \emph{but} introduce operational risks.
+    
+    \textcolor{Green3}{\faIcon{check}} That \textbf{reduces} the likelihood of \textbf{bugs} and \textbf{eases troubleshooting}.
+
+
+    \item \important{Fast failure recovery}. Faild is designed to \textbf{quickly recover from failures} common in edge environments, such as load balancer restarts, network partitions, and backend server crashes. The system \textbf{minimizes connection disruption and convergence times} by avoiding large state reconstructions and limiting the impact of failures on active connections.
+    
+    \textcolor{Green3}{\faIcon{check}} This ensures that Faild can maintain service availability and performance even in the presence of frequent failures.
+
+
+    \item \important{Minimal operational complexity}. Faild emphasizes \textbf{ease of deployment, upgrades, and incident response}. The design favors local decisions over global coordination and small, bounded state over large per-flow tables.
+    
+    \textcolor{Green3}{\faIcon{check}} This reduces the operational burden on engineers, improves reliability, and enhances maintainability in day-to-day operations.
+\end{itemize}
+Faild's design goals reflect a pragmatic approach to building a load balancing system that \textbf{meets the demands of real-world production environments}. By prioritizing robustness, predictability, and operational simplicity, Faild aims to deliver reliable performance while minimizing the risks and complexities associated with large-scale deployments.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Key Design Choices in Faild}}
+\end{flushleft}
+Faild's architecture reflects a \textbf{carefully balanced compromise} between statelessness and operational practicality. Instead of adhering strictly to either extreme, Faild adopts a \textbf{controlled and minimal use of state} to satisfy production requirements.
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Why Faild is not purely stateless}}. A fully stateless L4 load balancer relies exclusively on hashing. When the backend set changes (failures, scaling), hash functions change, causing large numbers of \hl{existing connections to be remapped}. At the edge, this would cause \hl{massive connection disruption and poor user experience}. Faild avoids this by \textbf{not being purely stateless}.
+
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Controlled use of state}}. Faild maintains \textbf{small, bounded state} used only where it provides clear benefits, such as preserving connection affinity and limiting disruption during reconfiguration. This \hl{state is easy to rebuild}, \hl{cheap to maintain}, and \hl{not required to be globally consistent}. The goal is \textbf{damage containment}, not perfect optimality. With ``\emph{damage containment}'', we mean that Faild aims to limit the negative impact of changes (like server failures) on existing connections, rather than trying to achieve an ideal distribution of load.
+
+
+    \item[\textcolor{Green3}{\faIcon{tools}}] \textcolor{Green3}{\textbf{Practical connection affinity}}. Faild implements mechanisms to \textbf{preserve connection affinity} for active connections, minimizing disruptions during backend changes. This includes remembering server assignments for active connections and avoiding unnecessary remapping when servers join or leave. The focus is on \textbf{real-world effectiveness} rather than theoretical guarantees. This reduces broken TCP connections, retransmissions, and load spikes due to reconnections. In other words, \hl{Faild's affinity mechanisms are designed to degrade gracefully under failures}.
+
+
+    \item[\textcolor{DarkOrange3}{\faIcon{balance-scale}}] \textcolor{DarkOrange3}{\textbf{Engineering trade-offs vs Cheetah}}
+    \begin{itemize}
+        \item \textbf{Cheetah}
+        \begin{itemize}
+            \item \textbf{Research-oriented}: designed to explore theoretical limits and novel algorithms.
+            \item \textbf{Fully stateless}: relies entirely on hashing without maintaining any connection state.
+            \item \textbf{Strong theoretical guarantees}: aims for optimal load distribution and minimal remapping.
+            \item \textbf{Focus on minimizing remapped connections mathematically}: prioritizes theoretical optimality over practical considerations.
+        \end{itemize}
+        \item \textbf{Faild}
+        \begin{itemize}
+            \item \textbf{Production-oriented}: designed for real-world deployment and operational robustness.
+            \item \textbf{Allows limited state}: maintains small, bounded state to preserve connection affinity.
+            \item \textbf{Focus on operational robustness}: prioritizes stability, predictability, and ease of operation.
+            \item \textbf{Optimizes for predictability and ease of recovery}: focuses on minimizing disruption during failures rather than achieving theoretical optimality.
+        \end{itemize}
+        Faild sacrifices some theoretical elegance to gain:
+        \begin{itemize}
+            \item Simpler failure handling
+            \item Better real-world behavior
+            \item Lower operational risk
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+Faild deliberately avoids full statelessness, using \textbf{minimal, well-scoped state} to preserve connection affinity and reduce disruption, prioritizing real-world robustness over theoretical optimality.

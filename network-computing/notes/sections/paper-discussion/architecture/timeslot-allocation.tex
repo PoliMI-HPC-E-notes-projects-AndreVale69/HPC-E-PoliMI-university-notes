@@ -1,0 +1,65 @@
+\subsubsection{Timeslot Allocation}\label{sec:timeslot-allocation}
+
+This section explains how the arbiter decides who sends data in each timeslot. The steps are as follows:
+\begin{enumerate}
+    \item \important{Time Is Discretized}. \textbf{Time} is divided into \textbf{equal-sized slots}. Each slot corresponds to a fixed time interval during which data can be transmitted. This value is equal to the time to transmit 1 MTU (Maximum Transmission Unit) of data.
+    
+    
+    \item \important{Build a Bipartite Graph}. At any moment, the arbiter sees:
+    \begin{itemize}
+        \item A set of senders with pending packets to transmit.
+        \item A set of intended receivers for those packets.
+    \end{itemize}
+    The arbiter constructs a \textbf{bipartite graph} where:
+    \begin{itemize}
+        \item One partition represents the senders.
+        \item The other partition represents the receivers.
+        \item An edge exists between a sender and a receiver if the sender has a pending packet destined for that receiver.
+    \end{itemize}
+    
+    
+    \item \important{Compute a Matching}. A \textbf{matching} is computed on the bipartite graph. A matching is a \hl{set of edges such that no two edges share a common vertex}. In this context, it means selecting pairs of senders and receivers such that:
+    \begin{itemize}
+        \item Each sender is matched to at most one receiver.
+        \item Each receiver is matched to at most one sender.
+    \end{itemize}
+    The \textbf{goal} of the matching is to \textbf{maximize the number of sender-receiver pairs that can communicate simultaneously without conflicts}.
+\end{enumerate}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{balance-scale} \textbf{Maximum vs Maximal Matching}}
+\end{flushleft}
+This difference is crucial:
+\begin{itemize}
+    \item \important{Maximum Matching}: A matching that contains the \hl{largest possible number of edges}.
+    \item \important{Maximal Matching}: A matching that \hl{cannot be extended by adding more edges} (i.e., no more edges can be added without violating the matching property).
+\end{itemize}
+Fastpass uses a \textbf{greedy maximal matching algorithm} to compute the matching in each timeslot. It means that the algorithm iteratively selects edges until no more can be added, without guaranteeing that the resulting matching is the largest possible.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why not Maximum Matching?}} Because maximum matching is too expensive to compute at microsecond timescales. Instead, Fastpass opts for a greedy maximal matching which is computationally efficient and can be executed within the tight time constraints of the system.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Fairness Policies}}
+\end{flushleft}
+Now here is where it gets interesting. The paper mentions that the arbiter can implement different \textbf{fairness policies} when computing the matching. This means that the \hl{algorithm can be designed to prioritize certain senders or receivers based on specific criteria}, such as:
+\begin{itemize}
+    \item \important{Max-Min Fairness}. Policy with the \hl{goal to ensure no flow is starved} (i.e., every flow gets at least a minimum share of the bandwidth). It \hl{allocates bandwidth evenly} among all active flows. In this case, the arbiter rotates priorities and ensures each flow eventually gets a chance to transmit, preventing any single flow from dominating the network resources.
+    \item \important{Min Flow Completion Time (FCT)}. This policy \hl{prioritizes flows that are expected to complete quickly}, such as small flows. The arbiter prioritizes flows with fewer remaining packets, similar to the pFabric philosophy.
+\end{itemize}
+Fastpass separates mechanism (the matching algorithm) from policy (the criteria for prioritization), \hl{allowing for flexibility in how the system can be configured to meet different performance goals.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{The Pipeline}}
+\end{flushleft}
+The arbiter does not compute one slot at a time serially. Instead, it \textbf{pipelines the computation of multiple timeslots}. This means that while one timeslot is being exec uted (i.e., data is being transmitted according to the matching computed for that slot), the arbiter is already computing the matching for the next timeslot. The stages of the pipeline are:
+\begin{enumerate}
+    \item \important{Process incoming requests}. The arbiter receives requests from senders and updates the bipartite graph accordingly.
+    \item \important{Compute matching}. The arbiter runs the greedy maximal matching algorithm to determine which sender-receiver pairs will communicate in the next timeslot.
+    \item \important{Assign paths}. The arbiter assigns the necessary paths in the network for the selected sender-receiver pairs to communicate.
+    \item \important{Send scheduling responses}. The arbiter sends scheduling responses back to the senders, informing them of their allocated timeslot and path for transmission.
+\end{enumerate}
+This pipelining allows Fastpass to \textbf{overlap the computation of scheduling decisions with the actual data transmission}, improving overall efficiency and reducing latency in the system.

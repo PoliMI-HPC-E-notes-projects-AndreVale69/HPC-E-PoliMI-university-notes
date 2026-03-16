@@ -1,0 +1,48 @@
+\section{Datacenter Layer 4 Load Balancing}\label{sec:datacenter-layer-4-load-balancing}
+
+\subsection{Introduction}
+
+A \definition{Load Balancer (LB)} is a device/system that assigns incoming client requests to different servers. At \definitionWithSpecificIndex{Layer 4 (transport layer)}{Layer 4 Load Balancing}{}, this decision is made \textbf{based on transport-level headers} (IP addresses $+$ TCP/UPD ports). For example, packets belonging to the same TCP connection must go to the same server.
+
+\highspace
+The goal is to:
+\begin{itemize}
+    \item \textbf{Distribute traffic uniformly} across servers.
+    \item \textbf{Preserve connection affinity} (all packets of a connection handled by the same backend).
+    \item \textbf{Improve utilization} of compute, network, and storage resources.
+\end{itemize}
+In simple words, instead of one server handling all client requests, an L4 load balancer spreads them across many servers while keeping each connection consistent.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it needed in datacenters?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{User-facing traffic}. Datacenters host applications accessed by millions of users (websites, APIs, services). Incoming requests first hit a \textbf{Virtual IP (VIP)} exposed to the Internet. The load balancer decides which backend server should handle each request. Without load balancing, a single server would be overwhelmed.
+    \item \textbf{Scalability}. Traffic volume is enormous: thousands/millions of requests per second. A load balancer enables \textbf{horizontal scaling} (adding more servers behind the VIP). Different approaches (TCP termination, NAT, Direct Server Return) improve scalability for asymmetric or heavy workloads.
+    \item \textbf{Reliability \& performance}. If one server fails, the LB can redirect traffic to healthy servers. Balancing traffic avoids hotspots (some servers overloaded while others are idle). Helps achieve predictable performance and meet SLAs\footnote{%
+        \textbf{SLA} stands for \textbf{Service Level Agreement}. It's a \textbf{formal contract} between a service provider (e.g., a cloud/datacenter operator) and a customer. It defines the \textbf{expected level of server} in measurable terms.
+    } (latency, throughput).
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do SLAs matter for load balancing?}} If all requests go to one overloaded server, latency spikes and SLA targets are violated. L4 Load Balancers spread traffic across servers to ensure:
+    \begin{itemize}
+        \item \textbf{No single server becomes a bottleneck}.
+        \item \textbf{Latency and availability goals in SLAs are respected}.
+    \end{itemize}
+    SLAs drive the \textbf{design of resilient load balancers}: failover, redundancy, uniform distribution.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a VIP?}}
+\end{flushleft}
+A \definition{Virtual IP} is an \textbf{IP address not bound to a single physical server}, but instead represents a \textbf{service} (e.g. \href{http://www.example.com}{www.example.com}). Clients on the Internet only see the VIP when they connect. The \textbf{load balancer owns the VIP} and listens for incoming connections. When traffic arrives at the VIP:
+\begin{enumerate}
+    \item The load balancer decides \textbf{which backend server} should handle the request.
+    \item It then forwards the packet/connection to that chosen server.
+    \item From the client's perspective, it's always talking to the VIP, even though multiple servers are working behind it.
+\end{enumerate}
+For example \texttt{8.8.8.8} is Google's DNS VIP. Millions of users query \texttt{8.8.8.8}. Behind the scenes, Google's load balancers spread requests across many DNS servers worldwide. Users don't need to know which specific server they hit, they always use the same VIP.
+
+\highspace
+Layer 4 Load Balancing is fundamental in datacenters because it \textbf{efficiently distributes massive user traffic} across backend servers, ensures \textbf{connection consistency}, and supports \textbf{scalability and fault tolerance}. It's a key building block for serving large-scale Internet services.

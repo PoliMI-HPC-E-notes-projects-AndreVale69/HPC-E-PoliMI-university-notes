@@ -1,0 +1,48 @@
+\subsection{The \texttt{sk\_buff} (Socket Buffer)}\label{sec:sk_buff}
+
+The \definition{Socket Buffer} (\texttt{sk\_buff}), often called \textbf{skb}, is the \textbf{fundamental kernel data structure used to represent a network packet inside Linux}. In the standard Linux networking stack, every packet is wrapped inside an \texttt{sk\_buff}. So instead of passing raw memory around, the kernel passes a pointer to an \texttt{sk\_buff}:
+\begin{equation*}
+    \texttt{struct sk\_buff *}
+\end{equation*}
+It contains two main parts:
+\begin{itemize}
+    \item \important{Metadata}: packet length, protocol type, device info, header offsets, timestamp, checksum info, queue pointers, routing info, TCP state references.
+    \item \important{Packet Data Buffer}: the actual packet bytes.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Memory Layout}}
+\end{flushleft}
+The structure of an \texttt{sk\_buff} is designed to allow flexible manipulation of packet headers without needing to reallocate memory. This is crucial as packets move through the networking stack (Ethernet $\to$ IP $\to$ TCP $\to$ Application), where each layer may need to add or remove headers. Therefore, the memory layout of an \texttt{sk\_buff} is crucial. Important pointers include:
+\begin{itemize}
+    \item \important{\texttt{head}}: beginning of allocated buffer.
+    \item \important{\texttt{data}}: start of packet data.
+    \item \important{\texttt{tail}}: end of packet data.
+    \item \important{\texttt{end}}: end of allocated memory.
+\end{itemize}
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.6\textwidth]{img/socket-buffer.pdf}
+    \caption{Memory layout of an \texttt{sk\_buff}. The flexible pointers allow efficient header manipulation. \cite{network-computing-polimi}}
+\end{figure}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why are there two pointers for the beginning and end of the packet data?}}
+Because the packet may need to grow or shrink as it moves through the stack, the kernel must be able to adjust where the packet data begins and ends without moving or reallocating the underlying buffer. Concretely:
+\begin{itemize}
+    \item \textbf{On receive}: when a packet is received, the Ethernet header is removed (pull), and the IP header becomes the new start of the packet data.
+    \item \textbf{On transmit}: when a packet is sent, a new Ethernet header may be added (push) before the existing data.
+\end{itemize}
+The \texttt{sk\_buff} structure supports these operations by separating the beginning and end of the packet data from the underlying buffer, avoiding expensive reallocations and improving performance.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is it expensive?}}
+\end{flushleft}
+At high packet rates, the cost of managing \texttt{sk\_buff} becomes significant. Each packet requires:
+\begin{itemize}
+    \item Allocation of an \texttt{sk\_buff}.
+    \item Initialization of metadata.
+    \item Multiple memory accesses (cache line writes).
+    \item Linking into queues.
+    \item Eventually freeing it.
+\end{itemize}
+Since an \texttt{sk\_buff} is a relatively \textbf{large structure} (hundreds of bytes), this leads to: increased cache pollution; higher memory pressure. This is why kernel bypass frameworks (e.g., DPDK) avoid using \texttt{sk\_buff} and instead use simple fixed packet buffers without complex metadata, resulting in significant performance gains. But before we get to kernel bypass, we will see how the kernel optimizes packet processing with techniques like GRO (Generic Receive Offload).

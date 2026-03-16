@@ -1,0 +1,67 @@
+\subsection{Architecture}
+
+At a high level, the architecture of Fastpass is quite simple.
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=.7\textwidth]{img/fastpass-arch-2.pdf}
+    \caption{Architecture of Fastpass.\cite{10.1145/2740070.2626309}}
+\end{figure}
+
+\noindent
+It has five main components:
+\begin{itemize}
+    \item \important{Endpoints} are normal servers that send and receive traffic, placed in the datacenter. However, unlike TCP:
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] They \textbf{do not freely send packets} to the network.
+        \item[\textcolor{Green3}{\faIcon{check}}] They must first request permission from the arbiter.
+    \end{itemize}
+    So the workflow is:
+    \begin{enumerate}
+        \item Endpoint has a packet to send.
+        \item It sends a request to the arbiter.
+        \item Arbiter assigns: a transmission timeslot and a path to the destination.
+        \item Endpoint sends only in that assigned timeslot, and only on that assigned path.
+    \end{enumerate}
+    In this way, the endpoints are \textbf{obedient transmitter}, not congestion controllers. However, \hl{the endpoints must be modified (kernel modifications) to implement this behavior. Instead, the switches and the network are completely unmodified.} We will discuss this in more detail in the FCP section.
+    
+    
+    \item \important{Central Arbiter} is the \textbf{brain} of Fastpass. Its responsibilities are:
+    \begin{itemize}
+        \item Maintain a global view of who wants to send what, and the network topology (i.e., the state of the network).
+        \item Compute matchings for each timeslot, i.e., which endpoints can transmit at the same time without causing congestion.
+        \item Assign paths to the endpoints, i.e., which path they should use to send their packets.
+        \item Ensure no link conflict occurs, i.e., that no two endpoints are assigned to transmit on the same link at the same time.
+    \end{itemize}
+    It runs as a \textbf{software service} on a \textbf{commodity server} (i.e., it is not a specialized hardware component). The software is \textbf{highly optimized} to make fast decisions, and it is \textbf{multi-core scalable} to handle a large number of requests.
+    
+    
+    \item \important{Timeslot Allocator}. The \hl{time is divided into fixed-size slots.} Each slot corresponds to one MTU (Maximum Transmission Unit)\footnote{
+        MTU is the maximum size of a packet that can be transmitted on the network. For example, if the MTU is 1500 bytes, then each timeslot is long enough to transmit one 1500-byte packet.
+    } transmission time on the slowest link in the network.
+    
+    For each timeslot, the arbiter chooses a \textbf{set of endpoints} (sender $\to$ receiver pairs) such that:
+    \begin{itemize}
+        \item Each sender sends at most 1 packet.
+        \item Each receiver receives at most 1 packet.
+    \end{itemize}
+    For example, suppose we have 3 senders ($A$, $B$, $C$) and 3 receivers ($X$, $Y$, $Z$). In one timeslot, the arbiter might assign:
+    \begin{itemize}
+        \item $A$ wants to send to $X$.
+        \item $B$ wants to send to $Z$.
+        \item $C$ wants to send to $Y$.
+    \end{itemize}
+    Although this \textbf{constraint ensures there are no conflicts at the endpoints}, it does not guarantee there are no conflicts in the network (i.e., two paths may share a link). This is where the path selector comes in.
+    
+    
+    \item \important{Path Selector} is \textbf{responsible for assigning a path to each sender-receiver pair selected by the timeslot allocator}. The path selector must ensure that \hl{no two packets use the same internal link in same timeslot}, otherwise there would be a conflict and congestion would occur. For example, if $A$ sends to $X$ and $B$ sends to $Z$, and both paths share a link, then there would be a conflict on that link.
+    
+    
+    \item \important{Fastpass Control Protocol (FCP)} is the \textbf{protocol used by the endpoints to communicate with the arbiter} and vice versa. It is a \textbf{lightweight protocol} designed for low latency and high throughput. It is \hl{implemented in the kernel of the endpoints}, and it allows them to:
+    \begin{itemize}
+        \item Send requests to the arbiter when they have packets to send.
+        \item Receive assignments from the arbiter (timeslot and path).
+        \item Transmit packets according to the assignments.
+    \end{itemize}
+    The FCP is designed to be \textbf{simple and efficient}, with minimal overhead, to ensure that the communication between endpoints and arbiter does not become a bottleneck.
+\end{itemize}

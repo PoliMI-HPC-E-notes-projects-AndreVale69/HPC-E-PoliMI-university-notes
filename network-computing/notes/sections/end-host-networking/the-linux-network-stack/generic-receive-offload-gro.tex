@@ -1,0 +1,60 @@
+\subsection{The Linux Network Stack}
+
+After the NIC driver creates and initializes the \texttt{sk\_buff} structure, the packet enters the \textbf{Linux network stack}, where it undergoes multiple stages of processing before being delivered to the application. The receive path is not a single function call, but a sequence of subsystems, each with a distinct role:
+\begin{enumerate}
+    \item \textbf{GRO (Generic Receive Offload)}: performance optimization. Reduces per-packet overhead by merging packets belonging to the same flow.
+    \item \textbf{Netfilter}: policy enforcement and packet filtering. Applies security and policy rules such as firewall filtering and NAT.
+    \item \textbf{TCP/IP Stack}: transport and protocol processing. Ensures reliable transport, ordering, congestion control, and flow control.
+\end{enumerate}
+Together, these components transform a raw packet received from the NIC into data that can be safely delivered to a socket in user space.
+
+\longline
+
+\subsubsection{Generic Receive Offload (GRO)}
+
+\definition{Generic Receive Offload (GRO)} is a kernel mechanism that \textbf{merges multiple incoming packets belonging to the same flow into a single larger} \texttt{sk\_buff}, reducing per-packet processing overhead.
+
+\highspace
+It is the \textbf{software counterpart} of the hardware-based Large Receive Offload (LRO) found in some NICs (see \autopageref{def:large-receive-offload-lro}). While LRO is implemented in the NIC hardware, \textbf{GRO is implemented in the Linux kernel} and can be used with any NIC, regardless of hardware support. It is \textbf{executed early in the receive path}, before heavy protocol processing.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need GRO?}}
+\end{flushleft}
+The fundamental problem is that the CPU overhead for processing incoming packets is often \textbf{proportional to the number of packets} (Packets Per Second, PPS). For high-throughput applications, this can lead to significant CPU overhead.
+
+\highspace
+For example, if 10 TCP segments arrive in quick succession, without GRO, the kernel would process each segment individually, leading to 10 separate \texttt{sk\_buff} structures and 10 separate processing steps. With GRO, the \textbf{kernel can merge these segments into a single} \texttt{sk\_buff}, reducing the number of packets that need to be processed and thus reducing CPU overhead. So we reduce \textbf{packets-per-second (PPS)} seen by upper layers of the network stack, improving CPU efficiency, cache locality, and overall throughput.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{How does GRO work?}}
+\end{flushleft}
+When a new \texttt{sk\_buff} arrives to the kernel:
+\begin{enumerate}
+    \item Kernel checks if it belongs to an existing flow (same 5-tuple: source/destination IP, source/destination port, protocol).
+    \item \textcolor{Green3}{\faIcon{check}} If it matches an existing flow, the kernel merges the new packet's payload into the existing \texttt{sk\_buff}, updating headers and metadata accordingly.
+    \item \textcolor{Red2}{\faIcon{times}} If it does not match an existing flow, the kernel creates a new \texttt{sk\_buff} for the new flow.
+\end{enumerate}
+GRO maintains temporary flow structures to perform merging, and it is designed to be efficient and transparent to upper layers of the network stack. It \hl{does not change the semantics of packet processing but optimizes it by reducing the number of packets that need to be processed}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Benefits}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Tradeoffs}}
+\end{flushleft}
+\begin{itemize}
+    \item \textcolor{Green3}{\faIcon{check}} \textbf{Benefits}: the \textbf{sawtooth pattern} of effective PCIe bandwidth (see \autoref{fig:pcie-performance}) shows that small packets suffer from high overhead, while larger packets achieve higher effective bandwidth. By merging small packets into larger ones, GRO can significantly improve performance for high-throughput applications by increasing effective transfer size \textbf{inside the kernel}.
+    \begin{itemize}
+        \item Fewer \texttt{sk\_buff} allocations and deallocations, reducing CPU overhead.
+        \item Fewer TCP header parses and protocol processing steps, improving CPU efficiency.
+        \item Fewer function calls and interrupts, improving cache locality and reducing context switches.
+    \end{itemize}
+    \item \textcolor{Red2}{\faIcon{times}} \textbf{Tradeoffs}
+    \begin{itemize}
+        \item \textbf{Increased latency for individual packets}: since GRO waits to merge packets, it may introduce additional latency for the first packet in a flow, as it waits for subsequent packets to arrive before processing.
+        \item \textbf{Complexity in flow management}: maintaining flow state for merging can add complexity to the kernel's receive path, and may require additional memory for flow tracking.
+        \item \textbf{Possible head-of-line blocking effects}: if one packet in a flow is delayed or lost, it can delay the processing of subsequent packets that are waiting to be merged, potentially impacting performance for that flow.
+    \end{itemize}
+    However, for high-throughput applications, the benefits of reduced CPU overhead and improved performance often outweigh the tradeoffs, making GRO a valuable optimization in the Linux network stack.
+\end{itemize}

@@ -1,0 +1,64 @@
+\subsection{Advanced Receive Flow Steering (aRFS)}
+
+The main problem with RSS is that packets of a flow may be processed by kernel on one core, while the application consuming them runs on another core. That creates cache misses, cross-core memory transfers, and latency overhead. So the new question becomes: ``\emph{can we steer packets directly to the core where the application runs?}'' That's where \textbf{Receive Flow Steering (RFS)} and \textbf{Accelerated Receive Flow Steering (aRFS)} come in.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{What RFS tries to fix}}
+\end{flushleft}
+RFS (Receive Flow Steering), a \textbf{software correction mechanism placed in the kernel after RSS}, observes where the application runs. When the application reads from a socket, the kernel recognizes that ``\emph{Flow $x$ is being consumed on Core $y$}''. RFS then \textbf{updates an internal mapping that directs packets of flow $x$ to core $y$}. When future packets arrive, the kernel tries to process them on core $y$, which improves cache locality and reduces cross-core data movement.
+
+\highspace
+However, it is important to note that \textbf{RSS still hashes packets to RX queues} based on the five-tuple. The kernel may internally redirect the processing of packets to the core where the application runs. This improves alignment, but since it is \textbf{still inside the kernel}, there is some \textbf{overhead}. For example:
+\begin{enumerate}
+    \item Packet arrives via RSS to queue $2$.
+    \item Interrupt/NAPI wakes up the kernel thread on core $2$ to process the packet.
+    \item The kernel realizes that the application consuming this flow is running on core $5$.
+    \item Packet processing must be shifted from core $2$ to core $5$, which involves cross-core data movement and cache misses.
+\end{enumerate}
+So RFS improves performance by steering packets to the right core, but \textbf{it still incurs overhead due to the need to shift processing within the kernel}.
+
+\highspace
+\begin{definitionbox}[: Receive Flow Steering (RFS)]
+    \definition{Receive Flow Steering (RFS)} is a \textbf{kernel-level mechanism} that dynamically steers incoming packets of a flow toward the \textbf{CPU core where the consuming application is running}, improving cache locality and reducing cross-core data movement. RFS operates by monitoring where applications read from sockets and updating internal mappings to direct packets of the corresponding flows to the appropriate cores for processing.
+\end{definitionbox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{What aRFS improves}}
+\end{flushleft}
+aRFS (Accelerated Receive Flow Steering) asks: ``\emph{why not tell the NIC directly where to send this flow?}''. Rather than relying on the kernel to redirect processing after the packet arrives, aRFS modifies the flow:
+\begin{enumerate}
+    \item The application runs on core 5.
+    \item The kernel detects this.
+    \item The \textbf{kernel programs the NIC} to direct packets from this flow to the RX queue mapped to core 5.
+    \item Future packets arrive directly at the correct RX queue and are processed on core 5 without shifting processing within the kernel.
+\end{enumerate}
+This way, \textbf{no correction} is needed after the packet arrives and \textbf{no cross-core data movement} occurs, which improves performance further.
+
+\highspace
+However, aRFS requires \textbf{NIC hardware support} to enable the kernel to program flow steering rules. Not all NICs support aRFS, and enabling this feature may require specific drivers or configurations. Additionally, aRFS may not be beneficial for all workloads, particularly those with highly dynamic flow patterns or unstable core affinities. In such cases, the overhead of programming the NIC may outweigh the performance benefits. Finally, aRFS introduces \textbf{additional complexity to the kernel's bookkeeping} (e.g., tracking which flows are steered to which cores), \textbf{flow-to-core mapping management}, and \textbf{steering rule updates}. This can add overhead in certain scenarios.
+
+\highspace
+Usually, though, the \textbf{overhead is negligible compared to the performance benefits} of improved cache locality and reduced cross-core data movement, especially for high-throughput applications that process large volumes of network traffic.
+
+
+\highspace
+\begin{definitionbox}[: Accelerated Receive Flow Steering (aRFS)]
+    \definition{Accelerated Receive Flow Steering (aRFS)} is a \textbf{hardware-assisted extension of RFS} in which the kernel \textbf{programs the NIC} to steer packets of a flow directly to the RX queue mapped to the CPU core running the application, further reducing cross-core overhead and improving performance.
+\end{definitionbox}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l l @{}}
+        \toprule
+        Mechanism & Who decides? & Goal \\
+        \midrule
+        RSS     & NIC (hash-based)      & Spread flows evenly across cores \\[.3em]
+        RFS     & Kernel (software)     & Align flow with application core \\[.3em]
+        aRFS    & Kernel (program NIC)  & Hardware steering to application CPU \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of RSS, RFS, and aRFS.}
+\end{table}

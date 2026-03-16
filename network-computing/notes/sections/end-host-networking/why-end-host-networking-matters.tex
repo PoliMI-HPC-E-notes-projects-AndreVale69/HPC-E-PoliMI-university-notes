@@ -1,0 +1,114 @@
+\section{End-Host Networking}
+
+\subsection{Why End-Host Networking Matters}
+
+In a \textbf{datacenter network}, traffic does \textbf{not} exist on its own. Every packet is:
+\begin{itemize}
+    \item \textbf{Generated} by an application;
+    \item \textbf{Processed} by an application;
+    \item \textbf{Terminated} by an application.
+\end{itemize}
+And \textbf{all applications run on end-hosts} (i.e., servers, VMs, containers). Therefore, \textbf{end-hosts are where network traffic begins and ends}. This may sound trivial, but it is the \emph{key insight} behind the \textbf{end-host networking} approach.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is an end-host?}}
+\end{flushleft}
+An \definition{End-Host} is simply a \textbf{server} (or VM, or container) inside a rack of a datacenter. It typically includes: CPUs, memory, one or more network interfaces (NICs), the operating system kernel and user-space applications. Unlike switches or routers:
+\begin{itemize}
+    \item End-hosts \textbf{run applications};
+    \item End-hosts \textbf{execute the networking stack} (i.e., implement TCP/IP, UDP, etc.);
+    \item End-hosts \textbf{interpret packet payloads} (i.e., they read and write application data).
+\end{itemize}
+\textcolor{Green3}{\faIcon{user-tag} \textbf{Role of End-Hosts in the network.}} From the network's perspective, end-hosts are: \textbf{traffic sources} and \textbf{traffic sinks} (i.e., they generate and consume traffic). However, from the application's perspective, end-hosts are \textbf{the only place where application semantics exist}. Indeed, the switches in the network can forward packets, inspect headers, and make routing/load-balancing decisions, but they \textbf{cannot create} packets, \textbf{consume} packets, or \textbf{decide what} packets \textbf{mean} (i.e., application semantics).
+
+\highspace
+\textcolor{Green3}{\faIcon{question} \textbf{Why does this matter for performance?}} Even if the \textbf{datacenter network fabric is perfect} (i.e., low latency, high bandwidth, no packet loss), packets still must:
+\begin{enumerate}
+    \item Enter the server via the Network Interface Card (NIC);
+    \item Traverse PCIe (Peripheral Component Interconnect Express) bus to reach the host memory;
+    \item Be processed by the operating system kernel networking stack (e.g., Linux TCP/IP stack);
+    \item Be delivered to the application (e.g., web server, database).
+\end{enumerate}
+
+\newpage
+
+\noindent
+If \textbf{any of these steps is slow}, then the \textbf{overall performance} of the networked application \textbf{suffers}, regardless of how good the network fabric is. Therefore, \textbf{end-host networking performance is critical} to the overall performance of datacenter applications.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c @{}}
+        \toprule
+        Aspect & End-hosts & Switches / Routers \\
+        \midrule
+        Run applications    & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}} \\[.3em]
+        Generate traffic    & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}} \\[.3em]
+        Interpret payload   & \textcolor{Green3}{\faIcon{check}}    & \textcolor{Red2}{\faIcon{times}} \\[.3em]
+        Programmability     & High                                  & Limited \\[.3em]
+        Deployment speed    & Fast                                  & Slow \\
+        \bottomrule
+    \end{tabular}
+    \caption{Key differences between end-hosts and in-network devices (switches/routers). The asymmetry in capabilities highlights why end-host networking is crucial for application performance. \hl{End-hosts} are \textbf{software-driven} and \hl{network devices} are \textbf{infrastructure-driven}.}
+\end{table}
+
+\begin{remarkbox}[: What is the PCIe bus?]
+    The \definition{PCIe (Peripheral Component Interconnect Express)} is the \textbf{high-speed internal interconnect} that links the \textbf{Network Interface Card (NIC)} to the \textbf{CPU and memory of a server}. It is \emph{not a networking protocol}, but it is \textbf{fundamental to networking performance at the end host}.
+
+    \highspace
+    In other words, PCIe is the hardware bus that carries packets inside the server, moving data between the NIC and host memory/CPU at very high speed and low latency. The life of a packet at the host is as follows (simplified):
+    \begin{equation*}
+        \text{Network} \to \text{NIC} \xrightarrow{\text{PCIe}} \text{Host Memory} \to \text{Kernel} \to \text{Application}
+    \end{equation*}
+    So PCIe is the \textbf{bridge between networking hardware and software}.
+\end{remarkbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why improving in-network hardware is hard in practice?}}
+\end{flushleft}
+At first glance, improving the network seems like the obvious solution to improving application performance. After all, if the network is faster, then packets should arrive sooner, right? However, in \textbf{practice}, this turns out to be \textbf{very hard}, \textbf{slow}, and \textbf{expensive}. This is why \emph{end-host networking} becomes attractive.
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Operational complexity}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Networks are shared infrastructure}. Datacenter networks are shared by \textbf{thousands of applications}, shared by \textbf{many teams}, and operated under \textbf{strict reliability guarantees}. Any change to in-network hardware affects \textbf{all tenants}, \textbf{all applications}, potentially \textbf{the whole datacenter}. Even a small bug in a switch can cause \textbf{network-wide outages}.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Hardware bugs are catastrophic}. In-network devices operate at \textbf{line rate} (i.e., they forward packets at full speed), but they are also \textbf{hard to debug}, and often fail in \textbf{unpredictable ways}. If a switch drops packets silently, corrupts state or misroutes traffic, \textbf{everything breaks}, and it is \textbf{very hard to trace the root cause}.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Deployment time}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Hardware innovation is slow}. Improving in-network hardware usually means new switch ASICs (Application-Specific Integrated Circuits), NIC firmware updates, drivers, or new control-plane software. All of these take \textbf{years} to design, test, manufacture, and deploy at scale. In contrast, end-host software can be updated in \textbf{days} or \textbf{weeks}.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Rollouts are painful}. Deploying new network hardware requires staged rollouts, compatibility testing, maintenance windows, and fallback plans. And often these rollouts require \textbf{recabling}, \textbf{topology changes}, or \textbf{downtime}, which are all costly and risky. This is the opposite of agile innovation.
+    \end{itemize}
+    \item[\textcolor{Red2}{\faIcon{exclamation-triangle}}] \textcolor{Red2}{\textbf{Cost and compatibility}}
+    \begin{itemize}
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Financial cost}. Network hardware is extremely expensive, tightly budgeted, and amortized over many years. Replacing switches is not done lightly, and often requires capital expenditure approval. In contrast, end-host software changes are \textbf{low-cost} and \textbf{iterative}.
+        \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Compatibility constraints}. New in-network features must work with \textbf{existing protocols}, interoperate with \textbf{legacy devices}, and comply with vendor ecosystems. Often the innovation is constrained by \textbf{backward compatibility} and operators cannot deploy ``experimental'' features in production networks (e.g., new congestion control algorithms). End-host software, on the other hand, can be \textbf{customized} per application or team.
+    \end{itemize}
+\end{itemize}
+In summary, while improving in-network hardware seems appealing in theory, \textbf{practical challenges} make it \textbf{difficult}, \textbf{slow}, and \textbf{costly} in reality. This is why focusing on \textbf{end-host networking optimizations} is often the more viable path to improving application performance in datacenter environments.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages of End-Host Innovation}}
+\end{flushleft}
+End-host innovation means \textbf{moving networking functionality closer to servers}, where applications run. This is not an accident or a workaround; it is a \textbf{deliberate design choice} adopted by modern datacenters for several reasons:
+\newpage
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Easier Deployment}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Software beats hardware}. End-hosts are general-purpose machines, software-driven, and under frequent update cycles. This\break makes deploying new networking features, like updating a kernel module or a driver, or deploying a user-space service, \textbf{much easier} than changing switch hardware or firmware. Because there is \textbf{no need to touch the physical network}.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Smaller blast radius}. If something goes wrong, only a \textbf{subset of servers} is affected, rollback is easy and failures are \textbf{contained}. This makes experimentation and innovation \textbf{safe}.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Faster Iteration}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{End-hosts follow software timelines}. At end-host changes happen in \textbf{days or weeks}, while network hardware changes take \textbf{years}. Also, CI/CD pipelines, automated testing, and continuous deployment are standard practice for end-host software, enabling rapid iteration and improvement. In contrast, network hardware changes require lengthy testing, staged rollouts, and careful planning. End-host innovation matches the \textbf{pace of application development}.
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Easier debugging and testing}. At the end-host there is a full OS visibility, tracing tools (eBPF, tcpdump, perf), application-level context. This enables fine-grained performance tuning and rapid diagnosis of regressions.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Closer to applications}}
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Access to semantics}. Only end-hosts know which application owns a packet, what a flow represents, and which latency or throughput matters. This \textbf{semantic knowledge} enables smarter optimizations that are \textbf{application-aware}, such as prioritizing critical flows, adapting to workload patterns, or implementing custom congestion control algorithms. In contrast, in-network devices operate blindly, without understanding application context, they can only make decisions based on packet headers and statistics (e.g., headers, flow size, etc.).
+        \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Better cross-layer optimization}. End-hosts can jointly consider networking, CPU scheduling, memory hierarchy, and application\break logic. This is \textbf{impossible} inside the network fabric.
+    \end{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Less disruption to the network}}. End-host innovation does not require network-wide coordination, preserves stability of the fabric and avoids vendor lock-in. Operators like this \textbf{a lot}.
+\end{itemize}
+So kernel bypass, programmable NICs, and eBPF are all examples of \textbf{end-host networking innovations} that leverage these advantages to improve application performance in datacenter environments.

@@ -1,0 +1,128 @@
+\subsubsection{Remote Direct Memory Access (RDMA)}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Kernel Bypass with a twist}}
+\end{flushleft}
+Instead of removing the kernel stack entirely (DPDK), or keeping everything in software (traditional stack), we do something else: we \textbf{move transport-layer processing into the NIC}, but we keep the kernel stack for control-plane operations. This is a sort of \textbf{twisted kernel bypass}, where we bypass the kernel for data-plane operations, but still use it for control-plane operations.
+
+\highspace
+In other words, instead of only bypassing the kernel stack, \hl{part of the transport-layer functionality such as TCP processing is moved into the NIC}. This reduces CPU involvement and allows higher throughput and lower latency at very high network speeds.
+
+\highspace
+So instead of:
+\begin{equation*}
+    \text{NIC} \rightarrow \text{CPU} \rightarrow \text{TCP} \rightarrow \text{Application}
+\end{equation*}
+We do:
+\begin{equation*}
+    \text{NIC (with transport logic)} \rightarrow \text{Application}
+\end{equation*}
+This reduces CPU usage and latency, while still allowing the kernel to manage resources and provide security.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How can we implement this?}}
+\end{flushleft}
+There are two main approaches:
+\begin{itemize}
+    \item \definition{TCP Offload Engine (TOE)} is a NIC that \textbf{implements a full TCP stack in hardware or firmware}. This allows the NIC to handle all TCP processing, including connection management, flow control, and error handling.
+    
+    \textcolor{Red2}{\faIcon{times-circle}} However, it was an idea from the early 2000s that never really took off due to its complexity, cost, and performance issues. The main problems were:
+    \begin{itemize}
+        \item \textbf{TCP Evolves Frequently}: TCP is a complex protocol that has evolved over time with many extensions and features. Implementing a \hl{full TCP stack in hardware is difficult and expensive}, and it can quickly become outdated as TCP evolves.
+        \item \textbf{Debugging and Monitoring}: When TCP logic is in hardware, it becomes very difficult to debug or monitor network behavior.
+        \item \textbf{Vendor Lock-in}: Each NIC vendor implements TOE differently, leading to compatibility issues and vendor lock-in.
+        \item \textbf{Security}: TOE bypasses many kernel security mechanisms, making it harder to enforce policies and maintain security.
+    \end{itemize}
+    For these reasons, TOE was adopted in some proprietary systems but \textbf{never became widespread in the industry}.
+
+
+    \item \definition{RDMA (Remote Direct Memory Access)} is a more modern approach that allows applications to \textbf{directly access the memory of remote machines without involving the CPU or kernel for data transfer}.
+    \begin{itemize}
+        \item \textbf{Remote}: The memory being accessed is on a different machine across the network.
+        \item \textbf{Direct}: The application can directly read/write to the remote memory without going through the CPU or kernel for data transfer.
+        \item \textbf{Memory Access}: The application can access the remote memory as if it were local, using load/store operations.
+    \end{itemize}
+    So the traditional networking:
+    \begin{equation*}
+        \begin{array}{ccccccccc}
+            \text{App A} & \rightarrow & \text{Kernel A} & \rightarrow & \text{TCP} & \rightarrow & \text{NIC} & \rightarrow & \text{Network} \\
+            &&&&&&&& \downarrow \\
+            &&&&&&&& \text{NIC} \\
+            &&&&&&&& \downarrow \\
+            &&&&&&&& \text{Kernel B} \\
+            &&&&&&&& \downarrow \\
+            &&&&&&&& \text{App B}
+        \end{array}
+    \end{equation*}
+    With RDMA, we can do:
+    \begin{equation*}
+        \text{App A} \rightarrow \text{RDMA NIC A} \rightarrow \text{Network} \rightarrow \text{RDMA NIC B} \rightarrow \text{Memory B}
+    \end{equation*}
+    CPU B is not involved in the data movement at all. The remote CPU is not interrupted, and there is no kernel stack traversal for the data transfer. Precisely, RDMA allows to bypass:
+    \begin{itemize}
+        \item Kernel networking stack
+        \item TCP/IP stack
+        \item \texttt{sk\_buff} management
+        \item Netfilter processing
+        \item System calls per packet
+        \item Remote CPU involvement in data transfer
+    \end{itemize}
+    This is \textbf{stronger than DPDK}, which still requires the application to manage the NIC and handle some of the processing in software. RDMA allows for \textbf{true zero-copy networking} with very low latency and high throughput, making it ideal for high-performance computing, distributed databases, and other latency-sensitive applications. Also, \textbf{RDMA removes CPU from the data movement path entirely}, while DPDK still requires the CPU to manage the NIC and handle some of the processing in software.
+
+    \newpage
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{tools} \textbf{How does RDMA work?}}
+    \end{flushleft}
+    In RDMA, applications do not ``send packets'' in the traditional sense. Instead, they issue \textbf{verbs}. A \definition{Verb} is a low-level operation submitted to the RDMA NIC (RNIC) to perform communication or memory access. Applications interact with RDMA through a \textbf{verbs API}. There are two main categories of verbs:
+    \begin{itemize}
+        \item \definition{Two-Sided RDMA Verbs}: These verbs require both the sender and receiver to participate in the communication. For example, machine $A$ wants to send data to machine $B$.
+        \begin{enumerate}
+            \item Machine $B$ posts a \textbf{Receive Work Request (WR)} to its\break RNIC, indicating that it is ready to receive data and providing a buffer for the incoming data.
+            \item Machine $A$ posts a \textbf{Send Work Request (WR)}.
+            \item The RNIC on machine $A$ matches the Send WR with the Receive WR on machine $B$ and transfers the data directly into the buffer provided by machine $B$ without involving the CPU or kernel on either side.
+        \end{enumerate}
+        \item \definition{One-Sided RDMA Verbs}: These verbs allow one machine to directly read from or write to the memory of another machine without any involvement from the remote CPU. For example, machine $A$ wants to write into machine $B$'s memory.
+        \begin{enumerate}
+            \item Machine $B$ registers memory and shares the memory addresses and remote keys with machine $A$.
+            \item Machine $A$ posts an \textbf{RDMA Write}.
+            \item The RNIC on machine $A$ directly writes the data into the specified memory location on machine $B$ without any involvement from machine $B$'s CPU or kernel.
+        \end{enumerate}
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{book} \textbf{Setting up RDMA Data Channels.}} The communication happens through a structure called a \definition{Queue Pair (QP)}, which is the fundamental RDMA communication endpoint. Each QP consists of a \textbf{Send Queue (SQ)} and a \textbf{Receive Queue (RQ)}. They are created as follow:
+    \begin{enumerate}
+        \item \textbf{Create RDMA Resources}: each side creates a \textbf{Protection Domain (PD)}, a \textbf{Completion Queue (CQ)}, a \textbf{Queue Pair (QP)}, and \textbf{Memory Regions (MR)} for the buffers they want to use.
+        \item \textbf{Exchange Connection Info}: each side exchanges the QP number, LIG/GID (address info), PSN (packet sequence number), and memory keys (remote keys for one-sided operations) with the other side. This exchange happens through TCP control channel or some out-of-band mechanism. In other words, \hl{RDMA does not magically discover the remote memory; the applications must explicitly exchange the necessary information to set up the RDMA communication.}
+        \item \textbf{Move QP Through States}: the QP goes through several states (INIT, RTR, RTS) to establish the connection and be ready for communication.
+    \end{enumerate}
+    \textcolor{Green3}{\faIcon{book} \textbf{Work Queues.}} Once the QP is established, we move to the execution phase. First of all, RDMA is \textbf{asynchronous}, so when an application posts a verb, it does not block waiting for the operation to complete.
+    \begin{itemize}
+        \item \important{Send Queue (SQ)}: The application posts work requests (WRs) to the SQ. Each WR describes an operation (e.g., Send, RDMA Write, RDMA Read) and the associated buffers and memory keys. The RNIC consumes entries from the SQ and executes them asynchronously.
+        \item \important{Receive Queue (RQ)}: The application posts receive WRs to the RQ, indicating that it is ready to receive data and providing buffers for incoming data. This is only needed for two-sided operations. For one-sided operations, the remote side does not need to post receive WRs, as the RNIC can directly access the remote memory.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{book} \textbf{Queue Elements.}} Now we define the elements inside those queues. There are two important types of elements:
+    \begin{itemize}
+        \item \definition{Work Queue Elements (WQE)} represents a request submitted by the application to the RNIC. For example, a WQE could represent a Send operation, an RDMA Write, or an RDMA Read. Each WQE contains the necessary information for the RNIC to execute the operation, such as buffer addresses, memory keys, and operation type. The RNIC processes WQEs and executes the corresponding operations on the network.
+        \item \definition{Completion Queue Elements (CQE)} represents a completion notification generated by the RNIC when a WQE is processed. When the RNIC completes a WQE, it generates a CQE and places it in the Completion Queue (CQ). The application can poll or wait on the CQ to receive notifications about completed operations, allowing it to manage resources and handle completions efficiently.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{book} \textbf{Complete RDMA Execution Flow}}
+    \begin{enumerate}
+        \item The application creates RDMA resources (PD, CQ, QP, MR).
+        \item The application exchanges connection information (QP number, LIG\break{}/GID, PSN, memory keys) with the remote side.
+        \item The application moves the QP through states (INIT, RTR, RTS) to establish the connection.
+        \item The application posts work requests (WRs) to the Send Queue (SQ).
+        \item The RNIC consumes WQEs from the SQ and executes them asynchronously.
+        \item When a WQE is completed, the RNIC generates a CQE and places it in the Completion Queue (CQ).
+        \item The application polls or waits on the CQ to receive notifications about completed operations.
+    \end{enumerate}
+
+    \highspace
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Limitations of RDMA.}} However, RDMA requires special networks. Common transport protocols for RDMA include:
+    \begin{itemize}
+        \item \textbf{InfiniBand}: A high-speed, low-latency network technology designed for RDMA.
+        \item \textbf{RoCE (RDMA over Converged Ethernet)}: An extension of RDMA that runs over standard Ethernet networks.
+        \item \textbf{iWARP (Internet Wide Area RDMA Protocol)}: An RDMA protocol that runs over TCP/IP networks, allowing RDMA to be used over existing Ethernet infrastructure without requiring special hardware.
+    \end{itemize}
+    So while RDMA provides significant performance benefits, it also \hl{requires specialized hardware and network infrastructure}, which can be a barrier to adoption in some environments. Also, RDMA requires \hl{lossless networks} (or congestion control mechanisms) and \hl{specialized NICs}, which can increase cost and complexity. Additionally, programming with RDMA can be more complex than traditional socket programming, as it requires managing memory registration, queue pairs, and other low-level details.
+\end{itemize}

@@ -1,0 +1,29 @@
+\subsection{Why TCP is Problematic in Datacenters}\label{section: Why TCP is Problematic in Datacenters}
+
+TCP was designed for WANs (Wide Area Networks) where the round-trip time (RTT) is relatively high and the bandwidth-delay product is large. In datacenters, however, the RTT is very low (on the order of microseconds) and the bandwidth-delay product is small. This leads to several issues with TCP's congestion control mechanisms:
+\begin{itemize}
+    \item \important{Large Queue Buildup} is the most fundamental issue. \textbf{TCP detects congestion only via packet loss}, which means that the congestion window (cwnd) will \textbf{grow until the buffers are full} and packets are dropped. That means TCP must allow the cwnd to increase until the buffers are full, before it detects congestion.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why this is bad in datacenters.}} In datacenters, the buffers are typically small (to minimize latency), links are very fast, and many flows share the same switch. When buffers fill, queueing delay increases significantly, which can lead to high latency and even timeouts. This is particularly \hl{problematic for short flows} (e.g., RPCs) that are latency-sensitive. In datacenters, \hl{tail latency} (i.e., the latency of the slowest requests) \hl{is critical because a single slow request can delay the entire job. Therefore, large queue buildup can lead to unacceptable tail latency.}
+
+
+    \item \important{Incast Problem} is uniquely problematic in datacenters. \textbf{Incast occurs when many senders simultaneously send data to a single receiver, causing the receiver's buffer to overflow} and leading to packet loss.
+    
+    This is common in datacenters where \hl{many servers may be sending data to a single server} (e.g., during a shuffle phase in a MapReduce job). TCP's reliance on packet loss for congestion detection can lead to severe performance degradation in incast scenarios, as the sender will reduce its congestion window drastically, leading to underutilization of the network and increased latency.
+    
+
+    \item \important{Slow Convergence} is another issue. TCP's congestion control algorithms (e.g., AIMD) are designed to converge to a fair share of the bandwidth over time. However, in datacenters, the RTT is so low that TCP may not have enough time to adjust its congestion window before the next round of packets is sent. In other words, TCP may not be able to react quickly enough to changes in network conditions, leading to suboptimal performance and unfair bandwidth allocation among flows.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{If we could redesign congestion control for datacenters, what properties should it have?}}
+\end{flushleft}
+We saw TCP problems: large queues, incast collapse, and instability. So what do we want from a congestion control algorithm in datacenters?
+\begin{itemize}
+    \item \important{High Throughput}. The \textbf{transport must fully utilize link capacity} (e.g., 100 Gbps). No under-utilization.
+    \item \important{Low Latency}. Datacenter workloads are often latency-sensitive (i.e., some flows are short and require low latency). These flows depend on Flow Completion Time (FCT): the time it takes for a flow to complete. Especially tail latency (e.g., 99th percentile) is critical, as a single slow request can delay the entire job. Therefore, the transport must minimize latency, especially for short flows. This means \textbf{avoiding large queues} and ensuring that the congestion control algorithm can react quickly to changes in network conditions.
+    \item \important{Small Queues}. This is directly opposite to classical TCP behavior. TCP stabilizes around full buffers, which is bad for latency. In datacenters, we want to \textbf{operate near link capacity but without filling buffers}. So we want to \hl{detect congestion early}, \hl{react before loss occurs}, and \hl{avoid buffer overflow} to minimize latency.
+    \item \important{Fast Convergence}. When traffic changes (e.g., new flows start or existing flows finish), the congestion control algorithm should quickly adapt to the new equilibrium. This means \textbf{reacting quickly to congestion signals} and \textbf{adjusting the sending rate promptly} to ensure efficient bandwidth utilization and fairness among flows.
+    \item \important{Fairness}. Multiple flows share links in datacenters, so the congestion control algorithm should ensure that all flows get a fair share of the bandwidth. This means \textbf{preventing starvation} of any flow and \textbf{ensuring that no flow can monopolize the network resources}.
+\end{itemize}
+In summary, datacenter transport must maintain high utilization while keeping queue near empty to minimize latency. It needs to detect congestion early and react quickly to changes in traffic patterns, while ensuring fairness among flows. TCP's design for WANs makes it ill-suited for these requirements, necessitating the development of new congestion control algorithms tailored for datacenter environments.

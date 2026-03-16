@@ -1,0 +1,236 @@
+\paragraph{Build \texttt{hdd\_v1.p4}}
+
+The \texttt{hdd\_v1.p4} file is the P4 program that defines the behavior of the switch. In Exercise 1, we will implement a simple heavy hitter detector that uses a register to count the number of packets for each IP address and a table to set the threshold for each IP address.
+\begin{itemize}
+    \item \important{Constants and types}
+    \begin{lstlisting}[style=p4style]
+/* -*- P4_16 -*- */
+#include <core.p4>
+#include <v1model.p4>
+
+/*
+ * H E A D E R S
+ */
+
+#define H4_PORT 4
+#define HDD_FILTER_ENTRIES 65535
+const bit<16> TYPE_IPV4 = 0x0800;
+typedef bit<48>  macAddr_t;\end{lstlisting}
+    We define some constants and types that we will use in the program.
+    \begin{itemize}
+        \item \texttt{H4\_PORT} is the port number of the host that will receive the heavy hitter notifications.
+        \item \texttt{HDD\_FILTER\_ENTRIES} is the maximum number of entries in the heavy hitter detection table.
+        \item \texttt{TYPE\_IPV4} is the Ethernet type for IPv4 packets.
+        \item \texttt{macAddr\_t} is a type for MAC addresses, which are 48 bits long.
+    \end{itemize}
+
+
+    \item \important{Header definitions}
+    \begin{lstlisting}[style=p4style]
+header ethernet_t {
+    bit<48> dstAddr;
+    bit<48> srcAddr;
+    bit<16> etherType;
+}
+
+header ipv4_t {
+    bit<4>  version;
+    bit<4>  ihl;
+    bit<8>  diffserv;
+    bit<16> totalLen;
+    bit<16> identification;
+    bit<3>  flags;
+    bit<13> fragOffset;
+    bit<8>  ttl;
+    bit<8>  protocol;
+    bit<16> hdrChecksum;
+    bit<32> srcAddr;
+    bit<32> dstAddr;
+}
+
+struct metadata {
+    bit<32> hhd_threshold;
+}
+
+struct headers {
+    ethernet_t ethernet;
+    ipv4_t ipv4;
+}\end{lstlisting}
+    We define the headers that we will parse from the packets. In this case, we have an Ethernet header and an IPv4 header. We also define a metadata structure that will hold the threshold for the heavy hitter detection; it is \textbf{per-packet} metadata (temporary memory for this packet only). It stores the threshold that is fetched from the table action:
+    \begin{itemize}
+        \item The controller inserts a rule: ``for this src IP address, set the threshold to this value''.
+        \item Action \texttt{set\_hhd\_threshold(X)} writes it into the metadata field \texttt{hhd\_\break{}threshold}.
+    \end{itemize}
+
+
+    \item \important{Parser: extracting Ethernet and IPv4 headers}
+    \begin{lstlisting}[style=p4style]
+/*
+ * P A R S E R
+ */
+
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+    state start {
+        transition parse_ethernet;
+    }
+
+    state parse_ethernet {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+    state parse_ipv4 {
+        packet.extract(hdr.ipv4);
+        transition accept;
+    }
+}\end{lstlisting}
+    The parser is responsible for extracting the headers from the incoming packets. In this case, we extract the Ethernet header first and then, if the Ethernet type is IPv4, we extract the IPv4 header.
+
+    
+    \item \important{Ingress: where the actual heavy hitter detection logic is implemented}
+    \begin{lstlisting}[style=p4style]
+/*
+ * I N G R E S S   P R O C E S S I N G
+ */
+
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+    register<bit<32>>(HDD_FILTER_ENTRIES) hhd_reg;
+
+    action drop() {
+        mark_to_drop(standard_metadata);
+    }
+
+    action set_hhd_threshold(bit<32> threshold) {
+        meta.hhd_threshold = threshold;
+    }
+
+    action forward(bit<9> port) {
+        standard_metadata.egress_spec = port;
+    }
+
+    table hhd_threshold {
+        key = {
+            hdr.ipv4.srcAddr: lpm;
+        }
+        actions = {
+            drop;
+            set_hhd_threshold;
+        }
+        default_action = drop();
+    }    
+
+    apply {
+        // Check if the packet is IPv4 and
+        // if it comes from one of the first three ports
+        // (the hosts)
+        if (hdr.ipv4.isValid()) {
+            if (
+                standard_metadata.ingress_port > 0 &&
+                standard_metadata.ingress_port < 4 &&
+                hhd_threshold.apply().hit
+            ) {
+                bit<32> hhd_pkts;
+                bit<32> output_hash_ipSrc;
+
+                // Instead of calculating the hash,
+                // we could also emulate the modulo
+                // operation using the following code:
+                // hash(
+                //     output_hash_ipSrc,
+                //     HashAlgorithm.identity,
+                //     0,
+                //     {hdr.ipv4.srcAddr},
+                //     (bit<32>)HDD_FILTER_ENTRIES
+                // );
+                hash(
+                    output_hash_ipSrc,
+                    HashAlgorithm.crc32,
+                    (bit<16>)0,
+                    {hdr.ipv4.srcAddr},
+                    (bit<32>)HDD_FILTER_ENTRIES
+                );
+
+                hhd_reg.read(hhd_pkts, output_hash_ipSrc);
+
+                if (
+                    (meta.hhd_threshold > 0) &&
+                    (hhd_pkts >= meta.hhd_threshold)
+                ) {
+                    drop();
+                } else {
+                    forward(H4_PORT);
+                    hhd_reg.write(
+                        output_hash_ipSrc,
+                        hhd_pkts + 1
+                    );
+                }
+            }
+        }
+
+    }
+}\end{lstlisting}
+    \begin{itemize}
+        \item \textbf{Register (state)}: we define a register array \texttt{hhd\_reg} that will hold the packet counts for each IP address. The size of the register is defined by the constant \texttt{HDD\_FILTER\_ENTRIES}.
+
+        
+        \item \textbf{Actions}
+        \begin{itemize}
+            \item \textbf{Drop}: the \texttt{drop()} action marks the packet to be dropped.
+            \item \textbf{Set threshold}: the \texttt{set\_hhd\_threshold(bit<32> threshold)} action sets the threshold for the heavy hitter detection in the metadata. This is \textbf{how the control plane communicates a parameter} (threshold) to the packet processing logic in the data plane.
+            \item \textbf{Forward}: the \texttt{forward(bit<9> port)} action sets the egress port for the packet.
+        \end{itemize}
+
+
+        \item \textbf{Table} \texttt{hhd\_threshold}: this table matches on the source IP address of the packet and has two possible actions: \texttt{drop} and \texttt{set\_hhd\_\break{}threshold}. The default action is to drop the packet, which means that if there is no entry for a given source IP address, the packet will be dropped. The control plane will be responsible for inserting entries into this table to set the thresholds for the heavy hitter detection. The key is matched using longest prefix match (LPM), which allows us to set thresholds for individual IP addresses or for subnets.
+    \end{itemize}
+    About the \texttt{apply} block:
+    \begin{itemize}
+        \item We first check if the packet is an IPv4 packet and if it comes from one of the first three ports (the hosts). If these conditions are not met, we do nothing and the packet will be forwarded to the controller by default (as we will see in the egress processing).
+        \item If the conditions are met, we apply the \texttt{hhd\_threshold} table. If there is a hit, we proceed with the heavy hitter detection logic.
+        \item We calculate a hash of the source IP address to get an index for the register array. This is a common technique to implement a simple counting mechanism without needing to store an entry for each possible IP address. The hash function maps the source IP address to an index in the register array, and we use the register to count the number of packets for that IP address.
+        \item We read the current packet count from the register using the calculated index.
+        \item We compare the packet count with the threshold stored in the metadata. If the packet count is greater than or equal to the threshold, we drop the packet. Otherwise, we forward the packet to the host connected to port \texttt{H4\_PORT} and increment the packet count in the register.
+    \end{itemize}
+\end{itemize}
+The code is available here:
+\begin{center}
+    \qrcode{https://github.com/Polimi-NetClasses/058172-network-computing-labs/blob/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_2/04-HHDv1/solution/hdd_v1.p4}
+    \hspace{1cm}
+    \href{https://github.com/Polimi-NetClasses/058172-network-computing-labs/blob/7d0d3aac4e922790eaa33d33c8648cad9fed30b8/p4-labs/lab_2/04-HHDv1/solution/hdd_v1.p4}{hdd\_v1.p4 on GitHub}
+\end{center}
+To test the P4 program, we can use the same commands as in the previous exercise:
+\begin{itemize}
+    \item Run the network topology with the command:
+    \begin{lstlisting}
+sudo python3 network_topo.py\end{lstlisting}
+    \item After running the network, we open two terminals for the hosts and run the control plane script in the main terminal. So in the mininet CLI, we run:
+    \begin{lstlisting}
+mininet> xterm h1 h2 h3 h4\end{lstlisting}
+    This will open four xterm windows, one for each host.
+
+    \item In the host \texttt{h2} terminal, we run the command to listen for incoming packets:
+    \begin{lstlisting}
+python3 receive.py\end{lstlisting}
+    This will start a simple Python script that listens for packets on the host \texttt{h2}.
+
+    \item In the host \texttt{h1} terminal, we run the command to send a packet:
+    \begin{lstlisting}
+python3 send.py -d 10.0.0.4 -p 200 -m "Hello H4!"\end{lstlisting}
+    This will send a packet from \texttt{h1} to \texttt{h4} with the specified destination IP, number of packets, and message.
+        
+    If everything is set up correctly, after 100 packets, we should see the packets being dropped by the switch and not reaching \texttt{h4}, which is the host that listens for incoming packets. This is because the threshold for the source IP address of \texttt{h1} is set to 100 in the control plane, and after 100 packets, the heavy hitter detection logic will drop any additional packets from that source IP address. If we change the threshold in the control plane, we can see how it affects the behavior of the switch and the number of packets that are forwarded to \texttt{h4}.
+
+    \begin{figure}[!htp]
+        \centering
+        \includegraphics[width=\textwidth]{img/lab2-ex1.png}
+        \caption{Testing the heavy hitter detector. After sending 100 packets from \texttt{h1} to \texttt{h4}, the packets are dropped by the switch and do not reach \texttt{h4}, which is the host that listens for incoming packets.}
+    \end{figure}
+\end{itemize}

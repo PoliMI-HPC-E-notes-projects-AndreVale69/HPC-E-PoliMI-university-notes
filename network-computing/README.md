@@ -18,6 +18,14 @@ In the [CHANGELOG](CHANGELOG.md) file you can see the changes made to each versi
 
 For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
+## Correlated Projects
+
+During the Network Computing for HPC course, I've created a project:
+
+1. **TCP Connection Tracker (eBPF/XDP)**
+
+More information in the following repository: [network-computing-project](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/network-computing-project)
+
 ## Course Syllabus
 
 According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=837999&__pj0=0&__pj1=9615324c9bcf87c1a2b31c219167f18a):

@@ -1,0 +1,87 @@
+\subsection{DCTCP (DataCenter TCP)}
+
+We identified the fundamental TCP problem in datacenters: \hl{TCP detects congestion only after packet loss.} Loss happens when buffer is full, queues already large and latency already high. So DCTCP asks: ``\emph{can we detect congestion before buffer overflow?}''. The answer is yes, using \textbf{Explicit Congestion Notification (ECN)} instead of loss.
+
+\highspace
+\definition{Explicit Congestion Notification (ECN)} is a \textbf{mechanism} that \textbf{allows network devices} (e.g., switches) to \textbf{signal congestion to end hosts without dropping packets}. So inside the switch, when the queue length exceeds a certain threshold, instead of dropping packets, the switch marks them with a congestion bit (ECN bit) in the packet header.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{TCP} & \textbf{DCTCP} \\
+        \midrule
+        Detects congestion via loss & Detects congestion via ECN marking \\[.2em]
+        Reacts after buffer full & Reacts when queue exceeds threshold \\[.2em]
+        Oscillates around full buffer & Keeps queue around small threshold \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between TCP and DCTCP congestion control mechanisms.}
+\end{table}
+
+\noindent
+DCTCP does \textbf{not} remove TCP. It modifies the congestion signal (i.e., ECN instead of loss) and the window adjustment rule (i.e., decrease by fraction of marked packets instead of halving). DCTCP is a \textbf{TCP variant} that is designed to be more suitable for datacenter environments, where low latency and high throughput are critical. By using ECN, DCTCP can react to congestion earlier and maintain smaller queues, which helps to reduce latency and improve overall performance in datacenters.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{ECN Mechanism in DCTCP}}
+\end{flushleft}
+The follow the flow of how ECN works in DCTCP:
+\begin{enumerate}
+    \item \important{Switch Monitors the Queue}. Inside the datacenter switch, each output port has a queue. The switch continuously monitors the length of this queue. We define a threshold $K$, which is much smaller than total buffer size.
+    
+
+    \item \important{Marking Instead of Dropping}. When the queue length exceeds the threshold $K$, instead of dropping incoming packets, the switch marks them by setting the ECN bit in the packet header. This indicates to the sender that congestion is occurring.
+    
+
+    \item \important{Receiver Echoes ECN Mark}. \emph{How does the sender learn about the marking?} The IP header has ECN bits. When a packet is marked, the receiver (i.e., the destination host) detects the ECN mark and sets a flag in the TCP ACK packet that it sends back to the sender (ECE bit, acronym for ECN Echo). So the sender receives not just ACK, but also information about congestion through the ECE bit.
+
+
+    \item \important{Sender Reacts Proportionally}. This is the big difference with TCP. In TCP, when the sender detects congestion (via loss), it halves the congestion window (i.e., multiplicative decrease). In DCTCP, the \textbf{sender measures the fraction of marked packets} (let's call it $\alpha$) \textbf{and reduces the congestion window proportionally to how many packets were marked}. For example, if $\alpha = 0.1$ (i.e., 10\% of packets were marked), the sender reduces the congestion window by 10\%. So $\alpha \in \left[0, 1\right]$, where $\alpha = 0$ means no congestion and $\alpha = 1$ means severe congestion. This allows DCTCP to react more smoothly to congestion, avoiding drastic reductions in throughput and maintaining lower latency.
+\end{enumerate}
+Because as soon as the queue exceeds the threshold $K$, packets are marked, \hl{DCTCP can keep the queue length around $K$}, which is much smaller than the full buffer size. This helps to maintain low latency while still achieving high throughput in datacenter environments.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{DCTCP Window Update}}
+\end{flushleft}
+DCTCP is more than just ECN. The key innovation is the \textbf{window update rule}, which is based on the fraction of marked packets $\alpha$. The \textbf{sender maintains an estimate} of $\alpha$ (the fraction of marked packets) and \textbf{updates it using an Exponential Weighted Moving Average (EWMA)}. The congestion window is then updated as follows:
+\begin{itemize}
+    \item \important{Light Congestion} $\alpha \approx 0.1$:
+    \begin{equation}
+        \text{cwnd} = \text{cwnd} \times \left(1 - \frac{\alpha}{2}\right) \quad \rightarrow \quad \text{cwnd} = \text{cwnd} \times 0.95 \quad \text{(5\% reduction)}
+    \end{equation}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why divide by 2?}} The division by 2 is a design choice in DCTCP to ensure that the \textbf{reduction in the congestion window is not too aggressive}, even when $\alpha$ is high. This allows DCTCP to maintain better throughput while still responding to congestion signals effectively.
+
+
+    \item \important{Moderate Congestion} $\alpha \approx 0.5$:
+    \begin{equation}
+        \text{cwnd} = \text{cwnd} \times \left(1 - \frac{\alpha}{2}\right) \quad \rightarrow \quad \text{cwnd} = \text{cwnd} \times 0.75 \quad \text{(25\% reduction)}
+    \end{equation}
+
+
+    \item \important{Severe Congestion} $\alpha \approx 1.0$:
+    \begin{equation}
+        \text{cwnd} = \text{cwnd} \times \left(1 - \frac{\alpha}{2}\right) \quad \rightarrow \quad \text{cwnd} = \text{cwnd} \times 0.5 \quad \text{(50\% reduction)}
+    \end{equation}
+    Same as TCP when congestion is severe, but much less aggressive when congestion is light or moderate. So \hl{DCTCP generalizes TCP's window update rule} by making it proportional to the level of congestion, rather than a fixed halving.
+\end{itemize}
+DCTCP decreases the congestion window by a fraction that is proportional to the level of congestion, as indicated by $\alpha$. This allows DCTCP to react more smoothly to congestion, avoiding drastic reductions in throughput and maintaining lower latency compared to TCP, which always halves the congestion window regardless of the severity of congestion.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why DCTCP Works Better than TCP in Datacenters?}}
+\end{flushleft}
+\begin{itemize}
+    \item \textbf{It keeps the queue small}. Classic TCP detects congestion only after packet loss, which happens when the buffer is full. Instead, DCTCP detects congestion when the queue exceeds a small threshold $K$, allowing it to maintain low latency by keeping the queue length around $K$ instead of filling the entire buffer.
+    
+
+    \item \textbf{It reduces buffer occupancy}. By reacting to congestion signals earlier, DCTCP can prevent the buffer from becoming fully occupied, which helps to reduce latency and improve overall performance in datacenter environments.
+    
+
+    \item \textbf{It maintains high throughput}. DCTCP's proportional window reduction allows it to maintain a higher link utilization compared to TCP, which can be too aggressive in reducing the congestion window. High utilization with small queues allows DCTCP to achieve high throughput.
+    
+
+    \item \textbf{It lowers latency}. By keeping the queue length around a small threshold, DCTCP can significantly reduce the latency experienced by packets in the network.
+\end{itemize}
+The \textbf{real improvement} of DCTCP over TCP is that it \textbf{operates near a small threshold} $K$ instead of filling the entire buffer, which allows it to \hl{achieve both high throughput and low latency in datacenter} environments. In contrast, TCP's approach of reacting to congestion only after packet loss can lead to large queues and high latency, especially in high-speed datacenter networks.

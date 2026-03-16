@@ -1,0 +1,53 @@
+\subsubsection{P4 Architecture}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{P4 Target vs P4 Architecture}}
+\end{flushleft}
+In P4, we \textbf{do not program a specific switch directly}. Instead, P4 separates \textbf{what can be programmed} from \textbf{where it is executed}. This avoids vendor lock-in (i.e., write code for a specific switch, can only run it on that switch) and allows the same P4 program to run on different hardware or software targets. So, a P4 architecture is \textbf{target-independent} and defines \emph{capabilities}, not implementations.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is a P4 architecture?}} A \textbf{P4 architecture} is an \textbf{abstract model} that defines:
+\begin{enumerate}
+    \item The structure of the packet-processing pipeline (e.g., how many stages, what operations can be performed at each stage).
+    \item Which \textbf{metadata fields} exist (e.g., packet headers, internal state).
+    \item Which \textbf{externs} (i.e., built-in functions or objects) are available (e.g., counters, registers, hash functions).
+    \item How packets flow through the pipeline (e.g., how packets are parsed, processed, and emitted).
+\end{enumerate}
+In simple terms, it answers the question: ``\emph{what does a programmable switch look like?}''.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is a P4 target?}} A \textbf{P4 target} is the \textbf{actual device or software} that runs a P4 program. For example, a P4 target could be a specific hardware switch (e.g., Barefoot Tofino) or a software switch (e.g., BMv2). In simple terms, it answers the question: ``\emph{where does the P4 program actually run?}''.
+
+\highspace
+A P4 target implements a specific architecture, has hardware/software constraints, and executes the compiled P4 program. Different targets may support different architectures, and may have different performance characteristics. So, an \textbf{architecture is the contract} and the \textbf{target is the implementation}. We write \textbf{one P4 program} for an architecture, then compile it for \textbf{different targets} that support it.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Architecture of a P4 program}}
+\end{flushleft}
+A P4 program describes \textbf{how a packet flows through a switch}. This flow is always structured as a \textbf{pipeline} with three main stages: parser, match-action pipeline, and deparser. This structure is \textbf{not optional}: every P4 program follows it, regardless of target or architecture. So a P4 program is a declarative description of a packet-processing pipeline.
+\begin{enumerate}
+    \item \important{Parser}, \emph{understand the packet}. It is implemented as a \textbf{state machine} that reads packet bytes sequentially, extracts headers, and transitions based on header values. This is the first stage of the pipeline, where the raw packet is transformed into a structured format.
+    
+    \hl{The parsing is explicit and programmable in P4.} This feature is important because if tomorrow we invent a new custom header, we can define, parse and use it without waiting for hardware support.
+    
+    The parser defines the \textbf{input} and \textbf{output} of the pipeline:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{arrow-right}}] Input: raw bytes of the packet from the wire (e.g., Ethernet frame).
+        \item[\textcolor{Red2}{\faIcon{arrow-left}}] Output: structured headers and metadata (e.g., Ethernet header, IP header, TCP header).
+    \end{itemize}
+    The purpose is to identify protocol headers and extract fields so they can be used later. If a field is \textbf{not parsed}, it \textbf{cannot be matched or modified} later.
+
+    
+    \item \important{Match-Action Pipeline}, \emph{decide what to do}. This is the core of the P4 program. It uses extracted fields to applies programmable logic (e.g., look up a routing table, modify headers, update metadata). Its purpose is to match packet fields against tables and execute actions based on those matches (e.g., forward, drop, modify, clone). This is where \textbf{all decisions happen}.
+    
+    This stage defines the \textbf{tables}, the \textbf{actions} and the \textbf{control logic}.
+    \begin{itemize}
+        \item \important{Tables}. A \textbf{table} is a data structure that stores rules for matching packet fields and specifies actions to execute when a match occurs. Tables are \textbf{not hard-coded} in the P4 program; they are \textbf{populated at runtime} by the control plane. This separation allows for dynamic updates without changing the P4 program.
+        \item \important{Actions}. An \textbf{action} is a set of operations that can be performed on a packet (e.g., modify a header field, forward to a port, drop the packet). They describe what happens to the packet when a match occurs. Actions are part of the \textbf{data plane logic}, not control plane logic.
+        \item \important{Control logic}. This defines which tables are applied, in what order, and under which conditions. This gives structure to the pipeline.
+    \end{itemize}
+    
+    
+    \item \important{Deparser}, \emph{rebuild the packet}. It takes (possibly modified) headers and serializes them back to bytes to send out on the wire. It ensures the packet is correctly formatted before transmission.
+\end{enumerate}

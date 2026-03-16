@@ -1,0 +1,118 @@
+\subsection{pFabric}
+
+DCTCP still keeps congestion control at the \textbf{end-host}. Instead, pFabric says: ``\emph{what if the network itself makes the optimal scheduling decisions?}''. This is a conceptual shift: instead of end-hosts trying to guess the state of the network and react to it, the \hl{network itself is responsible for making the optimal scheduling decisions.} This is a more radical approach than DCTCP, as it requires changes to the network infrastructure itself, rather than just changes to the end-hosts.
+
+\highspace
+\definition{pFabric (priority Fabric)} is a \textbf{network design} that implements a simple \textbf{priority-based scheduling mechanism in the network itself}. The optimal way to minimize flow completion time (FCT)\footnote{FCT is the time it takes for a flow to complete, from the moment it starts sending data until the last byte is received.} is known from scheduling theory: the \textbf{Shortest Remaining Processing Time (SRPT)}. In general, this means that the network should \textbf{process the flow with the least remaining data first}. This minimizes average completion time, as it allows smaller flows to complete quickly, while larger flows can be processed in the background without blocking smaller flows.
+
+\highspace
+But TCP does not know the flow size, the remaining bytes of other flows, and a global view of the network. Also, switches do not know flow sizes and cannot implement complex scheduling algorithms. So pFabric proposes a simple solution: \textbf{let packets carry their own priority}. Then switches simply always serve the highest-priority packet first.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{Move Congestion Control into the Network}}
+\end{flushleft}
+In TCP/DCTCP, the sender controls the congestion window (cwnd) and the sending rate, while the switches just queues and drop packets when the queue is full. In pFabric, the \textbf{sender attaches priority to each packet}, and the \textbf{switches enforce the scheduling} based on these priorities, and they also \textbf{drop lowest-priority packets first} when the queue is full. This way, the end-host logic becomes minimal and the switch becomes intelligent.
+
+\highspace
+\hl{pFabric makes the network smarter to optimize performance thanks to (approximate) optimal SRPT scheduling.} This is a significant departure from traditional congestion control, which relies on end-hosts to react to network conditions. By moving the scheduling logic into the network, pFabric can achieve better performance, especially for small flows, which are common in data center workloads.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Core Mechanism of pFabric}}
+\end{flushleft}
+The goal of pFabric is to \textbf{minimize Flow Completion Time (FCT)}, namely the time it takes for a flow to complete from the moment it starts sending data until the last byte is received. Scheduling theory helps us understand how to achieve this: the optimal policy (for minimizing average completion time) is the \textbf{Shortest Remaining Processing Time (SRPT)} scheduling. This means that the \hl{network should always serve the job with the smallest remaining work.} Now we analyze how to translate this to networking.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is ``remaining work'' in networking?}} In the context of networking, the ``job'' is a flow, and the ``work'' is the remaining bytes to send. So if flow $A$ has 5 KB remaining and flow $B$ has 5 MB remaining, then the network should serve flow $A$ first, as it has less remaining work. This \hl{reduces average completion time dramatically, as small flows can complete quickly without being blocked by large flows.}
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{How does pFabric implement SRPT scheduling?}} Since switches normally don't know flow sizes, \textbf{pFabric requires the sender to include a priority value in each packet}.
+\begin{itemize}
+    \item \hl{The sender calculates the priority based on the remaining bytes of the flow.} For example, if a flow has 10 KB remaining, it might assign a priority of 10 to its packets, while a flow with 1 MB remaining might assign a priority of 1000. The exact mapping from remaining bytes to priority can be designed to fit the specific workload and network conditions.
+    \item The \textbf{switch maintains a priority queue} of packets. When a packet arrives, it is inserted into the queue based on its priority. The \hl{switch always serves the packet with the highest priority (lowest remaining work) first}. If the queue is full, the \hl{switch drops the packet with the lowest priority (highest remaining work) first.} This way, small flows are more likely to complete quickly, while large flows are more likely to be delayed or dropped when the network is congested.
+\end{itemize}
+At the switch level, always transmit the packet with the lowest priority value (i.e., the one with the fewest remaining bytes) first. This \textbf{differs from traditional switches, which use a FIFO output queue}.
+
+\highspace
+This design works well in data centers. For example, imagine two flows competing:
+\begin{itemize}
+    \item Flow $A$ has 10 KB remaining and assigns a priority of 10 to its packets.
+    \item Flow $B$ has 1 MB remaining and assigns a priority of 1000 to its packets.
+\end{itemize}
+Under TCP/DCTCP, they share bandwidth fairly, and flow $A$ might take a long time to complete because it gets blocked by flow $B$ (small flows can get stuck behind large flows). Under pFabric, flow $A$ would be served first, allowing it to complete quickly, while flow $B$ would be served later, reducing the average completion time for both flows. pFabric ensures that small flow packets are served first and finished quickly. Large flow packets are served later, which optimizes the average completion time.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Simplifying pFabric over TCP/DCTCP.}} In pFabric there is:
+\begin{itemize}
+    \item \textbf{No slow start}: the sender can immediately send packets at the rate allowed by the network, without having to ramp up the congestion window.
+    \item \textbf{No additive increase}: the sender does not need to increase its sending rate gradually, as the network will prioritize its packets based on their priority values.
+    \item \textbf{No $\alpha$ computation}: the sender does not need to compute the congestion level of the network or adjust its sending rate based on it, as the network will handle congestion through its priority-based scheduling and dropping mechanism.
+    \item \textbf{No congestion window (cwnd) halving}: when a packet is dropped, the sender does not need to reduce its sending rate by halving the congestion window, as the network will drop low-priority packets first, allowing high-priority packets to continue being sent without interruption.
+\end{itemize}
+\hl{Senders can send at the maximum rate allowed by the network without worrying about congestion control.}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{trash-alt} \textbf{Drop Policy in pFabric}}
+\end{flushleft}
+As mentioned, when the output buffer is full and a new packet arrives, the switch drops the packet with the \textbf{lowest priority} (i.e., the packet belonging to the flow with the \textbf{largest remaining size}). Instead of tail drop (like in TCP), a switch implementing pFabric uses \textbf{priority drop}:
+\begin{enumerate}
+    \item Look at all packets in the queue.
+    \item Identify the packet with lowest priority (i.e., the one with the largest remaining flow size).
+    \item Remove that packet from the queue and drop it.
+    \item Insert the new packet if it has higher priority than the dropped packet; otherwise, drop the new packet as well.
+\end{enumerate}
+So the buffer always contains the most important packets. pFabric enforces SRPT through two rules:
+\begin{itemize}
+    \item \textbf{Scheduling}: serve smallest remaining flow first.
+    \item \textbf{Dropping}: if buffer is full, discard largest remaining flow first.
+\end{itemize}
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check-circle}}] \textcolor{Green3}{\textbf{Benefits}}
+    \begin{itemize}
+        \item \textbf{Minimizes Flow Completion Time (FCT)}: from scheduling theory, \textbf{SRPT (Shortest Remaining Processing Time)} is optimal for minimizing average completion time. pFabric approximates SRPT by:
+        \begin{itemize}
+            \item Serving smallest remaining flows first.
+            \item Dropping largest remaining flows first when congested.
+        \end{itemize}
+        This means that short flows finish extremely quickly, while long flows are slightly delayed but still complete eventually. This is ideal for data center workloads, which often have many short flows and a few long flows (e.g., small RPCs, queries, and control messages).
+        \item \textbf{Excellent for Short Flows}: datacenter traffic is heavy tailed (many short flows, few long flows). pFabric optimizes for this by prioritizing short flows, which are more latency-sensitive and critical for performance.
+        \item \textbf{Aggressive Design}: pFabric assumes that senders can send at the maximum rate allowed by the network without worrying about congestion control. It enforces optimal scheduling at the bottleneck, which is a very aggressive approach.
+    \end{itemize}
+    
+    \item[\textcolor{Red2}{\faIcon{times-circle}}] \textcolor{Red2}{\textbf{Drawbacks}}
+    \begin{itemize}
+        \item \textbf{Requires Switch Changes}: pFabric requires that switches must:
+        \begin{itemize}
+            \item Maintain priority queues.
+            \item Compare packet priorities.
+            \item Remove arbitrary packets from buffer.
+            \item Perform non-FIFO scheduling.
+        \end{itemize}
+        This is a significant departure from traditional switch design, which typically uses simple FIFO queues and does not perform complex scheduling or dropping decisions based on packet content. \hl{Implementing pFabric would require significant changes to switch hardware and software}, which can be costly and time-consuming.
+        \item \textbf{Hard to Deploy in Production}: on the internet:
+        \begin{itemize}
+            \item Multiple administrative domains with different policies and priorities.
+            \item No global control over the network infrastructure.
+            \item No standard for priority headers and scheduling policies.
+            \item Fairness and security concerns (e.g., malicious users could assign high priority to their packets to get better performance).
+        \end{itemize}
+        In datacenters, while there is more control over the infrastructure, deploying \hl{pFabric still requires significant changes to the network hardware and software, which can be a barrier to adoption.} Additionally, pFabric's aggressive scheduling may not be suitable for all workloads, especially those that require fairness or have different performance requirements.
+    \end{itemize}
+\end{itemize}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l | l l l @{}}
+        \toprule
+                            & \textbf{TCP}  & \textbf{DCTCP}        & \textbf{pFabric} \\
+        \midrule
+        Congestion signal   & Loss          & ECN                   & Priority      \\
+        Control location    & End-host      & End-host $+$ marking  & Switch        \\
+        Queue size          & Large         & Small                 & Small         \\
+        FCT optimality      & No            & Better                & Near-optimal  \\
+        Deployability       & Easy          & Moderate              & Hard          \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison of TCP, DCTCP, and pFabric.}
+\end{table}

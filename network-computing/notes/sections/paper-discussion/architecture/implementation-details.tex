@@ -1,0 +1,24 @@
+\subsubsection{Implementation Details}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Linux Kernel Module (Endpoint Side)}}
+\end{flushleft}
+Endpoints are modified to include a \textbf{Linux kernel module} that handles the communication with the network. They implement:
+\begin{itemize}
+    \item The \textbf{Fastpass Control Protocol (FCP)} for communication with the arbiter.
+    \item \textbf{Slot request handling} (i.e., sending requests to the arbiter and receiving slot allocations).
+    \item \textbf{Packet transmission aligned with assigned timeslot} (i.e., ensuring packets are sent during their allocated timeslots).
+\end{itemize}
+Instead of TCP congestion control, packets are queued locally until the arbiter assigns a timeslot. Transmission is precisely timed to align with the assigned timeslot. So \hl{endpoints are not free-sending hosts anymore, they are scheduled transmitters.} \hl{So switches are not modified to implement Fastpass}, but endpoints are modified to implement the FCP and to align transmissions with assigned timeslots.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{DPDK at the Arbiter}}
+\end{flushleft}
+The arbiter must process massive amounts of scheduling requests and operate at microsecond timescales. So it must compute matching and scheduling decisions very quickly. To achieve this, the arbiter is implemented using \textbf{Data Plane Development Kit (DPDK)}, because bypass the kernel, polling the network interface card (NIC), and zero-copy packet processing (i.e., avoiding copying data between user space and kernel space since DPDK allows direct access to the NIC). This allows the arbiter to handle \textbf{high throughput and low latency} requirements, making it suitable for Fastpass's scheduling needs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Precise Time Synchronization (PTP)}}
+\end{flushleft}
+Fastpass depends on synchronized time across hosts, because timeslots must be aligned across the datacenter. If clocks drift (i.e., if different hosts have different notions of time), then packets could collide (i.e., if one host thinks it's time to send but another host thinks it's not, they could end up sending at the same time and causing collisions). To achieve this, Fastpass uses \textbf{Precision Time Protocol (PTP)}, which is a protocol for synchronizing clocks across a network. PTP allows Fastpass to maintain tight synchronization between hosts, ensuring that timeslot allocations are respected and that packet transmissions are properly aligned.

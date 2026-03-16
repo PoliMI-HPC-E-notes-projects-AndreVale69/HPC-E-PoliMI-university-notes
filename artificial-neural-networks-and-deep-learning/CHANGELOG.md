@@ -40,6 +40,7 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
+- fix mathematical notation and improve `Perceptron Learning Algorithm` section ([28e2ae5](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/28e2ae5aeb7a9d51199d410b6486cb40736ff5f9))
 - add `Biological neuron diagram` and update `Historical Context` ([460a8a7](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/460a8a773fec9896cfea6c0a35e8cd88edfe4124))
 - add `Imagenet 2012 breakthrough details` and related citation ([9b71614](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/9b716149a2b07ace05e0fca9ed7c9ba798835dae))
 - add `Deepening box` on `tanh` convergence advantages ([3e83700](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3e83700449fd6fc7602743f994a10c80fdb8b230))

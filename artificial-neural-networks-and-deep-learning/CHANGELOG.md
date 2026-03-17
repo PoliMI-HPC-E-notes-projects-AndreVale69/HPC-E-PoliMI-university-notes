@@ -40,6 +40,7 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
+- add pseudocode for `K-Fold Cross-Validation` and clarify K-dependent bias/variance/computational trade-offs ([e4c0308](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/e4c030828b508eba1b9eba8dffae43fc1eb98822))
 - add pseudocode for `Leave-One-Out Cross-Validation (LOOCV)` algorithm ([5762e77](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5762e771ad109d07f2780918987eab3daf76b81c))
 - add definition and clarification of `Data Leakage` (causes and implications) ([cda558f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/cda558fca14c0a9a3ee58e9e4abf3216850f732c))
 - enhance `Model Complexity` and `Universal Approximation Theorem` explanations (training/expected error, inductive hypothesis, bias-variance trade-off) ([32b271a](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/32b271a938a25f4ac2dcf3aba82ded07477c2323))

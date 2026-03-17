@@ -93,18 +93,99 @@ So now, when we report the average outer test error, it reflects \textbf{real ge
     \begin{equation*}
         \text{Overall Test Error} = \hat{E}_{\text{nested}} = \frac{1}{K} \sum_{k=1}^{K} e_k
     \end{equation*}
-    This gives an \textbf{unbiased estimate} of the model's generalization performance.
+    This provides a \textbf{nearly unbiased} estimate of the model's true generalization performance, because the test data in each outer fold was never used during model selection in the inner loop.
 \end{enumerate}
+\begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Nested Cross-Validation Algorithm}]
+Input:
+    Dataset $\mathcal{D} = \{(x_1,t_1), \dots, (x_N,t_N)\}$
+    Number of outer folds $K$
+    Number of inner folds $M$
+    // Create set of candidate configurations
+    // (e.g., hyperparameters, architectures)
+    Set of candidate configurations $\Theta$
+    Learning algorithm $\mathcal{A}$
+    Error function $\mathcal{L}(\hat{t}, t)$
 
-\highspace
+Split $\mathcal{D}$ into $K$ disjoint outer folds:
+    $\mathcal{D} = \mathcal{D}_1^{\text{outer}} \cup \dots \cup \mathcal{D}_K^{\text{outer}}$
+
+Initialize total outer error $E \leftarrow 0$
+
+// For each outer fold
+for $k = 1$ to $K$:
+    // Create outer test set using the $\textcolor{codegreen}{k}$-th fold
+    $\mathcal{D}_{\text{test}}^{(k)} \leftarrow \mathcal{D}_k^{\text{outer}}$
+    // Create outer training set using the remaining folds
+    $\mathcal{D}_{\text{train}}^{(k)} \leftarrow \mathcal{D} \setminus \mathcal{D}_k^{\text{outer}}$
+
+    Split $\mathcal{D}_{\text{train}}^{(k)}$ into $M$ disjoint inner folds:
+        $\mathcal{D}_{\text{train}}^{(k)} =
+        \mathcal{D}_1^{\text{inner}} \cup \dots \cup \mathcal{D}_M^{\text{inner}}$
+
+    Initialize best inner error $E_{\text{best}} \leftarrow +\infty$
+    Initialize best configuration $\theta_k^* \leftarrow \text{None}$
+
+    for each configuration $\theta \in \Theta$:
+        $E_{\text{inner}} \leftarrow 0$
+
+        // For each inner fold
+        for $m = 1$ to $M$:
+            // Create inner validation set using the $\textcolor{codegreen}{m}$-th fold
+            $\mathcal{D}_{\text{val}}^{(m)} \leftarrow \mathcal{D}_m^{\text{inner}}$
+            // Create inner training set using the remaining folds
+            $\mathcal{D}_{\text{train}}^{(m)} \leftarrow
+            \mathcal{D}_{\text{train}}^{(k)} \setminus \mathcal{D}_m^{\text{inner}}$
+
+            Train inner model:
+                // Train model $\textcolor{codegreen}{f_{\theta}^{(m)}}$ on $\textcolor{codegreen}{\mathcal{D}_{\text{train}}^{(m)}}$ with configuration $\textcolor{codegreen}{\theta}$
+                $f_{\theta}^{(m)} \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}^{(m)}, \theta)$
+
+            Compute inner validation error:
+                // Compute error $\textcolor{codegreen}{e_m}$ on $\textcolor{codegreen}{\mathcal{D}_{\text{val}}^{(m)}}$ using model $\textcolor{codegreen}{f_{\theta}^{(m)}}$
+                $e_m \leftarrow \frac{1}{\left|\mathcal{D}_{\text{val}}^{(m)}\right|}
+                \sum_{(x_i,t_i)\in \mathcal{D}_{\text{val}}^{(m)}}
+                \mathcal{L}(f_{\theta}^{(m)}(x_i), t_i)$
+
+            // Accumulate inner error for this configuration
+            $E_{\text{inner}} \leftarrow E_{\text{inner}} + e_m$
+
+        Compute average inner error:
+            $\hat{E}_{\theta} \leftarrow \frac{1}{M} E_{\text{inner}}$
+
+        // Update best configuration if this one is better
+        if $\hat{E}_{\theta} < E_{\text{best}}$:
+            $E_{\text{best}} \leftarrow \hat{E}_{\theta}$
+            $\theta_k^* \leftarrow \theta$
+
+    Retrain model on all outer training data with best configuration:
+        $f^{(k)} \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}^{(k)}, \theta_k^*)$
+
+    Compute outer test error:
+        $e_k \leftarrow \frac{1}{|\mathcal{D}_{\text{test}}^{(k)}|}
+        \sum_{(x_i,t_i)\in \mathcal{D}_{\text{test}}^{(k)}}
+        \mathcal{L}(f^{(k)}(x_i), t_i)$
+
+    Accumulate outer error:
+        $E \leftarrow E + e_k$
+
+Compute average nested CV error:
+    $\hat{E}_{\text{nested}} \leftarrow \frac{1}{K} E$
+
+Output:
+    $\hat{E}_{\text{nested}}$
+\end{lstlisting}
+The key idea is that the \textbf{inner loop chooses the best hyperparameters}, while the \textbf{outer loop evaluates the whole selection procedure on unseen data}.
+
+\newpage
+
 \begin{flushleft}
     \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}} \textbf{and} \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
 \end{flushleft}
 \begin{itemize}
-    \item[\textcolor{Green3}{\faIcon{check}}] Provides an \textbf{unbiased generalization estimate}, even after hyperparameter tuning.
+    \item[\textcolor{Green3}{\faIcon{check}}] Provides a \textbf{less optimistically biased estimate} of the generalization error, especially when the dataset is small and model selection is complex.
     \item[\textcolor{Green3}{\faIcon{check}}] Ensures a clear \textbf{separation between selection and assessment}.
     \item[\textcolor{Green3}{\faIcon{check}}] Uses \textbf{all data efficiently} across different folds.
-    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Computationally expensive}: Each outer folds contains a full inner cross-validation loop, so the model is trained $K \times M$ times. For deep neural networks, this can be prohibitive.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Computationally expensive}: For each outer fold $K$, a full inner cross-validation with $M$ folds must be repeated for all candidate configurations $\Theta$, followed by a final retraining on the whole outer training set. This can lead to a \hl{total of $K \times M \times \left|\Theta\right|$ model trainings}, which is often prohibitive for large datasets or complex models.
     \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Complex implementation}: Careful bookkeeping is required to manage data splits and model configurations across nested loops. In other words, it's easy to make mistakes if not implemented carefully.
 \end{itemize}
 Some typical choices are $K=5$ for the outer loop and $M=3$ for the inner loop, balancing computational cost and reliable estimates. For more accurate estimates, $K=10$ and $M=5$ can be used, but at a higher computational cost. For small datasets, nested cross-validation is particularly beneficial to avoid overfitting during model selection, and a common choice is $K=10$ and $M=5$.

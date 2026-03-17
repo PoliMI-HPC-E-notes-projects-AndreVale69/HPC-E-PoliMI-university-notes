@@ -40,6 +40,7 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
+- add definition and clarification of `Data Leakage` (causes and implications) ([cda558f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/cda558fca14c0a9a3ee58e9e4abf3216850f732c))
 - enhance `Model Complexity` and `Universal Approximation Theorem` explanations (training/expected error, inductive hypothesis, bias-variance trade-off) ([32b271a](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/32b271a938a25f4ac2dcf3aba82ded07477c2323))
 - fix mathematical notation and improve `Perceptron Learning Algorithm` section ([28e2ae5](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/28e2ae5aeb7a9d51199d410b6486cb40736ff5f9))
 - add `Biological neuron diagram` and update `Historical Context` ([460a8a7](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/460a8a773fec9896cfea6c0a35e8cd88edfe4124))

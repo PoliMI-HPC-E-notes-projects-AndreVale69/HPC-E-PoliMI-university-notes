@@ -3,23 +3,36 @@
 Machine learning, and neural networks in particular, are based on an \textbf{inductive assumption}: \hl{``if a model performs well on a \textbf{large and representative set of training examples}, then it will also perform well on \textbf{unseen examples} drawn from the same distribution''}. This is called \definition{Inductive Hypothesis} (or \definition{Inductive Bias}) because it assumes that the patterns learned from the training data will generalize to new data.\label{def:inductive-hypothesis}
 
 \highspace
-In other words, we \textbf{trust that patterns learned from the training data generalize} to future data, as long as the data are \textbf{independent and identically distributed (i.i.d.)}, and the model captures the \textbf{true underlying structure} rather than random noise.
+In other words, we \textbf{trust that patterns learned from the training data generalize} to future data, as long as the data are \textbf{independent and identically distributed (i.i.d.)} (\autopageref{def:iid}), and the model captures the \textbf{true underlying structure} rather than random noise.
 
 \highspace
-Formally, if:
+Formally, let
 \begin{equation*}
-    E_{\text{train}} = \mathbb{E}_{\left(x, t\right) \sim D_{\text{train}}} \left[\left(f(x; w) - t\right)^2\right]
+    \hat{E}_{\text{train}} =
+    \frac{1}{N} \sum_{i=1}^{N}
+    \left(f(x_i; w) - t_i\right)^2
 \end{equation*}
-is the expected training error, and
+be the \emph{empirical training error} computed on the training dataset (i.e., the average squared error over the training examples), and let
 \begin{equation*}
-    E_{\text{test}} = \mathbb{E}_{\left(x, t\right) \sim D_{\text{test}}} \left[\left(f(x; w) - t\right)^2\right]
+    E =
+    \mathbb{E}_{(x,t)\sim D}
+    \left[\left(f(x; w) - t\right)^2\right]
 \end{equation*}
-is the expected test error, where \(D_{\text{train}}\) and \(D_{\text{test}}\) are drawn from the same distribution, \textbf{then the inductive hypothesis assumes} $E_{\text{train}} \approx E_{\text{test}}$ when:
-\begin{itemize}
-    \item $D_{\text{train}} \approx D_{\text{test}}$ (i.i.d. data)
-    \item The model has learned \textbf{general rules} rather than memorizing specific examples (i.e., it has not overfitted)
-\end{itemize}
-If that \textbf{assumption breaks} (e.g., due to \emph{too high complexity}, \emph{data shift}, or \emph{small dataset}), \textbf{generalization fails}, leading to poor performance on unseen data.
+be the \emph{expected (true) error} over the underlying data distribution $D$.
+
+\highspace
+The \textbf{inductive hypothesis} assumes that, if the training data are \textbf{i.i.d.} samples from $D$ and the model doesn't overfit, then:
+\begin{equation*}
+    \hat{E}_{\text{train}} \approx E
+\end{equation*}
+In other words, the empirical training error $\hat{E}_{\text{train}}$ is a good estimate of the true error $E$. Since the test set is also drawn from the same distribution $D$, its error provides an estimate of $E$. Therefore, under these assumptions:
+\begin{equation*}
+    E_{\text{test}} \approx E \approx \hat{E}_{\text{train}}
+\end{equation*}
+In simple terms, if the \hl{model is trained on a large and representative dataset}, and the \hl{data are i.i.d.}, then the \hl{training error} should be a \hl{good proxy} for the \hl{test error}, allowing us to \textbf{trust that good performance on the training set will translate to good performance on unseen data}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle}} If these assumptions break (e.g., due to \emph{high model complexity}, \emph{small dataset}, or \emph{distribution shift}), then this approximation fails and the model does not generalize well.
 
 \highspace
 \begin{flushleft}
@@ -53,15 +66,49 @@ This balance is often referred to as the \definition{Bias-Variance Trade-off}, a
 Where:
 \begin{itemize}
     \item $E_{\text{test}}$ is the expected test error.
+    
+    
     \item $y$ is the true output.
+    
+    
     \item $\hat{f}(x)$ is the model's prediction.
-    \item \textbf{Bias} is the \hl{systematic error introduced by approximating a real-world problem with a simplified model}. High bias can cause the model to miss relevant relations between features and target outputs (underfitting). For example, a linear model trying to fit a highly nonlinear relationship will have high bias.
-    \item \textbf{Variance} is the \hl{sensitivity error due to fluctuations in the training data}. High variance can cause the model to model the random noise in the training data rather than the intended outputs (overfitting). For example, a very deep neural network with many parameters may fit the training data perfectly but perform poorly on unseen data.
-    \item \textbf{Noise} is the \hl{irreducible error inherent in the data itself}, which \underline{cannot be} \underline{eliminated by any model}. For example, measurement errors or inherent randomness in the data generation process contribute to noise.
+    
+    
+    \item \textbf{Bias} is the \hl{systematic error introduced by approximating a real-world problem with a simplified model}. It measures \textbf{how far our model is from the true function} on average:
+    \begin{equation*}
+        \text{Bias}(x) = \mathbb{E}\left[\hat{f}(x)\right] - f(x)
+    \end{equation*}
+    High bias can cause the model to miss relevant relations between features and target outputs (underfitting, learning \textbf{too little}). For example, a linear model trying to fit a highly nonlinear relationship will have high bias.
+    
+    
+    \item \textbf{Variance} is the \hl{sensitivity error due to fluctuations in the training data}. It measures \textbf{how much our model changes if we change the dataset}:
+    \begin{equation*}
+        \text{Var}(x) = \mathbb{E}\left[\left(\hat{f}(x) - \mathbb{E}\left[\hat{f}(x)\right]\right)^{2}\right]
+    \end{equation*}
+    High variance can cause the model to model the random noise in the training data rather than the intended outputs (overfitting, learning \textbf{too much / too specifically}). For example, a very deep neural network with many parameters may fit the training data perfectly but perform poorly on unseen data.
+    
+    
+    \item \textbf{Noise} is the \hl{irreducible error inherent in the data itself}, which \underline{cannot be} \underline{eliminated by any model}.
+    
+    For example, measurement errors or inherent randomness in the data generation process contribute to noise.
 \end{itemize}
 The \hl{goal is to find a model complexity that minimizes the total error}, which is the sum of bias and variance, paying attention to underfitting (high bias, low variance) and overfitting (low bias, high variance). In practice, the \textbf{inductive hypothesis is what makes machine learning possible}, \textbf{model complexity decides whether this hypothesis \emph{holds} or \emph{breaks}}, and the \textbf{bias-variance trade-off provides a framework to understand and manage this balance}.
 
-\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        \textbf{Model Complexity} & \textbf{Bias} & \textbf{Variance} \\
+        \midrule
+        Low (Underfitting) & High & Low \\
+        Optimal & Balanced & Balanced \\
+        High (Overfitting) & Low & High \\
+        \bottomrule
+    \end{tabular}
+    \caption{This table summarizes the relationship between model complexity, bias, and variance. As model complexity increases, bias tends to decrease while variance tends to increase. The optimal model complexity is where bias and variance are balanced, minimizing the total error.}
+    \label{tab:model-complexity-bias-variance}
+\end{table}
+
 \begin{definitionbox}[: Inductive Hypothesis]
     The \definition{Inductive Hypothesis} (or \textbf{inductive bias}) is the fundamental assumption that \textbf{a model that performs well on  the training data will also perform well on unseen data}, proved that both come from the \textbf{same underlying distribution}.
 

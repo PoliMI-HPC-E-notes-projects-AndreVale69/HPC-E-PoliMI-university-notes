@@ -95,10 +95,45 @@ The output of this procedure is the \textbf{optimal hyperparameter configuration
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{How to choose candidate hyperparameter configurations?}}
 \end{flushleft}
-In practice, candidate hyperparameter configurations are not chosen manually because this would be too time-consuming and inefficient. Instead, we use \textbf{automatic search methods} to explore the hyperparameter space effectively.
+In practice, candidate hyperparameter configurations are not chosen manually because this would be too time-consuming and inefficient. Instead, we use \textbf{automatic search methods} to explore the hyperparameter space effectively. In general, we define a \textbf{search space} for each hyperparameter and then \textbf{use an algorithm to sample configurations from this space}. The \hl{goal is to find the configuration that minimizes the validation error} (if possible) without having to evaluate every possible combination.
+\begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Generic Hyperparameter Tuning Algorithm}]
+Input:
+    Training dataset $\mathcal{D}_{\text{train}}$
+    Validation dataset $\mathcal{D}_{\text{val}}$
+    Set of candidate configurations $\Theta = \{\theta_1,\theta_2,\dots,\theta_M\}$
+    Learning algorithm $\mathcal{A}$
+    Validation error function $E_{\text{val}}(\cdot)$
+
+Initialize best error $E_{\text{best}} \leftarrow +\infty$
+Initialize best configuration $\theta^* \leftarrow \text{None}$
+Initialize best model $f^* \leftarrow \text{None}$
+
+for each configuration $\theta_i \in \Theta$:
+    Train model:
+        $f_i \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}, \theta_i)$
+
+    Evaluate on validation set:
+        $e_i \leftarrow E_{\text{val}}(f_i, \mathcal{D}_{\text{val}})$
+
+    if $e_i < E_{\text{best}}$:
+        $E_{\text{best}} \leftarrow e_i$
+        $\theta^* \leftarrow \theta_i$
+        $f^* \leftarrow f_i$
+
+// (Optional) It is optional because the model $\textcolor{codegreen}{f^*}$ trained with $\textcolor{codegreen}{\theta^*}$
+// on $\textcolor{codegreen}{\mathcal{D}_{\text{train}}}$ may already be good enough.
+// However, if we want to maximize the data used for training,
+// we can retrain the model with the best hyperparameters
+Retrain final model on $\mathcal{D}_{\text{train}} \cup \mathcal{D}_{\text{val}}$ using $\theta^*$
+
+Output:
+    Best configuration $\theta^*$
+    Best validation error $E_{\text{best}}$
+    Best model $f^*$
+\end{lstlisting}
 
 \highspace
-Once we define the set of hyperparameters we want to tune, the following methods \textbf{automatically explore} different configurations and identify which one minimizes the \textbf{validation error} (or maximizes validation accuracy, depending on the task). The three classical methods are:
+Specifically, there are three classical methods for hyperparameter tuning:
 \begin{enumerate}
     \item \definition{Grid Search} (\hl{Exhaustive Search on a Discrete Grid}). This method evaluates the model on \textbf{all possible combinations} of a predefined set of hyperparameter values. For example, we define a \textbf{grid} for each hyperparameter:
     \begin{equation*}
@@ -125,6 +160,35 @@ Once we define the set of hyperparameters we want to tune, the following methods
             \item[\textcolor{Red2}{\faIcon{times}}] Works well only with a \emph{few} hyperparameters or \emph{coarse grids}.
         \end{itemize}
     \end{itemize}
+    \begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Grid Search Algorithm}]
+Input:
+    Training dataset $\mathcal{D}_{\text{train}}$
+    Validation dataset $\mathcal{D}_{\text{val}}$
+    Discrete candidate values $\texttt{for each}$ hyperparameter $\theta_1, \dots, \theta_p$
+    Learning algorithm $\mathcal{A}$
+    Validation error function $E_{\text{val}}(\cdot)$
+
+Construct the Cartesian product of all hyperparameter values:
+    $\Theta \leftarrow \theta_1 \times \theta_2 \times \cdots \times \theta_p$
+
+Initialize best error $E_{\text{best}} \leftarrow +\infty$
+Initialize best configuration $\theta^* \leftarrow \text{None}$
+
+for each configuration $\theta \in \Theta$:
+    Train model:
+        $f_\theta \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}, \theta)$
+
+    Evaluate on validation set:
+        $e_\theta \leftarrow E_{\text{val}}(f_\theta, \mathcal{D}_{\text{val}})$
+
+    if $e_\theta < E_{\text{best}}$:
+        $E_{\text{best}} \leftarrow e_\theta$
+        $\theta^* \leftarrow \theta$
+
+Output:
+    Best configuration $\theta^*$
+    Best validation error $E_{\text{best}}$
+\end{lstlisting}
 
 
     \item \definition{Random Search} (\hl{Stochastic Sampling of Hyperparameter Space}). Instead of evaluating all combinations, this method \textbf{randomly samples} hyperparameter configurations from specified distributions. For example, we define ranges or distributions for each hyperparameter:
@@ -152,6 +216,36 @@ Once we define the set of hyperparameters we want to tune, the following methods
             \item[\textcolor{Red2}{\faIcon{times}}] May miss the best configuration by chance.
         \end{itemize}
     \end{itemize}
+    \begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Random Search}]
+Input:
+    Training dataset $\mathcal{D}_{\text{train}}$
+    Validation dataset $\mathcal{D}_{\text{val}}$
+    Hyperparameter distributions $P(\theta)$ // e.g. log-uniform, etc.
+    Number of trials $N$
+    Learning algorithm $\mathcal{A}$
+    Validation error function $E_{\text{val}}(\cdot)$
+
+Initialize best error $E_{\text{best}} \leftarrow +\infty$
+Initialize best configuration $\theta^* \leftarrow \text{None}$
+
+for $i = 1$ to $N$:
+    Sample configuration:
+        $\theta_i \sim P(\theta)$
+
+    Train model:
+        $f_i \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}, \theta_i)$
+
+    Evaluate on validation set:
+        $e_i \leftarrow E_{\text{val}}(f_i, \mathcal{D}_{\text{val}})$
+
+    if $e_i < E_{\text{best}}$:
+        $E_{\text{best}} \leftarrow e_i$
+        $\theta^* \leftarrow \theta_i$
+
+Output:
+    Best configuration $\theta^*$
+    Best validation error $E_{\text{best}}$
+\end{lstlisting}
 
 
     \item \definition{Bayesian Optimization} (\hl{Probabilistic Model-Based Search}, \hl{Learning from Past Trials}). The idea is simple yet powerful. Model the function:
@@ -160,7 +254,7 @@ Once we define the set of hyperparameters we want to tune, the following methods
     \end{equation*}
     As an \textbf{unknown function} (black box) and use \textbf{probabilistic reasoning} to decide which hyperparameters to test next. The steps are:
     \begin{enumerate}
-        \item Use previous evaluations to build a \textbf{probabilistic surrogate model} (e.g. a Gaussiano Process, Tree Parzen Estimator, etc.) that approximates the relationship between hyperparameters and validation error ($f(\theta)$).
+        \item Use previous evaluations to build a \textbf{probabilistic surrogate model} (e.g. a Gaussian Process, Tree Parzen Estimator, etc.) that approximates the relationship between hyperparameters and validation error ($f(\theta)$).
         \item Define an \textbf{acquisition function} (e.g. Expected Improvement, Upper Confidence Bound, etc.) that quantifies the potential benefit of evaluating a new configuration based on the surrogate model. It balances \textbf{exploration} (trying uncertain areas) and \textbf{exploitation} (focusing on promising areas).
         \item Choose the next configuration $\theta_{\text{next}}$ to evaluate by maximizing the acquisition function (i.e., the configuration that is expected to yield the most improvement).
         \item Now, train the model with $\theta_{\text{next}}$, evaluate its validation error\break $E_{\text{val}}(\theta_{\text{next}})$, and update the surrogate model with this new data point.
@@ -181,6 +275,82 @@ Once we define the set of hyperparameters we want to tune, the following methods
             \item[\textcolor{Red2}{\faIcon{times}}] Slower per iteration (but far fewer iterations needed).
         \end{itemize}
     \end{itemize}
+    \begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Bayesian Optimization for Hyperparameter Tuning}]
+Input:
+    Training dataset $\mathcal{D}_{\text{train}}$
+    Validation dataset $\mathcal{D}_{\text{val}}$
+    Search space $\Theta$ for hyperparameters
+    Learning algorithm $\mathcal{A}$
+    Validation error function $E_{\text{val}}(\cdot)$
+    Initial number of random evaluations $N_{\text{init}}$
+    Maximum number of iterations $T$
+
+Initialize observation set $\mathcal{H} \leftarrow \emptyset$
+
+// For each initial random configuration,
+// evaluate and add to observations
+for $i = 1$ to $N_{\text{init}}$:
+    Sample initial configuration $\theta_i$ randomly from $\Theta$
+    Train model:
+        $f_i \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}, \theta_i)$
+    Evaluate validation error:
+        $e_i \leftarrow E_{\text{val}}(f_i, \mathcal{D}_{\text{val}})$
+    Add observation:
+        // The observation is simply the pair of
+        // hyperparameters and their corresponding
+        // validation error
+        $\mathcal{H} \leftarrow \mathcal{H} \cup \{(\theta_i, e_i)\}$
+
+// Start Bayesian optimization loop.
+// The loop starts from $\textcolor{codegreen}{N_{\text{init}}+1}$ because we have already
+// evaluated $\textcolor{codegreen}{N_{\text{init}}}$ random configurations.
+// We continue until we reach the maximum number of iter. $\textcolor{codegreen}{T}$
+for $t = N_{\text{init}}+1$ to $T$:
+    // Create a (surrogate) model from the observations $\textcolor{codegreen}{\mathcal{H}}$,
+    // which is a set of pairs
+    // (configuration, validation error)
+    Fit surrogate model on $\mathcal{H}$
+
+    // The acquisition function $\textcolor{codegreen}{a(\theta \mid \mathcal{H})}$ uses the surrogate
+    // model to estimate the potential improvement of
+    // evaluating a new configuration $\textcolor{codegreen}{\theta}$ based
+    // on the observed data $\textcolor{codegreen}{\mathcal{H}}$. It balances:
+    //  1. exploration (trying configurations with high
+    //     uncertainty)
+    //  2. exploitation (focusing on configurations that are
+    //     likely to perform well).
+    Define acquisition function $a(\theta \mid \mathcal{H})$
+
+    Choose next configuration:
+        // Choose the configuration $\textcolor{codegreen}{\theta_t}$ that maximizes
+        // the acquisition function, which means it is
+        // expected to yield the most improvement
+        // based on the surrogate model and past observations.
+        $\theta_t \leftarrow \arg\max_{\theta \in \Theta} a(\theta \mid \mathcal{H})$
+
+    Train model:
+        $f_t \leftarrow \mathcal{A}(\mathcal{D}_{\text{train}}, \theta_t)$
+
+    Evaluate validation error:
+        $e_t \leftarrow E_{\text{val}}(f_t, \mathcal{D}_{\text{val}})$
+
+    Update observation set:
+        // Add the new configuration and its validation error
+        // to the observation set $\textcolor{codegreen}{\mathcal{H}}$,
+        // which will be used to update the surrogate model
+        // in the next iteration.
+        $\mathcal{H} \leftarrow \mathcal{H} \cup \{(\theta_t, e_t)\}$
+
+Select best observed configuration:
+    // Once the optimization loop is complete,
+    // we select the configuration with the lowest validation
+    // error from the observation set $\textcolor{codegreen}{\mathcal{H}}$.
+    $\theta^* \leftarrow \arg\min_{(\theta,e)\in\mathcal{H}} e$
+
+Output:
+    Best configuration $\theta^*$
+    History of evaluated configurations $\mathcal{H}$
+\end{lstlisting}
 \end{enumerate}
 These methods follow the same underlying goal: \textbf{minimize the validation error} by efficiently exploring the hyperparameter space
 \begin{equation*}

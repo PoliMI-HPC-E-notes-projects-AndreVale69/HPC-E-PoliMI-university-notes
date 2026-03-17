@@ -40,6 +40,7 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
+- add detailed pseudocode for `Hyperparameter Tuning` methods (grid search, random search, Bayesian optimization) and fix typo in `Gaussian Process` description ([997734f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/997734f3f2534d9f3204449ea2b730de16eb1c45))
 - add pseudocode for `Nested Cross-Validation` and refine generalization error description (clarify nested CV bias and update computational cost formula) ([196ff6d](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/196ff6d7f4bc89a123aff07609051db4e9c0b36a))
 - add pseudocode for `K-Fold Cross-Validation` and clarify K-dependent bias/variance/computational trade-offs ([e4c0308](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/e4c030828b508eba1b9eba8dffae43fc1eb98822))
 - add pseudocode for `Leave-One-Out Cross-Validation (LOOCV)` algorithm ([5762e77](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5762e771ad109d07f2780918987eab3daf76b81c))

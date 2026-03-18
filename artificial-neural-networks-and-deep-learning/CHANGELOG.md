@@ -61,6 +61,8 @@
 - correct `Universal Approximation Theorem` formulation and related explanation ([726dd36](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/726dd36a5a0e286934532ce75aa0914a4ac3486a))
 - fix layout by adjusting document `headheight` ([abb36b6](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/abb36b6ca761f4d87ea8de2d11ccd07b336a9452))
 - emphasize penalty term in `Weight Decay (L2 Regularization)` definition ([3c43ecc](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3c43eccf5ea2a6b3a812ffea7dec29a914fb2a1e))
+- fix `dropout` activation formula and enhance related documentation ([ecc3e68](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/ecc3e684715511b9cb424a63170e4e1b82e609b1))
+- correct neuron activation scaling description during testing ([debd01e](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/debd01ecbee5fd63ea4790f41156c13ced382571))
 
 --------------------
 

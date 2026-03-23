@@ -40,6 +40,7 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
+- update empirical risk definition and add mini-batch gradient descent pseudocode ([70d8eab](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/70d8eab915b9679731ec93a0f40d796d982b56d1))
 - improve `Batch Normalization` section wording and formatting (clarify internal covariate shift, update icon, batch mean/variance details, equation formatting) ([0c1104c](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/0c1104cf7ef0444bc9c181aab48eff51e28d1c41))
 - correct gradient computation formula in `Weight Initialization` section (clarify multiplication dot in gradient expression) ([d99f629](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/d99f6297057df3590b9830eabba4b14d37c1b27f))
 - correct wording and grammar in `ReLU` variants explanation (clarity and grammar improvements) ([b2d6175](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/b2d6175c7a474984b77bf598ee4ac5223cd9de14))

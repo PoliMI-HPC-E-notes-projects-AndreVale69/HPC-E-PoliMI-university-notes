@@ -40,6 +40,7 @@
     - add `Bidirectional LSTM (BiLSTM) Networks`
     - add `Practical Tips: Initialization & Conditioning`
   - add `Sequential Data Problems`
+- clarify and improve `Weight Decay (L2 Regularization)` documentation (explicit multiplication symbols, Ockham's Razor relation, formatting/notation consistency) ([0bd3e82](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/0bd3e82e14511ce5c9befa6056d95e1b0baee32a))
 - add detailed pseudocode for `Hyperparameter Tuning` methods (grid search, random search, Bayesian optimization) and fix typo in `Gaussian Process` description ([997734f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/997734f3f2534d9f3204449ea2b730de16eb1c45))
 - add pseudocode for `Nested Cross-Validation` and refine generalization error description (clarify nested CV bias and update computational cost formula) ([196ff6d](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/196ff6d7f4bc89a123aff07609051db4e9c0b36a))
 - add pseudocode for `K-Fold Cross-Validation` and clarify K-dependent bias/variance/computational trade-offs ([e4c0308](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/e4c030828b508eba1b9eba8dffae43fc1eb98822))

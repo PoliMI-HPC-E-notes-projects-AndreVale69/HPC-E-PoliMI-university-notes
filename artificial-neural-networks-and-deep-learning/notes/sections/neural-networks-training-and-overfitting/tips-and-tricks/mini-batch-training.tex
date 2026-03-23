@@ -2,7 +2,7 @@
 
 When we train a neural network, we want to minimize the \textbf{empirical risk}:
 \begin{equation*}
-    E(w) = \frac{1}{N} \sum_{n=1}^{N} L\left(f\left(x_n; w\right), t_n\right)
+    E(w) = \frac{1}{N} \cdot \sum_{n=1}^{N} L\left(f\left(x_n; w\right), t_n\right)
 \end{equation*}
 \begin{itemize}
     \item $N$ is the number of training samples
@@ -12,11 +12,30 @@ When we train a neural network, we want to minimize the \textbf{empirical risk}:
 \end{itemize}
 Theoretically, the gradient for updating weights should be computed over the entire dataset, over \textbf{all $N$ samples}:
 \begin{equation*}
-    \nabla_w E(w) = \frac{1}{N} \sum_{n=1}^{N} \nabla_w L\left(f\left(x_n; w\right), t_n\right)
+    \nabla_w E(w) = \frac{1}{N} \cdot \sum_{n=1}^{N} \nabla_w L\left(f\left(x_n; w\right), t_n\right)
 \end{equation*}
 But in practice, especially with large datasets, this is computationally expensive and inefficient.
 
 \highspace
+\begin{definitionbox}[: Empirical Risk]
+    The \definition{Empirical Risk} is the average loss computed over the training dataset:
+    \begin{equation*}
+        E(w) = \frac{1}{N} \cdot \sum_{n=1}^{N} L\left(f(x_n; w), t_n\right)
+    \end{equation*}
+    It provides a finite-sample approximation of the \textbf{expected (true) risk}:
+    \begin{equation*}
+        \mathbb{E}_{(x,t)\sim D}\left[L(f(x; w), t)\right]
+    \end{equation*}
+    which \textbf{cannot be computed directly} because the true data distribution $D$ (from which the training samples are drawn) is \textbf{unknown}\footnote{%
+        It is unknown because we only have access to a finite dataset, and we cannot know the true underlying distribution that generated the data.
+    }. Due to this, we approximate $D$ using the dataset $E(w)$ (the empirical risk), and we minimize $E(w)$ to find the best parameters $w$ for our model. Minimizing empirical risk is the core principle of learning from data.
+
+    \highspace
+    It is called \emph{empirical} because it is based on the \textbf{observed data} (our dataset), and \emph{risk} because it quantifies the expected loss (or ``risk'') of the model's predictions (i.e., how well the model performs on the training data).
+\end{definitionbox}
+
+\newpage
+
 \begin{flushleft}
     \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Solution: Mini-Batch Gradient Descent}}
 \end{flushleft}
@@ -28,10 +47,6 @@ Instead of using all $N$ samples to compute the gradient, we use a smaller subse
     
     \item \textbf{Mini-Batch Gradient Descent (MBGD)}: uses a small subset of the dataset (mini-batch) to compute the gradient at each iteration. It is a compromise between BGD and SGD, \textbf{balancing computational efficiency and gradient accuracy}. It is widely used in practice due to its effectiveness in training deep neural networks.
 \end{itemize}
-
-\newpage
-
-\noindent
 The \definition{Mini-Batch Gradient Descent (MBGD)} algorithm works as follows:
 \begin{enumerate}
     \item Shuffle the training dataset to ensure randomness.
@@ -50,6 +65,39 @@ The \definition{Mini-Batch Gradient Descent (MBGD)} algorithm works as follows:
     \end{enumerate}
     \item Repeat until convergence or for a fixed number of epochs.
 \end{enumerate}
+
+\begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Mini-Batch Gradient Descent Algorithm}]
+Input:
+    Training dataset $\mathcal{D} = \{(x_1,t_1), \dots, (x_N,t_N)\}$
+    Model $f(x; w)$
+    Loss function $L(\hat{y}, t)$
+    Learning rate $\eta$
+    Mini-batch size $m$
+    Number of epochs $T$
+
+Initialize parameters $w$
+
+for epoch $= 1$ to $T$:
+    Shuffle the training dataset $\mathcal{D}$
+
+    Split $\mathcal{D}$ into mini-batches
+        $B_1, B_2, \dots, B_K$
+    where each mini-batch has size $m$
+    (except possibly the last one)
+
+    for each mini-batch $B_k$:
+        Compute mini-batch loss:
+            $E_{B_k}(w) \leftarrow \frac{1}{|B_k|} \sum_{(x_i,t_i)\in B_k} L(f(x_i; w), t_i)$
+
+        Compute gradient:
+            $g_k \leftarrow \nabla_w E_{B_k}(w)$
+
+        Update parameters:
+            $w \leftarrow w - \eta \, g_k$
+
+Output:
+    Trained parameters $w$
+\end{lstlisting}
 
 \highspace
 \begin{flushleft}

@@ -1,0 +1,70 @@
+\subsection{Backpropagation Through Time (BPTT)}
+
+\definition{Backpropagation Through Time (BPTT)} \textbf{is the algorithm used to train Recurrent Neural Networks (RNNs)}. It is simply \textbf{backpropagation} (\autopageref{sec:backpropagation-conceptual-introduction}) \textbf{applied to the unrolled RNN}. However, an RNN is \textbf{not a standard feed-forward network} because it has \textbf{cycles} due to its recurrent connections:
+\begin{equation*}
+    h_{t-1} \rightarrow \text{[RNN cell]} \rightarrow h_{t} \rightarrow \text{[RNN cell]} \rightarrow h_{t+1} \rightarrow \ldots
+\end{equation*}
+These cycles create \textbf{dependencies over time}, making the RNN \textbf{deep in time} rather than deep in space. So, the RNN cannot run backpropagation directly on its cyclic graph. The solution is to \textbf{unroll the RNN over time}, converting it into a \textbf{Directed Acyclic Graph (DAG)}. Once unrolled, we can perform backpropagation as usual, computing gradients for each time step and accumulating them to update the shared weights.
+
+\highspace
+Once unrolled, we simply:
+\begin{enumerate}
+    \item Run forward pass through all timesteps:
+    \begin{equation*}
+        \text{compute } h_1, \, h_2, \, \ldots, \, h_T
+    \end{equation*}
+    \item Compute the loss at each timestep and sum them:
+    \begin{equation*}
+        E = \sum_{t=1}^{T} E_t
+    \end{equation*}
+    \item Run backpropagation through the unrolled network, computing gradients at each timestep and accumulating them:
+    \begin{equation*}
+        \frac{\partial E}{\partial W_x} = \sum_{t=1}^{T} \frac{\partial E_t}{\partial W_x}, \quad
+        \frac{\partial E}{\partial W_h} = \sum_{t=1}^{T} \frac{\partial E_t}{\partial W_h}, \quad
+        \frac{\partial E}{\partial b} = \sum_{t=1}^{T} \frac{\partial E_t}{\partial b}
+    \end{equation*}
+    \item Update the shared weights using the accumulated gradients.
+\end{enumerate}
+That is Backpropagation Through Time in a nutshell. It is just plain backpropagation but applied \textbf{through time}, not space. But, \textbf{how do we unroll an RNN?} Let's explore that next.
+
+\newpage
+
+\begin{deepeningbox}[: Why backpropagation cannot be applied directly to RNNs?]
+    In a Recurrent Neural Network, the main issue is \textbf{not} that a parameter is used multiple times, but that the computational graph contains \textbf{cycles}.
+
+    \highspace
+    In a standard feed-forward neural network, the computation flows in one direction:
+    \begin{equation*}
+        \text{input } x \rightarrow \text{layer } W \rightarrow \text{hidden } h \rightarrow \text{loss } E
+    \end{equation*}
+    This defines a \textbf{Directed Acyclic Graph (DAG)}, which is required for backpropagation to work.
+
+    \highspace
+    In contrast, an RNN introduces a \textbf{recurrent connection}:
+    \begin{equation*}
+        h_t = f(W_x x_t + W_h h_{t-1} + b)
+    \end{equation*}
+    This creates a \textbf{cycle}:
+    \begin{equation*}
+        h_{t-1} \rightarrow h_t \rightarrow h_{t+1} \rightarrow \ldots
+    \end{equation*}
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is this a problem?}}
+    Because backpropagation requires a DAG, but the RNN defines a \textbf{cyclic (recursive) computation}. Therefore, we cannot directly apply backpropagation.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: BPTT (unrolling).}}
+    We convert the cyclic graph into a \textbf{finite, acyclic graph} by unrolling the RNN over $T$ time steps:
+    \begin{equation*}
+        x_1 \rightarrow h_1 \rightarrow h_2 \rightarrow \ldots \rightarrow h_T
+    \end{equation*}
+    Now the model becomes equivalent to a deep feed-forward network, and backpropagation can be applied.
+
+    \highspace
+    \textcolor{DarkOrange3}{\faIcon{question-circle} \textbf{What changes after unrolling?}}
+    Although unrolling enables backpropagation, it reveals that the same weights are used at every time step. Therefore, each parameter influences the loss through \textbf{many paths across time}:
+    \begin{equation*}
+        \frac{\partial E}{\partial W_h} = \sum_{t=1}^{T} \frac{\partial E}{\partial h_t} \cdot \frac{\partial h_t}{\partial W_h}
+    \end{equation*}
+    This leads to \textbf{long chains of dependencies}, which in turn cause the well-known \textbf{vanishing and exploding gradient problems}. But we will discuss that separately.
+\end{deepeningbox}

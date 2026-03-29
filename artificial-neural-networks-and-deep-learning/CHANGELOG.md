@@ -70,6 +70,7 @@
 - emphasize penalty term in `Weight Decay (L2 Regularization)` definition ([3c43ecc](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3c43eccf5ea2a6b3a812ffea7dec29a914fb2a1e))
 - fix `dropout` activation formula and enhance related documentation ([ecc3e68](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/ecc3e684715511b9cb424a63170e4e1b82e609b1))
 - correct neuron activation scaling description during testing ([debd01e](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/debd01ecbee5fd63ea4790f41156c13ced382571))
+- correct weight scaling rule description and equations ([435d9ee](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/435d9eecd547135a42af454f9c4e133e23bd5459))
 
 --------------------
 

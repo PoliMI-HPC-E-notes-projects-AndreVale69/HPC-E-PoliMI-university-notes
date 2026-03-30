@@ -99,7 +99,7 @@ In short, \textbf{no}, GRU is not the best RNN. In some scenarios, LSTMs may out
     This separation is \textbf{very powerful}, especially for tasks requiring deep context management, such as language modeling or machine translation.
 
 
-    \item \important{LSTMs Have More Control (More Degrees of Freedom)}. LSTM has \textbf{three gates} (forget, input, output), while GRU has \textbf{two}. This gives LSTMs: more expressiveness, finer control of memory flow, and the ability to decouple ``writing to memory'' from ``exposing memory''. In some tasks, this extra structure provides: better accuracy, more stable long-term learning, and better handling of irregular or sparse signals. In summary, \textbf{with LSTM we can do a more nuanced manipulation of information}.
+    \item \important{LSTMs Have More Control (More Degrees of Freedom)}. LSTM has \textbf{three gates} (forget $f_t$, input $i_t$, output $o_t$), while GRU has \textbf{two} (update $z_t$, reset $r_t$). This gives LSTMs: more expressiveness, finer control of memory flow, and the ability to decouple ``writing to memory'' from ``exposing memory''. In some tasks, this extra structure provides: better accuracy, more stable long-term learning, and better handling of irregular or sparse signals. In summary, \textbf{with LSTM we can do a more nuanced manipulation of information}.
 
 
     \item \important{LSTMs Work Better on Very Long Sequences}. Empirically, on tasks requiring \textbf{very long-term dependencies} (hundreds or thousands of time steps), \textbf{LSTMs typically outperform GRUs}. Some examples:
@@ -121,3 +121,135 @@ In short, \textbf{no}, GRU is not the best RNN. In some scenarios, LSTMs may out
     \end{equation*}
     GRUs \textbf{do not}. This means \textbf{GRUs cannot selectively hide memory and it is critical in tasks where certain features need to stay internal and not be exposed to the next layer}.
 \end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[
+        >=LaTeX, % Use default LaTeX arrows
+        % Styles 
+        cell/.style={ % RNN cell
+            rectangle, 
+            rounded corners=5mm, 
+            draw,
+            very thick,
+            minimum height=4cm,
+            minimum width=6cm
+        }, 
+        cellc/.style={ % RNN cells in a chain
+            cell,
+            on chain,
+            join
+        },
+        input/.style={ % Input or output node
+            circle,
+            minimum width=2.25em,
+            draw,
+            fill=gray!10,
+            thick
+        },
+        hidden/.style={ % Hidden state
+        },
+        func/.style={ % Functions
+            rectangle,
+            draw,
+            inner sep=2pt,
+            minimum height=0.4cm
+        },
+        op/.style={ % Operators
+            circle,
+            draw,
+            inner sep=-0.5pt,
+            minimum height=0.4cm,
+        },
+        pointwise/.style={ % Pointwise operations and functions
+            fill=gray!50,
+        },
+        arrow/.style={
+            -latex,
+            very thick
+        },
+        arrowc1/.style={ % Arrows with rounded corners
+            arrow,
+            rounded corners=.25cm
+        },
+        arrowc2/.style={ % Arrows with big rounded corners
+            arrow,
+            rounded corners=.5cm
+        },
+        backprop/.style={ % Backpropagation arrows
+            arrow,
+            dashed,
+            gray
+        }
+    ]
+    
+        % GRU cell
+        \node [cell] at (0,0){};
+
+        % Internal functions and operators
+        \node [func] (sigr) at (-0.75,-0.75) {$\sigma$};
+        \node [func] (sigz) at (0,-0.75) {$\sigma$};
+        \node [func] (tanh) at (2,-0.75) {$\tanh$};
+        \node [func, pointwise] (minus) at (0,0.5) {$1-$};
+        \node [op, pointwise] (mulr) at (-1.5,0) {$\times$};
+        \node [op, pointwise] (mulz) at (0,1.5) {$\times$};
+        \node [op, pointwise] (add) at (2,1.5) {$+$};
+        \node [op, pointwise] (mulh) at (2,0) {$\times$};
+
+        % Inputs, outputs and hidden states
+        \node[hidden] (ht-1) at (-4,1.5) {$\mathbf{h}_{t-1}$};
+        \node[input] (x) at (-2.5,-3) {$\mathbf{x}_{t}$};
+        \node[hidden] (ht) at (4,1.5) {$\mathbf{h}_t$};
+        \node[input] (y) at (2.5,3) {$\text{out } \mathbf{h}_t$};
+
+        % Arrows from input and previous hidden states h_{t-1}
+        \draw [arrowc1] (ht-1) -- (mulz) -- (add) -- (ht);
+        \draw [arrowc1, -] (x) |- (-2.25, -1.4) ++(sigr);
+        \draw [arrowc1, -] (x) |- (-2.25, -1.75) ++(sigr);
+        \draw [arrowc1, -] (x -| sigz) ++(-1, 1.6) -| (sigz);
+        \draw [arrowc1, -] (x -| sigr) ++(-1.5, 1.6) -| (sigr);
+        \draw [arrowc1, -] (ht-1.east) -| (mulr);
+        \draw [arrowc1, -] (ht-1) -| (-2.5,0) ++(x);
+        \draw [arrowc1, -] (x) ++(0,3) |- (-1,-1.4) ++(tanh);
+        \draw [arrowc2, -] (x -| tanh) ++(-4.25, 1.25) -| (tanh);
+
+        % Arrows for operation flow within LSTM gates
+        \draw [arrowc1, -] (mulr) -- ++(0,-1.3);
+        \draw [arrowc1, -] (mulr) ++(0,-1.55) |- (0,-1.75) ++(tanh);
+        \draw [arrowc1] (sigr) |-  node[midway, shift={(-2pt,4pt)}] {$\mathbf{r}_t$} (mulr.east);
+        \draw [arrowc2] (sigz) |- (mulh);
+        \draw [arrowc2] (tanh) -- node[midway, shift={(12pt,1.5pt)}] {$\tilde{\mathbf{h}}_t$} (mulh);
+        \draw [arrowc2] (minus) -- (mulz);
+        \draw [arrowc2] (sigz) -- node[midway, left] {$\mathbf{z}_t$} (minus);
+        \draw [arrowc2] (mulh) -- (add);
+
+        % Arrows to output and current hidden states h_t
+        \draw [arrowc1] (add) coordinate[auto] -|(y);
+    \end{tikzpicture}
+    \captionsetup{singlelinecheck=false}
+    \caption[]{
+        \textbf{Gated Recurrent Unit (GRU) cell.}\cite{nntikz}
+        At time step $t$, the GRU receives the current input $x_t$ and the previous hidden state $h_{t-1}$, and computes the new hidden state $h_t$, which serves both as output and as recurrent input to the next time step.
+
+        \highspace
+        The \textbf{reset gate} $r_t = \sigma(W_r [h_{t-1}, x_t] + b_r)$ controls how much of the previous hidden state contributes to the candidate activation. When $r_t$ is close to $0$, past information is ignored; when it is close to $1$, past information is fully considered.
+
+        \highspace
+        The \textbf{candidate hidden state} is computed as
+        \begin{equation*}
+        \tilde{h}_t = \tanh\!\big(W_h [r_t \odot h_{t-1}, x_t] + b_h\big),
+        \end{equation*}
+        where the reset gate filters the past before combining it with the current input.
+
+        \highspace
+        The \textbf{update gate} $z_t = \sigma(W_z [h_{t-1}, x_t] + b_z)$ determines how much of the previous hidden state is retained and how much of the candidate is incorporated. The $1-$ term is a smart way to control at the same time the contribution of the past and the new candidate: $z=1$ drops the past ($1-z=0$) and fully incorporates the new candidate ($z=1$), while $z=0$ retains the past ($1-z=1$) and ignores the new candidate ($z=0$). The final hidden state is computed as
+        \begin{equation*}
+        h_t = (1 - z_t)\odot h_{t-1} + z_t \odot \tilde{h}_t,
+        \end{equation*}
+        which can be interpreted as a \textbf{learned interpolation} between past and new information.
+
+        \highspace
+        Unlike LSTMs, GRUs \textbf{do not maintain a separate cell state} $C_t$. Instead, the hidden state $h_t$ directly combines both short-term and long-term information, resulting in a \textbf{simpler and more computationally efficient architecture}.
+    }
+    \label{fig:gru}
+\end{figure}

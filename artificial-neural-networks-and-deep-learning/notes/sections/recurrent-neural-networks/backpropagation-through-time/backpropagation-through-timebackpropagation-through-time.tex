@@ -53,6 +53,29 @@ That is Backpropagation Through Time in a nutshell. It is just plain backpropaga
     Because backpropagation requires a DAG, but the RNN defines a \textbf{cyclic (recursive) computation}. Therefore, we cannot directly apply backpropagation.
 
     \highspace
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Let's see from a mathematical perspective.}} In an RNN:
+    \begin{equation*}
+        h_t = f(W_x x_t + W_h h_{t-1} + b)
+    \end{equation*}
+    The term $h_{t-1}$ is a function of $h_{t-2}$, which is a function of $h_{t-3}$, and so on. This is a \textbf{nested function composition}:
+    \begin{equation*}
+        h_t = f\left(W_x x_t + W_h f\left(W_x x_{t-1} + W_h f\left(W_x x_{t-2} + \ldots\right)\right)\right)
+    \end{equation*}
+    Now, if we try to compute the gradient $\frac{\partial E}{\partial W_h}$, because we want to update $W_h$, we would have to apply the chain rule through this nested composition. This means we would have to compute:
+    \begin{equation*}
+        \frac{\partial E}{\partial W_h} = \frac{\partial E}{\partial h_t} \cdot \frac{\partial h_t}{\partial W_h}
+    \end{equation*}
+    But $\frac{\partial h_t}{\partial W_h}$ depends on:
+    \begin{equation*}
+        \frac{\partial h_t}{\partial W_h} = \frac{\partial f}{\partial W_h} + \frac{\partial f}{\partial h_{t-1}} \cdot \frac{\partial h_{t-1}}{\partial W_h}
+    \end{equation*}
+    And $\frac{\partial h_{t-1}}{\partial W_h}$ depends on:
+    \begin{equation*}
+        \frac{\partial h_{t-1}}{\partial W_h} = \frac{\partial f}{\partial W_h} + \frac{\partial f}{\partial h_{t-2}} \cdot \frac{\partial h_{t-2}}{\partial W_h}
+    \end{equation*}
+    And so on, leading to a \hl{recursive definition of the gradient, where each term depends on the previous one.} To compute it explicitly, we \hl{must expand this recursion over a finite number of time steps.}
+
+    \highspace
     \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: BPTT (unrolling).}}
     We convert the cyclic graph into a \textbf{finite, acyclic graph} by unrolling the RNN over $T$ time steps:
     \begin{equation*}
@@ -67,4 +90,19 @@ That is Backpropagation Through Time in a nutshell. It is just plain backpropaga
         \frac{\partial E}{\partial W_h} = \sum_{t=1}^{T} \frac{\partial E}{\partial h_t} \cdot \frac{\partial h_t}{\partial W_h}
     \end{equation*}
     This leads to \textbf{long chains of dependencies}, which in turn cause the well-known \textbf{vanishing and exploding gradient problems}. But we will discuss that separately.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{But why not use all time steps?}} 
+    In principle, the correct gradient requires considering \textbf{all previous time steps}. However, in practice this is often inefficient:
+    \begin{itemize}
+        \item The computational cost grows linearly with the sequence length $T$, requiring both \textbf{more memory} (to store all intermediate states) and \textbf{more time} for backpropagation.
+        \item More importantly, contributions from distant time steps tend to become \textbf{negligible} due to the repeated multiplication of Jacobians, leading to the \textbf{vanishing/exploding gradient problem}.
+    \end{itemize}
+    We will discuss these issues in more detail in the next section, but the key point is that while BPTT is the correct algorithm for training RNNs, it is often impractical to apply it over long sequences due to computational and optimization challenges.
+
+    \highspace
+    For these reasons, a common practical solution is \definition{Truncated Backpropagation Through Time (TBPTT)}, where gradients are propagated only for a limited number of steps (i.e., a BPTT but truncated to a fixed window).
+
+    \highspace
+    In this course, however, we focus on the \textbf{full BPTT formulation}, as it clearly exposes the limitations of RNNs and motivates more advanced architectures such as \textbf{LSTMs and GRUs}.
 \end{deepeningbox}

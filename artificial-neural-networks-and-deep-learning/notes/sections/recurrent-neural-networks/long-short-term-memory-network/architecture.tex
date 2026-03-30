@@ -74,3 +74,182 @@ Thus, the \textbf{LSTM outputs} both:
     It indicates what information to \textbf{output} at the current time step. It is a \hl{short-term representation}.
 \end{itemize}
 The gates in the LSTM cell \textbf{control the flow of information} into and out of both the cell state and hidden state. By regulating what to remember, forget, and output, the LSTM can effectively manage long-term dependencies without suffering from vanishing gradients. The \textbf{cell state $C_t$ provides a direct path for gradients to flow back through time}, preserving information over long sequences, while the hidden state $h_t$ allows for dynamic representation of the current input. This architecture enables LSTMs to learn complex temporal patterns that standard RNNs struggle with.
+
+\highspace
+\begin{figure}[!htp]
+\centering
+\begin{tikzpicture}[
+    myfont/.style={
+        font=\footnotesize\sffamily
+    },
+    frame/.style={
+        rectangle,
+        rounded corners=5mm,
+        draw=black!65,
+        fill=black!4,
+        very thick,
+    },
+    add/.style={
+        circle,
+        draw=black!70,
+        thick,
+        fill=white,
+        inner sep=.6pt,
+        minimum height=3.5mm,
+    },
+    prod/.style={
+        circle,
+        draw=black!70,
+        thick,
+        fill=cyan!15,
+        inner sep=.6pt,
+        minimum height=3.5mm,
+    },
+    function/.style={
+        ellipse,
+        draw=black!70,
+        thick,
+        fill=orange!12,
+        inner sep=1.2pt,
+    },
+    cell/.style={
+        circle,
+        draw=black!70,
+        fill=violet!12,
+        line width=.8pt,
+        minimum width=9mm,
+        inner sep=1pt,
+    },
+    hidden/.style={
+        circle,
+        draw=black!70,
+        fill=blue!10,
+        line width=.8pt,
+        minimum width=9mm,
+        inner sep=1pt,
+    },
+    input/.style={
+        circle,
+        draw=black!70,
+        fill=green!10,
+        line width=.8pt,
+        minimum width=9mm,
+        inner sep=1pt,
+    },
+    actfunc/.style={
+        rectangle,
+        draw=black!70,
+        fill=white,
+        minimum width=5mm,
+        minimum height=4mm,
+        inner sep=1pt,
+        thick,
+    },
+    ArrowC1/.style={
+        rounded corners=2mm,
+        >=Stealth[round],
+        very thick,
+    },
+    ArrowC2/.style={
+        rounded corners=3mm,
+        >=Stealth[round],
+        very thick,
+    }
+]
+
+% Outer frame
+\node [frame, minimum height=4cm, minimum width=6cm] at (0,0) {};
+
+% Activation nodes
+\node [actfunc] (ibox1) at (-2,-0.8) {$\sigma$};
+\node [actfunc] (ibox2) at (-1.35,-0.8) {$\sigma$};
+\node [actfunc, minimum width=9mm] (ibox3) at (-0.45,-0.8) {$\tanh$};
+\node [actfunc] (ibox4) at (0.5,-0.8) {$\sigma$};
+
+% Operation nodes
+\node [prod] (mux1) at (-2,1.5) {$\times$};
+\node [add]  (add1) at (-0.5,1.5) {$+$};
+\node [prod] (mux2) at ($(ibox3)!0.5!(add1)$) {$\times$};
+\node [prod] (mux3) at (1.5,0) {$\times$};
+\node [function] (func1) at (1.5,0.75) {$\tanh$};
+
+% External input nodes
+\node[cell,   label={[myfont]above:Cell state $\left(t-1\right)$}]   (c) at (-4,1.5) {$C_{t-1}$};
+\node[hidden, label={[myfont]above:Hidden state $\left(t-1\right)$}] (h) at (-4,-1.5) {$h_{t-1}$};
+\node[input,  label={[myfont]right:Input}]                (x) at (-2.5,-3) {$x_t$};
+
+% External output nodes
+\node[cell,   label={[myfont]above:Cell state $\left(t\right)$}]       (c2) at (4,1.5) {$C_t$};
+\node[hidden, label={[myfont]below:Hidden / Output state}] (h2) at (4,-1.5) {$h_t$};
+
+% Cell-state highway
+\draw [->, ArrowC1] (c) -- (mux1) -- (add1) -- (c2);
+
+% Inputs to gates/candidate
+\draw [ArrowC2] (h) -| (ibox4);
+\draw [ArrowC1] (h) -| (ibox1);
+\draw [ArrowC1] (h) -| (ibox2);
+\draw [ArrowC1] (h) -| (ibox3);
+\draw [ArrowC1] (x) -- (x |- h) -| (ibox1);
+
+% Internal connections
+\draw [->, ArrowC2] (ibox1) -- (mux1);
+\node [label=left:$f_t$, right=-1pt] () at ($(ibox1)!.5!(mux1)$) {};
+
+\draw [->, ArrowC2] (ibox2) |- (mux2);
+\node [label=left:$i_t$, right=2pt] () at (ibox2 |- mux2) {};
+
+\draw [->, ArrowC2] (ibox3) -- (mux2);
+\node [label=right:$\tilde{C}_t$, left=.5pt] () at ($(ibox3)!.5!(mux2)$) {};
+
+\draw [->, ArrowC2] (ibox4) -- node[midway, left] {$o_t$} (mux3);
+
+\draw [->, ArrowC2] (mux2) -- (add1);
+\draw [->, ArrowC1] (add1) -| (func1);
+\draw [->, ArrowC2] (func1) -- (mux3);
+
+% Final output only once
+\draw [->, ArrowC2] (mux3) |- (h2);
+
+\end{tikzpicture}
+\caption{\textbf{LSTM cell}. It is the computation performed at a single time step $t$ for one LSTM cell. At time $t$, the cell receives (1) the current input $x_t$, (2) the previous hidden state $h_{t-1}$, and (3) the previous cell state $C_{t-1}$. It computes the new cell state $C_t$ and the new hidden state $h_t$.}
+\label{fig:lstm}
+\end{figure}
+
+\noindent
+The LSTM cell implements:
+\begin{equation*}
+    \left( x_t, h_{t-1}, C_{t-1} \right) \longmapsto \left( h_t, C_t \right)
+\end{equation*}
+The \autoref{fig:lstm}, \autopageref{fig:lstm}, has three logical stages:
+\begin{enumerate}
+    \item \important{Decide what to keep from the old memory}. The previous cell state $C_{t-1}$ enters from the left along the top path. A gate called the \textbf{forget gate} produces $f_t$, and this is multiplied element-wise with $C_{t-1}$:
+    \begin{equation*}
+        f_t \odot C_{t-1}
+    \end{equation*}
+    This determines how much of the previous cell state to retain. If a component of $f_t$ is close to 1, the corresponding component of $C_{t-1}$ is kept; if it is close to 0, it is forgotten.
+
+
+    \item \important{Decide what new information to write}. From the current input $x_t$ and previous hidden state $h_{t-1}$, the cell computes:
+    \begin{itemize}
+        \item The \textbf{input gate} $i_t$, which determines how much new information to add.
+        \item The \textbf{candidate cell state} $\tilde{C}_t$, which is a new potential memory content based on the current input and previous hidden state.
+    \end{itemize}
+    Then they are combined as:
+    \begin{equation*}
+        i_t \odot \tilde{C}_t
+    \end{equation*}
+    This determines how much new information should be written into the memory cell $C_t$. Where $\tilde{C}_t$ proposes new content, and $i_t$ decides how much of it to actually add.
+
+
+    \item \important{Update memory and expose output}. The two contributions are added:
+    \begin{equation*}
+        C_t = f_t \odot C_{t-1} + i_t \odot \tilde{C}_t
+    \end{equation*}
+    This gives the new cell state $C_t$. Then, the cell computes the hidden state as:
+    \begin{equation*}
+        h_t = o_t \odot \tanh(C_t)
+    \end{equation*}
+    Where $o_t$ is the \textbf{output gate} that decides how much of the current memory should be exposed as output. The hidden state $h_t$ is what gets passed to the next time step and can also be used for making predictions at the current time step.
+\end{enumerate}
+So the LSTM first updates memory, then decides how much of that memory should be revealed as output. In the next sections, we will go into the details of how each gate is computed and how the parameters are learned.

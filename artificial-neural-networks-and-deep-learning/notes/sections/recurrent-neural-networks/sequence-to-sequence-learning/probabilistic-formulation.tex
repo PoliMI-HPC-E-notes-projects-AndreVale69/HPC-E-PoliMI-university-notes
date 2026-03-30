@@ -1,0 +1,71 @@
+\subsubsection{Probabilistic Formulation}
+
+Suppose we are given an input sequence:
+\begin{equation*}
+    x = \left(x_1, x_2, \dots, x_m\right)
+\end{equation*}
+And we want to produce an output sequence:
+\begin{equation*}
+    y = \left(y_1, y_2, \dots, y_n\right)
+\end{equation*}
+The goal of sequence-to-sequence learning is to create a model that can predict an output sequence based on an input sequence, even if the two sequences are different lengths (i.e., $m \neq n$).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{\Naive Approach: predict the whole output sequence at once}}
+\end{flushleft}
+A naive way to approach this problem would be to treat the entire output sequence as a single target and try to predict it in one shot. However, this is not practical because the output is a \textbf{structured object} (a sequence) rather than a single label. For example, in machine translation, the target sentence may have many possible valid translations. So instead of forcing the network to directly output one fixed vector containing the whole sentence, we want the model to say: ``\emph{given this input sequence, how likely is this candidate output sequence?}''.
+
+\highspace
+Formally, the model learns a \textbf{conditional probability distribution}:
+\begin{equation}
+    P\left(y \mid x\right)
+\end{equation}
+Meaning:
+\begin{equation*}
+    P\left(y_1, y_2, \dots, y_n \mid x_1, x_2, \dots, x_m\right)
+\end{equation*}
+Intuitively, it means that among all possible output sequences, how plausible is a particular one given the input sequence. For example, if the input is an English sentence, and the output is a French sentence, then the conditional probability distribution will measure how likely that French sentence is as translation of the English sentence.
+
+\highspace
+So Seq2Seq is not just ``mapping input to output'' in a deterministic sense, but rather learning a \textbf{conditional model} that can assign probabilities to different output sequences given an input sequence.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{What is the prediction rule?}} Once the model has learned this conditional probability, the best prediction is the output sequence with highest probability:
+\begin{equation}
+    y^{*} = \arg\max_{y} P\left(y \mid x\right)
+\end{equation}
+This means consider all possible output sequences $y$, compute their probability given the input $x$, and choose the most probable one. Unrolling the definition of $P\left(y \mid x\right)$, we can express this as:
+\begin{equation*}
+    y^{*} = \arg\max_{y} P\left(y_1, y_2, \dots, y_n \mid x_1, x_2, \dots, x_m\right)
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is $P\left(y \mid x\right)$ really?}}
+\end{flushleft}
+Forget neural networks for a second. The expression $P\left(y \mid x\right)$ means: ``\emph{in the \textbf{real world}, how likely is output $y$ given input $x$?}''. For example, if $x$ is ``\emph{I am tired}'', the possible outputs $y$ could be ``\emph{Je suis fatigué}'' (which means ``I am tired'' in French) or ``\emph{Je mange une pomme}'' (which means ``I eat an apple'' in French). The first output is much more likely than the second one, so $P\left(y \mid x\right)$ should assign a higher probability to the first translation.
+
+\highspace
+This simple example shows that there is a \textbf{true underlying distribution}:
+\begin{equation*}
+    P_{\text{true}}\left(y \mid x\right)
+\end{equation*}
+This is a property of the \textbf{data-generating process} in the real world (language, physics, etc.).
+
+\highspace
+In practice, it is impossible to know $P_{\text{true}}\left(y \mid x\right)$ exactly because we only have access to a finite dataset of examples. We only have \textbf{samples} from this distribution:
+\begin{equation*}
+    \left(x^{(1)}, y^{(1)}\right), \left(x^{(2)}, y^{(2)}\right), \dots, \left(x^{(N)}, y^{(N)}\right) \sim P_{\text{true}}\left(x, y\right)
+\end{equation*}
+So the best effort is to learn an \textbf{approximation} of the true distribution.
+
+\highspace
+To do this, we introduce a model:
+\begin{equation*}
+    P\left(y \mid x; \theta\right)
+\end{equation*}
+Where $\theta$ are \textbf{all the parameters of} our \textbf{model} (e.g., weights of a neural network). So this is not a single function, but a \textbf{whole space of possible functions}, and $\theta$ helps us select one particular function from that space. The goal of training is to find the parameters $\theta$ such that $P\left(y \mid x; \theta\right)$ is as close as possible to $P_{\text{true}}\left(y \mid x\right)$:
+\begin{equation*}
+    P\left(y \mid x; \theta\right) \approx P_{\text{true}}\left(y \mid x\right)
+\end{equation*}

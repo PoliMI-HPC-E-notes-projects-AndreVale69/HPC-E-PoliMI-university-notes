@@ -8,64 +8,77 @@ And we want to produce an output sequence:
 \begin{equation*}
     y = \left(y_1, y_2, \dots, y_n\right)
 \end{equation*}
-The goal of sequence-to-sequence learning is to create a model that can predict an output sequence based on an input sequence, even if the two sequences are different lengths (i.e., $m \neq n$).
+The goal of sequence-to-sequence learning is to create a model that can predict an output sequence based on an input sequence, even when the two sequences have different lengths (i.e., $m \neq n$).
 
 \highspace
 \begin{flushleft}
-    \textcolor{Red2}{\faIcon{times-circle} \textbf{\Naive Approach: predict the whole output sequence at once}}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{\Naive Approach: predict the whole sequence at once}}
 \end{flushleft}
-A naive way to approach this problem would be to treat the entire output sequence as a single target and try to predict it in one shot. However, this is not practical because the output is a \textbf{structured object} (a sequence) rather than a single label. For example, in machine translation, the target sentence may have many possible valid translations. So instead of forcing the network to directly output one fixed vector containing the whole sentence, we want the model to say: ``\emph{given this input sequence, how likely is this candidate output sequence?}''.
+A \naive approach would be to treat the entire output sequence as a single target and try to predict it in one shot. However, this is not practical because the output is a \textbf{structured object} (a sequence), not a single label. The number of possible sequences grows exponentially with their length, and many different sequences may be valid outputs for the same input (e.g., multiple correct translations of a sentence).
+
+\highspace
+For this reason, instead of predicting a single output directly, we aim to model how \emph{likely} a candidate output sequence is given the input.
 
 \highspace
 Formally, the model learns a \textbf{conditional probability distribution}:
 \begin{equation}
     P\left(y \mid x\right)
 \end{equation}
-Meaning:
+That is:
 \begin{equation*}
     P\left(y_1, y_2, \dots, y_n \mid x_1, x_2, \dots, x_m\right)
 \end{equation*}
-Intuitively, it means that among all possible output sequences, how plausible is a particular one given the input sequence. For example, if the input is an English sentence, and the output is a French sentence, then the conditional probability distribution will measure how likely that French sentence is as translation of the English sentence.
+Intuitively, this measures how plausible a given output sequence is for a specific input sequence. For example, if $x$ is an English sentence and $y$ is a French sentence, then $P\left(y \mid x\right)$ reflects how likely $y$ is as a translation of $x$.
 
 \highspace
-So Seq2Seq is not just ``mapping input to output'' in a deterministic sense, but rather learning a \textbf{conditional model} that can assign probabilities to different output sequences given an input sequence.
+Thus, Seq2Seq learning is not a deterministic mapping from input to output, but a \textbf{probabilistic modeling problem}.
 
 \highspace
-\textcolor{Green3}{\faIcon{book} \textbf{What is the prediction rule?}} Once the model has learned this conditional probability, the best prediction is the output sequence with highest probability:
+\textcolor{Green3}{\faIcon{book} \textbf{Prediction rule.}} Once the model has learned this distribution, the predicted output is the sequence with the highest probability:
 \begin{equation}
     y^{*} = \arg\max_{y} P\left(y \mid x\right)
 \end{equation}
-This means consider all possible output sequences $y$, compute their probability given the input $x$, and choose the most probable one. Unrolling the definition of $P\left(y \mid x\right)$, we can express this as:
-\begin{equation*}
-    y^{*} = \arg\max_{y} P\left(y_1, y_2, \dots, y_n \mid x_1, x_2, \dots, x_m\right)
-\end{equation*}
+That is, among all possible output sequences, we select the most likely one given the input.
 
-\highspace
+\newpage
+
 \begin{flushleft}
     \textcolor{Green3}{\faIcon{question-circle} \textbf{What is $P\left(y \mid x\right)$ really?}}
 \end{flushleft}
 Forget neural networks for a second. The expression $P\left(y \mid x\right)$ means: ``\emph{in the \textbf{real world}, how likely is output $y$ given input $x$?}''. For example, if $x$ is ``\emph{I am tired}'', the possible outputs $y$ could be ``\emph{Je suis fatigué}'' (which means ``I am tired'' in French) or ``\emph{Je mange une pomme}'' (which means ``I eat an apple'' in French). The first output is much more likely than the second one, so $P\left(y \mid x\right)$ should assign a higher probability to the first translation.
 
 \highspace
-This simple example shows that there is a \textbf{true underlying distribution}:
-\begin{equation*}
-    P_{\text{true}}\left(y \mid x\right)
-\end{equation*}
-This is a property of the \textbf{data-generating process} in the real world (language, physics, etc.).
+This simple example shows that the quantity $P\left(y \mid x\right)$ represents a \textbf{true underlying distribution} between inputs and outputs in the real world. We can call this distribution $P_{\text{true}}\left(y \mid x\right)$, and it is determined by the data-generating process (e.g., natural language).
 
 \highspace
-In practice, it is impossible to know $P_{\text{true}}\left(y \mid x\right)$ exactly because we only have access to a finite dataset of examples. We only have \textbf{samples} from this distribution:
+In practice, it is impossible to know $P_{\text{true}}\left(y \mid x\right)$ exactly because we only have access to a finite dataset of examples and can only observe a limited number of input-output pairs.\footnote{%
+    The reason why we observe only a limited number of input-output pairs is that the true distribution $P_{\text{true}}\left(y \mid x\right)$ is defined over a very large (often effectively infinite) space of possible inputs and outputs. In practice, it is impossible to observe all possible combinations. Instead, we only have access to a finite dataset of samples drawn from this distribution.
+
+    \highspace
+    More formally, we observe pairs:
+    \begin{equation*}
+        \left(x^{(1)}, y^{(1)}\right), \left(x^{(2)}, y^{(2)}\right), \dots, \left(x^{(N)}, y^{(N)}\right)
+    \end{equation*}
+    Which can be seen as samples from the joint distribution $P_{\text{true}}(x, y)$.
+
+    \highspace
+    For example, in natural language, the number of possible sentences is extremely large, and we can only observe a very small subset of them in our dataset.%
+} So we only observe a finite set of input-output pairs:
 \begin{equation*}
     \left(x^{(1)}, y^{(1)}\right), \left(x^{(2)}, y^{(2)}\right), \dots, \left(x^{(N)}, y^{(N)}\right) \sim P_{\text{true}}\left(x, y\right)
 \end{equation*}
-So the best effort is to learn an \textbf{approximation} of the true distribution.
+Therefore, we must learn an approximation of $P_{\text{true}}\left(y \mid x\right)$ based on the observed data.
 
 \highspace
-To do this, we introduce a model:
+To this end, we introduce a parametric model:
 \begin{equation*}
     P\left(y \mid x; \theta\right)
 \end{equation*}
-Where $\theta$ are \textbf{all the parameters of} our \textbf{model} (e.g., weights of a neural network). So this is not a single function, but a \textbf{whole space of possible functions}, and $\theta$ helps us select one particular function from that space. The goal of training is to find the parameters $\theta$ such that $P\left(y \mid x; \theta\right)$ is as close as possible to $P_{\text{true}}\left(y \mid x\right)$:
+Where $\theta$ denotes the trainable parameters of the model (e.g., the weights of a neural network). This defines a \textbf{family of possible distributions}, and different values of $\theta$ correspond to different models.
+
+\highspace
+The goal of training is to find parameters $\theta$ such that:
 \begin{equation*}
     P\left(y \mid x; \theta\right) \approx P_{\text{true}}\left(y \mid x\right)
 \end{equation*}
+That is, the model assigns high probability to correct output sequences and low probability to incorrect ones.

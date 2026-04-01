@@ -1,0 +1,68 @@
+\subsubsection{Special Tokens \& Dataset Batch Preparation}
+
+In sequence-to-sequence models, the output is generated token by token. \textbf{To properly control the generation process} and \textbf{handle variable-length sequences}, it is necessary to introduce special tokens.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are special tokens necessary?}}
+\end{flushleft}
+\begin{enumerate}
+    \item \textbf{How does generation start?} The decoder needs a starting point to begin generating the output sequence. The \texttt{SOS} token serves this purpose.
+    \item \textbf{How does generation end?} The model needs a way to indicate when it has finished generating the sequence. The \texttt{EOS} token signals the end of the sequence.
+    \item \textbf{How to handle variable-length sequences?} In a batch of sequences, they may have different lengths. The \texttt{PAD} token is used to pad shorter sequences to the same length as the longest sequence in the batch, allowing for efficient batch processing.
+    \item \textbf{How to handle out-of-vocabulary words?} The \texttt{UNK} token represents words that are not in the model's vocabulary, allowing the model to handle unknown inputs gracefully.
+\end{enumerate}
+
+\highspace
+\begin{definitionbox}[: Special Tokens]
+    \definition{Special Tokens} are \textbf{artificial symbols added to sequences} to \textbf{indicate structural information} such as the beginning or end of a sequence, or to handle padding and unknown words.
+\end{definitionbox}
+
+\highspace
+The most commonly used special tokens are:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{play}}] \textbf{Start-of-Sequence (\texttt{SOS})}: indicates the start of the output sequence. It is used to initialize the decoder:
+    \begin{equation*}
+        y_0 = \texttt{<SOS>}
+    \end{equation*}
+
+
+    \item[\textcolor{Green3}{\faIcon{stop}}] \textbf{End-of-Sequence (\texttt{EOS})}: indicates the end of the sequence. Generation stops when this token is produced.
+
+
+    \item[\textcolor{Green3}{\faIcon{square}}] \textbf{Padding (\texttt{PAD})}: used to make sequences in a \emph{batch} (see below) have the same length.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need batching?}} In deep learning, models are typically trained using \textbf{mini-batches} rather than processing one sequence at a time. This allows efficient parallel computation on modern hardware (e.g., GPUs) and leads to more stable optimization.
+
+    However, sequences in a dataset may have \textbf{different lengths}, which makes batching non-trivial. Neural networks require inputs to have the same shape, so sequences must be aligned to a common length. This is where the \texttt{PAD} token becomes essential: it is used to extend shorter sequences so that all sequences in a batch have the same length.
+
+
+    \item[\textcolor{Green3}{\faIcon{question}}] \textbf{Unknown (\texttt{UNK})}: represents tokens that are not in the vocabulary.
+\end{itemize}
+Special tokens allow the model to: start generating a sequence; decide when to stop; handle variable-length sequences in a fixed-size computational framework.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{\speedIcon} \textbf{How to prepare batches of sequences?}}
+\end{flushleft}
+Neural networks usually operate on \textbf{tensors of fixed dimensions}\footnote{%
+    A tensor is a generalization of scalars, vectors, and matrices to higher dimensions. It is a multi-dimensional array that can represent data in various forms, such as images, sequences, or more complex structures. In deep learning, tensors are the primary data structure used for input and output of models.%
+}, because they are optimized for parallel computation (i.e., on GPUs). However, \textbf{sequences} in a dataset can have \textbf{varying lengths}, which poses a \textbf{challenge for batching}. To address this, sequences must be preprocessed before being fed into the model.
+
+\highspace
+The common approach to prepare batches of sequences is as follows:
+\begin{enumerate}
+    \item \important{Tokenization}: Convert raw text into a sequence of tokens (e.g., words, subwords, or characters).
+    
+    
+    \item \important{Adding Special Tokens}: Prepend the \texttt{SOS} token to the beginning of each target sequence and append the \texttt{EOS} token to the end. This allows the model to know where sequences start and end during training and inference.
+    
+    
+    \item \important{Padding}: Determine the length of the longest sequence in the batch and \textbf{pad all shorter sequences} with the \texttt{PAD} token until they match this length. This ensures that all sequences in the batch have the same length, allowing them to be processed together as a single tensor.
+    
+    For example, if the longest sequence has a length of 10 tokens, all sequences in the batch will be padded to have a length of 10. If the longest sequence has a length of 10 tokens, but the tensor requires a fixed length of 12, then all sequences will be padded to have a length of 12, with the last two tokens being \texttt{PAD}.
+
+
+    \item \important{Creating Masks}: Generate masks to \textbf{indicate which tokens are actual data and which are padding}. This is important for the model to ignore the padded tokens during training and inference.
+\end{enumerate}
+By following these steps, we can efficiently prepare batches of sequences for training sequence-to-sequence models, ensuring that the model can learn effectively from the data while handling the variability in sequence lengths.

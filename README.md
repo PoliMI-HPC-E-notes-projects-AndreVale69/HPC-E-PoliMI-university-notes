@@ -150,7 +150,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://www4.ceda.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=50107&__pj0=0&__pj1=17a2888e991ec95240e9455a5fe4df75" target="_blank">Cremonesi Paolo</a></td>
         <td><ul>
             <li><a href="quantum-computing">Course Details</a></li>
-            <li><a href="quantum-computing/notes/quantum-computing.pdf">PDF v0.3.1</a></li>
+            <li><a href="quantum-computing/notes/quantum-computing.pdf">PDF v0.4.0</a></li>
         </ul></td>
     </tr>
     <tr>

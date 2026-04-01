@@ -1,0 +1,90 @@
+\subsubsection{Decoding: Greedy Search and Beam Search}
+
+Up to this point, we have defined a probabilistic model that assigns a score to any possible output sequence:
+\begin{equation*}
+    P(y \mid x)
+\end{equation*}
+And we have learned how to train this model so that correct sequences receive high probability.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{But how do we generate the output?}} At inference time, the goal is to find the most probable sequence:
+\begin{equation*}
+    y^* = \arg\max_y P(y \mid x)
+\end{equation*}
+However, as we have seen, this optimization problem is intractable, since the number of possible output sequences grows exponentially with their length. Therefore, it is not possible to enumerate all sequences and select the best one.
+
+\highspace
+This motivates the need for \textbf{decoding strategies}, which approximate the optimal solution by constructing the output sequence step by step using the probabilities produced by the decoder. The two most common decoding strategies are:
+\begin{itemize}
+    \item \definition{Greedy Search}: Generates the output sequence by selecting, at each timestep, the token with the highest probability:
+    \begin{equation*}
+        y_t = \arg\max_{y} P\left(y \mid y_{<t}, x\right)
+    \end{equation*}
+    This \textbf{process is repeated sequentially} until the \texttt{EOS} token is generated.
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Key idea.}} At each step, the locally most probable token is selected, without considering future consequences.
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitation.}} Greedy search may \textbf{lead to suboptimal sequences}, since a locally optimal choice at one timestep may result in a \textbf{globally poor sequence}.
+
+
+    \item \definition{Beam Search}: Improves upon greedy search by keeping track of the top $k$ most probable partial sequences (called \textbf{beams}) at each timestep. Precisely, at each step:
+    \begin{itemize}
+        \item Each current sequence is expanded with all possible next tokens;
+        \item The resulting candidates are scored using their cumulative probability;
+        \item Only the top $k$ sequences are retained.
+    \end{itemize}
+    This process continues until the sequences are completed (i.e., the \texttt{EOS} token is generated).
+
+    \textcolor{Green3}{\faIcon{tools} \textbf{Key idea.}} Beam search explores multiple hypotheses simultaneously, balancing exploration and exploitation (i.e., it considers multiple possible continuations of the sequence rather than committing to a single choice at each step).
+
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Trade-off.}} Beam search is more computationally expensive than greedy search, but it often produces better results by avoiding the pitfalls of local optima.
+    \begin{itemize}
+        \item With $k=1$, beam search reduces to greedy search;
+        \item As $k$ increases, the quality of the generated sequence typically improves, but at the cost of increased computational resources.
+    \end{itemize}
+\end{itemize}
+
+\begin{examplebox}[: Beam Search vs. Greedy Search]
+    Consider a sequence generation problem where the model must generate a sentence token by token. Suppose the model produces the following probabilities:
+    \begin{itemize}
+        \item \textbf{Step 1 (first word)}
+        \begin{itemize}
+            \item ``I'' \quad $P = 0.6$
+            \item ``You'' \quad $P = 0.4$
+        \end{itemize}
+        
+        
+        \item \textbf{Step 2 (second word).} If the first word is ``I'':
+        \begin{itemize}
+            \item ``am'' \quad $P = 0.5$ \quad $\Rightarrow$ total: $0.6 \cdot 0.5 = 0.30$
+            \item ``like'' \quad $P = 0.5$ \quad $\Rightarrow$ total: $0.6 \cdot 0.5 = 0.30$
+        \end{itemize}
+        If the first word is ``You'':
+        \begin{itemize}
+            \item ``are'' \quad $P = 0.9$ \quad $\Rightarrow$ total: $0.4 \cdot 0.9 = 0.36$
+        \end{itemize}
+    \end{itemize}
+    \textbf{Greedy Search.} At the first step, greedy selects the most probable token:
+    \begin{equation*}
+        y_1 = \text{``I''}
+    \end{equation*}
+    Then continues from this choice, producing a sequence with total probability $0.30$:
+    \begin{equation*}
+        \text{``I am''} \quad \text{or} \quad \text{``I like''}
+    \end{equation*}
+
+    \highspace
+    \textbf{Beam Search (with beam width $k=2$).} At the first step, it keeps both candidates:
+    \begin{equation*}
+        \text{``I''}, \quad \text{``You''}
+    \end{equation*}
+    At the second step, it evaluates all expansions and selects the best sequence:
+    \begin{equation*}
+        \text{``You are''} \quad \text{with probability } 0.36
+    \end{equation*}
+    Since:
+    \begin{equation*}
+        0.36 (\text{``You are''}) > 0.30 (\text{``I am''  or ``I like''})
+    \end{equation*}
+    Greedy search makes locally optimal choices and may miss the best sequence, while beam search explores multiple hypotheses and can find a better global solution, at the cost of increased computational complexity.
+\end{examplebox}

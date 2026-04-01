@@ -20,7 +20,7 @@ For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-not
 
 ## Course Syllabus
 
-According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=836280&__pj0=0&__pj1=442fa6ae26032c1734261c6daa9790b9):
+According to the [official course syllabus](https://onlineservices.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=864750&__pj0=0&__pj1=362aa1b5541b2e0365bdd5ca80c9ec6f):
 
 **Main lectures topics**:
 - Quantum information for single qubits
@@ -35,23 +35,20 @@ According to the [official course syllabus](https://www11.ceda.polimi.it/schedai
     - Quantify entanglement
     - Measure multiple qubit states
     - Multi qubit operations: Swap, CNOT, Toffoli
-    - diVincenzo criteria
     - Clifford gates
 - Quantum Circuit representation
     - The oracle model
 - Algorithms
     - Phase kickback
     - Deutsch and Deutsch-Jozsa
+    - Grover
+    - QFT & Phase estimation
     - Simon periodicity
     - Shor
-    - Grover and applications
-    - Quantum walk
-    - QFT & Phase estimation
 - Variational algorithms
     - NISQ
     - Variational Quantum Eigensolver (VQE)
     - Variational Quantum Approximate Optimization (QAOA)
-    - VQLS (least-squares)
 - Simulated annealing and quantum annealing
     - Adiabatic QC paradigm
     - Relationship of Ising, Hamiltonian and QUBO

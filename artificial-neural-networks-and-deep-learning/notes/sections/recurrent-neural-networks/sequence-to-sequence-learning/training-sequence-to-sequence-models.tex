@@ -1,0 +1,158 @@
+\subsubsection{Training Sequence-to-Sequence Models}
+
+After defining the encoder-decoder architecture, we now have a parametric model that can compute the conditional probability:
+\begin{equation*}
+    P\left(y \mid x; \theta\right)
+\end{equation*}
+For any input-output pair $(x, y)$, we can evaluate how likely the model thinks $y$ is given $x$. The remaining question is \emph{how to choose the parameters $\theta$ so that the model produces correct output sequences}. This leads to a \textbf{learning problem}: given a dataset of input-output pairs, we must find parameters $\theta$ so that the model produces correct output sequences.
+
+\highspace
+Formally, given a training dataset of input-output pairs:
+\begin{equation*}
+    \left(x^{(1)}, y^{(1)}\right), \left(x^{(2)}, y^{(2)}\right), \dots, \left(x^{(N)}, y^{(N)}\right)
+\end{equation*}
+The goal is to learn the model parameters $\theta$ such that the conditional probability:
+\begin{equation*}
+    P\left(y \mid x; \theta\right)
+\end{equation*}
+Assigns high probability to the correct output sequences.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cogs} \textbf{Maximum Likelihood Training}}
+\end{flushleft}
+\hl{Training is typically performed by maximizing the likelihood of the observed data:}
+\begin{equation*}
+    \theta^{*} = \arg\max_{\theta} \prod_{i=1}^{N} P\left(y^{(i)} \mid x^{(i)}; \theta\right)
+\end{equation*}
+Equivalently, we maximize the log-likelihood:
+\begin{equation*}
+    \theta^{*} = \arg\max_{\theta} \sum_{i=1}^{N} \log P\left(y^{(i)} \mid x^{(i)}; \theta\right)
+\end{equation*}
+Using the factorization introduced earlier (\autoref{eq:conditional-language-model}, \autopageref{eq:conditional-language-model}), the log-probability of a sequence can be written as:
+\begin{equation*}
+    \log P\left(y \mid x; \theta\right)
+    =
+    \sum_{t=1}^{n} \log P\left(y_t \mid y_{<t}, x; \theta\right)
+\end{equation*}
+Thus, \textbf{training reduces to maximizing the probability of each token in the sequence at every timestep}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Categorical Cross-Entropy (Cross-Entropy Loss)}}
+\end{flushleft}
+In practice, maximizing the log-likelihood is \textbf{implemented as minimizing a loss function}. So at each timestep $t$, the model predicts a probability distribution over the vocabulary, and the loss penalizes the model if it assigns low probability to the correct token $y_t$. The most common loss function for this is the \definition{Categorical Cross-Entropy}.
+\begin{definitionbox}[: Categorical Cross-Entropy]
+    The \definition{Categorical Cross-Entropy (CCE)} is a \textbf{loss function} (\autopageref{def:loss-function}) used in multi-class classification problems, where the \textbf{model predicts a probability distribution over a set of mutually exclusive classes} (i.e., exactly one class is correct).
+
+    \highspace
+    Given:
+    \begin{itemize}
+        \item A true distribution $y = (y_1, \dots, y_K)$, typically a one-hot vector (i.e., $y_i = 1$ for the correct class and $y_j = 0$ for all $j \neq i$);
+        \item A predicted distribution $\hat{y} = (\hat{y}_1, \dots, \hat{y}_K)$, produced by a softmax;
+    \end{itemize}
+    The categorical cross-entropy is defined as:
+    \begin{equation}
+        \mathcal{L} = - \sum_{i=1}^{K} y_i \log \hat{y}_i
+    \end{equation}
+    That is, it measures the dissimilarity between the true distribution $y$ and the predicted distribution $\hat{y}$.
+
+    \highspace
+    Since $y$ is \textbf{one-hot}, this simplifies to:
+    \begin{equation*}
+        \mathcal{L} = - \log \hat{y}_{\text{true}}
+    \end{equation*}
+    Where $\hat{y}_{\text{true}}$ is the predicted probability assigned to the correct class.
+
+    \highspace
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Intuition.}} The loss measures how much probability the model assigns to the correct class:
+    \begin{itemize}
+        \item If the model assigns \textbf{high probability} to the correct class, the \textbf{loss} is \textbf{small};
+        \item If the model assigns \textbf{low probability}, the \textbf{loss} becomes \textbf{large}.
+    \end{itemize}
+    Thus, minimizing the categorical cross-entropy encourages the model to assign high probability to the correct class and low probability to the others.
+\end{definitionbox}
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why Categorical Cross-Entropy?}} Maximizing the likelihood of the data is equivalent to minimizing the negative log-likelihood. The cross-entropy loss implements exactly this objective: it penalizes the model when it assigns low probability to the correct token. Therefore, minimizing cross-entropy corresponds to making the model assign high probability to the observed data.
+
+\highspace
+Formally, at each timestep $t$, the model predicts:
+\begin{equation*}
+    P\left(y_t \mid y_{<t}, x; \theta\right)
+\end{equation*}
+A \textbf{probability distribution over the vocabulary}. Then we compare it with the true token $y_t$. So the loss at timestep $t$ is:
+\begin{equation*}
+    \mathcal{L}_t = - \log P\left(y_t \mid y_{<t}, x; \theta\right)
+\end{equation*}
+The \textbf{total loss for the sequence is the sum of the losses at each timestep}:
+\begin{equation*}
+    \mathcal{L} = \sum_{t=1}^{n} \mathcal{L}_t = - \sum_{t=1}^{n} \log P\left(y_t \mid y_{<t}, x; \theta\right)
+\end{equation*}
+So each token contributes one classification loss, and the model is trained to minimize the total loss across the entire sequence.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What do we feed as $y_{<t}$ during training?}}
+\end{flushleft}
+In Seq2Seq models, the decoder generates tokens \textbf{one by one}:
+\begin{equation*}
+    y_1 \rightarrow y_2 \rightarrow \dots \rightarrow y_n
+\end{equation*}
+At each timestep $t$, the model needs to know the previous tokens $y_{<t}$ to maximize $P\left(y_t \mid y_{<t}, x; \theta\right)$. So the question is: \textbf{what do we feed as $y_{<t}$ during training?}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Option 1: Use the model's own predictions}. We could feed the model's own predictions at each timestep:
+    \begin{equation*}
+        \hat{y}_{t-1} \xrightarrow{\text{feed}} \text{decoder}_{t} \xrightarrow{\text{predict}} \hat{y}_t
+    \end{equation*}
+    However, at early stages of training, the model's predictions are likely to be very poor, which can lead to a \textbf{feedback loop of errors} and make training unstable. If the first few predictions are wrong, the model will be conditioned on incorrect tokens, which can cause it to generate even worse predictions in subsequent timesteps.
+
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Option 2: Use the true previous tokens (Teacher Forcing)}. Instead of feeding the model's own predictions, during training we can feed the \textbf{true previous tokens} from the training data:
+    \begin{equation*}
+        y_{t-1}^{\text{true}} \xrightarrow{\text{feed}} \text{decoder}_{t} \xrightarrow{\text{predict}} \hat{y}_t
+    \end{equation*}
+    This technique is called \definition{Teacher Forcing}.
+    \begin{definitionbox}[: Teacher Forcing]
+        \definition{Teacher Forcing} is a \textbf{training technique} for sequence models in which, at each timestep, the \textbf{decoder receives the true previous token as input} instead of the token predicted by the model. Formally, during training:
+        \begin{equation*}
+            y_{t-1}^{\text{true}} \rightarrow \text{decoder} \rightarrow \hat{y}_t
+        \end{equation*}
+        Instead of:
+        \begin{equation*}
+            \hat{y}_{t-1} \rightarrow \text{decoder} \rightarrow \hat{y}_t
+        \end{equation*}
+    \end{definitionbox}
+    It simplifies the learning problem by providing the model with the \textbf{correct context at each timestep}, allowing it to learn the correct mappings from input to output \textbf{without being affected by its own mistakes during training}.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Training vs Inference Mismatch}}
+\end{flushleft}
+During training, the decoder is conditioned on the \textbf{true previous tokens} (\emph{teacher forcing}), while at inference time it must rely on its \textbf{own predictions}:
+\begin{equation*}
+    y_{t-1}^{\text{true}} \rightarrow \hat{y}_t 
+    \quad \text{(training)}, 
+    \qquad
+    \hat{y}_{t-1} \rightarrow \hat{y}_t 
+    \quad \text{(inference)}
+\end{equation*}
+This mismatch can lead to \textbf{error accumulation}: \hl{mistakes made at early timesteps propagate and negatively affect subsequent predictions.} This phenomenon is closely related to \definition{Exposure Bias}.
+
+\begin{definitionbox}[: Exposure Bias]
+    \definition{Exposure Bias} is a \textbf{phenomenon} in sequence models where there is a \textbf{discrepancy between training and inference conditions}.
+
+    \highspace
+    During training, the model is conditioned on the \textbf{true previous tokens} (using teacher forcing):
+    \begin{equation*}
+        y_{t-1}^{\text{true}} \rightarrow \text{decoder} \rightarrow \hat{y}_t
+    \end{equation*}
+    Whereas during inference, it must rely on its \textbf{own predictions}:
+    \begin{equation*}
+        \hat{y}_{t-1} \rightarrow \text{decoder} \rightarrow \hat{y}_t
+    \end{equation*}
+    As a result, the model is never exposed during training to its own prediction errors. This can lead to \textbf{error accumulation}, where early mistakes propagate and degrade the quality of the generated sequence.
+
+    \highspace
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Intuition.}} The model learns to generate sequences assuming a perfect history, but at inference time it must operate on a potentially noisy history, leading to a mismatch in behavior.
+\end{definitionbox}

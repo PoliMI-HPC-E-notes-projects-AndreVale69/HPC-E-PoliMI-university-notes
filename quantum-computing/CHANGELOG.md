@@ -16,7 +16,7 @@
 - refactor Dirac's notation section for clarity and readability
 - add `Single Qubit States`
   - add `Building and Measuring Qubits (Intuition)`
-  - 
+  - add `From Polarization to Qubits`
 
 --------------------
 

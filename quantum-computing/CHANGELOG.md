@@ -14,6 +14,9 @@
 
 - refactor: rename complex-numbers-recap to complex-numbers and add more content
 - refactor Dirac's notation section for clarity and readability
+- add `Single Qubit States`
+  - add `Building and Measuring Qubits (Intuition)`
+  - 
 
 --------------------
 

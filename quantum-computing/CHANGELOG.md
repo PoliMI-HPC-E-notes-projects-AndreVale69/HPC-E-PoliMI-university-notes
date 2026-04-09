@@ -13,6 +13,7 @@
 ### v0.4.0
 
 - refactor: rename complex-numbers-recap to complex-numbers and add more content
+- refactor Dirac's notation section for clarity and readability
 
 --------------------
 

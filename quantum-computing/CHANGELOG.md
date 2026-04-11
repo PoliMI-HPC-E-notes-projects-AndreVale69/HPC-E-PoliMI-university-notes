@@ -18,6 +18,7 @@
   - add `Building and Measuring Qubits (Intuition)`
   - add `From Polarization to Qubits`
   - add `Single Qubit Measurement`
+  - add `Superposition`
 
 --------------------
 

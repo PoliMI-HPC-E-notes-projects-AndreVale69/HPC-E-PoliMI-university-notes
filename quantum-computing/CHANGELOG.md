@@ -20,6 +20,7 @@
   - add `Single Qubit Measurement`
   - add `Superposition`
   - add `Information Carried by a Single Qubit`
+  - add `State Space of a Single-Qubit System`
 
 --------------------
 

@@ -19,6 +19,7 @@
   - add `From Polarization to Qubits`
   - add `Single Qubit Measurement`
   - add `Superposition`
+  - add `Information Carried by a Single Qubit`
 
 --------------------
 

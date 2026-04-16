@@ -170,7 +170,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=4444" target="_blank">Di Nitto Elisabetta</a></td>
         <td><ul>
             <li><a href="software-engineering-for-hpc">Course Details</a></li>
-            <li><a href="software-engineering-for-hpc/notes/software-engineering-for-hpc.pdf">PDF</a></li>
+            <li><a href="software-engineering-for-hpc/notes/software-engineering-for-hpc.pdf">PDF v1.0.1</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_RD">Project 1</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part1">Project 2A</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part2">Project 2B</a></li>

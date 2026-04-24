@@ -16,6 +16,7 @@
 - refactor: Dirac's notation section for clarity and readability
 - feat: add Bloch sphere diagrams for Pauli-X and Pauli-Z eigenstates on the Bloch sphere
 - feat: enhance Pauli-Y gate section with detailed explanations and visualizations
+- feat: enhance Hadamard gate section with detailed explanations and visualizations
 - add `Single Qubit States`
   - add `Building and Measuring Qubits (Intuition)`
   - add `From Polarization to Qubits`

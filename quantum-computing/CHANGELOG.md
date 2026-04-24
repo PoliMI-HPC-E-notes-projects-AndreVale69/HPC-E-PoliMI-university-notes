@@ -13,7 +13,8 @@
 ### v0.4.0
 
 - refactor: rename complex-numbers-recap to complex-numbers and add more content
-- refactor Dirac's notation section for clarity and readability
+- refactor: Dirac's notation section for clarity and readability
+- feat: add Bloch sphere diagrams for Pauli-X and Pauli-Z eigenstates on the Bloch sphere
 - add `Single Qubit States`
   - add `Building and Measuring Qubits (Intuition)`
   - add `From Polarization to Qubits`

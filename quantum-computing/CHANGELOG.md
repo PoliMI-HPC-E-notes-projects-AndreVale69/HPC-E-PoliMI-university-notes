@@ -14,6 +14,7 @@
 
 - refactor: rename complex-numbers-recap to complex-numbers and add more content
 - refactor: Dirac's notation section for clarity and readability
+- refactor: add Pauli Gates section (X, Y, Z)
 - feat: add Bloch sphere diagrams for Pauli-X and Pauli-Z eigenstates on the Bloch sphere
 - feat: enhance Pauli-Y gate section with detailed explanations and visualizations
 - feat: enhance Hadamard gate section with detailed explanations and visualizations
@@ -24,6 +25,9 @@
   - add `Superposition`
   - add `Information Carried by a Single Qubit`
   - add `State Space of a Single-Qubit System`
+- refactor: `Multiple Qubit States` section and divide it into:
+  - `Tensor Product`
+  - `Building a Two-Qubit System`
 
 --------------------
 

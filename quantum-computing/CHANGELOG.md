@@ -28,6 +28,7 @@
 - refactor: `Multiple Qubit States` section and divide it into:
   - `Tensor Product`
   - `Building a Two-Qubit System`
+  - `Separable vs Entangled States`
 
 --------------------
 

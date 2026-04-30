@@ -29,6 +29,7 @@
   - `Tensor Product`
   - `Building a Two-Qubit System`
   - `Separable vs Entangled States`
+  - `Why Entanglement Matters`
 
 --------------------
 

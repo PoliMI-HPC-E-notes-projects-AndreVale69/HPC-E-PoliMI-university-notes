@@ -31,6 +31,9 @@
   - `Separable vs Entangled States`
   - `Why Entanglement Matters`
   - `Exercise: Normalization of Tensor Product States`
+- add the following sections to `Multiple Qubit Gates`:
+  - refactor `Introduction to Multiple Qubit Gates`
+  - add `Parallel Gates`
 
 --------------------
 

@@ -34,6 +34,7 @@
 - add the following sections to `Multiple Qubit Gates`:
   - refactor `Introduction to Multiple Qubit Gates`
   - add `Parallel Gates`
+  - add `Hadamard Transform on Multiple Qubits`
 
 --------------------
 

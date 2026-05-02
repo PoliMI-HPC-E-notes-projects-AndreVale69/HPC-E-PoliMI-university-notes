@@ -30,6 +30,7 @@
   - `Building a Two-Qubit System`
   - `Separable vs Entangled States`
   - `Why Entanglement Matters`
+  - `Exercise: Normalization of Tensor Product States`
 
 --------------------
 

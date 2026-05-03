@@ -37,6 +37,7 @@
   - add `Hadamard Transform on Multiple Qubits`
 - refactor multi qubit gates into `Main Multi-Qubit Gates` section, with the following structure:
   - add `Controlled NOT (CNOT) Gate`
+  - add `Generic Controlled Gate (CU)`
 
 --------------------
 

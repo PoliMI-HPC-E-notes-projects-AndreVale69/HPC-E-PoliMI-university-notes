@@ -39,6 +39,7 @@
   - add `Controlled NOT (CNOT) Gate`
   - add `Generic Controlled Gate (CU)`
   - add `SWAP Gate`
+  - add `Controlled-Controlled NOT (CCNOT) Gate (Toffoli)`
 
 --------------------
 

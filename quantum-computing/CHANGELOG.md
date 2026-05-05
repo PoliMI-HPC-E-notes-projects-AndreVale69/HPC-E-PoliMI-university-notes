@@ -41,6 +41,7 @@
   - add `SWAP Gate`
   - add `Controlled-Controlled NOT (CCNOT) Gate (Toffoli)`
 - refactor: remove `Foundations of Universal Quantum Circuits` section in favor of `Quantum Circuit Representation` section
+- refactor: enhance `Entanglement` section with more detailed explanations and visualizations
 
 --------------------
 

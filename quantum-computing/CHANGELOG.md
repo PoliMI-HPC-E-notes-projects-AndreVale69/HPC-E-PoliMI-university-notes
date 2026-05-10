@@ -42,6 +42,9 @@
   - add `Controlled-Controlled NOT (CCNOT) Gate (Toffoli)`
 - refactor: remove `Foundations of Universal Quantum Circuits` section in favor of `Quantum Circuit Representation` section
 - refactor: enhance `Entanglement` section with more detailed explanations and visualizations
+- add `Projection Operator` topic in `Measurement` section
+- add `Observables and Measurements` in `Multiple Qubit Gates`
+  - add `Observables: What Are We Measuring?`
 
 --------------------
 

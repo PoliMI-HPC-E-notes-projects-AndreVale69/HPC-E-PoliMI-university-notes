@@ -45,6 +45,7 @@
 - add `Projection Operator` topic in `Measurement` section
 - add `Observables and Measurements` in `Multiple Qubit Gates`
   - add `Observables: What Are We Measuring?`
+  - add `Measurement Operators and Projectors`
 
 --------------------
 

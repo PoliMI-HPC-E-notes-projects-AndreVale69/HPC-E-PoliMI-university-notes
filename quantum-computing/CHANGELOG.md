@@ -49,6 +49,7 @@
   - add `Expectation Value`
   - add `Measuring |+> with the Pauli-Z Observable`
   - add `Recovering Probabilities from Expectation Values`
+- refactor: remove useless `Measurement in Multi-Qubit Systems` section
 
 --------------------
 

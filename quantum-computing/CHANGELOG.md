@@ -46,6 +46,7 @@
 - add `Observables and Measurements` in `Multiple Qubit Gates`
   - add `Observables: What Are We Measuring?`
   - add `Measurement Operators and Projectors`
+  - add `Expectation Value`
 
 --------------------
 

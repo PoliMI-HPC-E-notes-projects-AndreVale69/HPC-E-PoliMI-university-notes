@@ -48,6 +48,7 @@
   - add `Measurement Operators and Projectors`
   - add `Expectation Value`
   - add `Measuring |+> with the Pauli-Z Observable`
+  - add `Recovering Probabilities from Expectation Values`
 
 --------------------
 

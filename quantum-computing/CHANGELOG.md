@@ -47,6 +47,7 @@
   - add `Observables: What Are We Measuring?`
   - add `Measurement Operators and Projectors`
   - add `Expectation Value`
+  - add `Measuring |+> with the Pauli-Z Observable`
 
 --------------------
 

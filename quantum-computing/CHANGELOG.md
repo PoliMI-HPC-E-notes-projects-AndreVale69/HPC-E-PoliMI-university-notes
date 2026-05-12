@@ -51,6 +51,7 @@
   - add `Recovering Probabilities from Expectation Values`
 - refactor: remove useless `Measurement in Multi-Qubit Systems` section
 - add `Heisenberg Representation of Quantum Circuits` section
+- add `Clifford Gates` subsection in `Multiple Qubit Gates`
 
 --------------------
 

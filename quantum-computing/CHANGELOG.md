@@ -52,6 +52,7 @@
 - refactor: remove useless `Measurement in Multi-Qubit Systems` section
 - add `Heisenberg Representation of Quantum Circuits` section
 - add `Clifford Gates` subsection in `Multiple Qubit Gates`
+- add `Universal Set of Quantum Gates` subsection in `Multiple Qubit Gates`
 
 --------------------
 

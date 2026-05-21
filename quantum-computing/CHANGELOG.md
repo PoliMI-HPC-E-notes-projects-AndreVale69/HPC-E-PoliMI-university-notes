@@ -53,6 +53,8 @@
 - add `Heisenberg Representation of Quantum Circuits` section
 - add `Clifford Gates` subsection in `Multiple Qubit Gates`
 - add `Universal Set of Quantum Gates` subsection in `Multiple Qubit Gates`
+- add `Fault-Tolerant Quantum Gates` subsection in `Multiple Qubit Gates`
+  - add `Logical vs Physical Qubits`
 
 --------------------
 

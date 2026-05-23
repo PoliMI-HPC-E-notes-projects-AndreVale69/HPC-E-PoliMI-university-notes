@@ -55,6 +55,7 @@
 - add `Universal Set of Quantum Gates` subsection in `Multiple Qubit Gates`
 - add `Fault-Tolerant Quantum Gates` subsection in `Multiple Qubit Gates`
   - add `Logical vs Physical Qubits`
+  - add `Transversal Gates`
 
 --------------------
 

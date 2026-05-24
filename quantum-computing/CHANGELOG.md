@@ -57,6 +57,7 @@
   - add `Logical vs Physical Qubits`
   - add `Transversal Gates`
   - add `Why Non-Clifford Gates Are Difficult`
+  - add `Physical vs Logical Gate Sets`
 
 --------------------
 

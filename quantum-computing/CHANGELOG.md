@@ -16,6 +16,7 @@
 - add `Limits of Quantum Information`
   - add `No-Cloning Principle`
     - add `Why Cloning Matters`
+    - add `Formal Statement`
 
 --------------------
 

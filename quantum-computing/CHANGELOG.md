@@ -17,6 +17,7 @@
   - add `No-Cloning Principle`
     - add `Why Cloning Matters`
     - add `Formal Statement`
+  - add `No-Deleting Principle`
 
 --------------------
 

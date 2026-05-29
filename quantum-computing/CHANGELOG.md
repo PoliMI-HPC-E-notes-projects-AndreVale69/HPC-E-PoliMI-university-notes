@@ -19,6 +19,8 @@
     - add `Formal Statement`
   - add `No-Deleting Principle`
   - add `No-Signaling Principle`
+  - add `EPR Paradox and Quantum Correlation`
+    - add `Definition of EPR Paradox`
 
 --------------------
 

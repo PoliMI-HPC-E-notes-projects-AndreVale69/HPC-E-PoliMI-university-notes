@@ -22,6 +22,7 @@
   - add `EPR Paradox and Quantum Correlation`
     - add `Definition of EPR Paradox`
     - add `Entanglement and Quantum Correlation`
+    - add `Classical vs Quantum Correlation`
 
 --------------------
 

@@ -1,0 +1,94 @@
+\section{Transpiling}
+
+\subsection{Quantum Fidelity}
+
+\subsubsection{Why Quantum Computers Are Noisy}
+
+In all the previous chapters, we implicitly assumed that quantum gates exactly as their mathematical definitions. For example:
+\begin{itemize}
+    \item Hadamard gate:
+    \begin{equation*}
+        H\ket{0} = \ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})
+    \end{equation*}
+    Behaves as a perfect beam splitter, splitting the input state into an equal superposition of $\ket{0}$ and $\ket{1}$.
+
+    \item Pauli-X gate:
+    \begin{equation*}
+        X\ket{0} = \ket{1}
+    \end{equation*}
+    Behaves as a perfect NOT gate, flipping the state of the qubit from $\ket{0}$ to $\ket{1}$.
+
+    \item CNOT gate:
+    \begin{gather*}
+        \text{CNOT}\ket{00} = \ket{00}, \quad \text{CNOT}\ket{01} = \ket{01} \\
+        \quad \text{CNOT}\ket{10} = \ket{11}, \quad \text{CNOT}\ket{11} = \ket{10}
+    \end{gather*}
+    Behaves as a perfect Controlled-NOT gate, flipping the target qubit if the control qubit is in the state $\ket{1}$ and leaving it unchanged if the control qubit is in the state $\ket{0}$.
+\end{itemize}
+\textbf{Mathematically} these transformations \textbf{are exact}. However, in a real quantum computer, gates are implemented by physical hardware:
+\begin{itemize}
+    \item Microwave pulses (superconducting qubits);
+    \item Laser pulses (trapped ions);
+    \item Electromagnetic fields;
+    \item Control electronics;
+\end{itemize}
+Because the \textbf{hardware is imperfect} (e.g., due to manufacturing defects, environmental noise, or limitations in control precision), the \textbf{resulting operation is only an approximation of the ideal gate}. As a consequence:
+\begin{equation*}
+    U_{\text{physical}} \ne U_{\text{ideal}} \quad \xrightarrow{\text{better}} \quad U_{\text{physical}} \approx U_{\text{ideal}}
+\end{equation*}
+This discrepancy leads to \textbf{errors} in the quantum computation, which can accumulate over multiple gates and degrade the performance of quantum algorithms.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Two Main Sources of Noise}}
+\end{flushleft}
+\begin{itemize}
+    \item \definition{Gate Infidelity}. Gate infidelity means that the \hl{gate physically applied by the hardware is not exactly the gate we intended to execute}.
+
+    Suppose we want to apply a Hadamard gate:
+    \begin{equation*}
+        U_{\text{ideal}} = H
+    \end{equation*}
+    Ideally, we would like the physical implementation to match the ideal gate:
+    \begin{equation*}
+        H\ket{0} = \ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})
+    \end{equation*}
+    However, due to \textbf{imperfections} like inaccurate control pulses, calibration errors, electronic noise, manufacturing imperfections, the hardware may actually apply:
+    \begin{equation*}
+        U_{\text{physical}} = H + \varepsilon
+    \end{equation*}
+    Where $\varepsilon$ is a \textbf{small error}. The resulting state is therefore slightly different from the desired one. After thousands of gates, these small errors can \textbf{accumulate} and significantly affect the final result.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Multi-Qubit Gates Are Worse?}} Intuitively, multi-qubit gates (like CNOT) are \textbf{more complex to implement} than single-qubit gates (like Hadamard) because they require precise control over interactions between multiple qubits. For this reason, the \textbf{fidelity of multi-qubit gates is typically lower} than that of single-qubit gates:
+    \begin{equation*}
+        \text{Fidelity}_{\text{CNOT}} < \text{Fidelity}_{\text{Hadamard}}
+    \end{equation*}
+    This is one reason why transpilers try to minimize the number of CNOTs and other multi-qubit operations. However, we will understand this in more detail in the next chapters.
+
+
+    \item \definition{Decoherence}. A \hl{qubit is never perfectly isolated} from the surrounding environment. Even if we do not intentionally measure it, the environment continuously interacts with it: electromagnetic radiation, thermal fluctuations, vibrations, surrounding particles, etc. These \textbf{interactions gradually destroy the quantum properties of the qubit}. In summary, decoherence is the process by which a quantum system progressively loses its ``\emph{quantumness}'' and starts behaving more like a classical object (e.g., a bit instead of a qubit).
+
+    For example, imagine preparing a qubit in the state $\ket{+}$:
+    \begin{equation*}
+        \ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})
+    \end{equation*}
+    Initially the qubit exhibits quantum superposition, interference, and phase relationships. However, as time passes, interactions with the environment disturb the phase information. Eventually, the qubit behaves more like a classical probabilistic bit than a true quantum state. The information is not necessarily destroyed instantly, but the quantum coherence gradually leaks into the environment, making it harder to maintain the desired quantum state over time.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is Decoherence a serious problem?}} A quantum algorithm often requires many sequential operations:
+    \begin{equation*}
+        U_n U_{n-1} \cdots U_2 U_1
+    \end{equation*}
+    Where each operation takes a certain amount of time to execute. If the algorithm runs for too long, decoherence may occur before the computation finishes. \textbf{When decoherence becomes dominant}, the superposition is lost, the interference is lost, the entanglement is lost, and the \textbf{quantum advantage disappears}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{microchip} \textbf{Hardware Limitations}}
+\end{flushleft}
+Both gate infidelity and decoherence originate from the same fundamental fact: \textbf{quantum computers are physical devices}. Unlike an ideal mathematical model, qubits are not perfectly isolated, gates are not perfectly accurate, and measurements are not perfectly reliable. Therefore, every real quantum computer has a finite error rate, coherence time, and computational depth. These limitations ultimately restrict how deep a quantum circuit can be before errors become overwhelming.
+
+\highspace
+In summary, quantum computers are noisy because the \textbf{gates are imperfectly implemented} and the \textbf{qubits decohere over time}.

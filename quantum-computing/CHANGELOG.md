@@ -17,6 +17,7 @@
 - add `Transpiling`
   - add `Quantum Fidelity`
     - add `Why Quantum Computers Are Noisy`
+    - add `Gate Infidelity`
 
 --------------------
 

@@ -23,6 +23,7 @@
       - add `Bit-Flip Errors`
       - add `Generic Errors`
     - add `Fidelity of a Quantum Gate`
+    - add `Fidelity and Decoherence`
 
 --------------------
 

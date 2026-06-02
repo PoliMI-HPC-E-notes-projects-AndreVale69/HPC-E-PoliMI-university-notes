@@ -18,6 +18,10 @@
   - add `Quantum Fidelity`
     - add `Why Quantum Computers Are Noisy`
     - add `Gate Infidelity`
+    - add `Decoherence`
+      - add `Phase-Flip Errors`
+      - add `Bit-Flip Errors`
+      - add `Generic Errors`
 
 --------------------
 

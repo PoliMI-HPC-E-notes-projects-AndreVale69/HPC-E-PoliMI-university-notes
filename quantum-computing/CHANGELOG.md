@@ -22,6 +22,7 @@
       - add `Phase-Flip Errors`
       - add `Bit-Flip Errors`
       - add `Generic Errors`
+    - add `Fidelity of a Quantum Gate`
 
 --------------------
 

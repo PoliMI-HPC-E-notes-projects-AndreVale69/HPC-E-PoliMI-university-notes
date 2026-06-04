@@ -24,6 +24,8 @@
       - add `Generic Errors`
     - add `Fidelity of a Quantum Gate`
     - add `Fidelity and Decoherence`
+  - add `Quantum Error Correction`
+    - add `Quantum Computation Errors`
 
 --------------------
 

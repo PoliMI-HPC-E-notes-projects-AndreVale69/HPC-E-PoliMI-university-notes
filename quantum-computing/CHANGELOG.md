@@ -26,6 +26,7 @@
     - add `Fidelity and Decoherence`
   - add `Quantum Error Correction`
     - add `Quantum Computation Errors`
+    - add `Quantum Error Correction Codes (QECC)`
 
 --------------------
 

@@ -28,6 +28,8 @@
     - add `Quantum Computation Errors`
     - add `Quantum Error Correction Codes (QECC)`
     - add `Logical Gates`
+  - add `Quantum Transpiling`
+    - add `The Quantum Computing Stack`
 
 --------------------
 

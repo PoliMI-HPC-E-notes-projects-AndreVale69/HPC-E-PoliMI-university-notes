@@ -30,6 +30,7 @@
     - add `Logical Gates`
   - add `Quantum Transpiling`
     - add `The Quantum Computing Stack`
+    - add `Placement`
 
 --------------------
 

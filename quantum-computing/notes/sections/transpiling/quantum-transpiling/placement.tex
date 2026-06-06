@@ -1,0 +1,38 @@
+\subsubsection{Placement}
+
+In an ideal quantum circuit we freely write operations between any pair of qubits, like $\text{CNOT}(q_1, q_8)$. However, a real quantum processor is not fully connected. Physical qubits occupy fixed positions on a chip and a two-qubit gate can generally be executed only between adjacent qubits. Therefore, before execution, the transpiler must decide: \emph{\textbf{which logical qubit should be assigned to which physical qubit?}} This task is called \textbf{placement}.
+
+\highspace
+\begin{definitionbox}[: Placement]
+    \definition{Placement} is the process of \textbf{mapping the qubits of a quantum circuit onto the physical qubits of the processor}. In other words, it is the process of \hl{deciding which logical qubit should be assigned to which physical qubit}. The result is the initial configuration used by the hardware-aware transpiler to perform the subsequent steps of routing and scheduling.
+\end{definitionbox}
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{The Goal of Placement.}} A good placement tries to \textbf{position interacting qubits close together}. The reason of this goal is simple: if \hl{two qubits are far apart, they must later be moved using SWAP operations}. SWAP operations are costly because they require multiple gates, larger circuit depth, more noise and lower fidelity. Therefore, placement tries to \textbf{reduce future routing costs} before routing even begins.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do Transpilers understand how far apart qubits are?}}
+\end{flushleft}
+To quantify how far two qubits are, the transpiler uses the \definition{Manhattan distance}.
+
+\highspace
+The \textbf{Manhattan distance}\footnote{The Manhattan distance takes its name from the grid-like structure of the streets in Manhattan, where we can only move along the streets (up/down and left/right) to get from one point to another.} is simply the \textbf{distance we travel if we can only move along the grid lines of the chip} (up/down and left/right). Suppose we have two qubits at positions $A = (x_1, y_1)$ and $B = (x_2, y_2)$. The Manhattan distance between them is given by:
+\begin{equation}\label{eq:manhattan-distance}
+    d_{M}(A, B) = \left|x_1 - x_2\right| + \left|y_1 - y_2\right|
+\end{equation}
+For example, if $A = (1, 2)$ and $B = (4, 6)$, then the Manhattan distance is:
+\begin{equation*}
+    d_{M}(A, B) = |1 - 4| + |2 - 6| = 3 + 4 = 7
+\end{equation*}
+This means that to move from qubit $A$ to qubit $B$, we would need to perform 7 operations if they are not directly connected.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why Manhattan distance?}} Suppose a qubit must move four positions to reach another qubit. The qubit must perform approximately four hops. Since routing (\autopageref{sec:routing}) is implemented through SWAP gates, the number of \textbf{hops is directly related to the number of additional operations} required. For this reason, minimizing Manhattan distance approximately minimizes routing cost.
+
+\highspace
+In summary, the goal of the placement can be summarized as follows: \hl{find the placement that minimizes the sum of Manhattan distances over all qubit pairs involved in multi-qubit gates}. Conceptually:
+\begin{equation*}
+    \text{Cost} = \sum_{\text{all interacting pairs}} d_{M}
+\end{equation*}
+A placement with a smaller total cost will usually require fewer SWAP operations later.

@@ -32,6 +32,7 @@
     - add `The Quantum Computing Stack`
     - add `Placement`
     - add `Scheduling`
+    - add `Routing`
 
 --------------------
 

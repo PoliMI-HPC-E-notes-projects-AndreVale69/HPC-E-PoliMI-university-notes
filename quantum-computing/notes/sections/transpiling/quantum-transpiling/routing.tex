@@ -1,0 +1,36 @@
+\subsubsection{Routing}\label{sec:routing}
+
+To understand routing, we need to recall the fundamental hardware constraint: a multi-qubit gate can only be executed between adjacent qubits (i.e., qubits that are directly connected in the hardware architecture). For example, suppose the algorithm requires a $\text{CNOT}(\ket{\psi_{3}}, \ket{\psi_{5}})$ gate, but the placement step maps the qubits onto the processor such that $\ket{\psi_{3}}$ and $\ket{\psi_{5}}$ are not adjacent:
+\begin{equation*}
+    \begin{bmatrix}
+        v_0 & v_1 & v_2 & v_3 \\
+        v_4 & v_5 & v_6 & v_7 \\
+        v_8 & v_9 &     &     \\
+    \end{bmatrix}
+\end{equation*}
+Here $v_3$ is in the first row and $v_5$ is in the second row, so they are \textbf{not adjacent}. Therefore the CNOT cannot be executed directly.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Routing.}} If qubits are not adjacent, how do we move them? Using SWAP gates. A \important{SWAP gate} \textbf{exchanges the quantum states of two adjacent qubits} (\autopageref{sec:swap-gate}):
+\begin{equation*}
+    \text{SWAP}(\ket{\psi_{i}}, \ket{\psi_{j}}) = \ket{\psi_{j}} \otimes \ket{\psi_{i}}
+\end{equation*}
+Thus, the qubits themselves do not physically move, but their quantum states are exchanged. The \definition{Routing} is the \textbf{process of inserting SWAP gates into the circuit} to ensure that \textbf{all multi-qubit gates operate on adjacent qubits}. The goal of routing is to find an efficient sequence of SWAP gates that minimizes the overhead in terms of additional gates and circuit depth.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why Routing is Expensive?}} Routing solves the connectivity problem, but it introduces additional gates. For instance, to execute $\text{CNOT}(\ket{\psi_{3}}, \ket{\psi_{5}})$, we might need to perform a sequence of SWAP gates to bring $\ket{\psi_{3}}$ and $\ket{\psi_{5}}$ adjacent to each other.
+\begin{itemize}
+    \item Each \hl{SWAP gate increases the circuit depth} (longer execution time);
+    \item Every additional \hl{gate introduces also error probability}. This means that the \textbf{fidelity} (\autopageref{eq:fidelity-decoherence}):
+    \begin{equation*}
+        F_{\text{gate}} \approx 1 - p_{\text{gate}}
+    \end{equation*}
+    Decreases with the number of gates, so more gates means lower fidelity.
+    \item A \textbf{deeper circuit takes longer to execute}, which means that qubits remain active for a larger fraction on their decoherence time, \hl{increasing the likelihood of errors due to decoherence.}
+\end{itemize}
+
+\noindent
+\textcolor{Green3}{\faIcon{link} \textbf{Connection with Placement.}} Now we can finally understand why placement was important. Placement tries to minimize the Manhattan distance (\autopageref{eq:manhattan-distance}) between qubits that interact. \emph{Why?} Because \textbf{smaller distances imply fewer SWAP gates}, which means \textbf{less routing overhead}, \textbf{higher fidelity}, and \textbf{shorter execution time}. Therefore, placement and routing are tightly connected: \hl{a good placement reduces the amount of routing required later.}
+
+\highspace
+In summary, routing is the process of inserting SWAP operations to bring non-adjacent qubits together so that multi-qubit gates can be executed on real hardware.

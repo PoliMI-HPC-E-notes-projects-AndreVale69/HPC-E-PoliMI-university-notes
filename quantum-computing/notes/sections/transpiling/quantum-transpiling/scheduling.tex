@@ -1,0 +1,280 @@
+\subsubsection{Scheduling}\label{sec:scheduling}
+
+After placement (\autopageref{sec:placement}), the transpiler knows \textbf{where each qubit is located} on the processor. However, another question remains: ``\emph{\textbf{when should each gate be executed?}}''. At first sight, one might think that all gates could be executed simultaneously, but this is not the case. In fact, there are scheduling issues primarily caused by \textbf{data dependencies}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Data Dependencies}}
+\end{flushleft}
+A gate can only be executed if all the qubits it requires already contain the correct input state. For example:
+
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \gate{H} & \gate{CNOT} &
+    \end{quantikz}
+\end{center}
+
+\noindent
+The CNOT cannot be executed before the Hadamard gate. Because the CNOT uses the state produced by the Hadamard gate. The second operation therefore \textbf{depends} on the first one. This relationship is called a \definition{Data Dependency}. Therefore, the two gates must be executed sequentially, and the \hl{scheduler must respect this ordering.}
+
+\highspace
+Fortunately, not all gates depend on each other. For example:
+
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \gate{H} & \\
+        \lstick{$\ket{1}$} & \gate{X} &
+    \end{quantikz}
+\end{center}
+
+\noindent
+The two gates act on different qubits. Neither gate needs the output of the other. Therefore they can be \textbf{executed simultaneously}. This is a \hl{source of parallelism} in quantum circuits.
+
+\highspace
+In general, \textbf{Out-of-Order execution is possible} as long as the computation remains correct. This means the scheduler can \hl{reorder operations only if the final quantum state remains unchanged}. The scheduler cannot move gates around the circuit arbitrarily; it must always respect the dependencies between operations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Scheduling Objectives}}
+\end{flushleft}
+The scheduler tries to achieve two goals:
+\begin{itemize}
+    \item \textbf{Exploit as much parallelism as possible} to minimize the circuit depth.
+    \item \textbf{Reduce the effects of decoherence} (\autopageref{def:coherence}) by executing the circuit as quickly as possible.
+\end{itemize}
+These goals sometimes conflict with each other, and for this reason different scheduling policies exist:
+\begin{itemize}
+    \item \definition{As Soon As Possible (ASAP) Scheduling}. \hl{Execute an operation immediately when all its required input qubits are available.} In other words, when the gate becomes executable, the scheduler executes it right away.
+    
+    \textcolor{Green3}{\faIcon{check-circle}} The main \textbf{advantages} of ASAP scheduling are: maximizes parallelism, reduces total circuit execution time, and keeps hardware busy
+    
+    
+    \item \definition{As Late As Possible (ALAP) Scheduling}. \hl{Instead of executing operations immediately, the scheduler delays them as much as possible while still preserving correctness.} Conceptually, when the gate needs to be executed, the scheduler checks if it can be delayed without violating any dependencies. If it can be delayed, the scheduler postpones its execution until the last possible moment.
+    
+    \textcolor{Green3}{\faIcon{check-circle}} The main \textbf{advantages} of ALAP scheduling are: reduces idle time of qubits, minimizes the lifetime of quantum states, and can help to \textbf{mitigate decoherence effects}.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Which scheduling policy is better?}}
+\end{flushleft}
+The choice depends by the final goal of the scheduling.
+\begin{itemize}
+    \item \textbf{Total execution time of the circuit}. For this quantity, \hl{ASAP is usually better} because it tries to execute everything immediately and therefore often minimizes the overall circuit depth. In simple terms, \important{ASAP} scheduling tries to \textbf{minimize total circuit duration}.
+    \item \textbf{Lifetime of a specific quantum state}. Instead, for this quantity, \hl{ALAP is usually better} because it tries to delay operations as much as possible, which can help to reduce the time that a particular quantum state needs to be maintained, thus reducing the effects of decoherence on that state. In simple terms, \important{ALAP} scheduling tries to \textbf{minimize idle lifetime of quantum states}.
+
+    Let's suppose we have the following circuit:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$\ket{0}$} & \gate{H} & \gate{CNOT} &
+        \end{quantikz}
+    \end{center}
+    \noindent
+    \textcolor{Red3}{\faIcon{times-circle}} With \textbf{ASAP scheduling}, the Hadamard gate $H$ would be executed immediately at time 0, and the CNOT gate would be executed later at time 100 due to other operations that need to be executed in between. Then the superposition created by $H$ must survive for 100 time units, but this \textbf{increases the risk of decoherence}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{check-circle}} Instead, \textbf{ALAP scheduling} would try to delay the execution of the Hadamard gate $H$ as much as possible, while still ensuring that the CNOT gate can be executed at time 100. This means that $H$ would be executed at time 90, just before the CNOT gate, which reduces the time that the superposition needs to be maintained and therefore \textbf{reduces the risk of decoherence}.
+\end{itemize}
+
+\begin{examplebox}[: ASAP \& ALAP Scheduling]
+    Consider the following quantum circuit:
+    \begin{center}
+        \begin{quantikz}[slice all, slice style=blue, slice titles={$t_{\col}$}]
+            \lstick{\ket{\psi_{0}}}\slice[style=blue]{$t_{0}$} & \gate{H}  &           &           &           & \ctrl{6}  & \\
+            \lstick{\ket{\psi_{1}}} & \gate{H}  &           &           & \ctrl{5}  &           & \\
+            \lstick{\ket{\psi_{2}}} & \gate{H}  &           & \ctrl{4}  &           &           & \\
+            \lstick{\ket{\psi_{3}}} &           & \ctrl{2}  & \targ{}   & \targ{}   &           & \\
+            \lstick{\ket{\psi_{4}}} &           & \targ{}   & \targ{}   &           & \targ{}   & \\
+            \lstick{\ket{\psi_{5}}} &           & \targ{}   &           & \targ{}   & \targ{}   & \\
+            \lstick{\ket{\psi_{6}}} &           &           & \targ{}   & \targ{}   & \targ{}   &
+        \end{quantikz}
+    \end{center}
+    
+    \noindent
+    Now, let's analyze how the scheduling would work under both policies. The operations must include the initialization of the qubits, the application of the Hadamard gates, and the execution of the CNOT gates.
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{book} \textbf{ASAP Scheduling}}
+    \end{flushleft}
+    With \textbf{ASAP}, all qubits are initialized immediately at time 0 because there are no dependencies:
+    \begin{equation*}
+        \text{INIT} \quad \ket{\psi_{0}}, \ket{\psi_{1}}, \ket{\psi_{2}}, \ket{\psi_{3}}, \ket{\psi_{4}}, \ket{\psi_{5}}, \ket{\psi_{6}} \quad \text{at time } 0
+    \end{equation*}
+    Once the qubits are initialized, every gate can be executed as soon as its dependencies are satisfied. The main idea is: ``\emph{if a gate can run now, run it now}''.
+    \begin{enumerate}
+        \item At time 1, the Hadamard gates on $\ket{\psi_{0}}$, $\ket{\psi_{1}}$, and $\ket{\psi_{2}}$ can be executed immediately because they only depend on the initialization of the qubits. So we execute them at time 1. Regarding the qubits $\ket{\psi_{3}}$, $\ket{\psi_{4}}$ and $\ket{\psi_{5}}$, we can execute the CNOT gates that depend on them as soon as the Hadamard gates on $\ket{\psi_{0}}$, $\ket{\psi_{1}}$ and $\ket{\psi_{2}}$ are executed.
+        \begin{gather*}
+            \text{INIT} \quad \ket{\psi_{0}}, \ket{\psi_{1}}, \ket{\psi_{2}}, \ket{\psi_{3}}, \ket{\psi_{4}}, \ket{\psi_{5}}, \ket{\psi_{6}} \\
+            H(\ket{\psi_{0}}), \, H(\ket{\psi_{1}}), \, H(\ket{\psi_{2}}), \, \text{CNOT}(\ket{\psi_{3}}, \ket{\psi_{4}}), \, \text{CNOT}(\ket{\psi_{3}}, \ket{\psi_{5}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}[slice all, slice style=blue, slice titles={$t_{\col}$}]
+                \lstick{\ket{\psi_{0}}}\slice[style=blue]{$t_{0}$}    & \gate{H}  & \\
+                \lstick{\ket{\psi_{1}}}             & \gate{H}  & \\
+                \lstick{\ket{\psi_{2}}}             & \gate{H}  & \\
+                \lstick{\ket{\psi_{3}}}             & \ctrl{2}  & \\
+                \lstick{\ket{\psi_{4}}}             & \targ{}   & \\
+                \lstick{\ket{\psi_{5}}}             & \targ{}   & \\
+                \lstick{\ket{\psi_{6}}}             &           &
+            \end{quantikz}
+        \end{center}
+
+        \item At time 2, we can execute the CNOT gates that depend on $\ket{\psi_{2}}$ and $\ket{\psi_{1}}$ as soon as the Hadamard gates on $\ket{\psi_{0}}$, $\ket{\psi_{1}}$ and $\ket{\psi_{2}}$ are executed. So we execute them at time 2. Regarding the qubits $\ket{\psi_{3}}$, $\ket{\psi_{4}}$ and $\ket{\psi_{5}}$, we can execute the CNOT gates that depend on them as soon as the CNOT gates that depend on them are executed. However, we cannot execute the CNOT gate that depends on $\ket{\psi_{6}}$ because it depends on the CNOT gate that depends on $\ket{\psi_{1}}$. And also, the CNOT gate that depends on $\ket{\psi_{1}}$ cannot be executed completely at time 2 because it depends on the CNOT gate that depends on $\ket{\psi_{2}}$. So we execute it partially at time 2, and we will execute the remaining part at time 3.
+        \begin{gather*}
+            \text{CNOT}(\ket{\psi_{2}}, \ket{\psi_{3}}), \, \text{CNOT}(\ket{\psi_{2}}, \ket{\psi_{4}}), \\
+            \text{CNOT}(\ket{\psi_{2}}, \ket{\psi_{5}}), \, \text{CNOT}(\ket{\psi_{1}}, \ket{\psi_{6}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \lstick{\ket{\psi_{0}}}\slice[style=blue]{$t_{0}$}  & \gate{H}\slice[style=blue]{$t_{1}$}   &           & \slice[style=blue]{$t_{2}$}   & \\
+                \lstick{\ket{\psi_{1}}}                             & \gate{H}                              &           & \ctrl{4}                      & \\
+                \lstick{\ket{\psi_{2}}}                             & \gate{H}                              & \ctrl{4}  &                               & \\
+                \lstick{\ket{\psi_{3}}}                             & \ctrl{2}                              & \targ{}   &                               & \\
+                \lstick{\ket{\psi_{4}}}                             & \targ{}                               & \targ{}   &                               & \\
+                \lstick{\ket{\psi_{5}}}                             & \targ{}                               &           & \targ{}                       & \\
+                \lstick{\ket{\psi_{6}}}                             &                                       & \targ{}   &                               & 
+            \end{quantikz}
+        \end{center}
+
+
+        \item At time 3, we can execute the CNOT gates that depend on $\ket{\psi_{1}}$ and $\ket{\psi_{0}}$ as soon as the CNOT gates that depend on $\ket{\psi_{2}}$ and $\ket{\psi_{1}}$ are executed. Regarding the qubits $\ket{\psi_{3}}$, $\ket{\psi_{4}}$ and $\ket{\psi_{5}}$, we can execute the CNOT gates that depend on them as soon as the CNOT gates that depend on them are executed. However, we cannot execute the CNOT gate that depends on $\ket{\psi_{6}}$ because it depends on the CNOT gate that depends on $\ket{\psi_{1}}$. So we execute it partially at time 3, and we will execute the remaining part at time 4.
+        \begin{gather*}
+            \text{CNOT}(\ket{\psi_{1}}, \ket{\psi_{3}}), \, \text{CNOT}(\ket{\psi_{1}}, \ket{\psi_{6}}), \\
+            \text{CNOT}(\ket{\psi_{0}}, \ket{\psi_{4}}), \, \text{CNOT}(\ket{\psi_{0}}, \ket{\psi_{5}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \lstick{\ket{\psi_{0}}}\slice[style=blue]{$t_{0}$}  & \gate{H}\slice[style=blue]{$t_{1}$}   &           & \slice[style=blue]{$t_{2}$}   &           & \ctrl{5}\slice[style=blue]{$t_{3}$}   &  \\
+                \lstick{\ket{\psi_{1}}}                             & \gate{H}                              &           & \ctrl{4}                      & \ctrl{5}  &                                       &  \\
+                \lstick{\ket{\psi_{2}}}                             & \gate{H}                              & \ctrl{4}  &                               &           &                                       &  \\
+                \lstick{\ket{\psi_{3}}}                             & \ctrl{2}                              & \targ{}   &                               & \targ{}   &                                       &  \\
+                \lstick{\ket{\psi_{4}}}                             & \targ{}                               & \targ{}   &                               &           & \targ{}                               &  \\
+                \lstick{\ket{\psi_{5}}}                             & \targ{}                               &           & \targ{}                       &           & \targ{}                               &  \\
+                \lstick{\ket{\psi_{6}}}                             &                                       & \targ{}   &                               & \targ{}   &                                       &
+            \end{quantikz}
+        \end{center}
+
+
+        \item Finally, at time 4, we can execute the CNOT gate that depends on $\ket{\psi_{6}}$ as soon as the CNOT gate that depends on $\ket{\psi_{1}}$ is executed.
+        \begin{gather*}
+            \text{CNOT}(\ket{\psi_{0}}, \ket{\psi_{6}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \lstick{\ket{\psi_{0}}}\slice[style=blue]{$t_{0}$}  & \gate{H}\slice[style=blue]{$t_{1}$}   &           & \slice[style=blue]{$t_{2}$}   &           & \ctrl{5}\slice[style=blue]{$t_{3}$}   & \ctrl{6}\slice[style=blue]{$t_{4}$}   & \\
+                \lstick{\ket{\psi_{1}}}                             & \gate{H}                              &           & \ctrl{4}                      & \ctrl{5}  &                                       &                                       & \\
+                \lstick{\ket{\psi_{2}}}                             & \gate{H}                              & \ctrl{4}  &                               &           &                                       &                                       & \\
+                \lstick{\ket{\psi_{3}}}                             & \ctrl{2}                              & \targ{}   &                               & \targ{}   &                                       &                                       & \\
+                \lstick{\ket{\psi_{4}}}                             & \targ{}                               & \targ{}   &                               &           & \targ{}                               &                                       & \\
+                \lstick{\ket{\psi_{5}}}                             & \targ{}                               &           & \targ{}                       &           & \targ{}                               &                                       & \\
+                \lstick{\ket{\psi_{6}}}                             &                                       & \targ{}   &                               & \targ{}   &                                       & \targ{}                               &
+            \end{quantikz}
+        \end{center}
+    \end{enumerate}
+
+
+    \highspace
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon{book} \textbf{ALAP Scheduling}}
+    \end{flushleft}
+    With \textbf{ALAP}, the scheduler works with the opposite philosophy: ``\emph{if a gate can be dalyed safely, delay it}''.
+    Differently from ASAP scheduling, we simply create a schedule starting from the end of the circuit and moving backwards.
+    \begin{enumerate}
+        \setcounter{enumi}{3}
+        \item At time 4, we start with the last CNOT gate. The remaining free time slots are filled with the CNOT gates that depend on $\ket{\psi_{1}}$ and $\ket{\psi_{3}}$.
+        \begin{gather*}
+            \text{CNOT}(\ket{\psi_{0}}, \ket{\psi_{4}}), \, \text{CNOT}(\ket{\psi_{0}}, \ket{\psi_{4}}), \, \text{CNOT}(\ket{\psi_{0}}, \ket{\psi_{4}}) \\
+            \text{CNOT}(\ket{\psi_{1}}, \ket{\psi_{3}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \slice[style=blue]{$t_{3}$} &             & \ctrl{6}\slice[style=blue]{$t_{4}$}  & \\
+                                            & \ctrl{2}    &           & \\
+                                            &             &           & \\
+                                            & \targ{}     &           & \\
+                                            &             & \targ{}   & \\
+                                            &             & \targ{}   & \\
+                                            &             & \targ{}   &
+            \end{quantikz}
+        \end{center}
+
+        
+        \setcounter{enumi}{2}
+        \item At time 3, we continue with the same logic, taking the left piece of the circuit and filling the remaining free time slots.
+        \begin{gather*}
+            H(\ket{\psi_{0}}), \, \text{CNOT}(\ket{\psi_{1}}, \ket{\psi_{5}}), \, \text{CNOT}(\ket{\psi_{1}}, \ket{\psi_{6}}), \\
+            \text{CNOT}(\ket{\psi_{2}}, \ket{\psi_{3}}), \, \text{CNOT}(\ket{\psi_{2}}, \ket{\psi_{4}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \slice[style=blue]{$t_{2}$}               &             & \gate{H}\slice[style=blue]{$t_{3}$}   &             & \ctrl{6}\slice[style=blue]{$t_{4}$}  & \\
+                                                          &             & \ctrl{5}                              & \ctrl{2}    &           & \\
+                                                          & \ctrl{2}    &                                       &             &           & \\
+                                                          & \targ{}     &                                       & \targ{}     &           & \\
+                                                          & \targ{}     &                                       &             & \targ{}   & \\
+                                                          &             & \targ{}                               &             & \targ{}   & \\
+                                                          &             & \targ{}                               &             & \targ{}   &
+            \end{quantikz}
+        \end{center}
+
+        
+        \setcounter{enumi}{1}
+        \item At time 2:
+        \begin{gather*}
+            \text{INIT} \quad \ket{\psi_{0}}, \, H(\ket{\psi_{1}}), \, \text{CNOT}(\ket{\psi_{2}}, \ket{\psi_{6}}), \\
+            \text{CNOT}(\ket{\psi_{3}}, \ket{\psi_{4}}), \, \text{CNOT}(\ket{\psi_{3}}, \ket{\psi_{5}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \slice[style=blue]{$t_{1}$} &             & \ket{\psi_{0}}\slice[style=blue]{$t_{2}$} &             & \gate{H}\slice[style=blue]{$t_{3}$}   &             & \ctrl{6}\slice[style=blue]{$t_{4}$}  & \\
+                                            &             & \gate{H}                                  &             & \ctrl{5}                              & \ctrl{2}    &           & \\
+                                            &             & \ctrl{4}                                  & \ctrl{2}    &                                       &             &           & \\
+                                            & \ctrl{2}    &                                           & \targ{}     &                                       & \targ{}     &           & \\
+                                            & \targ{}     &                                           & \targ{}     &                                       &             & \targ{}   & \\
+                                            & \targ{}     &                                           &             & \targ{}                               &             & \targ{}   & \\
+                                            &             & \targ{}                                   &             & \targ{}                               &             & \targ{}   &
+            \end{quantikz}
+        \end{center}
+
+        
+        \setcounter{enumi}{0}
+        \item At time 1:
+        \begin{gather*}
+            \text{INIT} \quad \ket{\psi_{1}}, \ket{\psi_{3}}, \ket{\psi_{4}}, \ket{\psi_{5}}, \ket{\psi_{6}}, \, H(\ket{\psi_{2}})
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \slice[style=blue]{$t_{0}$} & \slice[style=blue]{$t_{1}$} &             & \ket{\psi_{0}}\slice[style=blue]{$t_{2}$} &             & \gate{H}\slice[style=blue]{$t_{3}$}   &             & \ctrl{6}\slice[style=blue]{$t_{4}$}  & \\
+                                            & \ket{\psi_{1}}              &             & \gate{H}                                  &             & \ctrl{5}                              & \ctrl{2}    &           & \\
+                                            & \gate{H}                    &             & \ctrl{4}                                  & \ctrl{2}    &                                       &             &           & \\
+                                            & \ket{\psi_{3}}              & \ctrl{2}    &                                           & \targ{}     &                                       & \targ{}     &           & \\
+                                            & \ket{\psi_{4}}              & \targ{}     &                                           & \targ{}     &                                       &             & \targ{}   & \\
+                                            & \ket{\psi_{5}}              & \targ{}     &                                           &             & \targ{}                               &             & \targ{}   & \\
+                                            & \ket{\psi_{6}}              &             & \targ{}                                   &             & \targ{}                               &             & \targ{}   &
+            \end{quantikz}
+        \end{center}
+
+        
+        \setcounter{enumi}{-1}
+        \item At time 0:
+        \begin{gather*}
+            \text{INIT} \quad \ket{\psi_{2}}
+        \end{gather*}
+        \begin{center}
+            \begin{quantikz}
+                \slice[style=blue]{$t_{0}$} & \slice[style=blue]{$t_{1}$} &             & \ket{\psi_{0}}\slice[style=blue]{$t_{2}$} &             & \gate{H}\slice[style=blue]{$t_{3}$}   &             & \ctrl{6}\slice[style=blue]{$t_{4}$}  & \\
+                                            & \ket{\psi_{1}}              &             & \gate{H}                                  &             & \ctrl{5}                              & \ctrl{2}    &           & \\
+                \lstick{\ket{\psi_{2}}}     & \gate{H}                    &             & \ctrl{4}                                  & \ctrl{2}    &                                       &             &           & \\
+                                            & \ket{\psi_{3}}              & \ctrl{2}    &                                           & \targ{}     &                                       & \targ{}     &           & \\
+                                            & \ket{\psi_{4}}              & \targ{}     &                                           & \targ{}     &                                       &             & \targ{}   & \\
+                                            & \ket{\psi_{5}}              & \targ{}     &                                           &             & \targ{}                               &             & \targ{}   & \\
+                                            & \ket{\psi_{6}}              &             & \targ{}                                   &             & \targ{}                               &             & \targ{}   &
+            \end{quantikz}
+        \end{center}
+    \end{enumerate}
+    In general, the ASAP version is more aggressive because does everything as early as possible. Instead, the ALAP version is more conservative because delays operations until they are needed. Both schedules preserve the same logical computation. The difference is not \textbf{what} gates are executed, but \textbf{when} they are executed.
+\end{examplebox}
+
+\highspace
+In summary, ASAP is useful to start operations early and exploit parallelism, while ALAP is useful to reduce idle time between the moment a qubit is prepared and the moment is used. That is why scheduling is not only a performance problem, but also a \textbf{fidelity problem} because it can affect the overall quality of the computation by \hl{influencing how long qubits need to maintain their quantum states}, which in turn affects the \hl{likelihood of errors due to decoherence.}

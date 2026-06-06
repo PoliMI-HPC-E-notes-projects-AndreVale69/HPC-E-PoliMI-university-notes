@@ -31,6 +31,7 @@
   - add `Quantum Transpiling`
     - add `The Quantum Computing Stack`
     - add `Placement`
+    - add `Scheduling`
 
 --------------------
 

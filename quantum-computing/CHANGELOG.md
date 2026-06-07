@@ -18,6 +18,7 @@
   - add `QUBO Problems`
     - add `Introduction to QUBO`
     - add `QUBO as an Energy Minimization Problem`
+    - add `Boolean Logic in QUBO`
 
 --------------------
 

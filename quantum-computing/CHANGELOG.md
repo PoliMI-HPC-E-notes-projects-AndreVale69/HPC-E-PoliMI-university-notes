@@ -19,6 +19,8 @@
     - add `Introduction to QUBO`
     - add `QUBO as an Energy Minimization Problem`
     - add `Boolean Logic in QUBO`
+  - add `Continuous Variables and Constraints`
+    - add `Continuous Variables through Binary Expansion`
 
 --------------------
 

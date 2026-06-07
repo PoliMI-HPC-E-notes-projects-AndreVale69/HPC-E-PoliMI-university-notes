@@ -1,0 +1,111 @@
+\section{QUBO Formulation}\label{sec:qubo-formulation}
+
+\subsection{QUBO Problems}\label{sec:qubo-problems}
+
+In the previous sections of the course, we showed how quantum computers manipulate information using qubits and quantum gates. But a fundamental question remains: \emph{\textbf{which problems are we trying to solve with these quantum computers?}}
+
+\highspace
+One important class of problems is \textbf{optimization problems}, where the goal is to find the best solution among many possible alternatives.
+
+\highspace
+\textbf{Many optimization problems} arising in science, engineering, logistics, finance, and machine learning can be \textbf{reformulated into} a common \textbf{mathematical framework} called \important{Quadratic Unconstrained Binary Optimization (QUBO)}. The importance of QUBO is that a wide variety of seemingly different optimization tasks can be expressed using the same mathematical structure.
+
+\highspace
+This common formulation is particularly useful in quantum computing because it can be directly connected to physical systems, Hamiltonians, and quantum annealing algorithms. For this reason, QUBO serves as a bridge between classical optimization problems and quantum optimization methods.
+
+\longline
+
+\subsubsection{Introduction to QUBO}\label{sec:introduction-to-qubo}
+
+Many real-world problems can be formulated as optimization problems. Given a set of possible solutions, the \textbf{goal is to find the one that minimizes} (or \textbf{maximizes}) a certain \textbf{objective function}.
+
+\highspace
+Examples include: scheduling tasks, routing vehicles\footnote{%
+    The Vehicle Routing Problem (VRP) is an optimization problem that asks: ``\emph{how should a fleet of vehicles serve a set of customers at the lowest cost while satisfying operational constraints?}''. It is one of the most important problems in logistics, transportation, and supply chain management. We are given a depot (warehouse, distribution center, etc.), a set of customers that need service, and a fleet of vehicles. We need to determine: (1) which customers each vehicle should visit; (2) the order in which each vehicle should visit them; and (3) when the visits should occur (in some variants).  
+}, portfolio optimization (finance), resource allocation (logistics), and machine learning optimization (training models). A \textbf{challenge} is that these \textbf{problems often appear very different from one another}. Instead of developing a completely different solution method for every problem, it is useful to express them using a common mathematical formulation. 
+
+\highspace
+One of the most important formulations is the \definition{Quadratic Unconstrained Binary Optimization (QUBO) model}. In a QUBO problem, the solution is represented by a collection of binary variables:
+\begin{equation*}
+    x_{i} \in \left\{0, 1\right\}
+\end{equation*}
+And the \hl{objective is to find the assignment of these variables that minimizes a cost (or energy) function.} So QUBO is a \textbf{mathematical framework} for expressing optimization problems in terms of binary variables and a quadratic cost function.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Mathematical Formulation}}
+\end{flushleft}
+The general QUBO formulation is:
+\begin{equation}
+    y = \sum_{i} a_{i} x_{i} + \sum_{i > j} q_{ij} x_{i} x_{j}
+\end{equation}
+Or, more compactly, in matrix form:
+\begin{equation}
+    \argmin_{x} y = \mathbf{x} Q \mathbf{x}^{T}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\mathbf{x}$ is a vector of \important{binary variables}. The \textbf{variables} of a QUBO problem can \textbf{only assume two values}:
+    \begin{equation*}
+        x_{i} \in \left\{0, 1\right\}
+    \end{equation*}
+    Each variable therefore behaves similarly to a boolean variable: $0$ represents \textbf{false} and $1$ represents \textbf{true}. The number of variables is denoted by $n$, which represents the size of the optimization problem.
+
+    \begin{flushleft}
+        \textcolor{Green3}{\faIcon[regular]{bookmark} \textbf{Useful Property of Binary Variables}}
+    \end{flushleft}
+    Since the variables are binary, $x_{i} \in \left\{0, 1\right\}$, we always have $x_{i}^{2} = x_{i}$. Indeed $0^{2} = 0$ and $1^{2} = 1$. This seemingly simple property is \hl{extremely important because it allows many optimization expressions to be simplified and rewritten in QUBO form}. We will see examples of this in the next sections.
+    
+
+    \item $Q \in \mathbb{R}^{n \times n}$ is a matrix containing the coefficients of the problem. It contains all \important{coefficients defining the optimization problem}. The matrix may be:
+    \begin{itemize}
+        \item \textbf{Symmetric}, meaning $q_{ij} = q_{ji}$ for all $i$ and $j$ (i.e., the values above and below the diagonal are the same).
+        \item \textbf{Upper triangular}, meaning $q_{ij} = 0$ for all $i > j$ (i.e., only the values on and above the diagonal are non-zero).
+    \end{itemize}
+    Also:
+    \begin{itemize}
+        \item The \hl{diagonal elements} $q_{ii} = a_{i}$ represent the \textbf{contribution of individual variables};
+        \item While the \hl{off-diagonal elements} $q_{ij}$ represent the \textbf{interaction between pairs of variables}.
+    \end{itemize}
+    
+
+    \item $y$ is the \important{objective function to be minimized}.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Understanding the QUBO Acronym}}
+\end{flushleft}
+The name \textbf{QUBO} stands for \textbf{Quadratic Unconstrained Binary Optimization}. Each word describes an important characteristic of the formulation. Understanding the meaning of the acronym helps clarify both the capabilities and limitations of QUBO models:
+\begin{itemize}
+    \item \important{Quadratic}. A QUBO objective function can contain:
+    \begin{itemize}
+        \item Linear terms $a_{i} x_{i}$, which represent the contribution of individual variables.
+        \item Quadratic terms $q_{ij} x_{i} x_{j}$, which represent the interaction between pairs of variables.
+    \end{itemize}
+    However, it cannot contain higher-order terms such as cubic $x_{i} x_{j} x_{k}$ or quartic $x_{i} x_{j} x_{k} x_{l}$, or any polynomial term of degree greater than two. For this reason, QUBO problems are said to be \textbf{quadratic}. The restriction to quadratic interactions is particularly important because it allows the problem to be mapped naturally onto physical systems whose energy depends on pairwise interactions (e.g., Ising models in physics, we will see examples of this in the next sections).
+
+
+    \item \important{Unconstrained}. In its pure form, a \textbf{QUBO problem does not include explicit constraints}. For example, expressions such as $x_{1} + x_{2} \leq 1$ or $x_{1} = x_{2}$ cannot be imposed directly. Instead, \hl{constraints must be incorporated indirectly by modifying the objective function and introducing suitable penalty terms.} This topic will be discussed in more detail in the next sections, \autopageref{sec:constraints-in-qubo}.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why can't QUBO include explicit constraints?}} In a normal optimization problem, suppose we want to minimize $\min f(x)$ subject to $x_1 + x_2 = 1$. This is a \textbf{constrained optimization problem} because the solver knows objective function $f(x)$ and the constraints $x_1 + x_2 = 1$ and can use both to find the optimal solution.
+    
+    In contrast, the \textbf{QUBO solver} receives only $\min \mathbf{x} Q \mathbf{x}^{T}$ and has no information about any constraints. Therefore, the solver cannot enforce the constraint $x_1 + x_2 = 1$ directly. Instead, we need to modify the objective function to include a \textbf{penalty term that discourages solutions that violate the constraint}. For example, we could add a term like $P (x_1 + x_2 - 1)^2$ to the objective function, where $P$ is a large positive constant. This way, any solution that does not satisfy $x_1 + x_2 = 1$ will incur a large penalty, effectively enforcing the constraint indirectly.
+
+
+    \item \important{Binary}. The \textbf{decision variables are binary} $x_{i} \in \left\{0, 1\right\}$. Each variable can therefore assume only two possible values: $0$ or $1$. This property makes QUBO particularly suitable for representing logical decisions such as: yes / no; true / false; selected / not selected; active / inactive. The binary nature of the variables will later allow a direct connection with qubits and spin systems.
+
+
+    \item \important{Optimization}. The goal of a QUBO problem is to find the \textbf{variable assignment that minimizes the objective function}:
+    \begin{equation*}
+    \argmin_{x} y = \argmin_{x} \mathbf{x} Q \mathbf{x}^{T}
+    \end{equation*}
+    Among all possible configurations of the binary variables, we search for the \textbf{one associated with the lowest cost} (or energy) value.
+
+    This interpretation is particularly important because later in the chapter the objective function will be viewed as an \textbf{energy landscape}, and solving the optimization problem will become equivalent to finding the \textbf{ground state} of a quantum system.
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is QUBO Important?}} One of the \textbf{main advantages} of the QUBO formulation is that many \textbf{difficult optimization problems} can be \textbf{rewritten using this common framework}. Once a problem has been converted into QUBO form, the same optimization machinery can be applied regardless of the original application domain. In other words, the \hl{true strength of QUBO is the ability to serve as a universal language for optimization problems.}
+
+\highspace
+For this reason, technologies capable of solving QUBO problems efficiently may have a significant impact across many fields of science and engineering.

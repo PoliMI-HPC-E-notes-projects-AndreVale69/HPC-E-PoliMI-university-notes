@@ -12,6 +12,14 @@
 
 --------------------
 
+### v0.7.0
+
+- add `QUBO Formulation`
+  - add `QUBO Problems`
+    - add `Introduction to QUBO`
+
+--------------------
+
 ### v0.6.0
 
 - add `Transpiling`

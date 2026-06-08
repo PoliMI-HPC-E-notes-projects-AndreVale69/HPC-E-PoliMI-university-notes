@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
 - [v0.4.0](#v040)
@@ -22,6 +23,7 @@
   - add `Continuous Variables and Constraints`
     - add `Continuous Variables through Binary Expansion`
     - add `Constraints in QUBO`
+    - add `Penalty Terms`
 
 --------------------
 

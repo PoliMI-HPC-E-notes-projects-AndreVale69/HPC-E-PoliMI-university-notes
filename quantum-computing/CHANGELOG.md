@@ -24,6 +24,7 @@
     - add `Continuous Variables through Binary Expansion`
     - add `Constraints in QUBO`
     - add `Penalty Terms`
+    - add `Penalty Coefficients`
 
 --------------------
 

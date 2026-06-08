@@ -25,6 +25,7 @@
     - add `Constraints in QUBO`
     - add `Penalty Terms`
     - add `Penalty Coefficients`
+    - add `Equality Constraints in QUBO`
 
 --------------------
 

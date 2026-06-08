@@ -1,0 +1,70 @@
+\subsubsection{Constraints in QUBO}\label{sec:constraints-in-qubo}
+
+After the first major limitation of the QUBO formulation, which is that it only allows for binary variables (\autopageref{sec:continuous-variables-through-binary-expansion}), we have another one: \emph{\textbf{how can we express constraints if QUBO is ``unconstrained''?}}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{How can we express constraints in QUBO?}}
+\end{flushleft}
+Many optimization problems contain \textbf{constraints that restrict the set of valid solutions}. For example, we may require:
+\begin{equation*}
+    x_{1} + x_{2} \le 1 \qquad \text{or} \qquad x_{1} = x_{2}
+\end{equation*}
+In traditional optimization, such constraints can be written explicitly and enforced by the solver. QUBO formulations, however, are \textbf{unconstrained} optimization problems, where the objective function has the form:
+\begin{equation*}
+    \argmin_{\mathbf{x}} \mathbf{x}Q\mathbf{x}^T
+\end{equation*}
+And there is no place where additional constraints can be directly specified.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution.}} Since we cannot forbid invalid solutions directly (i.e., we cannot write constraints explicitly), we use a different strategy: \hl{make invalid solutions energetically expensive}. This is achieved through a \textbf{penalty function}. So, instead of solving:
+\begin{equation*}
+    \argmin_{\mathbf{x}} \mathbf{x} Q \mathbf{x}^T \quad \text{subject to constraints}
+\end{equation*}
+We solve:
+\begin{equation}
+    \argmin_{\mathbf{x}} \left( \mathbf{x} Q \mathbf{x}^T + \gamma \cdot \text{penalty}(\mathbf{x}) \right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\text{penalty}(\mathbf{x})$ is a \textbf{function} that \textbf{measures the violation of the constraints}.
+
+    In general, a good penalty function should satisfy two conditions:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] $\text{penalty}(\mathbf{x}) = 0$ if $\mathbf{x}$ \textbf{satisfies} the constraints (i.e., if $\mathbf{x}$ is a feasible solution).
+        \item[\textcolor{Red2}{\faIcon{times}}] $\text{penalty}(\mathbf{x}) > 0$ if $\mathbf{x}$ \textbf{violates} the constraints (i.e., if $\mathbf{x}$ is an infeasible solution).
+    \end{itemize}
+    As a result, feasible solutions preserve their original energy, while infeasible solutions receive an additional energy cost.
+    
+    
+    \item $\gamma$ is a \textbf{coefficient} controlling \textbf{how strongly violations are punished}.
+\end{itemize}
+In summary, the underlying idea is identical to the boolean example we saw on \autopageref{sec:boolean-logic-in-qubo}. For XOR, we assigned \emph{low energy} to desired configurations and \emph{high energy} to undesired ones. Here, we do the same: \emph{feasible solutions} receive no penalty (i.e., they keep their original energy), while \emph{infeasible solutions} receive a penalty that increases their energy, making them less attractive to the optimizer. In both cases, the \textbf{goal is to shape the energy landscape} so that the ground state corresponds to the solution we want.
+
+\highspace
+\begin{examplebox}[: Enforcing a Simple Constraint]
+    Suppose we have the constraint $x_{1} + x_{2} \le 1$. This means that at most one of the variables can be 1. For instance, the configuration:
+    \begin{equation*}
+        \left(x_{1}, x_{2}\right) = \left(1,1\right)
+    \end{equation*}
+    Violates the constraint because: $1 + 1 > 1$. Applying the penalty trick, instead of explicitly forbidding this assignment, we can increase its energy. Conceptually:
+    \begin{center}
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            \textbf{Configuration} & \textbf{Valid?} & \textbf{Energy Penalty} \\
+            \midrule
+            $\left(0,0\right)$ & \textcolor{Green3}{\faIcon{check}} & $0$ \\
+            $\left(0,1\right)$ & \textcolor{Green3}{\faIcon{check}} & $0$ \\
+            $\left(1,0\right)$ & \textcolor{Green3}{\faIcon{check}} & $0$ \\
+            $\left(1,1\right)$ & \textcolor{Red2}{\faIcon{times}} & Large \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    The optimizer will naturally avoid the last configuration because it has a higher energy.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Practical Warning}}
+\end{flushleft}
+Because constraints are enforced indirectly through penalties, the resulting \textbf{solution should always be checked for feasibility after optimization}. A \hl{poorly chosen penalty coefficient may allow an infeasible solution to appear energetically attractive}. Therefore, it is crucial to verify that the solution satisfies the original constraints, especially when using a small penalty coefficient $\gamma$.

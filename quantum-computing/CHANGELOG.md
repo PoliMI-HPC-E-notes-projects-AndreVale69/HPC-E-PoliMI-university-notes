@@ -21,6 +21,7 @@
     - add `Boolean Logic in QUBO`
   - add `Continuous Variables and Constraints`
     - add `Continuous Variables through Binary Expansion`
+    - add `Constraints in QUBO`
 
 --------------------
 

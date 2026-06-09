@@ -28,6 +28,7 @@
     - add `Equality Constraints in QUBO`
   - add `From QUBO to Quantum Systems`
     - add `Hamiltonian Recap`
+    - add `The Eigenspectrum`
 
 --------------------
 

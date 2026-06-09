@@ -26,6 +26,8 @@
     - add `Penalty Terms`
     - add `Penalty Coefficients`
     - add `Equality Constraints in QUBO`
+  - add `From QUBO to Quantum Systems`
+    - add `Hamiltonian Recap`
 
 --------------------
 

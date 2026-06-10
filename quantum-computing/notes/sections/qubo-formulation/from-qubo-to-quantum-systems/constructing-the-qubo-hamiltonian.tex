@@ -1,0 +1,131 @@
+\subsubsection{Constructing the QUBO Hamiltonian}\label{sec:constructing-the-qubo-hamiltonian}
+
+In the previous section, we established a one-to-one correspondence between classical bit strings and computational basis states:
+\begin{equation*}
+    \mathbf{x} \; \longrightarrow \; \ket{x}
+\end{equation*}
+For example:
+\begin{equation*}
+    00 \; \longrightarrow \ket{00} \qquad 01 \; \longrightarrow \ket{01} \qquad 10 \; \longrightarrow \ket{10} \qquad 11 \; \longrightarrow \ket{11}
+\end{equation*}
+We now want to go one step further. The \textbf{goal} is to \textbf{construct a Hamiltonian whose energy levels reproduce exactly the QUBO energy landscape}.
+
+\highspace
+\begin{examplebox}[: How to Construct the QUBO Hamiltonian]
+    Suppose we have a business problem, for example, \emph{choose which warehouses to open} in order to minimize costs; or \emph{choose which stocks to buy} in order to maximize returns; or \emph{schedule jobs on machines} in order to minimize total processing time. We define binary variables $x_i \in \left\{0,1\right\}$ where $x_i = 1$ means ``open warehouse $i$'' or ``buy stock $i$'' or ``schedule job $i$ on machine $j$'', and $x_i = 0$ means the opposite.
+
+    \highspace
+    Now we build a QUBO model of the problem, which is a quadratic function of the binary variables (\autopageref{eq:qubo-formulation}):
+    \begin{equation*}
+        y = \sum_{i} a_{i} x_{i} + \sum_{i > j} q_{ij} x_{i} x_{j}
+    \end{equation*}
+    The goal is to find the binary string $\mathbf{x}$ that minimizes $y$. The coefficients come from the application domain and encode the costs, returns, processing times, etc. associated with the different choices. For example, suppose:
+    \begin{equation*}
+        y = 3 x_1 + 5 x_2 - 4 x_1 x_2
+    \end{equation*}
+    Where the numbers $3$, $5$, and $-4$ might represent the costs of opening warehouses 1 and 2, and the cost reduction if both warehouses are opened together. Now, we evaluate $y$ for all possible binary strings:
+    \begin{itemize}
+        \item State $\ket{00}$: $y(x_1 = 0, x_2 = 0) = 0$
+        \item State $\ket{01}$: $y(x_1 = 0, x_2 = 1) = 5$
+        \item State $\ket{10}$: $y(x_1 = 1, x_2 = 0) = 3$
+        \item State $\ket{11}$: $y(x_1 = 1, x_2 = 1) = 3+5-4 = 4$
+    \end{itemize}
+    Now, we want to construct a Hamiltonian $\hat{H}$ because we want to leverage the natural energy-minimization properties of quantum systems (\autopageref{sec:why-map-qubo-to-quantum-mechanics}). We are looking for a Hamiltonian such that:
+    \begin{gather*}
+        \hat{H} \ket{00} = 0 \ket{00} \qquad \hat{H} \ket{01} = 5 \ket{01} \\
+        \hat{H} \ket{10} = 3 \ket{10} \qquad \hat{H} \ket{11} = 4 \ket{11}
+    \end{gather*}
+    In other words, \hl{we want the Hamiltonian to assign the same energy values to the computational basis states as the QUBO function does to the corresponding binary strings}. This way, the ground state of the Hamiltonian will correspond to the optimal solution of the QUBO problem.
+    
+    \highspace
+    In this example, the ground state would be $\ket{00}$ with energy $0$, which means that the optimal solution is to not open any warehouses (or not buy any stocks, or not schedule any jobs, depending on the context).
+\end{examplebox}
+
+\highspace
+In the previous example, we reached the point where we have a clear goal: we \hl{want to construct a Hamiltonian $\hat{H}$ that reproduces the energy landscape of the QUBO function}. The next step is to figure out \textbf{how to actually build such a Hamiltonian}.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Key Idea.}} We need a \textbf{matrix} that \textbf{recognizes a specific basis state} and \textbf{assigns the corresponding QUBO energy only to that state}, while leaving all other basis states unaffected. The only way to achieve this is to use a \textbf{projector} (\autopageref{eq:projector}) onto that specific basis state:
+\begin{equation}\label{eq:hamiltonian-projector}
+    H_{Q} = \hat{H} = \sum_{x \in \left\{0, 1\right\}^{n}} E(x) \proj{x}
+\end{equation}
+Where $E(x)$ is the energy assigned by the QUBO function to the binary string $x$ (the $y$ value in the previous example), and $\proj{x}$ is the projector onto the computational basis state $\ket{x}$.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need projectors?}} In general, we want a Hamiltonian operator such that:
+\begin{equation*}
+    \hat{H} \ket{x} = E(x) \ket{x}
+\end{equation*}
+For example, with the previous example, we want:
+\begin{equation*}
+    \hat{H} \ket{00} = 0 \ket{00} \qquad \hat{H} \ket{01} = 5 \ket{01} \qquad \hat{H} \ket{10} = 3 \ket{10} \qquad \hat{H} \ket{11} = 4 \ket{11}
+\end{equation*}
+This means that we need a matrix that, when applied to $\ket{00}$, gives $0 \ket{00}$; when applied to $\ket{01}$, gives $5 \ket{01}$; and so on. Simply:
+\begin{equation*}
+    \hat{H} = \begin{bmatrix}
+        0 & 0 & 0 & 0 \\
+        0 & 5 & 0 & 0 \\
+        0 & 0 & 3 & 0 \\
+        0 & 0 & 0 & 4
+    \end{bmatrix}
+\end{equation*}
+To \textbf{construct} such a \textbf{matrix}, we can \textbf{use projectors}. For instance, the projector onto $\ket{01}$ is:
+\begin{equation*}
+    \proj{01} = \begin{bmatrix}
+        0 \\ 1
+    \end{bmatrix}
+    \begin{bmatrix}
+        0 & 1
+    \end{bmatrix} = \begin{bmatrix}
+        0 & 0 \\
+        0 & 1
+    \end{bmatrix}
+\end{equation*}
+Therefore, if we want to assign energy $5$ to $\ket{01}$, we can simply use $5 \proj{01}$:
+\begin{equation*}
+    5 \proj{01} = 5 \begin{bmatrix}
+        0 & 0 \\
+        0 & 1
+    \end{bmatrix} = \begin{bmatrix}
+        0 & 0 \\
+        0 & 5
+    \end{bmatrix}
+\end{equation*}
+And so on for the other basis states. By \textbf{summing} all these \textbf{projectors weighted by the corresponding energies}, we can construct the \textbf{desired Hamiltonian} that \hl{reproduces the QUBO energy landscape}. For example, applying this hamiltonian matrix to the state $\ket{01}$ gives:
+\begin{equation*}
+    \hat{H}\ket{01} = \underbrace{0 \proj{00}\ket{01}}_{\braket{00}{01} = 0} + \underbrace{5 \proj{01}\ket{01}}_{\braket{01}{01} = 1} + \underbrace{3 \proj{10}\ket{01}}_{\braket{10}{01} = 0} + \underbrace{4 \proj{11}\ket{01}}_{\braket{11}{01} = 0} = 5 \ket{01}
+\end{equation*}
+This is exactly what we wanted: the Hamiltonian assigns energy $5$ to the state $\ket{01}$, which corresponds to the QUBO energy for the binary string $01$, and \textbf{leaves all other states unaffected thanks to the orthonormality of the computational basis states}.\footnote{
+    A set of vectors (in this case, the computational basis states) is orthonormal (\autopageref{def:normalized-quantum-state}) when it satisfies two conditions: (1) different vectors are perpendicular (their dot product is zero) $\braket{v_i}{v_j} = 0$ for $i \neq j$ (\emph{orthogonality}); and (2) each vector has unit length $\braket{v_i}{v_i} = 1$ (\emph{normalization}). In general, an orthonormal basis satisfies $\braket{v_i}{v_j} = \delta_{ij}$, where $\delta_{ij}$ is the Kronecker delta (\autopageref{eq:kronecker-delta}), which is $1$ if $i = j$ and $0$ otherwise. This property ensures that \textbf{each projector only affects its corresponding basis state and does not interfere with others}.
+}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{What Have We Achieved?}}
+\end{flushleft}
+We can now summarize the entire construction. \textbf{Starting from a QUBO problem}, we first \textbf{encode} each \textbf{binary string} $x$ as a \textbf{computational basis} state $\ket{x}$. Then, using the QUBO energy function $E(x)$, we construct the \textbf{Hamiltonian}:
+\begin{equation*}
+    \hat{H}
+    =
+    \sum_{x \in \{0,1\}^{n}}
+    E(x)\proj{x}
+\end{equation*}
+The purpose of this Hamiltonian is to \textbf{reproduce exactly the original QUBO energy landscape}. In particular:
+\begin{equation*}
+    \hat{H}\ket{x}
+    =
+    E(x)\ket{x}
+\end{equation*}
+Therefore:
+\begin{itemize}
+    \item The \textbf{computational basis} states $\ket{x}$ become the \textbf{eigenstates} of the Hamiltonian;
+    \item The \textbf{QUBO energies} $E(x)$ become the \textbf{eigenvalues} of the Hamiltonian;
+    \item The \textbf{eigenspectrum} (i.e., the set of all eigenvalues) of the Hamiltonian coincides with the \textbf{energy landscape of the QUBO} problem.
+\end{itemize}
+As a consequence, minimizing the QUBO function $\min_x E(x)$ is equivalent to finding the lowest-energy eigenstate (the \textbf{ground state}) of the Hamiltonian:
+\begin{equation*}
+    \min_x E(x)
+    \quad \Longleftrightarrow \quad
+    \text{Ground State of } \hat{H}
+\end{equation*}
+This is the fundamental bridge between classical optimization and quantum mechanics. \textcolor{Red2}{\faIcon{times}} Instead of \textbf{searching} directly for the \textbf{optimal binary string}, \textcolor{Green3}{\faIcon{check}} we can reformulate the problem as the \textbf{search} for the \textbf{ground state of a quantum system}. This observation is the foundation of quantum optimization techniques such as the Ising model and quantum annealing, which will be introduced in the next sections.

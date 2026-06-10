@@ -30,6 +30,7 @@
     - add `Hamiltonian Recap`
     - add `The Eigenspectrum`
     - add `Why Map QUBO to Quantum Mechanics?`
+    - add `Encoding Bit Strings into Quantum States`
 
 --------------------
 

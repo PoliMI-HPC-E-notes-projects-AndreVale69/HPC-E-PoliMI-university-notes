@@ -35,6 +35,7 @@
   - add `The Ising Model`
     - add `QUBO, Hamiltonian, and Ising: Taxonomy`
     - add `Classical Ising Model`
+    - add `Quantum Ising Model`
 
 --------------------
 

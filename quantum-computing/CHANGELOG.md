@@ -37,6 +37,7 @@
     - add `Classical Ising Model`
     - add `Quantum Ising Model`
   - add `Quantum Annealing`
+    - add `Annealing Hamiltonian`
 
 --------------------
 

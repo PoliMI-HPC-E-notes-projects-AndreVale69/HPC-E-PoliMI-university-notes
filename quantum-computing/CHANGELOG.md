@@ -38,6 +38,8 @@
     - add `Quantum Ising Model`
   - add `Quantum Annealing`
     - add `Annealing Hamiltonian`
+    - add `Evolution of the Eigenspectrum`
+  - add `Summary`
 
 --------------------
 

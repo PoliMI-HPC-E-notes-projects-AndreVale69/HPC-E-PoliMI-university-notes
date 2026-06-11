@@ -33,6 +33,7 @@
     - add `Encoding Bit Strings into Quantum States`
     - add `Constructing the QUBO Hamiltonian`
   - add `The Ising Model`
+    - add `QUBO, Hamiltonian, and Ising: Taxonomy`
 
 --------------------
 

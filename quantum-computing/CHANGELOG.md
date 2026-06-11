@@ -32,6 +32,7 @@
     - add `Why Map QUBO to Quantum Mechanics?`
     - add `Encoding Bit Strings into Quantum States`
     - add `Constructing the QUBO Hamiltonian`
+  - add `The Ising Model`
 
 --------------------
 

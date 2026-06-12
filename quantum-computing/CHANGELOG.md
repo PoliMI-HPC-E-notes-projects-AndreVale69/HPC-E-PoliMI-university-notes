@@ -18,6 +18,8 @@
 
 - add `Variational Quantum Algorithms (VQAs)`
   - add `Why Variational Algorithms?`
+  - add `General Structure of a VQA`
+    - add `Variational Quantum Algorithms`
 
 --------------------
 

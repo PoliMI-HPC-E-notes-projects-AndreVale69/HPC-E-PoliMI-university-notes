@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.8.0](#v080)
 - [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
@@ -10,6 +11,13 @@
 - [v0.2.1](#v021)
 - [v0.1.1](#v011)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.8.0
+
+- add `Variational Quantum Algorithms (VQAs)`
+  - add `Why Variational Algorithms?`
 
 --------------------
 

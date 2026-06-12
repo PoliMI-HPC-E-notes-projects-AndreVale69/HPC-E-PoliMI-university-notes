@@ -20,6 +20,9 @@
   - add `Why Variational Algorithms?`
   - add `General Structure of a VQA`
     - add `Variational Quantum Algorithms`
+    - add `Parametric Quantum Circuits (Ansätze)`
+    - add `Classical Optimizer`
+    - add `Iterative Optimization Loop`
 
 --------------------
 

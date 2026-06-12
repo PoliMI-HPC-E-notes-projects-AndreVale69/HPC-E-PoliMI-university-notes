@@ -23,6 +23,9 @@
     - add `Parametric Quantum Circuits (Ansätze)`
     - add `Classical Optimizer`
     - add `Iterative Optimization Loop`
+  - add `Building Blocks of Variational Algorithms`
+    - add `Cost Function`
+    - add `Ansatz Design`
 
 --------------------
 

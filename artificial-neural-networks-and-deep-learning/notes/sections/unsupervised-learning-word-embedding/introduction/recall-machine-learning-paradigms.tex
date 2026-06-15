@@ -1,0 +1,82 @@
+\section{Unsupervised Learning: Word Embedding}\label{sec:unsupervised-learning-word-embedding}
+
+\subsection{Introduction}\label{sec:unsupervised-learning-word-embedding-introduction}
+
+\subsubsection{Recall Machine Learning Paradigms}\label{sec:unsupervised-learning-word-embedding-introduction-recall-machine-learning-paradigms}
+
+Before introducing \textbf{word embeddings}, it is useful to briefly recall the three main machine learning paradigms (\autopageref{sec:machine-learning-paradigms}). The distinction is important because word embeddings are one of the most successful examples of \textbf{unsupervised learning}.
+
+\highspace
+Machine learning algorithms learn from experience, usually represented as a dataset:
+\begin{equation*}
+    D = \left\{x_1, x_2, \ldots, x_{N}\right\}
+\end{equation*}
+Where each $x_i$ is an observed sample. Depending on the information available during learning, we can distinguish three major paradigms:
+\begin{itemize}
+    \item \definition{Supervised Learning}. In supervised learning, \textbf{each training example is associated with a desired output} (or target value):
+    \begin{equation*}
+        D = \left\{(x_1, t_1), (x_2, t_2), \ldots, (x_{N}, t_{N})\right\}
+    \end{equation*}
+    Where $x_i$ is the \emph{input}, and $t_i$ is the \emph{correct output}. The objective (i.e., the goal) is to learn a function:
+    \begin{equation*}
+        f(x) \approx t
+    \end{equation*}
+    That can correctly predict the output for previously unseen inputs.
+
+    \highspace
+    Some \textbf{examples} of supervised learning tasks are: image classification, spam detection, house price prediction, and speech recognition. In all these cases, the training data consists of input-output pairs, and the model learns to map inputs to outputs.
+
+    \highspace
+    Most of the neural networks studied so far in the course belong to this category (Perceptron \autopageref{sec:the-perceptron}, FeedForward Neural Networks \autopageref{sec:feed-forward-neural-networks}, and we will see in future sections also CNNs for Image Classification). During training, the network compares its prediction with the ground truth and updates its weights to reduce the prediction error.
+    
+    
+    \item \definition{Unsupervised Learning}. In unsupervised learning, \textbf{only the inputs are available}:
+    \begin{equation*}
+        D = \left\{x_1, x_2, \ldots, x_{N}\right\}
+    \end{equation*}
+    \textbf{No target labels are provided}. The objective is therefore \textbf{not} to predict a known output, but rather to \textbf{discover useful structures}, \textbf{patterns}, or \textbf{representations} \hl{hidden in the data}.
+
+    \highspace
+    So, instead of learning $x \to t$ (input to output), the algorithm tries to understand how the data itself is organized. Typical tasks include clustering\footnote{%
+        Clustering (\autopageref{def:clustering}) is the task of discovering groups in the data without labels. For example, given a dataset \emph{cat}, \emph{dog}, \emph{wolf}, \emph{lion}, \emph{tiger}, and \emph{car}, \emph{truck}, \emph{bus}; a clustering algorithm might group \emph{cat}, \emph{dog}, \emph{wolf}, \emph{lion}, and \emph{tiger} together, and \emph{car}, \emph{truck}, and \emph{bus} together, without any prior knowledge of the labels. Some typical clustering algorithms include K-means, hierarchical clustering, and DBSCAN, already discussed in the context of unsupervised learning in the \href{https://polimi-hpc-e-notes-projects-andrevale69.github.io/HPC-E-PoliMI-university-notes/applied-statistics/notes/applied-statistics.pdf}{Applied Statistics course}.
+    }, dimensionality reduction\footnote{%
+        \definition{Dimensionality Reduction} is the task of reducing the number of variables while preserving important information. For example, Principal Component Analysis (PCA) is a common technique that transforms the data into a new coordinate system, where the greatest variance by any projection of the data comes to lie on the first coordinate (called the first principal component), the second greatest variance on the second coordinate, and so on. This can help in visualizing high-dimensional data or in reducing noise. Already discussed in the context of unsupervised learning in the \href{https://polimi-hpc-e-notes-projects-andrevale69.github.io/HPC-E-PoliMI-university-notes/applied-statistics/notes/applied-statistics.pdf}{Applied Statistics course}.
+    }, feature extraction\footnote{%
+        \definition{Feature Extraction} is the process of learning useful features automatically. For example, in image processing, instead of manually designing features like edges or textures, a neural network can learn to extract features that are most relevant for a given task.
+    }, density estimation\footnote{%
+        \definition{Density Estimation} is the process of learning the probability distribution that generated the data. For example, given a dataset of normal credit card transactions, a density estimation model could learn the distribution of legitimate transactions and then identify outliers that might indicate fraud.
+    }, and representation learning\footnote{%
+        \definition{Representation Learning} is the task of learning a better representation of the data automatically. We will see this in more detail in future sections.
+    }. \textbf{Word embeddings belong to this category} because they \hl{learn meaningful vector representations of words directly from large text corpora without requiring manually annotated labels}. The model only observes the co-occurrence patterns of words and discovers semantic relationships automatically.
+
+    
+    \item \definition{Reinforcement Learning}. Reinforcement learning differs from both previous paradigms because \textbf{learning occurs through interaction\break with an environment}. At each step, an agent:
+    \begin{enumerate}
+        \item Observes the current situation (state) of the environment.
+        \item Chooses an action to perform based on its current policy.
+        \item Receives feedback in the form of a reward (or penalty) from the environment.
+        \item Updates its strategy (policy) to maximize the cumulative reward over time.
+    \end{enumerate}
+    The dataset can be represented as a sequence of actions and rewards:
+    \begin{equation*}
+        \left(a_1, r_1\right), \left(a_2, r_2\right), \ldots, \left(a_N, r_N\right)
+    \end{equation*}
+    The \textbf{goal} is not to predict labels but to learn a policy that maximizes the cumulative reward over time.
+
+    \highspace
+    Typical applications include robotics, autonomous driving, game playing (e.g., AlphaGo), and resource allocation and control. Unlike supervised learning, the correct action is not explicitly provided. The \hl{agent must discover good behaviors through trial and error.}
+\end{itemize}
+
+\newpage
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this important for Word Embeddings?}} The remainder of this chapter focuses on \textbf{unsupervised learning}. The central idea is that \hl{large amounts of text contain hidden regularities that can be exploited to build meaningful numerical representations of words.}
+
+\highspace
+Instead of manually defining semantic relationships such as:
+\begin{itemize}
+    \item \emph{king} is related to \emph{queen};
+    \item \emph{Paris} is related to \emph{France};
+    \item \emph{dog} is related to \emph{animal};
+\end{itemize}
+An unsupervised algorithm can discover these relationships automatically by analyzing how words appear together in natural language. This capability leads to \textbf{word embeddings}, where each word is represented by a dense vector that captures semantic and syntactic information, forming the foundation of many modern Natural Language Processing systems.

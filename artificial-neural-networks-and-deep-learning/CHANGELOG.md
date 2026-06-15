@@ -17,6 +17,8 @@
     - add `Recall Machine Learning Paradigms`
     - add `Neural Autoencoders`
     - add `Applications of Autoencoders`
+  - add `Motivation for Word Embeddings`
+    - add `The Limits of Traditional Word Representations`
 
 --------------------
 

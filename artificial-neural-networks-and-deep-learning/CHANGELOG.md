@@ -16,6 +16,7 @@
   - add `Introduction`
     - add `Recall Machine Learning Paradigms`
     - add `Neural Autoencoders`
+    - add `Applications of Autoencoders`
 
 --------------------
 

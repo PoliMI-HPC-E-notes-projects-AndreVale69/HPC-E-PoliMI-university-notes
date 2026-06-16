@@ -21,6 +21,7 @@
     - add `The Limits of Traditional Word Representations`
     - add `Word Similarity Ignorance`
     - add `What is a Word Embedding?`
+    - add `Distributed Representations`
 
 --------------------
 

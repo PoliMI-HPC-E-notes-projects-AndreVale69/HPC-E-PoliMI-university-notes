@@ -1,0 +1,90 @@
+\subsubsection{Word Similarity Ignorance}\label{sec:word-similarity-ignorance}
+
+The previous section showed that traditional representations such as one-hot encoding are sparse and high-dimensional. However, an even more serious problem exists: \textbf{one-hot vectors completely ignore semantic similarity between words}. For example, consider the following twosentences:
+\begin{itemize}
+    \item \emph{Obama speaks to the media in Illinois.}
+    \item \emph{The President addresses the press in Chicago.}
+\end{itemize}
+To a human reader, these sentences convey almost the same meaning. The words are different, but the concepts they express are strongly related:
+\begin{center}
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Sentence 1} & \textbf{Sentence 2} \\
+        \midrule
+        Obama & President \\
+        speaks & addresses \\
+        media & press \\
+        Illinois & Chicago \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\noindent
+A human immediately recognizes these semantic relationships. A machine using one-hot representations does not because the one-hot vectors for these words are orthogonal to each other. In other words, the one-hot representation does not capture any notion of similarity between words. Let's see this in action.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{One-Hot Encoding Cannot Express Similarity}}
+\end{flushleft}
+Recall that in a vocabulary of size $V$, each word is represented by a vector containing a single $1$ and $V-1$ zeros. For example:
+\begin{align*}
+    \text{speaks} &= [0, 0, 1, 0, \dots, 0] \\
+    \text{addresses} &= [0, 0, 0, 0, \dots, 1, 0]
+\end{align*}
+Similarly:
+\begin{align*}
+    \text{obama} &= [0, 0, 0, 0, \dots, 1, 0, 0] \\
+    \text{president} &= [0, 0, 0, 1, \dots, 0, 0, 0]
+\end{align*}
+And:
+\begin{align*}
+    \text{illinois} &= [1, 0, 0, 0, \dots, 0] \\
+    \text{chicago} &= [0, 1, 0, 0, \dots, 0]
+\end{align*}
+These vectors have no overlapping active components (i.e., no $1$s in the same position), so they are orthogonal.
+
+\highspace
+Mathematically, \textbf{any two different one-hot vectors are orthogonal}. For example:
+\begin{align*}
+    \text{speaks}^{T} \cdot \text{addresses} &= 0 \\
+    \text{obama}^{T} \cdot \text{president} &= 0 \\
+    \text{illinois}^{T} \cdot \text{chicago} &= 0
+\end{align*}
+We can also use the symbol $\perp$ to denote orthogonality:
+\begin{align*}
+    \text{speaks} \perp \text{addresses} \\
+    \text{obama} \perp \text{president} \\
+    \text{illinois} \perp \text{chicago}
+\end{align*}
+Geometrically, the angle between the vectors is $90^{\circ}$, which means they are completely unrelated.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is this a problem?}} Suppose a language model has learned many examples containing the word ``\emph{president}'' and later encounters ``\emph{Obama}''. A human immediately understands that these words are related, but the \textbf{model cannot}. From the model's perspective ``\emph{Obama}'' is just another compleltely unrelated symbol. And the same happens for ``\emph{speaks}'' and ``\emph{addresses}'', or ``\emph{Illinois}'' and ``\emph{Chicago}''. Since the \hl{vectors are orthogonal}, the \hl{model has no mechanism for transferring knowledge from one word to another}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Failure to Generalize}}
+\end{flushleft}
+This inability to capture similarity directly \textbf{affects a model's capacity to generalize}. Imagine that during training we only observe: ``\emph{Obama speaks to the media in Illinois}''. If we later encounter: ``\emph{The President addresses the press in Chicago}'' the model should ideally recognize that the second sentence is semantically similar to the first.
+
+\highspace
+With one-hot representations, however, every key word is represented by a completely different orthogonal vector. Consequently, the model sees the second sentence as almost entirely new. The knowledge learned from the first sentence cannot be reused effectively.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{What we actually need: Word Embeddings}}
+\end{flushleft}
+To generalize successfully, \textbf{similar words} should have \textbf{similar representations}. Ideally, we would like:
+\begin{equation*}
+    \text{similar meaning} \, \Rightarrow \, \text{similar vectors}
+\end{equation*}
+Word pairs share no similarity in their one-hot representations, but we need word similarity to be reflected in the representations.
+
+\highspace
+The fundamental \textbf{goal} of \textbf{word embeddings} is therefore to \hl{replace orthogonal one-hot vectors with dense continuous vectors} such that:
+\begin{align*}
+    \mathbf{v}_{\text{Obama}} &\approx \mathbf{v}_{\text{President}} \\
+    \mathbf{v}_{\text{speaks}} &\approx \mathbf{v}_{\text{addresses}} \\
+    \mathbf{v}_{\text{Illinois}} &\approx \mathbf{v}_{\text{Chicago}}
+\end{align*}
+Instead of \textbf{representing words} as isolated symbols, we want to represent them \textbf{as points in a continuous semantic space where distance reflects meaning}. This idea leads directly to the concept of word embeddings, which we introduce next.

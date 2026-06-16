@@ -19,6 +19,7 @@
     - add `Applications of Autoencoders`
   - add `Motivation for Word Embeddings`
     - add `The Limits of Traditional Word Representations`
+    - add `Word Similarity Ignorance`
 
 --------------------
 

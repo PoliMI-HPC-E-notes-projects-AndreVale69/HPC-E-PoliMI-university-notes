@@ -24,6 +24,7 @@
     - add `Distributed Representations`
   - add `Language Modeling`
     - add `The Language Modeling Problem`
+    - add `N-gram Language Models`
 
 --------------------
 

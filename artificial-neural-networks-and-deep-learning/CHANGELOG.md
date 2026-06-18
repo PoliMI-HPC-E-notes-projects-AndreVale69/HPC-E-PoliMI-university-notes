@@ -25,6 +25,7 @@
   - add `Language Modeling`
     - add `The Language Modeling Problem`
     - add `N-gram Language Models`
+    - add `The Curse of Dimensionality in N-gram Models`
 
 --------------------
 

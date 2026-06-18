@@ -1,0 +1,129 @@
+\subsection{Language Modeling}\label{sec:language-modeling}
+
+Before studying \textbf{how embeddings are learned}, we need to understand the \hl{problem that motivated their development}. Historically, word embeddings did not emerge as an isolated idea. They were discovered while researchers were trying to solve a much broader problem: \textbf{\emph{Language Modeling}}. That is: \emph{given a sequence of words, can we predict how likely that sequence is, and what word should come next?}
+
+\longline
+
+\subsubsection{The Language Modeling Problem}\label{sec:the-language-modeling-problem}
+
+First of all, a \definition{Language Model (LM)} is a \textbf{probabilistic model that assigns probabilities to sequences of words}. Given a sentence:
+\begin{equation*}
+    s = \left(w_1, w_2, \dots, w_k\right)
+\end{equation*}
+We want to estimate the probability of that sentence:
+\begin{equation*}
+    P(s) = P\left(w_1, w_2, \dots, w_k\right)
+\end{equation*}
+Where $w_i$ is the $i$-th word in the sentence. This quantity measures how likely the sentence is according to the language.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need Language Models?}}
+\end{flushleft}
+Many Natural Language Processing (NLP) applications depend on language modeling: Chatbots, Machine Translation, Speech Recognition, Information Retrieval, Document Classification, Text Generation, Large Language Models (LLMs). The performance of many real-world systems depends on how language is represented and modeled.
+
+\highspace
+For example, consider two sentences:
+\begin{enumerate}
+    \item \emph{The cat is sleeping on the sofa.}
+    \item \emph{Sofa sleeping cat the on is.}
+\end{enumerate}
+A human immediately recognizes that:
+\begin{equation*}
+    P(\text{The cat is sleeping on the sofa}) \gg P(\text{Sofa sleeping cat the on is})
+\end{equation*}
+The first sentence is a valid English sentence, while the second one is not. A language model \textbf{attempts to learn exactly this distinction}. But now the question is: \emph{\textbf{how can we build a model that learns to assign high probabilities to valid sentences and low probabilities to invalid ones?}}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Probability of Sentences}}
+\end{flushleft}
+At first glance, estimating the probability of a sentence:
+\begin{equation*}
+    P(s) = P\left(w_1, w_2, \dots, w_k\right)
+\end{equation*}
+\textbf{Seems impossible}. Even a short sentence can contain many words, and the number of possible sentences is astronomical. Fortunately, probability theory gives us a useful tool: the \definition{Chain Rule of Probability}. \hl{To compute the probability of several events happening together, we can decompose it into a product of conditional probabilities.} For example, for two events $A$ and $B$:
+\begin{equation*}
+    P\left(A,B\right) = P\left(A\right) P\left(B \, | \, A\right)
+\end{equation*}
+For three events $A$, $B$, and $C$:
+\begin{equation*}
+    P\left(A,B,C\right) = P\left(A\right) P\left(B \, | \, A\right) P\left(C \, | \, A, B\right)
+\end{equation*}
+In general, for $n$ events $A_1, A_2, \dots, A_n$:
+\begin{equation}\label{eq:chain-rule-of-probability}
+    \begin{aligned}
+        P\left(A_1, A_2, \dots, A_n\right) &= P\left(A_1\right) P\left(A_2 \, | \, A_1\right) \cdots P\left(A_n \, | \, A_1, A_2, \dots, A_{n-1}\right) \\
+        &= \prod_{i=1}^n P\left(A_i \, | \, A_1, A_2, \dots, A_{i-1}\right)
+    \end{aligned}
+\end{equation}
+It is called the \textbf{\emph{Chain Rule of Probability}} because it allows us to break down a complex joint probability into simpler conditional probabilities. Applying the chain rule to language modeling, we can express the probability of a sentence as:
+\begin{equation*}
+    P\left(w_1, w_2, \dots, w_k\right) = P\left(w_1\right) P\left(w_2 \, | \, w_1\right) \cdots P\left(w_k \, | \, w_1, w_2, \dots, w_{k-1}\right)
+\end{equation*}
+This means that to compute the probability of a sentence, we can \textbf{compute the probability of each word given the previous words}. For example, the sentence ``\emph{the cat sleeps}'' can be decomposed as:
+\begin{equation*}
+    P\left(\text{the cat sleeps}\right) = P\left(\text{the}\right) P\left(\text{cat} \, | \, \text{the}\right) P\left(\text{sleep} \, | \, \text{the cat}\right)
+\end{equation*}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{With the Chain Rule, have we actually solved anything?}}
+\end{flushleft}
+With the Chain Rule, we have reduced the problem of estimating the probability of a sentence to estimating the probability of each word given the previous words. However, \emph{have we actually solved the problem?} After all, we \textbf{still need to estimate probabilities}. The answer is that the Chain Rule does \textbf{not solve the language modeling problem}. It only \hl{reformulates it into a more structured form.}
+
+\highspace
+Instead of asking ``\emph{what is the probability of every possible sentence?}'' we ask ``\emph{what is the probability of a word appearing after a given context?}''. For example:
+\begin{equation*}
+    P\left(\text{sleep} \, | \, \text{the cat}\right)
+\end{equation*}
+Can be interpreted as: \emph{given the context ``the cat'', how likely is the next word ``sleeps''?} This transforms language modeling into a collection of \textbf{next-word prediction problems}.
+
+\highspace
+The chain rule reveals that \textbf{if we can estimate probabilities} of the form:
+\begin{equation*}
+    P\left(w_i \, | \, w_1, w_2, \dots, w_{i-1}\right)
+\end{equation*}
+Then we can \hl{automatically compute the probability of any sentence.} Consequently, researchers shifted their attention from sentence probabilities to next-word prediction. For example, given the context:
+\begin{center}
+    \emph{The cat is}
+\end{center}
+A language model might estimate the following probabilities for the next word:
+\begin{align*}
+    P\left(\text{sleeping} \, | \, \text{The cat is}\right) &= 0.70 \\
+    P\left(\text{eating} \, | \, \text{The cat is}\right) &= 0.20 \\
+    P\left(\text{flying} \, | \, \text{The cat is}\right) &= 0.001
+\end{align*}
+The most likely continuation is therefore: \emph{sleeping}. Notice that the objective is not really to generate text. The \textbf{objective is to estimate conditional probabilities}. \hl{Text generation is simply a consequence}: once the model knows the probabilities of possible next words, it can choose one and continue the sentence.
+
+\highspace
+But again, we have not yet solved the language modeling problem. We have only transformed it into a more structured task: estimating probabilities of the form:
+\begin{equation*}
+    P\left(w_i \, | \, w_1, w_2, \dots, w_{i-1}\right)
+\end{equation*}
+The natural question is now: \emph{\textbf{how can we estimate these probabilities in practice?}}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Connection with LLMs}}
+\end{flushleft}
+The problem introduced here (i.e., estimating the probability of a word given its context) is essentially the same problem solved by modern Large Language Models (LLMs). When ChatGPT generates text, it is repeatedly estimating:
+\begin{equation*}
+    P\left(w_i \, | \, w_1, w_2, \dots, w_{i-1}\right)
+\end{equation*}
+And choosing the next token according to that distribution. The difference is that:
+\begin{itemize}
+    \item Classical language models use simple statistical methods.
+    \item Neural Language Models (our focus) use neural networks to estimate probabilities.
+    \item Modern LLMs use transformers with billions of parameters.
+\end{itemize}
+But the underlying objective remains the same: \textbf{predict the next word (or token) given the previous context}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is this difficult?}}
+\end{flushleft}
+At this point we might think: \emph{\textbf{great, we just need to estimate conditional probabilities}} (i.e., the probability of a word given its context). Unfortunately, there is a \textbf{problem}. To compute:
+\begin{equation*}
+    P\left(w_i \, | \, w_1, w_2, \dots, w_{i-1}\right)
+\end{equation*}
+We may need to consider the entire history of the sentence. In general, for a sentence of length $k$, the context can become arbitrarily large, because the information needed to predict the next word may depend on words that appeared much earlier in the sentence. This \hl{challenge led researchers to develop $N$-gram Language Models}, which \hl{approximate the problem by considering only a limited number of previous words.}

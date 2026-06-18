@@ -22,6 +22,8 @@
     - add `Word Similarity Ignorance`
     - add `What is a Word Embedding?`
     - add `Distributed Representations`
+  - add `Language Modeling`
+    - add `The Language Modeling Problem`
 
 --------------------
 

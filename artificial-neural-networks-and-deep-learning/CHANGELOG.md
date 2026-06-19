@@ -28,6 +28,7 @@
     - add `The Curse of Dimensionality in N-gram Models`
   - add `Neural Language Models`
     - add `Bengio et al. (2003)`
+    - add `Architecture of the Neural Language Model`
 
 --------------------
 

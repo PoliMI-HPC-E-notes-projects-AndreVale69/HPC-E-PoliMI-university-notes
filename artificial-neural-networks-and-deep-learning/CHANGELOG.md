@@ -31,6 +31,8 @@
     - add `Architecture of the Neural Language Model`
     - add `Training the Neural Language Model`
     - add `Results and Impact`
+  - add `Word2Vec`
+    - add `From Neural Language Models to Word2Vec`
 
 --------------------
 

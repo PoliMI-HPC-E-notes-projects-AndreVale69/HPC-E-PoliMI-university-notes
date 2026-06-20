@@ -30,6 +30,7 @@
     - add `Bengio et al. (2003)`
     - add `Architecture of the Neural Language Model`
     - add `Training the Neural Language Model`
+    - add `Results and Impact`
 
 --------------------
 

@@ -34,6 +34,7 @@
   - add `Word2Vec`
     - add `From Neural Language Models to Word2Vec`
     - add `Word2Vec Architectures`
+    - add `Continuous Bag-of-Words (CBOW)`
 
 --------------------
 

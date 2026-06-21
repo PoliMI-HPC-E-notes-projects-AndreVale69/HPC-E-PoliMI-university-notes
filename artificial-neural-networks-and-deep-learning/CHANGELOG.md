@@ -36,6 +36,7 @@
     - add `Word2Vec Architectures`
     - add `Continuous Bag-of-Words (CBOW)`
     - add `CBOW Training and Weight Updates`
+    - add `Word2Vec Facts`
 
 --------------------
 

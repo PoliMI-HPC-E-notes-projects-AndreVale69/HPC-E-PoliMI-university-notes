@@ -33,6 +33,7 @@
     - add `Results and Impact`
   - add `Word2Vec`
     - add `From Neural Language Models to Word2Vec`
+    - add `Word2Vec Architectures`
 
 --------------------
 

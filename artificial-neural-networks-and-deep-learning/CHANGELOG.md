@@ -39,6 +39,7 @@
     - add `Word2Vec Facts`
   - add `Semantic Regularities in Embedding Spaces`
     - add `Semantic Relationships`
+    - add `Linear Structure of Embedding Spaces`
 
 --------------------
 

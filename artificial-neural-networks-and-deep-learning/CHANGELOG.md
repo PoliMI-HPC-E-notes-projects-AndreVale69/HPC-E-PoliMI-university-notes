@@ -37,6 +37,8 @@
     - add `Continuous Bag-of-Words (CBOW)`
     - add `CBOW Training and Weight Updates`
     - add `Word2Vec Facts`
+  - add `Semantic Regularities in Embedding Spaces`
+    - add `Semantic Relationships`
 
 --------------------
 

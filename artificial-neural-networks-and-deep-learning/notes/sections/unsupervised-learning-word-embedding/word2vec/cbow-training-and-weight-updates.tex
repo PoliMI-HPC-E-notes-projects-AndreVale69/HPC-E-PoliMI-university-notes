@@ -1,0 +1,272 @@
+\subsubsection{CBOW Training and Weight Updates}\label{sec:cbow-training-and-weight-updates}
+
+Suppose we have the sentence:
+\begin{center}
+    ``\emph{The quick brown fox jumps over the lazy dog}''
+\end{center}
+With context size $n = 4$, thus $c = \frac{4}{2} = 2$ radius. Our training pair is:
+\begin{equation*}
+    (\underbrace{\emph{quick}, \emph{brown}, \emph{jumps}, \emph{over}}_{\text{context}}, \emph{fox})
+\end{equation*}
+Or, mathematically:
+\begin{equation*}
+    (\underbrace{w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}}_{\text{context}}, w_t)
+\end{equation*}
+Where $w_t$ is the target word, and $w_{t-2}, w_{t-1}, w_{t+1}, w_{t+2}$ are the context words. The \hl{goal of the network} is to answer the question: ``\emph{\textbf{given these four words, what is the missing one?}}''.
+
+\highspace
+\textcolor{Green3}{\faIcon{bullseye} \textbf{The Objective Function.}} Since the correct answer is known, we can measure how good the prediction is. Thus, the network computes:
+\begin{equation*}
+    P\left(w_t \, | \, \text{context}\right)
+\end{equation*}
+Namely, \hl{the probability that the central word is $w_t$.} For our example, where the context is:
+\begin{center}
+    ``\emph{quick}, \emph{brown}, \emph{jumps}, \emph{over}''
+\end{center}
+The ideal output of the network would be:
+\begin{center}
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Word} & \textbf{Probability} \\
+        \midrule
+        \emph{fox} & 1.0 \\
+        \emph{wolf} & 0.0 \\
+        \emph{dog} & 0.0 \\
+        \emph{cat} & 0.0 \\
+        $\vdots$ & $\vdots$ \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+Obviously, at the beginning of the training, the probabilities will be:
+\begin{center}
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Word} & \textbf{Probability} \\
+        \midrule
+        \emph{fox} & 0.12 \\
+        \emph{wolf} & 0.18 \\
+        \emph{dog} & 0.10 \\
+        \emph{cat} & 0.09 \\
+        $\vdots$ & $\vdots$ \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+So we define the classic loss function as the \textbf{negative log-likelihood} of the correct word (like in the Bengio et al. paper, \autopageref{eq:negative-log-likelihood-loss-bengio}):
+\begin{equation}\label{eq:negative-log-likelihood-loss-cbow}
+    E = -\log P\left(w_t \, | \, \text{context}\right) = -\log P\left(w_t \, | \, w_{t-\frac{n}{2}}, w_{t-1}, w_{t+1}, w_{t+\frac{n}{2}}\right)
+\end{equation}
+The reason we use negative log likelihood is the same as in the case of Neural Network Language Models, \autopageref{eq:negative-log-likelihood-loss-bengio}. The only difference is that now we are \textbf{trying to predict the central word given the context}, instead of predicting the next word given the previous ones.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Training Computations}}
+\end{flushleft}
+As usual, we perform a forward pass to compute the output probabilities, and then a backward pass to compute the gradients and update the weights.
+
+\highspace
+\textcolor{Green3}{\faIcon{arrow-right}} \textcolor{Green3}{\textbf{Forward Pass}}
+\begin{enumerate}
+    \item \important{Input.} The context words arrive as one-hot vectors. For example, taking the context words ``\emph{quick}, \emph{brown}, \emph{jumps}, \emph{over}'', we have:
+    \begin{equation*}
+        \mathbf{x}_{\text{quick}} = \begin{bmatrix} 1 \\ 0 \\ 0 \\ \vdots \\ 0 \end{bmatrix} \quad
+        \mathbf{x}_{\text{brown}} = \begin{bmatrix} 0 \\ 1 \\ 0 \\ \vdots \\ 0 \end{bmatrix} \quad
+        \mathbf{x}_{\text{jumps}} = \begin{bmatrix} 0 \\ 0 \\ 1 \\ \vdots \\ 0 \end{bmatrix} \quad
+        \mathbf{x}_{\text{over}}  = \begin{bmatrix} 0 \\ 0 \\ 0 \\ \vdots \\ 1 \end{bmatrix}
+    \end{equation*}
+
+
+    \item \important{Embedding Lookup.} Each one-hot vector selects one row of the embedding matrix $C$ giving us the corresponding word embedding. For example, if $C$ is the embedding matrix, then:
+    \begin{gather*}
+        \mathbf{e}_{\text{quick}} = C^T \mathbf{x}_{\text{quick}} \quad
+        \mathbf{e}_{\text{brown}} = C^T \mathbf{x}_{\text{brown}} \\
+        \mathbf{e}_{\text{jumps}} = C^T \mathbf{x}_{\text{jumps}} \quad
+        \mathbf{e}_{\text{over}}  = C^T \mathbf{x}_{\text{over}}
+    \end{gather*}
+    This gives us the embeddings for the context words.
+
+
+    \item \important{Average.} We average the embeddings of the context words to get a single vector representation of the context:
+    \begin{equation*}
+        \mathbf{e}_{\text{context}} = \frac{1}{n} \sum_{i=1}^{n} \mathbf{e}_{w_i} = \frac{1}{4} \left( \mathbf{e}_{\text{quick}} + \mathbf{e}_{\text{brown}} + \mathbf{e}_{\text{jumps}} + \mathbf{e}_{\text{over}} \right)
+    \end{equation*}
+    This is the ``\emph{bag of words}'' part, where we ignore the order of the context words.
+
+
+    \item \important{Output scores.} Now we compute the scores for each word in the vocabulary by multiplying the context embedding with the output weight matrix $C'$. As can be seen in the architecture on \autopageref{fig:cbow-architecture}, the \textbf{output weight matrix} $C'$ is not explicitly drawn, but it \hl{links the average embedding to the output layer.} It contains one vector \textbf{for every vocabulary word}. The scores are computed as:
+    \begin{equation*}
+        \mathbf{u} = C' \mathbf{e}_{\text{context}}
+    \end{equation*}
+    Where $\mathbf{u}$ is a vector of scores for each word in the vocabulary. For example:
+    \begin{gather*}
+        u_{\text{fox}} = \mathbf{c}'_{\text{fox}} \cdot \mathbf{e}_{\text{context}} = 3.7 \quad
+        u_{\text{wolf}} = \mathbf{c}'_{\text{wolf}} \cdot \mathbf{e}_{\text{context}} = 2.9 \\
+        u_{\text{dog}} = \mathbf{c}'_{\text{dog}} \cdot \mathbf{e}_{\text{context}} = 1.2 \quad
+        u_{\text{cat}} = \mathbf{c}'_{\text{cat}} \cdot \mathbf{e}_{\text{context}} = 0.4
+    \end{gather*}
+
+
+    \item \important{Softmax.} It transforms scores into probabilities. The softmax function is applied to the scores vector $\mathbf{u}$ to get the predicted probabilities for each word in the vocabulary:
+    \begin{equation*}
+        P\left(w_i \, | \, \text{context}\right) = \frac{\exp(u_i)}{\sum_{j=1}^{V} \exp(u_j)}
+    \end{equation*}
+    Where $V$ is the size of the vocabulary. For example:
+    \begin{gather*}
+        P\left(\text{fox} \, | \, \text{context}\right) = 0.81 \quad
+        P\left(\text{wolf} \, | \, \text{context}\right) = 0.09 \\
+        P\left(\text{dog} \, | \, \text{context}\right) = 0.05 \quad
+        P\left(\text{cat} \, | \, \text{context}\right) = 0.01
+    \end{gather*}
+    The network predicts \emph{fox}. If correct, great! If not, an \textbf{error} is produced and the \textbf{backpropagation algorithm is used to update} the weights of the network.
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Which parameters are updated?}} Only the \hl{rows} of the \textbf{embedding matrix} $C$ that \hl{correspond to the context words}, \textbf{not every word} in the vocabulary. In other words, for each $(context, target)$ pair only the context words are updated.
+
+\highspace
+Similarly, only the \hl{row} of the \textbf{output weight matrix} $C'$ that \hl{corresponds to the target word} is updated.
+
+\highspace
+\textcolor{Green3}{\faIcon{drafting-compass} \textbf{Geometric Intuition.}} Geometrically, the context representation is moved \textbf{away from overestimated wrong words} and \textbf{toward the correct target word}. This is illustrated in \autoref{fig:cbow-geometric-intuition-vertical}. For example, if the context is ``\emph{quick}, \emph{brown}, \emph{jumps}, \emph{over}'' and the target word is ``\emph{fox}'', but the network predicts ``\emph{wolf}'':
+\begin{itemize}
+    \item Case 1. Suppose $P\left(\emph{wolf} \, | \, \text{context}\right)$ is too high (overestimated). Then, the gradient (computed during backpropagation), roughly speaking, says ``\emph{make this context \textbf{less similar} to wolf}''. Therefore, a small portion of $C'\left(\emph{wolf}\right)$ is \emph{\textbf{subtracted}} from the context embeddings. Geometrically, the context vectors move \textbf{away from the wrong word} ``\emph{wolf}''.
+    \item Case 2. Suppose $P\left(\emph{fox} \, | \, \text{context}\right)$ is too low (underestimated). Then, the gradient says ``\emph{move the context \textbf{closer} to fox}''. Therefore, a small portion of $C'\left(\emph{fox}\right)$ is \emph{\textbf{added}} to the context embeddings. Geometrically, the context vectors move \textbf{toward the correct word} ``\emph{fox}''.
+\end{itemize}
+Therefore, the CBOW training algorithm is simply a standard forward pass followed by backpropagation, with the only distinctive feature being that the \hl{learned parameters are} the \textbf{word embedding matrix} $C$ and the \textbf{output weight matrix} $C'$. The training process gradually organizes the embedding space, so that words that appear in similar contexts end up with similar embeddings.
+
+\begin{figure}[!htp]
+    \centering
+    \resizebox{0.82\textwidth}{!}{%
+    \begin{tikzpicture}[
+        >=Latex,
+        font=\small,
+        every node/.style={align=center},
+        ctx/.style={circle, fill=blue!70, inner sep=2.2pt},
+        good/.style={circle, fill=green!60!black, inner sep=2.2pt},
+        bad/.style={circle, fill=red!70, inner sep=2.2pt},
+        move/.style={->, thick, dashed, blue!70},
+        attract/.style={->, thick, green!60!black},
+        repel/.style={->, thick, red!70},
+        axis/.style={->, gray!70},
+        note/.style={text width=5.8cm, align=left}
+    ]
+
+    % ============================================================
+    % PANEL 1: INITIAL STATE
+    % ============================================================
+    \begin{scope}[yshift=0cm]
+        \node[font=\bfseries\large] at (2.25,4.25) {Initial state};
+
+        % axes
+        \draw[axis] (0,0) -- (4.7,0) node[right] {$x_1$};
+        \draw[axis] (0,0) -- (0,3.7) node[above] {$x_2$};
+
+        % points
+        \node[bad, label=above:{\emph{wolf}}] (w1) at (1.2,2.8) {};
+        \node[good, label=below right:{\emph{fox}}] (f1) at (3.7,0.8) {};
+        \node[ctx, label=above right:{context}] (c1) at (1.9,2.0) {};
+
+        % distances
+        \draw[dotted] (c1) -- (w1);
+        \draw[dotted] (c1) -- (f1);
+
+        % explanation
+        \node[note] at (7.7,2.0) {
+            The context representation is initially closer to the
+            wrong word \emph{wolf} than to the correct target word
+            \emph{fox}.
+        };
+    \end{scope}
+
+    % Arrow between panels
+    \draw[->, very thick, gray!70] (2.25,-0.45) -- (2.25,-1.15);
+
+    % ============================================================
+    % PANEL 2: AFTER ONE UPDATE
+    % ============================================================
+    \begin{scope}[yshift=-5.8cm]
+        \node[font=\bfseries\large] at (2.25,4.25) {After one update};
+
+        % axes
+        \draw[axis] (0,0) -- (4.7,0) node[right] {$x_1$};
+        \draw[axis] (0,0) -- (0,3.7) node[above] {$x_2$};
+
+        % fixed words
+        \node[bad, label=above:{\emph{wolf}}] (w2) at (1.2,2.8) {};
+        \node[good, label=below right:{\emph{fox}}] (f2) at (3.7,0.8) {};
+
+        % context before and after
+        \node[ctx, opacity=0.35, label=left:{\scriptsize old context}] (cold) at (1.9,2.0) {};
+        \node[ctx, label=above right:{context}] (c2) at (2.45,1.55) {};
+
+        % movement of the context
+        \draw[move] (cold) -- (c2);
+
+        % intuitive forces
+        \draw[repel] (c2) -- ($(c2)!0.55!(w2)$)
+            node[midway, above left, font=\scriptsize] {away};
+        \draw[attract] (c2) -- ($(c2)!0.65!(f2)$)
+            node[midway, below right, font=\scriptsize] {toward};
+
+        % explanation
+        \node[note] at (7.7,2.0) {
+            If \emph{wolf} was overestimated, the update moves the
+            context away from \emph{wolf}. If \emph{fox} was
+            underestimated, the update moves the context toward
+            \emph{fox}.
+        };
+    \end{scope}
+
+    % Arrow between panels
+    \draw[->, very thick, gray!70] (2.25,-6.25) -- (2.25,-6.95);
+
+    % ============================================================
+    % PANEL 3: AFTER MANY UPDATES
+    % ============================================================
+    \begin{scope}[yshift=-11.6cm]
+        \node[font=\bfseries\large] at (2.25,4.25) {After many updates};
+
+        % axes
+        \draw[axis] (0,0) -- (4.7,0) node[right] {$x_1$};
+        \draw[axis] (0,0) -- (0,3.7) node[above] {$x_2$};
+
+        % points
+        \node[bad, label=above:{\emph{wolf}}] (w3) at (1.2,2.8) {};
+        \node[good, label=below right:{\emph{fox}}] (f3) at (3.7,0.8) {};
+        \node[ctx, label=above:{context}] (c3) at (3.2,1.05) {};
+
+        % distances
+        \draw[dotted] (c3) -- (w3);
+        \draw[dotted] (c3) -- (f3);
+
+        % explanation
+        \node[note] at (7.7,2.0) {
+            After many training examples, the context representation
+            becomes closer to the correct target word. This repeated
+            process gradually organizes the embedding space.
+        };
+    \end{scope}
+
+    % ============================================================
+    % LEGEND - VERTICAL, NON-OVERLAPPING
+    % ============================================================
+    \begin{scope}[yshift=-13cm]
+        \node[
+            draw=gray!40,
+            rounded corners,
+            inner xsep=8pt,
+            inner ysep=6pt,
+            fill=gray!3
+        ] at (5,0) {
+            \begin{tabular}{@{}cl@{}}
+                \tikz{\node[bad] {}; }  & wrong predicted word \\[2pt]
+                \tikz{\node[good] {}; } & correct target word \\[2pt]
+                \tikz{\node[ctx] {}; }  & context representation
+            \end{tabular}
+        };
+    \end{scope}
+
+    \end{tikzpicture}%
+    }
+    \caption{\textbf{Geometric intuition} of CBOW training. The context representation is moved away from overestimated wrong words and toward the correct target word.}
+    \label{fig:cbow-geometric-intuition-vertical}
+\end{figure}

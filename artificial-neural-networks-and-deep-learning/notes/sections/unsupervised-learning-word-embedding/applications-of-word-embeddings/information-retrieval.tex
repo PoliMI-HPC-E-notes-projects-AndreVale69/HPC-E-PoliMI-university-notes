@@ -1,0 +1,287 @@
+\subsection{Applications of Word Embeddings}\label{sec:applications-of-word-embeddings}
+
+So far, we have focused on \textbf{how word embeddings are learned}. We introduced Word2Vec, studied its CBOW and Skip-Gram architectures, analyzed the training process, and observed that the resulting embedding space exhibits remarkable semantic regularities, such as meaningful vector offsets and word analogies. The next natural question is: \emph{\textbf{once these embeddings have been learned, how can they be used?}}
+
+\highspace
+One of the greatest strengths of Word2Vec is that the learned embeddings are \textbf{general-purpose vector representations}. After training, the neural network itself is no longer needed; instead, the embedding matrix can be reused in many downstream Natural Language Processing (NLP) tasks. Each word is simply replaced by its corresponding embedding vector, providing a dense semantic representation that can be exploited by other algorithms.
+
+\highspace
+In this section, we explore some of the earliest and most influential applications of word embeddings, including \textbf{Information Retrieval} and \textbf{Document Classification/Similarity}. These applications demonstrate how replacing sparse one-hot representations with dense semantic vectors enables systems to compare texts based on their \emph{meaning} rather than relying solely on exact word matching.
+
+\longline
+
+\subsubsection{Information Retrieval}\label{sec:information-retrieval}
+
+One of the earliest and most influential applications of word embeddings is \definition{Information Retrieval (IR)}. Information Retrieval is the field concerned with \textbf{finding documents that are relevant to a user's query}. For example, when we type ``\emph{restaurants in mountain view that are not very good}'' into a search engine, we expect to retrieve restaurants with \textbf{poor reviews} in Mountain View, even if the documents do not contain the same words.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Traditional IR}}
+\end{flushleft}
+Classical search engines typically represent both the query and the documents, using \textbf{Bag-of-Words} (BoW, \autopageref{def:bag-of-words-bow}) or TF-IDF\footnote{%
+    \definition{Term Frequency-Inverse Document Frequency (TF-IDF)} is one of the most important classical techniques in \textbf{Information Retrieval (IR)}. Before neural embeddings like Word2Vec, it was the standard way to represent documents for search engines and document classification. The main idea is simple: a word is important for a document if it appears frequently in that document, but not frequently in all documents. So TF-IDF assigns each word a weight rather than simply recording whether the word appears. For example, if the word ``\emph{the}'' appears in every document, it would have a low TF-IDF score, while a more unique word like ``\emph{quark}'' would have a higher score in documents where it appears. This allows search engines to better capture the relevance of documents to a query, as it emphasizes the unique and informative words rather than common ones.
+} vectors.
+
+\highspace
+For example, the query:
+\begin{center}
+    ``\emph{restaurants in mountain view that are not very good}''
+\end{center}
+\noindent
+Might be represented simply as a collection of independent words:
+\begin{center}
+    \emph{restaurants}, \emph{mountain}, \emph{view}, \emph{not}, \emph{very}, \emph{good}
+\end{center}
+\noindent
+The problem is that this representation ignores semantics. For instance:
+\begin{itemize}
+    \item \emph{restaurant} and \emph{cafe} are treated as unrelated words;
+    \item \emph{bad}, \emph{poor}, and \emph{terrible} are considered completely different terms;
+    \item Documents containing synonyms may never be retrieved, even if they are relevant to the query.
+\end{itemize}
+The retrieval system therefore depends heavily on \textbf{exact word matching}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Using Word Embeddings}}
+\end{flushleft}
+Word embeddings provide a richer representation. Instead of representing each word as a sparse one-hot vector:
+\begin{equation*}
+    w \longrightarrow \mathbf{w} \in \mathbb{R}^m
+\end{equation*}
+Each word is represented by a dense embedding. Consequently, an entire query can also be represented by combining the embeddings of its words. For the example query:
+\begin{center}
+    ``\emph{restaurants in mountain view that are not very good}''
+\end{center}
+\noindent
+The process becomes:
+\begin{enumerate}
+    \item \textbf{Query} (the user's input): ``\emph{restaurants in mountain view that are not very good}''.
+    \item \textbf{Phrase decomposition}:
+    \begin{gather*}
+        \emph{restaurants} \qquad \left(\emph{mountain view}\right) \qquad \left(\emph{not very good}\right)
+    \end{gather*}
+    \item \textbf{Embedding representation}:
+    \begin{gather*}
+        \mathbf{w}_{\emph{restaurants}} + \mathbf{w}_{\emph{in}} + \mathbf{w}_{(\emph{mountain view})} + \mathbf{w}_{\emph{that}} + \mathbf{w}_{\emph{are}} + \mathbf{w}_{(\emph{not very good})}
+    \end{gather*}
+\end{enumerate}
+Where every element is represented by an embedding vector rather than by a one-hot encoding.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How to build the query vector?}}
+\end{flushleft}
+Suppose the embeddings are:
+\begin{equation*}
+    \mathbf{w}_{\emph{restaurants}}, \quad \mathbf{w}_{\emph{mountain view}}, \quad \mathbf{w}_{\emph{bad}}
+\end{equation*}
+A simple representation of the whole query is obtained by averaging (or summing) the embeddings:
+\begin{equation}
+    \mathbf{q} = \frac{1}{n} \cdot \sum_{i=1}^{n} \mathbf{w}_i
+\end{equation}
+Where $n$ is the \textbf{number of words} (or phrases) in the query, and $\mathbf{w}_i$ is the \textbf{embedding} of the $i$-th \textbf{word} produced by a model like Word2Vec. The resulting vector $\mathbf{q}$ acts as a \textbf{semantic representation of the entire query}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{search} \textbf{Retrieving relevant documents}}
+\end{flushleft}
+Now that we have a valid vector representation of the query, we need to understand how to retrieve relevant documents. 
+
+\highspace
+Each document can be represented in exactly the same way:
+\begin{equation*}
+    \mathbf{d}_{1}, \mathbf{d}_{2}, \ldots, \mathbf{d}_{N}
+\end{equation*}
+To determine which document best matches the query, the search engine computes a similarity measure, typically the \definition{Cosine Similarity}:
+\begin{equation*}
+    \mathrm{sim}\left(\mathbf{q}, \mathbf{d}\right) = \frac{\mathbf{q} \cdot \mathbf{d}}{\left\|\mathbf{q}\right\| \cdot \left\|\mathbf{d}\right\|}
+\end{equation*}
+Documents whose vectors are closest to the query vector are returned first (i.e., those with the highest cosine similarity). Unlike Bag-of-Words or TF-IDF, this comparison is based on \textbf{semantic similarity} rather than exact word overlap. For example, a document containing the phrase ``\emph{poor reviews}'' would be considered relevant to the query ``\emph{not very good}'', even though the words do not match exactly.
+
+\begin{definitionbox}[: Cosine Similarity]
+    When representing queries and documents as vectors, we need a way to measure \textbf{how similar two vectors are}. A \hl{natural idea would be to compute the Euclidean distance between them.} However, this is often not appropriate for text because the \textbf{length (magnitude) of a vector is usually less important than its direction}. Instead, Information Retrieval systems commonly use the \definition{Cosine Similarity}, which measures the cosine of the angle between two vectors.
+
+    \highspace
+    Mathematically, given two vectors:
+    \begin{equation*}
+        \mathbf{q}, \mathbf{d} \in \mathbb{R}^m
+    \end{equation*}
+    Representing a query and a document, respectively, the cosine similarity is defined as:
+    \begin{equation}\label{eq:cosine-similarity}
+        \mathrm{sim}\left(\mathbf{q}, \mathbf{d}\right) = \frac{\mathbf{q} \cdot \mathbf{d}}{\left\|\mathbf{q}\right\| \cdot \left\|\mathbf{d}\right\|}
+    \end{equation}
+    Where:
+    \begin{itemize}
+        \item $\mathbf{q} \cdot \mathbf{d}$ is the dot product of the two vectors, which measures their alignment.
+        \item $\left\|\mathbf{q}\right\|$ is the Euclidean norm (length) of the query vector.
+        \item $\left\|\mathbf{d}\right\|$ is the Euclidean norm (length) of the document vector.
+    \end{itemize}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does it work?}} Recall from linear algebra that the dot product of two vectors can be expressed as:
+    \begin{equation*}
+        \mathbf{q} \cdot \mathbf{d} = \left\|\mathbf{q}\right\| \cdot \left\|\mathbf{d}\right\| \cdot \cos\theta
+    \end{equation*}
+    Where $\theta$ is the angle between the two vectors. Dividing both sides by the vector norms gives:
+    \begin{equation*}
+        \frac{\mathbf{q} \cdot \mathbf{d}}{\left\|\mathbf{q}\right\| \cdot \left\|\mathbf{d}\right\|} = \cos\theta
+    \end{equation*}
+    Therefore, cosine similarity simply measures \textbf{how aligned the two vectors are}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{tools} \textbf{Interpretation.}} The cosine similarity always lies between:
+    \begin{equation*}
+        -1 \leq \mathrm{sim}\left(\mathbf{q}, \mathbf{d}\right) \leq 1
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $\mathrm{sim}\left(\mathbf{q}, \mathbf{d}\right) = 1$ indicates that the vectors point in exactly the \textbf{same direction} (maximum similarity).
+        \item $\mathrm{sim}\left(\mathbf{q}, \mathbf{d}\right) = 0$ indicates that the vectors are orthogonal, meaning they share \textbf{no directional similarity}.
+        \item $\mathrm{sim}\left(\mathbf{q}, \mathbf{d}\right) = -1$ indicates that the vectors point in \textbf{opposite directions} (maximum dissimilarity).
+    \end{itemize}
+    In the context of word embeddings, values close to 1 indicate that the query and the document have very similar semantic representations.
+    \begin{center}
+        \resizebox{0.87\textwidth}{!}{%
+        \begin{tikzpicture}[
+            >=Latex,
+            font=\small,
+            every node/.style={align=center},
+            axis/.style={->, gray!70},
+            vectorq/.style={->, very thick, blue!70},
+            vectord/.style={->, very thick, orange!85!black},
+            projection/.style={dashed, gray!70},
+            note/.style={
+                draw=gray!40,
+                rounded corners,
+                fill=gray!4,
+                text width=8.8cm,
+                align=center,
+                inner sep=8pt
+            }
+        ]
+
+        % ============================================================
+        % COORDINATES
+        % ============================================================
+        \coordinate (O) at (0,0);
+        \coordinate (q) at (2.0,3.3);
+        \coordinate (d) at (4.7,1.25);
+
+        % Projection of q onto d
+        \coordinate (proj) at ($(O)!(q)!(d)$);
+
+        % ============================================================
+        % AXES
+        % ============================================================
+        \draw[axis] (-0.3,0) -- (5.6,0) node[right] {$x_1$};
+        \draw[axis] (0,-0.3) -- (0,4.1) node[above] {$x_2$};
+
+        % ============================================================
+        % VECTORS
+        % ============================================================
+        \draw[vectorq] (O) -- (q)
+            node[above right] {$\mathbf q$};
+
+        \draw[vectord] (O) -- (d)
+            node[right] {$\mathbf d$};
+
+        % ============================================================
+        % ANGLE
+        % ============================================================
+        % Direction of d is approximately 14.9 degrees.
+        % Direction of q is approximately 58.8 degrees.
+        \draw[->, thick, gray!80] (14.9:0.75)
+            arc[start angle=14.9, end angle=58.8, radius=0.75];
+
+        \node[font=\small] at (36:1.05) {$\theta$};
+
+        % ============================================================
+        % PROJECTION
+        % ============================================================
+        \draw[projection] (q) -- (proj);
+        \fill[gray!70] (proj) circle (1.5pt);
+
+        \draw[projection] (O) -- (proj);
+
+        \node[font=\scriptsize, below] at (proj)
+            {projection};
+
+        \node[font=\scriptsize, below] at ($(O)!0.55!(proj)$)
+            {$\|\mathbf q\|\cos\theta$};
+
+        % ============================================================
+        % FORMULA BOX BELOW THE PLOT
+        % ============================================================
+        \node[note] at (2.75,-2.5) {
+            Cosine similarity measures the angle between two vectors:
+            \[
+                \mathrm{sim}(\mathbf q,\mathbf d)
+                =
+                \frac{\mathbf q \cdot \mathbf d}
+                {\|\mathbf q\|\,\|\mathbf d\|}
+                =
+                \cos\theta
+            \]
+
+            \vspace{-0.5mm}
+
+            \begin{tabular}{ccl}
+                $\theta \approx 0^\circ$   & $\Rightarrow$ & high similarity \\[1mm]
+                $\theta \approx 90^\circ$  & $\Rightarrow$ & no directional similarity \\[1mm]
+                $\theta \approx 180^\circ$ & $\Rightarrow$ & opposite direction
+            \end{tabular}
+        };
+
+        \end{tikzpicture}%
+        }
+    \end{center}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not use Euclidean distance?}} Suppose we compare two vectors using Euclidean distance:
+    \begin{equation*}
+        \mathbf{q} = \begin{bmatrix}
+            1 \\ 2
+        \end{bmatrix},
+        \quad
+        \mathbf{d} = \begin{bmatrix}
+            2 \\ 4
+        \end{bmatrix}
+    \end{equation*}
+    The Euclidean distance between $\mathbf{q}$ and $\mathbf{d}$ is:
+    \begin{equation*}
+        \left\|\mathbf{q} - \mathbf{d}\right\| = \sqrt{(1-2)^2 + (2-4)^2} = \sqrt{1 + 4} = \sqrt{5}
+    \end{equation*}
+    Which is \textbf{not zero}, even though the vectors point in exactly the same direction.
+\end{definitionbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why is this better than traditional IR?}}
+\end{flushleft}
+Suppose a user searches for:
+\begin{center}
+    ``\emph{good restaurant}''
+\end{center}
+But a document contains:
+\begin{center}
+    ``\emph{excellent cafe}''
+\end{center}
+A Bag-of-Words model may assign a very low similarity because none of the words match exactly. Instead, with word embeddings:
+\begin{itemize}
+    \item \emph{restaurant} is semantically similar to \emph{cafe};
+    \item \emph{good} is semantically similar to \emph{excellent}.
+\end{itemize}
+Therefore, the document vector remains close to the query vector, allowing the system to retrieve relevant documents even when different words are used. This is one of the \textbf{major advantages of dense vector representations}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}}
+\end{flushleft}
+Although this approach is simple and computationally efficient, it has important limitations. It works reasonably well for \textbf{short queries}, but it does \textbf{not scale well to long sentences or entire documents}. The reason is that averaging many word embeddings removes important information:
+\begin{itemize}
+    \item Word order is lost, so ``\emph{not very good}'' and ``\emph{very good not}'' would have the same representation;
+    \item Syntactic structure disappears, so ``\emph{not very good}'' and ``\emph{very good not}'' would have the same representation;
+    \item Different meanings may be mixed into a single vector, so ``\emph{bank}'' in the context of a river and ``\emph{bank}'' in the context of finance would be averaged together.
+\end{itemize}
+A simple \hl{average of the embeddings would produce almost the same document vector, even though the meanings are opposite.} This illustrates why later architectures, such as \textbf{Recurrent Neural Networks (RNNs)}, \textbf{Attention Mechanisms}, and \textbf{Transformers}, were developed to model the relationships between words rather than treating them as an unordered set.

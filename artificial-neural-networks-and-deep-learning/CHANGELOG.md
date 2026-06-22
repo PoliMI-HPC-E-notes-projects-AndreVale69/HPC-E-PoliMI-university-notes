@@ -40,6 +40,8 @@
   - add `Semantic Regularities in Embedding Spaces`
     - add `Semantic Relationships`
     - add `Linear Structure of Embedding Spaces`
+  - add `Applications of Word Embeddings`
+    - add `Information Retrieval`
 
 --------------------
 

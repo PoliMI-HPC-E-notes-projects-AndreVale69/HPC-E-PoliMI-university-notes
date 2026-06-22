@@ -26,6 +26,7 @@
   - add `Building Blocks of Variational Algorithms`
     - add `Cost Function`
     - add `Ansatz Design`
+    - add `Optimizer Choice`
 
 --------------------
 

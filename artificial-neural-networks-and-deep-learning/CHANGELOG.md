@@ -42,6 +42,8 @@
     - add `Linear Structure of Embedding Spaces`
   - add `Applications of Word Embeddings`
     - add `Information Retrieval`
+    - add `Document Classification and Similarity`
+    - add `Sentiment Analysis`
 
 --------------------
 

@@ -27,6 +27,7 @@
     - add `Cost Function`
     - add `Ansatz Design`
     - add `Optimizer Choice`
+    - add `Hardware Efficient Ansatz`
 
 --------------------
 

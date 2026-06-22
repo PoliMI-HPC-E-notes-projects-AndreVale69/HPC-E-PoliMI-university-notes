@@ -44,6 +44,8 @@
     - add `Information Retrieval`
     - add `Document Classification and Similarity`
     - add `Sentiment Analysis`
+  - add `GloVe: Global Vectors for Word Representation`
+    - add `Motivation behind GloVe`
 
 --------------------
 

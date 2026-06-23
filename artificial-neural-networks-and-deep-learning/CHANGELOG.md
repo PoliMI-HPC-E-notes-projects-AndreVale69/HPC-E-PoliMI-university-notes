@@ -48,6 +48,7 @@
     - add `Motivation behind GloVe`
     - add `Global Co-occurrence Statistics`
     - add `GloVe Training Objective`
+    - add `Comparison with Word2Vec`
 
 --------------------
 

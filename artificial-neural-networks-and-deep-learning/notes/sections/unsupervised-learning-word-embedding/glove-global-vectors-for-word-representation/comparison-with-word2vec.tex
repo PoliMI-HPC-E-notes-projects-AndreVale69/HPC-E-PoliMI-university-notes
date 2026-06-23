@@ -1,0 +1,117 @@
+\subsubsection{Comparison with Word2Vec}\label{sec:comparison-with-word2vec}
+
+At first glance, Word2Vec and GloVe appear to be very different algorithms.
+\begin{itemize}
+    \item \textbf{Word2Vec} is a \textbf{prediction-based model}: it learns embeddings by predicting surrounding words.
+    \item \textbf{GloVe} is a \textbf{count-based model}: it learns embeddings by fitting global co-occurrence statistics.
+\end{itemize}
+Despite these different training procedures, both methods produce remarkably similar embedding spaces and capture many of the same semantic relationships. In fact, the GloVe authors summarize their contribution by saying: ``\textbf{GloVe makes explicit what Word2Vec does implicitly}''.\cite{pennington2014glove} Let's understand what this means.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Different Learning Strategies}}
+\end{flushleft}
+The main difference lies in \textbf{what the model is trying to optimize during training}.
+\begin{itemize}
+    \item \important{Word2Vec} never computes the complete co-occurrence matrix. Instead, it repeatedly observes small context windows. For example:
+    \begin{center}
+        \emph{The cat sleeps on the sofa.}
+    \end{center}
+    Using Skip-Gram, it creates training pairs such as:
+    \begin{equation*}
+        \left(\emph{cat} \to \emph{The}\right) \quad \left(\emph{cat} \to \emph{sleeps}\right) \quad \left(\emph{cat} \to \emph{on}\right)
+    \end{equation*}
+    And learns vectors that make these predictions accurate. The embeddings emerge \textbf{indirectly} as a consequence of solving this prediction task.
+
+    \item \important{GloVe} takes a completely different approach. Before training even begins, it scans the entire corpus and builds the global co-occurrence matrix $X_{ij}$. Training then consists of finding vectors whose dot products reproduce these observed statistics. Instead of predicting neighboring words one training example at a time, GloVe directly fits the global statistical structure of the corpus.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{DarkOrange3}{\faIcon{balance-scale} \textbf{Local Context vs Global Statistics}}
+\end{flushleft}
+This is the easiest way to understand the difference between Word2Vec and GloVe.
+\begin{itemize}
+    \item \textbf{Word2Vec learns from local context}. At every training step it only sees a small window. Example:
+    \begin{center}
+        \emph{The cat sleeps on the sofa.}
+    \end{center}
+    If the window size is 2, the word ``\emph{cat}'' only interacts with ``\emph{The}'' and ``\emph{sleeps}''. The model has no direct knowledge of how often ``\emph{cat}'' co-occurs with every other word in the corpus. It gradually discovers these relationships after millions of training examples.
+
+    \item \textbf{GloVe learns from global statistics}. Before optimization starts, it already knows:
+    \begin{itemize}
+        \item How often ``\emph{cat}'' appears near ``\emph{animal}''.
+        \item How often it appears near ``\emph{pet}''.
+        \item How often it appears near ``\emph{keyboard}''.
+    \end{itemize}
+    And every other word. The optimization process simply tries to encode this information into vectors.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{DarkOrange3}{\faIcon{balance-scale} \textbf{Implicit vs Explicit Learning}}
+\end{flushleft}
+In general, \hl{GloVe makes explicit what Word2Vec does implicitly.}
+\begin{itemize}
+    \item \textbf{Word2Vec}. The model never explicitly computes co-occurrence probabilities. Nevertheless, because it repeatedly predicts neighboring words, it eventually learns embeddings that reflect these statistics. The statistical information is \textbf{hidden inside the learned vectors}.
+
+    \item \textbf{GloVe}. Instead of hoping that the model discovers these statistics, we explicitly provide them through the \textbf{co-occurrence matrix} and \textbf{optimize the vectors to reproduce them}. The same semantic relationships are learned, but the statistical information is used directly.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{Training Objective}}
+\end{flushleft}
+Another important difference is the optimization objective.
+\begin{itemize}
+    \item \textbf{Word2Vec}. The objective is: \textbf{predict neighboring words}. Training uses objective such as Skip-Gram, CBOW, Negative Sampling, and Hierarchical Softmax.
+
+    \item \textbf{GloVe}. The objective is: \textbf{reproduce the logarithm of the observed co-occurrence counts}. Training minimizes the weighted least-squares loss:
+    \begin{equation*}
+        J = \sum_{i,j} f(X_{ij}) \left(w_i^T \tilde{w}_j + b_i + \tilde{b}_j - \log X_{ij}\right)^2
+    \end{equation*}
+    So although both methods learn vectors, they optimize completely different objectives.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What do they learn?}} Interestingly, the resulting embedding spaces are extremely similar. Both methods learn that:
+\begin{itemize}
+    \item Similar words are close together;
+    \item Semantic analogies correspond to vector offsets;
+    \item Arithmetic operations on vectors make intuitive sense.
+\end{itemize}
+For example:
+\begin{equation*}
+    \emph{king} - \emph{max} + \emph{woman} \approx \emph{queen}
+\end{equation*}
+A property that we already observed for Word2Vec and that also appears in GloVe embeddings.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}} \textbf{and} \textcolor{Red2}{\faIcon{times-circle} \textbf{Disadvantages}}
+\end{flushleft}
+\begin{center}
+    \begin{tabular}{@{} p{15em} p{15em} @{}}
+        \toprule
+        \text{Word2Vec} & \text{GloVe} \\
+        \midrule
+        Learns by predicting neighboring words              & Learns from global co-occurrence counts \\
+        Uses only local context during each update          & Uses statistics from the entire corpus \\
+        Does not explicitly build a co-occurrence matrix    & Requires building the co-occurrence matrix first \\
+        Very efficient on large corpora                     & Can better exploit global statistical information \\
+        Embeddings emerge implicitly                        & Embeddings are optimized explicitly from corpus statistics \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\highspace
+In summary, there is no universal winner. In practice:
+\begin{itemize}
+    \item \textbf{Word2Vec} is computationally simpler and scales very well to extremely large corpora.
+    \item \textbf{GloVe} often produces embeddings of comparable or slightly better quality because it incorporates global co-occurrence information from the beginning.
+\end{itemize}
+The differences in downstream performance are usually quite small, and both methods have become standard techniques for learning static word embeddings. However, the distinction between the two approaches can be summarized as follows:
+\begin{itemize}
+    \item \textbf{Word2Vec learns by prediction}. Predict surrounding words and let the embeddings emerge naturally.
+    \item \textbf{GloVe learns by reconstruction}. Fit the observed co-occurrence statistics directly to obtain the embeddings.
+\end{itemize}

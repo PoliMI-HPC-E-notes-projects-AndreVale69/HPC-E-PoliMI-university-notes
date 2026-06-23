@@ -47,6 +47,7 @@
   - add `GloVe: Global Vectors for Word Representation`
     - add `Motivation behind GloVe`
     - add `Global Co-occurrence Statistics`
+    - add `GloVe Training Objective`
 
 --------------------
 

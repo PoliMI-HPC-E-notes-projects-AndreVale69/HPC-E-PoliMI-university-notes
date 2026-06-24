@@ -13,6 +13,10 @@
 
 ### v0.6.0
 
+- add `Image Classification`
+  - add `Computer Vision and Digital Images`
+    - add `What is Computer Vision?`
+
 --------------------
 
 ### v0.5.0

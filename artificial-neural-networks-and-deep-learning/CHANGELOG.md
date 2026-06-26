@@ -17,6 +17,7 @@
   - add `Computer Vision and Digital Images`
     - add `What is Computer Vision?`
     - add `Examples of Visual Recognition Tasks`
+    - add `Digital Images as Arrays`
 
 --------------------
 

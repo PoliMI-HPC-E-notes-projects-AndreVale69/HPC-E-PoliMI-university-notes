@@ -19,6 +19,8 @@
     - add `Examples of Visual Recognition Tasks`
     - add `Digital Images as Arrays`
     - add `RGB Images and Videos`
+  - add `Local Spatial Transformations and Correlation`
+    - add `Local Neighbourhoods`
 
 --------------------
 

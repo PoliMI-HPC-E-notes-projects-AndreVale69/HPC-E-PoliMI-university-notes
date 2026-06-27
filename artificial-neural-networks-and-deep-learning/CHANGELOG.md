@@ -23,6 +23,7 @@
     - add `Local Neighbourhoods`
     - add `Spatial Filters`
     - add `Correlation as a Local Linear Operation`
+    - add `Correlation as Template Matching`
 
 --------------------
 

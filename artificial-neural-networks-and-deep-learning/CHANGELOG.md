@@ -21,6 +21,7 @@
     - add `RGB Images and Videos`
   - add `Local Spatial Transformations and Correlation`
     - add `Local Neighbourhoods`
+    - add `Spatial Filters`
 
 --------------------
 

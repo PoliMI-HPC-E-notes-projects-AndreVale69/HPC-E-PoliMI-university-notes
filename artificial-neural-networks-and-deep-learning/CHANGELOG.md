@@ -22,6 +22,7 @@
   - add `Local Spatial Transformations and Correlation`
     - add `Local Neighbourhoods`
     - add `Spatial Filters`
+    - add `Correlation as a Local Linear Operation`
 
 --------------------
 

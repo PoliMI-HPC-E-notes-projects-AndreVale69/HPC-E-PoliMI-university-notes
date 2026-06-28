@@ -1,0 +1,88 @@
+\subsection{Image Classification with Linear Classifiers}\label{sec:image-classification-with-linear-classifiers}
+
+\subsubsection{The Image Classification Problem}\label{sec:the-image-classification-problem}
+
+Until now, we've been discussing \textbf{how to represent images} and \textbf{how to process them using correlation filters}. Now the question becomes: \emph{\textbf{given an image, how can a computer automatically recognize what it contains?}}
+
+\highspace
+\textcolor{Green3}{\faIcon{bullseye} \textbf{Motivation.}} Humans solve image recognition effortlessly. We recognize objects almost instantly, regardless of: viewpoint, lighting, scale, background, partial occlusions. For a computer, however, an image is \textbf{just a collection of numbers}. The goal of \textbf{image classification} is to teach the computer to associate these numbers with a semantic label.
+
+\highspace
+Formally, suppose we have an RGB image:
+\begin{equation*}
+    I \in \mathbb{R}^{R \times C \times 3}
+\end{equation*}
+The classifier must assign it to \textbf{one category} among a predefined set $\Lambda$ of $K$ possible categories:
+\begin{equation*}
+    \Lambda = \{ \lambda_1, \lambda_2, \ldots, \lambda_K \}
+\end{equation*}
+For example:
+\begin{equation*}
+    \Lambda = \left\{\text{wheel}, \text{car}, \text{castle}, \text{baboon}, \dots\right\}
+\end{equation*}
+So the task is simply: image $\to$ classifier $\to$ label.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Classification is more than choosing a label}}
+\end{flushleft}
+A modern classifier usually does \textbf{not} produce only one word. Instead, it computes a \textbf{confidence score} for every possible class. For example, a classifier might output:
+\begin{equation*}
+    \text{scores} = \left[0.1, 0.7, 0.2\right]
+\end{equation*}
+This means that the classifier is 10\% confident that the image is a wheel, 70\% confident that it is a car, and 20\% confident that it is a castle. The predicted class is simply the one with the \textbf{highest score}.
+
+\highspace
+Mathematically, we can define the \textbf{classification task} as:
+\begin{equation*}
+    \mathcal{K}: I \to y
+\end{equation*}
+Where $I$ is the \textbf{input image}, $y$ is the \textbf{predicted label}, and $\mathcal{K}$ is the \textbf{classifier}. Since $y \in \Lambda$, the \hl{classifier is simply a function that maps an image into one of the predefined classes.} Initially, the classifier takes random numbers $\mathcal{K}_{\theta}$ as parameters $\theta$. After training, these parameters are adjusted to \hl{encode everything the model has learned about recognizing different classes.}
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Output Space.}} If there are $L$ possible classes, the classifier actually computes $L$ scores simultaneously. Thus, instead of producing a single label:
+\begin{equation*}
+    \mathcal{K}: I \to \Lambda
+\end{equation*}
+We can think of the classifier as producing a vector of scores:
+\begin{equation*}
+    \mathcal{K}: \mathbb{R}^{R \times C \times 3} \to \left[0,1\right]^{L}
+\end{equation*}
+Meaning that the input is an RGB image, and the \textbf{output is a vector} of $L$ \textbf{confidence values} (often probabilities after a Softmax layer). Compared to a single label, the \hl{scores reveal something important}: the \hl{classifier can express \textbf{uncertainty}.} For example, it might be 70\% sure that an object is a car and 30\% sure that it is a truck. This is crucial for real-world applications, in which decisions must be made based on confidence levels.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{What is the Image Classification Problem?}}
+\end{flushleft}
+The \definition{Image Classification Problem} can be stated as: \hl{given an image, automatically determine which semantic category it belongs to.} Formally, given $I \in \mathbb{R}^{R \times C \times 3}$, find $y \in \Lambda$ where $I$ is the image, $\Lambda$ is the finite set of possible classes, and $y$ is the correct class label.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is this actually difficult?}} If images were always identical, classification would be trivial. Unfortunately, the same object can appear in infinitely many ways. For example, the class ``\emph{Dog}'' may contain images like \emph{a dog running in a park}, \emph{a dog sitting on a couch}, \emph{a dog playing with a ball}, etc. All of these belong to the \textbf{same class}. So the classifier must ignore variations that \textbf{do not change the object's identity}.
+
+\highspace
+But this is \textbf{not the only challenge}. Different classes may look very similar. For example, a \emph{Wolf}, a \emph{Dog}, and a \emph{Fox} or a \emph{Car}, a \emph{Truck}, and a \emph{SUV} may share many visual features. The classifier must therefore learn:
+\begin{itemize}
+    \item \textbf{Intra-class invariance}: The ability to recognize the same object despite appearance changes (e.g., different angles, lighting, or occlusions).
+    \item \textbf{Inter-class discrimination}: The ability to distinguish between visually similar objects (e.g., a dog vs. a wolf).
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need Machine Learning?}} We could imagine writing rules manually (e.g., ``if the image has four wheels, it is a car''). However, this approach is impractical for many reasons:
+\begin{itemize}
+    \item The number of possible rules is enormous, and it is impossible to cover all cases.
+    \item The rules would be brittle and fail to generalize to new images.
+    \item The rules would be hard to maintain and update as new classes are added.
+\end{itemize}
+The number of rules quickly becomes impossible to manage. Instead, we let a model \textbf{learn} these rules from examples.
+
+\highspace
+In general, the complete image classification process introduced in this section can be summarized as follows:
+\begin{enumerate}
+    \item \textbf{Input:} An RGB image $I \in \mathbb{R}^{R \times C \times 3}$.
+    \item \textbf{Classifier:} A function $\mathcal{K}$ that takes the image as input with parameters $\theta$ and produces a vector of scores.
+    \item \textbf{Output:} A vector of scores $\text{scores} \in \left[0,1\right]^{L}$, where each score corresponds to a class in the predefined set $\Lambda$.
+    \item \textbf{Decision:} The predicted label $y$ is the class with the highest score, i.e., $y = \argmax_{i} \text{scores}[i]$.
+\end{enumerate}
+
+\highspace
+But \textbf{\emph{how does the classifier compute these scores from millions of pixel values?}} The next subsection answers this by introducing the simplest possible classifier: the \emph{linear classifier}. Rather than searching for objects explicitly, it learns a set of weights that directly transform the image pixels into class scores. This will be the foundation for understanding neural networks and, later, convolutional neural networks.

@@ -25,6 +25,8 @@
     - add `Correlation as a Local Linear Operation`
     - add `Correlation as Template Matching`
     - add `Correlation on RGB Images`
+  - add `Image Classification with Linear Classifiers`
+    - add `The Image Classification Problem`
 
 --------------------
 

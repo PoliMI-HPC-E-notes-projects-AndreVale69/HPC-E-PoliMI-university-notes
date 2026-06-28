@@ -24,6 +24,7 @@
     - add `Spatial Filters`
     - add `Correlation as a Local Linear Operation`
     - add `Correlation as Template Matching`
+    - add `Correlation on RGB Images`
 
 --------------------
 

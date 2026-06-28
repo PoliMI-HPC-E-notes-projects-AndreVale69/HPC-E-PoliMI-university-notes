@@ -27,6 +27,7 @@
     - add `Correlation on RGB Images`
   - add `Image Classification with Linear Classifiers`
     - add `The Image Classification Problem`
+    - add `Feeding Images to Neural Networks`
 
 --------------------
 

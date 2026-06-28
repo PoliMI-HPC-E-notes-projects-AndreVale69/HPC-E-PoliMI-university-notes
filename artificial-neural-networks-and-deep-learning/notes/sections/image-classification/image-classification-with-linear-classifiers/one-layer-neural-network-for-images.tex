@@ -1,0 +1,174 @@
+\subsubsection{One-layer Neural Network for Images}\label{sec:one-layer-neural-network-for-images}
+
+Let's start by considering a simple one-layer neural network for image classification.
+
+\highspace
+Suppose we have already flattened an image into:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d} \quad \text{where } d = R \times C \times 3
+\end{equation*}
+Our goal is simple: given this vector, \hl{predict which object appears in the image.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Network Architecture}}
+\end{flushleft}
+Let's start with a simple neural network. The network has only two layers: an \textbf{input layer} and an \textbf{output layer}. There are \textbf{no hidden layers}. If there are $d$ input features and $L$ possible classes, then the architecture is as follows:
+\begin{itemize}
+    \item The input layer has $d$ neurons, one for each input feature.
+    \item The output layer has $L$ neurons, one for each class.
+\end{itemize}
+For example, using the CIFAR-10 dataset, we have $d = 32 \times 32 \times 3 = 3072$ input features and $L = 10$ output classes.
+
+\highspace
+\begin{deepeningbox}[: CIFAR-10]
+    \definition{CIFAR-10} is one of the most famous benchmark datasets in computer vision. It is widely used to \textbf{train and evaluate image classification algorithms}, especially when introducing CNNs. The name comes from:
+    \begin{itemize}
+        \item CI: Canadian Institute
+        \item FAR: for Advanced Research
+        \item 10: the dataset contains \textbf{10 object classes}
+    \end{itemize}
+    The dataset contains $60'000$ \textbf{color images} of size $32 \times 32$ pixels, 3 color channels (RGB). Therefore, every image has shape $32 \times 32 \times 3$. If we flatten it into a vector, we obtain the following feature vector:
+    \begin{equation*}
+        \mathbf{x} \in \mathbb{R}^{32 \times 32 \times 3} = \mathbb{R}^{3072}
+    \end{equation*}
+    The images belong to one of these ten categories: airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck. Each image has exactly one label.
+\end{deepeningbox}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does each output neuron compute?}} Each output neuron computes a \textbf{weighted sum of every input pixel}. For class $i$:
+\begin{equation}
+    s_i = \sum_{j=1}^{d} w_{ij} x_j + b_i
+\end{equation}
+Where:
+\begin{itemize}
+    \item $s_i$ is the \textbf{score} for class $i$.
+    \item $x_{j}$ is the $j$-th input feature (pixel value).
+    \item $w_{ij}$ is the weight connecting input feature $j$ to output neuron $i$.
+    \item $b_i$ is the bias term for output neuron $i$.
+\end{itemize}
+\textcolor{Green3}{\faIcon{tools} \textbf{Weights.}} Each weight answers the question: ``\emph{\textbf{how important is this pixel for recognizing this class}?}''. Large positive weight means that the pixel supports the class, while large negative weight means that the pixel contradicts the class; near zero weight means that the pixel is irrelevant for this class.
+
+\highspace
+All the \textbf{weights are stored in a weight matrix}:
+\begin{equation}
+    W \in \mathbb{R}^{L \times d} \quad \text{where } W = \begin{bmatrix}
+        w_{11} & w_{12} & \cdots    & w_{1d} \\
+        w_{21} & w_{22} & \cdots    & w_{2d} \\
+        \vdots & \vdots & \ddots    & \vdots \\
+        w_{L1} & w_{L2} & \cdots    & w_{Ld}
+    \end{bmatrix}
+\end{equation}
+Where $L$ is the number of classes and $d$ is the number of input features. So, each row corresponds to a class and each column corresponds to an input feature. Thus, the \textbf{score} for class $i$ can be computed as:
+\begin{equation}\label{eq:score-for-class-i}
+    s_i = \sum_{j=1}^{d} w_{ij} x_j + b_i = W\left[i, :\right] \cdot \mathbf{x} + b_i
+\end{equation}
+Where $W\left[i, :\right]$ is the $i$-th row of the weight matrix $W$, and $:$ denotes all columns. In other words, it is simply the \textbf{dot product} between the input image $\mathbf{x}$ and the weights for class $i$, plus the bias term $b_i$.
+
+\highspace
+More compactly, instead of computing every score $s_i$ separately, we perform one single matrix multiplication:
+\begin{equation}\label{eq:score-for-all-classes}
+    \mathbf{s} = W \mathbf{x} + \mathbf{b}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\mathbf{s} \in \mathbb{R}^{L}$ is the vector of scores for all classes.
+    \item $W \in \mathbb{R}^{L \times d}$ is the weight matrix.
+    \item $\mathbf{x} \in \mathbb{R}^{d}$ is the input image vector.
+    \item $\mathbf{b} \in \mathbb{R}^{L}$ is the vector of bias terms for all classes.
+\end{itemize}
+
+\begin{examplebox}[: Example of a one-layer neural network for images]
+    Imagine an input image:
+    \begin{equation*}
+        \mathbf{x} = \begin{bmatrix}
+            2 \\ 1 \\ 3
+        \end{bmatrix} \in \mathbb{R}^{3}
+    \end{equation*}
+    A weight matrix and a bias vector:
+    \begin{equation*}
+        W = \begin{bmatrix}
+            1 & 2 & 1 \\
+            0 & -1 & 2
+        \end{bmatrix} \in \mathbb{R}^{2 \times 3}, \quad \mathbf{b} = \begin{bmatrix}
+            1 \\ 0
+        \end{bmatrix} \in \mathbb{R}^{2}
+    \end{equation*}
+    Then, the first output neuron computes the score for class 1:
+    \begin{equation*}
+        s_1 = 1 \cdot 2 + 2 \cdot 1 + 1 \cdot 3 + 1 = 2 + 2 + 3 + 1 = 8
+    \end{equation*}
+    The second output neuron computes the score for class 2:
+    \begin{equation*}
+        s_2 = 0 \cdot 2 + (-1) \cdot 1 + 2 \cdot 3 + 0 = 0 - 1 + 6 + 0 = 5
+    \end{equation*}
+    Therefore, the output vector of scores is:
+    \begin{equation*}
+        \mathbf{s} = \begin{bmatrix}
+            8 \\ 5
+        \end{bmatrix} \in \mathbb{R}^{2}
+    \end{equation*}
+    Since $s_1 > s_2$, the network predicts that the input image belongs to class 1.
+\end{examplebox}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is there no Activation Function?}} Normally Dense layers are followed by ReLU or another activation. However, in this case, we are \textbf{not interested in the actual scores}, but \hl{only in which class has the highest score.} Therefore, we can skip the activation function and directly use the raw scores for classification.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is Softmax ignored?}} Usually classification networks finish with a Softmax layer to convert the scores into probabilities. However, we can ignore it because \textbf{Softmax never changes the order of the scores}. Therefore, the class with the highest score before Softmax will also have the highest probability after Softmax. Softmax is \hl{useful during training} (to compute cross-entropy loss) or when calibrated probabilities are needed, but it is \textbf{not required to determine the predicted class}.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Why is this called a Linear Classifier?}} The complete model is simply:
+\begin{equation}
+    K\left(x\right) = Wx + b
+\end{equation}
+Which is a linear transformation from the input vector to the vector of class scores. There is no hidden layer, no non-linear activation, only one affine transformation. Therefore, \hl{a one-layer neural network is mathematically identical to a linear classifier.} This is an important insight because it shows that a \hl{neural network does not become ``\emph{deep}'' simply by using Dense layers.} Depth only becomes meaningful when hidden layers are separated by nonlinear activation functions.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Do multiple linear layers make the network more expressive?}}
+\end{flushleft}
+Surprisingly, the answer is \textbf{no}. Imagine inserting a hidden layer. The first layer computes:
+\begin{equation*}
+    \mathbf{h} = W_1 \mathbf{x} + \mathbf{b}_1
+\end{equation*}
+The second computes the scores:
+\begin{equation*}
+    \mathbf{s} = W_2 \mathbf{h} + \mathbf{b}_2
+\end{equation*}
+Now substitute the first equation into the second:
+\begin{equation*}
+    \mathbf{s} = W_2 \left(W_1 \mathbf{x} + \mathbf{b}_1\right) + \mathbf{b}_2 = W_2 W_1 \mathbf{x} + W_2 \mathbf{b}_1 + \mathbf{b}_2
+\end{equation*}
+But this is still a linear transformation of the input vector $\mathbf{x}$, with new weights $W' = W_2 W_1$ and new bias $b' = W_2 b_1 + b_2$. Therefore, \hl{adding more linear layers does not increase the expressive power of the network.} The network remains a linear classifier.
+
+\highspace
+In general, no matter how many linear layers we stack, the whole network can always be rewritten as:
+\begin{equation*}
+    \mathbf{s} = W \mathbf{x} + \mathbf{b}
+\end{equation*}
+Because the matrix multiplication is associative:
+\begin{equation*}
+    W_n \left(W_{n-1} \left(\cdots \left(W_2 \left(W_1 \mathbf{x} + \mathbf{b}_1\right) + \mathbf{b}_2\right) + \cdots + \mathbf{b}_{n-1}\right) + \mathbf{b}_n\right) = W' \mathbf{x} + \mathbf{b}'
+\end{equation*}
+And the composition of affine transformations is still an affine transformation. Therefore, \hl{a deep network \textbf{without nonlinearities} is mathematically equivalent to a shallow linear model.}
+
+\highspace
+Furthermore, a larger network could be too large. For the sake of argument, let's assume that adding more linear layers increases the network's expressive power. In that case, we could keep adding more and more linear layers to make the network arbitrarily complex. However, the \textbf{number of parameters would grow extremely quickly}, especially when using fully connected layers, such as dense layers for images. For example, consider the CIFAR-10 dataset. If we add a hidden layer with $1'536$ neurons, the number of parameters would be:
+\begin{equation*}
+    \text{Parameters} = (3072 \times 1536) + 1536 = 4'720'128
+\end{equation*}
+The second layer would have:
+\begin{equation*}
+    \text{Parameters} = (1536 \times 10) + 10 = 15'370
+\end{equation*}
+So even this modest network already has about 4.7 million trainable parameters, and almost all of them are in the first dense layer.
+
+\highspace
+A \hl{fully connected layer} assumes that \textbf{every pixel is connected to every hidden neuron}. \hl{For images, this is inefficient} because:
+\begin{itemize}
+    \item Nearby pixels are highly correlated;
+    \item Most pixels are irrelevant for recognizing a particular object;
+    \item Learning millions of independent weights requires large amounts of data and computation.
+\end{itemize}
+This observation motivates the next major topic: \textbf{Convolutional Neural Networks (CNNs)}, which dramatically reduce the number of parameters by exploiting the spatial structure of images instead of connecting every neuron to every pixel.

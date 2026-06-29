@@ -32,6 +32,7 @@
     - add `Training the Linear Classifier`
   - add `Interpreting Linear Classifiers on Images`
     - add `Geometric Interpretation`
+    - add `Image-based Interpretation`
 
 --------------------
 

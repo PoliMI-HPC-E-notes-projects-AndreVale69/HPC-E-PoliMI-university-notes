@@ -1,0 +1,82 @@
+\subsubsection{Image-based Interpretation}\label{sec:image-based-interpretation}
+
+In the previous section we interpreted each row of $W$ geometrically as a hyperplane. Now we'll interpret exactly the same weights from a completely different perspective.
+
+\highspace
+Our linear classifier computes, for every class $i$, a score:
+\begin{equation*}
+    s_i = \mathbf{w}_{i}^{T} \mathbf{x} + b_i
+\end{equation*}
+Previously, we interpreted:
+\begin{itemize}
+    \item $\mathbf{x}$ as a point in a high-dimensional space;
+    \item $\mathbf{w}_i$ as the normal vector of a hyperplane.
+\end{itemize}
+Now, \emph{\textbf{what happens if we reshape $\mathbf{w}_i$ back into the original image dimensions?}} The answer is that \hl{each row of the weight matrix can be visualized as an \textbf{image template} for one class.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Remember how images were stored.}} Originally an RGB image had dimensions $R \times C \times 3$, where $R$ is the number of rows, $C$ is the number of columns, and $3$ is the number of color channels. Before feeding it into the neural network we flattened it into a vector:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d} \quad \text{where} \quad d = R \cdot C \cdot 3
+\end{equation*}
+For example, for CIFAR-10, $R = 32$, $C = 32$, and $d = 32 \cdot 32 \cdot 3 = 3072$:
+\begin{equation*}
+    \mathbf{x}_{\text{CIFAR-10}} = \begin{bmatrix}
+        x_1 \\
+        x_2 \\
+        \vdots \\
+        x_{3072}
+    \end{bmatrix}
+\end{equation*}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does this make sense?}} First of all, each class has its own weight vector $\mathbf{w}_i$ and notice something interesting:
+\begin{equation*}
+    \mathbf{w}_i \in \mathbb{R}^{d} \to \mathbb{R}^{R \times C \times 3}
+\end{equation*}
+For example, for CIFAR-10, $d = 3072$ and we can reshape $\mathbf{w}_i$ back into the original image dimensions:
+\begin{equation*}
+    \mathbf{w}_{i, \text{CIFAR-10}} = \begin{bmatrix}
+        w_{i, 1} & w_{i, 2} & \cdots & w_{i, 32} \\
+        w_{i, 33} & w_{i, 34} & \cdots & w_{i, 64} \\
+        \vdots & \vdots & \ddots & \vdots \\
+        w_{i, 3072-31} & w_{i, 3072-30} & \cdots & w_{i, 3072}
+    \end{bmatrix}
+\end{equation*}
+That means we can \hl{reverse the flattening operation and reshape the weight vector back into an image!} Thus, the result is no longer just a vector, but a 3D array of pixel values that can be visualized as an image, which we call the \textbf{template image} for class $i$ (or \textbf{learned template}).
+
+\highspace
+A second reason this makes sense is the \textbf{correlation}. Remember that the score for class $i$ is computed as:
+\begin{equation*}
+    s_i = \mathbf{w}_{i}^{T} \mathbf{x} + b_i
+\end{equation*}
+The dot product $\mathbf{w}_{i}^{T} \mathbf{x}$ can be expanded as:
+\begin{equation*}
+    \mathbf{w}_{i}^{T} \mathbf{x} = \sum_{k=1}^{d} w_{i,k} x_k \quad \Rightarrow \quad s_i = \sum_{k=1}^{d} w_{i,k} x_k + b_i
+\end{equation*}
+This looks extremely familiar. In fact, it is exactly the same as the correlation between an image and a filter (template) that we saw on \autopageref{sec:correlation-as-template-matching} (or more generally, the linear filter on \autopageref{eq:linear-filter}):
+\begin{equation*}
+    T\left(I\right)\left(r,c\right) = \sum_{u,v \in U} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation*}
+The only difference is that:
+\begin{itemize}
+    \item The filter is now \textbf{as large as the entire image}, instead of a small neighbourhood;
+    \item Instead of sliding across the image, is is \textbf{applied only once} because both have the same dimensions (the sliding window is the entire image).
+\end{itemize}
+Thus, instead of saying ``class $i$ has weight vector $\mathbf{w}_i$'', we can say \hl{``class $i$ has learned a template describing what that class should look like''}.
+
+\highspace
+\begin{examplebox}[: Interpreting the learned template for a class]
+    For example, imagine we are classifying cars. Training gradually modifies $\mathbf{w}_{\text{car}}$ until it resembles the average characteristics of a car (i.e., the learned template for the car class). When a new image arrives, the classifier asks ``\emph{how similar is this image to my learned car template?}'' If similarity is high, the score becomes high and the classifier is more likely to predict that the image is a car. If similarity is low, the score becomes low and the classifier is less likely to predict that the image is a car.
+\end{examplebox}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this interpretation useful?}} This interpretation explains why linear classifiers work surprisingly well. Instead of memorizing images (which would require a huge amount of data), they learn one template per class (i.e., a single image that captures the essence of that class). Prediction then becomes simply a matter of comparing the new image to the learned template. This is much \hl{more intuitive than thinking only in terms of matrix multiplication.}
+
+\highspace
+Also, this section prepares us for convolutional neural networks (CNNs). Later, CNNs will also perform template matching, but with an important improvement:
+\begin{itemize}
+    \item \textbf{Linear Classifier:} one large template covering the entire image.
+    \item \textbf{CNNs:} many small templates (filters) applied everywhere in the image.
+\end{itemize}
+Thus, the image-based interpretation introduced here is the conceptual bridge toward convolutions.

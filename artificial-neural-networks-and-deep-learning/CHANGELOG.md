@@ -29,6 +29,7 @@
     - add `The Image Classification Problem`
     - add `Feeding Images to Neural Networks`
     - add `One-layer Neural Network for Images`
+    - add `Training the Linear Classifier`
 
 --------------------
 

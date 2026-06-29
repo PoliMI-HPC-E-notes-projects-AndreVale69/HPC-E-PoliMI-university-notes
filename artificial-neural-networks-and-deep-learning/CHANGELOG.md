@@ -30,6 +30,8 @@
     - add `Feeding Images to Neural Networks`
     - add `One-layer Neural Network for Images`
     - add `Training the Linear Classifier`
+  - add `Interpreting Linear Classifiers on Images`
+    - add `Geometric Interpretation`
 
 --------------------
 

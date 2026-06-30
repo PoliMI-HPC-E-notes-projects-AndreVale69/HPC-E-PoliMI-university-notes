@@ -28,6 +28,9 @@
     - add `Ansatz Design`
     - add `Optimizer Choice`
     - add `Hardware Efficient Ansatz`
+  - add `Advantages and Limitations`
+    - add `Strengths of Variational Algorithms`
+    - add `Weaknesses of Variational Algorithms`
 
 --------------------
 

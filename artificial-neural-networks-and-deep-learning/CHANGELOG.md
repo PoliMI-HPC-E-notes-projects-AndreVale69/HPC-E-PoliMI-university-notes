@@ -33,6 +33,7 @@
   - add `Interpreting Linear Classifiers on Images`
     - add `Geometric Interpretation`
     - add `Image-based Interpretation`
+    - add `Linear Classifier as Template Matching`
 
 --------------------
 

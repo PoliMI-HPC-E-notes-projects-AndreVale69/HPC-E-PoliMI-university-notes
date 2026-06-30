@@ -1,0 +1,148 @@
+\subsection{Motivation for Word Embeddings}\label{sec:motivation-for-word-embeddings}
+
+\subsubsection{The Limits of Traditional Word Representations}\label{sec:the-limits-of-traditional-word-representations}
+
+Before introducing word embeddings, we must understand why traditional representations of text are inadequate. The central \textbf{problem is that computers do not naturally understand words}: \hl{every word must be converted into a numerical representation before it can be processed by a machine learning algorithm}. Early Natural Language Processing (NLP) systems achieved this using dictionary identifiers, one-hot encodings, and bag-of-words representations. While simple and intuitive, these approaches suffer from severe limitations. Let's explore these limitations in detail.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Dictionary IDs}}\index{Dictionary IDs}
+\end{flushleft}
+The simplest way to represent words is to assign each word a unique identifier in a dictionary. For example:
+\begin{center}
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Word} & \textbf{ID} \\
+        \midrule
+        \texttt{cat} & 537 \\
+        \texttt{dog} & 143 \\
+        \texttt{house} & 892 \\
+        \texttt{computer} & 1245 \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\noindent
+A sentence such as ``\emph{the cat sleeps}'' might therefore be represented as the sequence of IDs:
+\begin{equation*}
+    \left[17, 537, 981\right]
+\end{equation*}
+This approach is easy to implement, but it introduces a fundamental problem: \textbf{the numerical values have no semantic meaning}. For example:
+\begin{equation*}
+    \text{cat} = 537 \quad \text{and} \quad \text{dog} = 143
+\end{equation*}
+Does \textbf{not} imply that cats and dogs are more or less similar than:
+\begin{equation*}
+    \text{cat} = 537 \quad \text{and} \quad \text{house} = 892
+\end{equation*}
+The identifiers are merely arbitrary labels. The \hl{machine cannot infer any relationship between words from these numbers alone.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{One-Hot Encoding}}\phantomsection\label{def:one-hot-encoding}
+\end{flushleft}
+To remove the artificial ordering introduced by dictionary IDs, NLP systems often use \definition{One-Hot Encoding}.
+
+\highspace
+Suppose the vocabulary contains $V$ words. Each word is represented by a vector of length $V$:
+\begin{equation*}
+    w_i = \begin{bmatrix}
+        0 \\
+        \vdots \\
+        1 \\
+        \vdots \\
+        0
+    \end{bmatrix}
+\end{equation*}
+Where $w_i$ is the one-hot vector for the $i$-th word in the vocabulary, and the $1$ is at the position corresponding to that word. For example, if we have a vocabulary of 5 words: \texttt{cat}, \texttt{dog}, \texttt{house}, and \texttt{computer}, their one-hot encodings might be:
+\begin{center}
+    \begin{tabular}{@{} l c @{}}
+        \toprule
+        \textbf{Word} & \textbf{One-Hot Encoding} \\
+        \midrule
+        \texttt{cat} & $\begin{bmatrix} 1 & 0 & 0 & 0 & 0 \end{bmatrix}^{T}$ \\
+        \texttt{dog} & $\begin{bmatrix} 0 & 1 & 0 & 0 & 0 \end{bmatrix}^{T}$ \\
+        \texttt{house} & $\begin{bmatrix} 0 & 0 & 1 & 0 & 0 \end{bmatrix}^{T}$ \\
+        \texttt{computer} & $\begin{bmatrix} 0 & 0 & 0 & 1 & 0 \end{bmatrix}^{T}$ \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\noindent
+This representation avoids assigning artificial numerical meaning to dictionary IDs. However, it \textbf{creates another problem}:
+\begin{equation*}
+    \text{cat}^{T} \cdot \text{dog} = 0 \quad \text{and} \quad \text{cat}^{T} \cdot \text{house} = 0
+\end{equation*}
+From the machine's perspective, \textbf{every pair of different words is equally unrelated}. The representation contains information about identity, but \hl{no information about meaning}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Bag-of-Words (BoW)}}\phantomsection\label{def:bag-of-words-bow}
+\end{flushleft}
+When working with complete documents, \emph{one-hot vectors} are often \textbf{aggregated} into a \definition{Bag-of-Words (BoW)} \textbf{representation}.
+
+\highspace
+Instead of storing word order, we simply count how many times each word appears. Suppose the vocabulary is:
+\begin{equation*}
+    \{\texttt{cat}, \texttt{dog}, \texttt{house}, \texttt{computer}\}
+\end{equation*}
+The document ``\emph{cat cat dog}'' would be represented as:
+\begin{equation*}
+    \begin{bmatrix}
+        2 \\
+        1 \\
+        0 \\
+        0
+    \end{bmatrix}
+\end{equation*}
+This representation captures word frequency but \textbf{completely ignores grammar and word order}. The sentences ``\emph{dog bites man}'' and ``\emph{man bites dog}'' would produce identical Bag-of-Words vectors even though their meanings are very different. In general, a document is transformed into a large vector containing words occurrences, but \textbf{the relationships between words are lost}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Curse of Dimensionality}}\phantomsection\label{def:curse-of-dimensionality}
+\end{flushleft}
+The most serious \textbf{issue} appears when the \textbf{vocabulary} becomes \textbf{large}. Modern corpora (i.e., large text collections) can easily contain:
+\begin{equation*}
+    \left|V\right| > 10^{5} \quad \text{or even} \quad \left|V\right| > 10^{6}
+\end{equation*}
+Distinct words. Consequently:
+\begin{itemize}
+    \item One-hot vectors require hundreds of thousands or \textbf{millions of dimensions} (one for each word in the vocabulary).
+    \item \textbf{Most entries are zero} because each word is represented by a single $1$ in a sea of $0$s.
+    \item \textbf{Documents} become extremely \textbf{sparse vectors} because each document contains only a small fraction of the total vocabulary.
+    \item \textbf{Similar words} remain completely \textbf{disconnected} (e.g., \texttt{cat} and \texttt{dog} have no relationship in the vector space).
+\end{itemize}
+For example:
+\begin{equation*}
+    \text{cat} = \begin{bmatrix}
+        1 \\
+        0 \\
+        0 \\
+        \vdots \\
+        0
+    \end{bmatrix} \quad \text{and} \quad \text{dog} = \begin{bmatrix}
+        0 \\
+        1 \\
+        0 \\
+        \vdots \\
+        0
+    \end{bmatrix}
+\end{equation*}
+Are almost entirely zeros despite representing semantically related concepts. This phenomenon is known as the \definition{Curse of Dimensionality}: \hl{as dimensionality grows, data becomes increasingly sparse, distances become less informative, and learning becomes more difficult.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why We Need Something Better}}
+\end{flushleft}
+Traditional representations suffer from four major limitations:
+\begin{enumerate}
+    \item \textbf{No semantic information} (dictionary IDs, one-hot encoding): cat and dog appear as unrelated as cat and computer.
+    \item \textbf{Extreme sparsity} (one-hot encoding, bag-of-words): most vector components are zero.
+    \item \textbf{High dimensionality} (bag-of-words): vector size grows with vocabulary size.
+    \item \textbf{Poor generalization} (curse of dimensionality): similar words cannot share information.
+\end{enumerate}
+These limitations motivate the search for a new representation capable of: being dense instead of sparse; using far fewer dimension; capturing semantic relationships; allowing similar words to be represented similarly. This is precisely the \textbf{goal of word embeddings}, which we will introduce in the next section. If we asked a human ``\emph{are 'cat' and 'dog' more similar than 'cat' and 'computer'?}'', the answer would be immediate. Traditional representations cannot express this knowledge. The entire purpose of word embeddings is to transform words into vectors such that:
+\begin{equation*}
+    \text{similar meaning} \implies \text{similar vectors}
+\end{equation*}
+This simple idea will completely change how machines process language.

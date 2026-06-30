@@ -1,0 +1,194 @@
+\subsubsection{N-gram Language Models}\label{sec:n-gram-language-models}
+
+In the previous section we saw that a language model should estimate:
+\begin{equation*}
+    P\left(w_i \, | \, w_{1}, \dots, w_{i-1}\right)
+\end{equation*}
+That is, the \textbf{probability of the next word given all previous words}. At first this seems reasonable. However, in practice this is impossible because the context can become arbitrarily long. Consider the sentence:
+\begin{center}
+    ``\emph{The student who attended the deep learning course and studied for several weeks finally passed the ...}''
+\end{center}
+To predict the next word, should we consider the previous 3 words? 10 words? 100 words? A classical solution to this problem is the \definition{N-gram Language Model}, which makes a simplifying assumption: \textbf{only a small number of previous words matter}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Main Idea}}
+\end{flushleft}
+Instead of using the entire history:
+\begin{equation*}
+    \left(w_1, w_2, \dots, w_{i-1}\right)
+\end{equation*}
+We only \hl{consider the last $N-1$ words}. For example: ``\emph{the cat is sleeping on the sofa}''. To predict \emph{sofa}:
+\begin{itemize}
+    \item Bigram ($N=2$): $P\left(\text{sofa} \, | \, \text{the}\right)$
+    \item Trigram ($N=3$): $P\left(\text{sofa} \, | \, \text{on the}\right)$
+    \item 4-gram ($N=4$): $P\left(\text{sofa} \, | \, \text{sleeping on the}\right)$
+\end{itemize}
+The sequence of $n$ consecutive words is called an \hl{$N$-gram}.
+
+\highspace
+The \textbf{set of previous words used for prediction} is called the \definition{Context Window}. For example, for a trigram model:
+\begin{equation*}
+    P\left(w_i \, | \, w_{i-2}, w_{i-1}\right)
+\end{equation*}
+The context window contains two words: $w_{i-2}$ and $w_{i-1}$. Instead, for a 5-gram model:
+\begin{equation*}
+    P\left(w_i \, | \, w_{i-4}, w_{i-3}, w_{i-2}, w_{i-1}\right)
+\end{equation*}
+The context window contains four words: $w_{i-4}$, $w_{i-3}$, $w_{i-2}$, and $w_{i-1}$. The larger the context window, the more information we capture, the more difficult learning becomes, and the more data we need to train the model.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{The Markov Assumption}}
+\end{flushleft}
+The N-gram models are based on the \definition{Markov Assumption}. So, instead of using the entire history:
+\begin{equation*}
+    P\left(w_i \, | \, w_{1}, \dots, w_{i-1}\right)
+\end{equation*}
+We approximate:
+\begin{equation}
+    P\left(w_i \, | \, w_{1}, \dots, w_{i-1}\right) \approx P\left(w_i \, | \, w_{i-N+1}, \dots, w_{i-1}\right)
+\end{equation}
+If we \textbf{substitute the approximation into the exact chain rule} (\autopageref{eq:chain-rule-of-probability}), we obtain:
+\begin{equation}\label{eq:ngram-approximation-of-sentence-probability}
+    \hat{P}\left(s_k\right) = \prod_{i} P\left(w_{i} \, | \, w_{i-N+1}, \dots, w_{i-1}\right)
+\end{equation}
+The hat symbol $\hat{P}$ indicates that this is not the true probability anymore, but an approximation. We are essentially saying that the \textbf{future depends only on the recent past}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called a Markov assumption?}} Because it is analogous to a \textbf{Markov process}. In a first-order Markov chain:
+\begin{equation*}
+    P\left(X_t \, | \, X_1 , \dots, X_{t-1}\right) = P\left(X_t \, | \, X_{t-1}\right)
+\end{equation*}
+The future depends only on the current state. Similarly, in an N-gram model:
+\begin{equation*}
+    P\left(w_i \, | \, \text{all previous words}\right) \approx P\left(w_i \, | \, \text{last} n-1 \text{words}\right)
+\end{equation*}
+The distant past is ignored, and the future depends only on the recent past.
+
+\highspace
+\begin{examplebox}[: Trigram Model]
+    Suppose the sentence:
+    \begin{equation*}
+        s = \left(\text{The}, \, \text{cat}, \, \text{is}, \, \text{sleeping}\right)
+    \end{equation*}
+    The exact chain rule is:
+    \begin{equation*}
+        P\left(s\right) = P\left(\text{The}\right) \cdot P\left(\text{cat} \, | \, \text{The}\right) \cdot P\left(\text{is} \, | \, \text{The cat}\right) \cdot P\left(\text{sleeping} \, | \, \text{The cat is}\right)
+    \end{equation*}
+    With a trigram model ($N=3$), we approximate:
+    \begin{equation*}
+        P\left(\text{sleeping} \, | \, \text{The cat is}\right) \approx P\left(\text{sleeping} \, | \, \text{cat is}\right)
+    \end{equation*}
+    We only keep the last two words in the context window. Therefore, the trigram approximation of the sentence probability is:
+    \begin{equation*}
+        \hat{P}\left(s\right) = P\left(\text{The}\right) \cdot P\left(\text{cat} \, | \, \text{The}\right) \cdot P\left(\text{is} \, | \, \text{The cat}\right) \cdot P\left(\text{sleeping} \, | \, \text{cat is}\right)
+    \end{equation*}
+    The sentence probability is still a product of conditional probabilities, but the condition now contains only a limited context.
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The problem of Language Modelling has not yet been solved!}}
+\end{flushleft}
+After the Markov assumption we have reduced the problem to:
+\begin{equation*}
+    P\left(w_i \, | \, w_{i-N+1}, \dots, w_{i-1}\right)
+\end{equation*}
+Now we know \textbf{what} probability we want to estimate. The next question becomes: \emph{\textbf{how do we assign a numerical value to it?}}. In general, the actual problem of language modeling is, \textbf{\emph{how do we estimate}}:
+\begin{equation*}
+    P\left(w_i \, | \, w_{1}, \dots, w_{i-1}\right)
+\end{equation*}
+\textbf{\emph{From data?}} This is where models enter and each model has a different way of estimating these probabilities. The N-gram model \hl{estimates these probabilities by counting how many times each word appears after a given context in the training data}:
+\begin{equation}\label{eq:ngram-probability-estimation}
+    \begin{aligned}
+        P\left(w_i \, | \, w_{i-N+1}, \dots, w_{i-1}\right) &= P\left(w_i \, | \, \text{context}\right) \\[.2em]
+        &= \frac{\#\left(\text{context}, w_i\right)}{\#\left(\text{context}\right)} \\[.2em]
+        &= \frac{\#\left(w_{i-N+1}, \dots, w_{i-1}, w_i\right)}{\#\left(w_{i-N+1}, \dots, w_{i-1}\right)}
+    \end{aligned}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\#\left(w_{i-N+1}, \dots, w_{i-1}, w_i\right)$ counts how many times the \textbf{N-gram} (context $+$ word) \textbf{appears in the training data}.
+    \item $\#\left(w_{i-N+1}, \dots, w_{i-1}\right)$ counts how many times the \textbf{context appears in the training data}.
+\end{itemize}
+This is just a conditional probability estimated through frequencies:
+\begin{equation*}
+    P\left(A \, | \, B\right) = \frac{\#\left(A \, \cap \, B\right)}{\#\left(B\right)}
+\end{equation*}
+Where $B$ is the context and $A$ is the event ``the next word is $w_i$''.
+
+\highspace
+\begin{examplebox}[: Estimating Trigram Probabilities]
+    Suppose our corpus (i.e., training data) contains the following sentences:
+    \begin{itemize}
+        \item ``\emph{the cat sleeps}'' (appears 3 times)
+        \item ``\emph{the cat eats}'' (appears 1 time)
+    \end{itemize}
+    We want to estimate $P\left(\text{sleeps} \, | \, \text{the cat}\right)$. We count how many times the trigram ``\emph{the cat sleeps}'' appears in the training data:
+    \begin{equation*}
+        \#\left(\text{the cat sleeps}\right) = 3
+    \end{equation*}
+    We also count how many times the bigram ``\emph{the cat}'' appears in the training data:
+    \begin{equation*}
+        \#\left(\text{the cat}\right) = 3 + 1 = 4
+    \end{equation*}
+    Therefore, we estimate:
+    \begin{equation*}
+        P\left(\text{sleeps} \, | \, \text{the cat}\right) = \frac{\#\left(\text{the cat sleeps}\right)}{\#\left(\text{the cat}\right)} = \frac{3}{4} = 0.75
+    \end{equation*}
+    Similarly, we can estimate:
+    \begin{equation*}
+        P\left(\text{eats} \, | \, \text{the cat}\right) = \frac{\#\left(\text{the cat eats}\right)}{\#\left(\text{the cat}\right)} = \frac{1}{4} = 0.25
+    \end{equation*}
+    Thus, the trigram model estimates that after the context ``\emph{the cat}'', the word ``\emph{sleeps}'' is more likely to appear than the word ``\emph{eats}''.
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Zero-Probability Problem}}\phantomsection\label{def:the-zero-probability-problem}
+\end{flushleft}
+The \definition{Zero-Probability Problem} is probably the biggest weakness of classical N-gram models. The issue is very simple: \emph{\textbf{what happens if a word sequence never appears in the training corpus?}} Since N-gram probabilities are estimated by counts:
+\begin{equation*}
+    P\left(w_{i} \, | \, \text{context}\right) = \frac{\#\left(\text{context}, w_i\right)}{\#\left(\text{context}\right)}
+\end{equation*}
+If the sequence ``\emph{context, $w_i$}'' never appears in the training data, then:
+\begin{equation*}
+    \#\left(\text{context}, w_i\right) = 0
+\end{equation*}
+And therefore:
+\begin{equation*}
+    P\left(w_{i} \, | \, \text{context}\right) = 0
+\end{equation*}
+For example, suppose the training data contains the following sentences:
+\begin{itemize}
+    \item ``\emph{the cat sleeps}'' (appears 3 times)
+    \item ``\emph{the cat eats}'' (appears 1 time)
+\end{itemize}
+We want to estimate $P\left(\text{dances} \, | \, \text{the cat}\right)$. We count how many times the trigram ``\emph{the cat dances}'' appears in the training data:
+\begin{equation*}
+    \#\left(\text{the cat dances}\right) = 0
+\end{equation*}
+Because it never appears. We also count how many times the bigram ``\emph{the cat}'' appears in the training data:
+\begin{equation*}
+    \#\left(\text{the cat}\right) = 3 + 1 = 4
+\end{equation*}
+Therefore, we estimate:
+\begin{equation*}
+    P\left(\text{dances} \, | \, \text{the cat}\right) = \frac{\#\left(\text{the cat dances}\right)}{\#\left(\text{the cat}\right)} = \frac{0}{4} = 0
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this a problem?}} Because ``\emph{never seen}'' does not mean ``\emph{impossible}''. A cat \textbf{can} \emph{dance} in a sentence (i.e., a sentence like ``\emph{the cat dances}'' is perfectly valid), but humans understand that it is \textbf{unusual, but not impossible}. However, the N-gram model assigns a probability of zero to this event, which is clearly incorrect, because it thinks that ``\emph{the cat dances}'' is impossible.
+
+\highspace
+The core problem with N-gram models is that they \textbf{only memorize observed contexts} and \textbf{cannot generalize}. For example, if the training data contains the following sentences:
+\begin{itemize}
+    \item ``\emph{the dog sleeps}''
+    \item ``\emph{the cat sleeps}''
+    \item ``\emph{the rabbit sleeps}''
+\end{itemize}
+A human immediately learns that ``\emph{animals often sleep}'' and would assign a reasonable probability to the sentence ``\emph{the hamster sleeps}'' even if it was never seen before. In contrast, an N-gram model cannot do this because if it never saw the trigram ``\emph{the hamster sleeps}'' in the training data, it \hl{may assign probabilities of zero to all words that follow the context} ``\emph{the hamster}''. And this is the \textbf{worst-case scenario}! It arises from the fact that N-gram models use the chain rule of probability:
+\begin{equation*}
+    P\left(\text{sentence}\right) = \prod_{i} P\left(w_{i} \, | \, \text{context}_{i}\right)
+\end{equation*}
+And since this is a product, if \textbf{one factor is zero}, the \hl{entire sentence probability becomes zero}. Therefore, if the model assigns a probability of zero to any word in the sentence, it will assign a probability of zero to the entire sentence. This is clearly undesirable.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{The Classical Solution: Smoothing.}} To solve this problem, researchers introduced \textbf{smoothing techniques}. The idea is really simple: \emph{\textbf{reserve a small amount of probability mass for unseen events}}. For example, if the model assigns a probability of 0.75 to ``\emph{the cat sleeps}'' and 0.25 to ``\emph{the cat eats}'', we can reserve a small amount of probability mass (e.g., 0.01) for unseen events like ``\emph{the cat dances}''. This way, the \hl{model will assign a small but non-zero probability to unseen events}, allowing it to \textbf{generalize better}. One of the most popular smoothing techniques is Katz smoothing (1987).\footnote{\definition{Katz Smoothing} is a smoothing technique that redistributes a small amount of probability mass from frequent N-grams to unseen N-grams, preventing zero probabilities. It was introduced by Slava Katz in his 1987 paper ``Estimation of Probabilities from Sparse Data for the Language Model Component of a Speech Recognizer''.\cite{katz1987estimation}}

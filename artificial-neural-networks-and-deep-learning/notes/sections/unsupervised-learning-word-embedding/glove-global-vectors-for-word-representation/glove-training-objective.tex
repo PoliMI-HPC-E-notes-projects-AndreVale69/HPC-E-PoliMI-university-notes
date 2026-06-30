@@ -1,0 +1,147 @@
+\subsubsection{GloVe Training Objective}\label{sec:glove-training-objective}
+
+We have already seen that GloVe starts from the global co-occurrence matrix. For every pair of words $i$ and $j$, we know $X_{ij}$, the number of times word $j$ appears in the context of word $i$. From this we compute:
+\begin{equation*}
+    P\left(j \mid i\right) = \frac{X_{ij}}{X_i}
+\end{equation*}
+Which expresses the probability of observing word $j$ near word $i$. The key question is now: \emph{\textbf{how do we transform these probabilities into word vectors?}}
+
+\highspace
+Suppose we have the words ``\emph{ice}'', ``\emph{steam}'', ``\emph{solid}'', and ``\emph{gas}''. From the corpus we observe:
+\begin{center}
+    \begin{tabular}{@{} c c @{}}
+        \toprule
+        \textbf{Pair} & \textbf{Co-occurrence} \\
+        \midrule
+        \emph{ice} - \emph{solid} & high \\
+        \emph{steam} - \emph{gas} & high \\
+        \emph{ice} - \emph{gas} & low \\
+        \emph{steam} - \emph{solid} & low \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+Ideally we would like the vectors to satisfy ``\emph{ice}'' close to ``\emph{solid}'', ``\emph{steam}'' close to ``\emph{gas}'', without explicitly programming these relationships. Instead, the vectors themselves should explain the observed statistics.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What Should the Vectors Predict?}} The previous section introduced an important idea. The \textbf{meaning} of a word is reflected by how often it appears together with other words. Therefore GloVe asks: \emph{\textbf{can we choose vectors whose relationships reproduce the observed co-occurrence information?}} Unlike Word2Vec, which predicts neighboring words through a neural network, GloVe directly learns vectors that fit the global co-occurrence statistics.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Linear Relationship Between Vectors}}
+\end{flushleft}
+Imagine two words \emph{ice} and \emph{steam}, and one context word \emph{solid}. Suppose:
+\begin{equation*}
+    P\left(\emph{solid} \mid \emph{ice}\right) = 0.30
+\end{equation*}
+While:
+\begin{equation*}
+    P\left(\emph{solid} \mid \emph{steam}\right) = 0.01
+\end{equation*}
+Clearly, \emph{solid} is much more informative for \emph{ice} than for \emph{steam}. So the learned vectors should somehow encode this large difference. The question becomes: \emph{\textbf{what mathematical relationship between vectors best captures these probability differences?}}
+
+\highspace
+The GloVe authors observed that a very simple model works remarkably well. They assume that the \textbf{dot product} between two vectors should approximate the logarithm of their co-occurrence count. Specifically:
+\begin{equation}
+    w_i^T \tilde{w}_j + b_i + \tilde{b}_j \approx \log \left(X_{ij}\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $w_i$ is the embedding of the target word (transposed for the dot product),
+    
+    
+    \item $\tilde{w}_j$ is the embedding of the context word,
+    
+    
+    \item $b_i, \tilde{b}_j$ are bias terms for the target and context words, respectively.
+    
+    
+    \item $X_{ij}$ is the observed co-occurrence count of word $j$ in the context of word $i$.
+    
+    
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why the Dot Product?}} Remember what a dot product measures. If \hl{two vectors point in similar directions}:
+    \begin{equation*}
+        w_i^T \tilde{w}_{j}
+    \end{equation*}
+    Is \hl{large}. If they are unrelated, it is small. Therefore the dot product naturally measures how strongly two words are related.
+    
+    
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why the Logarithm?}} This is probably the most interesting part. Suppose we have:
+    \begin{center}
+        \begin{tabular}{@{} c c @{}}
+            \toprule
+            \textbf{Pair} & \textbf{Count} \\
+            \midrule
+            \emph{the} - \emph{of} & 1.000.000 \\
+            \emph{cat} - \emph{animal} & 100 \\
+            \emph{cat} - \emph{keyboard} & 1 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    Using raw counts is problematic because they vary enormously. A very common word like ``\emph{the}'' would dominate the optimization. Instead, GloVe compresses the scale:
+    \begin{equation*}
+        \log(1) = 0 \quad \log(100) \approx 4.6 \quad \log(1'000'000) \approx 13.8
+    \end{equation*}
+    The \hl{logarithm preserves the ordering while greatly reducing the range of values.} As a result, frequent word pairs no longer overwhelm the learning process.
+\end{itemize}
+This equation is the heart of GloVe.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{Learning the Embeddings}}
+\end{flushleft}
+Now we know what we want. For every observed pair:
+\begin{equation*}
+    w_i^T \tilde{w}_j + b_i + \tilde{b}_j
+\end{equation*}
+Should be as close as possible (approximately) to:
+\begin{equation*}
+    \log \left(X_{ij}\right)
+\end{equation*}
+Of course this \hl{equality cannot hold perfectly for every word pair simultaneously.} Instead, we \textbf{minimize the overall error across the entire corpus}.
+
+\highspace
+The GloVe authors define the following cost function:
+\begin{equation}
+    J = \sum_{i, j} f\left(X_{ij}\right) \cdot \left(w_i^T \tilde{w}_j + b_i + \tilde{b}_j - \log \left(X_{ij}\right)\right)^{2}
+\end{equation}
+Called the \textbf{weighted least squares objective}, it sums the squared differences between the predicted and actual log co-occurrence counts. The terms are:
+\begin{itemize}
+    \item \important{The Prediction}
+    \begin{equation*}
+        w_i^T \tilde{w}_j + b_i + \tilde{b}_j
+    \end{equation*}
+    This is the model's estimate of the relationship between two words.
+    \item \important{The Target}
+    \begin{equation*}
+        \log \left(X_{ij}\right)
+    \end{equation*}
+    This comes directly from the corpus. It is the quantity we want to reproduce.
+    \item \important{The Squared Error}
+    \begin{equation*}
+        \left(\text{prediction} - \text{target}\right)^{2}
+    \end{equation*}
+    If the prediction is accurate, the error is close to zero. Otherwise it becomes large.
+    \item \important{The Weight Function}
+    \begin{equation*}
+        f\left(X_{ij}\right)
+    \end{equation*}
+    This is a very clever addition. Not all co-occurrence counts are equally reliable. For example:
+    \begin{center}
+        \begin{tabular}{@{} c c @{}}
+            \toprule
+            \textbf{Count} & \textbf{Reliability} \\
+            \midrule
+            1 & very noisy \\
+            3 & noisy \\
+            500 & reliable \\
+            10.000 & reliable enough \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    The weighting function assigns \textbf{less importance to rare co-occur-\break rences}, which are often due to chance, while giving more importance to frequent, reliable observations. At the same time, it \textbf{prevents extremely frequent pairs from dominating the optimization}.
+\end{itemize}
+In summary, GloVe learns word vectors by minimizing the difference between the \textbf{similarity predicted by the vectors} (their dot product plus biases) and the \textbf{similarity observed in the corpus} (the logarithm of the co-occurrence count), giving greater importance to reliable co-occurrence statistics than to noisy ones.
+
+\highspace
+In other words, \hl{GloVe learns one vector for every word such that the dot products between word vectors reproduce the co-occurrence statistics observed in the corpus.}

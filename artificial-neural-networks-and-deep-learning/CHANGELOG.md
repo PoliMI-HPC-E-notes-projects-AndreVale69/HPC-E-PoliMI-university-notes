@@ -2,10 +2,53 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.5.0
+
+- add `Unsupervised Learning: Word Embedding`
+  - add `Introduction`
+    - add `Recall Machine Learning Paradigms`
+    - add `Neural Autoencoders`
+    - add `Applications of Autoencoders`
+  - add `Motivation for Word Embeddings`
+    - add `The Limits of Traditional Word Representations`
+    - add `Word Similarity Ignorance`
+    - add `What is a Word Embedding?`
+    - add `Distributed Representations`
+  - add `Language Modeling`
+    - add `The Language Modeling Problem`
+    - add `N-gram Language Models`
+    - add `The Curse of Dimensionality in N-gram Models`
+  - add `Neural Language Models`
+    - add `Bengio et al. (2003)`
+    - add `Architecture of the Neural Language Model`
+    - add `Training the Neural Language Model`
+    - add `Results and Impact`
+  - add `Word2Vec`
+    - add `From Neural Language Models to Word2Vec`
+    - add `Word2Vec Architectures`
+    - add `Continuous Bag-of-Words (CBOW)`
+    - add `CBOW Training and Weight Updates`
+    - add `Word2Vec Facts`
+  - add `Semantic Regularities in Embedding Spaces`
+    - add `Semantic Relationships`
+    - add `Linear Structure of Embedding Spaces`
+  - add `Applications of Word Embeddings`
+    - add `Information Retrieval`
+    - add `Document Classification and Similarity`
+    - add `Sentiment Analysis`
+  - add `GloVe: Global Vectors for Word Representation`
+    - add `Motivation behind GloVe`
+    - add `Global Co-occurrence Statistics`
+    - add `GloVe Training Objective`
+    - add `Comparison with Word2Vec`
 
 --------------------
 

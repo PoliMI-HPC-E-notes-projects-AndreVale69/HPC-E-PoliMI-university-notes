@@ -1,0 +1,200 @@
+\subsubsection{Continuous Bag-of-Words (CBOW)}\label{sec:continuous-bag-of-words-cbow}
+
+The \definition{Continuous Bag-of-Words (CBOW)} architecture is the first of the two Word2Vec models proposed by Mikolov et al. (2013).\cite{mikolov2013efficient} Its goal is straightforward: \hl{given the surrounding words (the context), predict the missing (central) word.} Unlike Bengio's Neural Language Model, CBOW removes the hidden layer and greatly simplifies the network, allowing it to be trained on billions of words while still learning high-quality word embeddings.
+
+\highspace
+Suppose our sentence is:
+\begin{center}
+    ``\emph{The quick brown fox jumps over the dog.}''
+\end{center}
+
+\noindent
+And we choose a context window of size 2. Our training example becomes:
+\begin{center}
+    \emph{Input:} \{``the'', ``brown'', ``jumps'', ``over''\} \\
+    \emph{Output:} ``fox''
+\end{center}
+
+\noindent
+Thus, instead of learning:
+\begin{equation*}
+    P\left(w_t \, | \, w_{t-2}, w_{t-1}\right)
+\end{equation*}
+As Bengio's model did, CBOW learns:
+\begin{equation*}
+    P\left(w_t \, | \, w_{t-c}, \dots w_{t-1}, w_{t+1}, \dots, w_{t+c}\right)
+\end{equation*}
+Where $w_t$ is the central word, and $c$ is the \textbf{context radius} $\frac{n}{2}$, where $n$ is the \textbf{total number of context words}. In our example, the context words are ``the'', ``brown'', ``jumps'', and ``over'' (two previous and two future words) and the target word is ``fox''. Notice one important improvement over Bengio's model: Bengio used \textbf{previous words}, while CBOW uses \textbf{both previous and future words}, giving more information to predict the target.
+
+\begin{figure}[!htp]
+    \centering
+    \resizebox{\textwidth}{!}{%
+        \begin{tikzpicture}[
+            >=Latex,
+            font=\small,
+            word/.style={
+                draw,
+                rounded corners,
+                minimum width=1.25cm,
+                minimum height=0.55cm,
+                align=center,
+                fill=blue!8
+            },
+            emb/.style={
+                draw,
+                rounded corners,
+                minimum width=1.45cm,
+                minimum height=0.55cm,
+                align=center,
+                fill=green!10
+            },
+            proj/.style={
+                draw,
+                rounded corners,
+                minimum width=1.35cm,
+                minimum height=0.8cm,
+                align=center,
+                fill=purple!10
+            },
+            outnode/.style={
+                draw,
+                rounded corners,
+                minimum width=1.45cm,
+                minimum height=0.65cm,
+                align=center,
+                fill=orange!15
+            },
+            title/.style={font=\bfseries\large, align=center},
+            subtitle/.style={font=\small, align=center},
+            note/.style={font=\small, align=center, text width=6cm}
+        ]
+
+            \node[title] at (0,3.1) {CBOW};
+            \node[subtitle] at (0,2.7) {Continuous Bag-of-Words};
+
+            \node[word] (c1) at (-3.8,1.6) {$w_{t-2}$};
+            \node[word] (c2) at (-3.8,0.7) {$w_{t-1}$};
+            \node[word] (c3) at (-3.8,-0.7) {$w_{t+1}$};
+            \node[word] (c4) at (-3.8,-1.6) {$w_{t+2}$};
+
+            \node[emb] (e1) at (-1.9,1.6) {$C(w_{t-2})$};
+            \node[emb] (e2) at (-1.9,0.7) {$C(w_{t-1})$};
+            \node[emb] (e3) at (-1.9,-0.7) {$C(w_{t+1})$};
+            \node[emb] (e4) at (-1.9,-1.6) {$C(w_{t+2})$};
+
+            \node[proj] (avg) at (0.3,0) {
+                $\bar{\mathbf v}$\\[-1mm]
+                \scriptsize average
+            };
+
+            \node[outnode] (soft1) at (2.8,0) {
+                Softmax\\[-1mm]
+                \scriptsize over $|V|$
+            };
+
+            \node[word] (target1) at (5.0,0) {$w_t$};
+
+            \draw[->] (c1) -- (e1);
+            \draw[->] (c2) -- (e2);
+            \draw[->] (c3) -- (e3);
+            \draw[->] (c4) -- (e4);
+
+            \draw[->] (e1) -- (avg);
+            \draw[->] (e2) -- (avg);
+            \draw[->] (e3) -- (avg);
+            \draw[->] (e4) -- (avg);
+
+            \draw[->] (avg) -- (soft1);
+            \draw[->] (soft1) -- (target1);
+
+            \node[subtitle] at (-3.8,-2.3) {Input\\context words};
+            \node[subtitle] at (-1.9,-2.3) {Embedding\\lookup};
+            \node[subtitle] at (0.3,-2.3) {Projection};
+            \node[subtitle] at (2.8,-2.3) {Output};
+            \node[subtitle] at (5.0,-2.3) {Target};
+
+            \node[note] at (0.4,-3.35) {
+            Given the surrounding context words,\\
+            CBOW predicts the center word.
+            };
+
+            \node[note] at (0.4,-4.35) {
+            $\displaystyle
+            \bar{\mathbf v}
+            =
+            \frac{1}{C}
+            \sum_{i=1}^{C}
+            C(w_i)
+            $
+            };
+
+        \end{tikzpicture}%
+    }
+    \caption{CBOW architecture in Word2Vec.\cite{mikolov2013efficient}}
+    \label{fig:cbow-architecture-repeated}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{compress} \textbf{Context Aggregation}}
+\end{flushleft}
+The key idea of CBOW is how it combines the context words. Suppose our vocabulary is represented by the embedding matrix:
+\begin{equation*}
+    C \in \mathbb{R}^{\left|V\right| \times m}
+\end{equation*}
+Where $\left|V\right|$ is the vocabulary size and $m$ is the embedding dimension. Each context word $w_i$ performs an embedding lookup in $C$ to retrieve its corresponding vector:
+\begin{equation*}
+    C\left(w_i\right) \in \mathbb{R}^{m}
+\end{equation*}
+Unlike Bengio's model, \textbf{these vectors are not concatenated}. Instead, CBOW computes their average:
+\begin{equation}
+    \bar{\mathbf{v}} = \mathbf{h} = \frac{1}{C} \cdot \sum_{i=1}^{C} C\left(w_i\right)
+\end{equation}
+Where $C$ is the number of context words. This average vector $\bar{\mathbf{v}}$ is the representation of the \textbf{entire context}.
+
+\newpage
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why average?}} Suppose the context is ``\emph{coffee}'', ``\emph{morning}'', ``\emph{drink}''. Their embeddings might encode different semantic aspects:
+\begin{itemize}
+    \item \emph{coffee} $\rightarrow$ \emph{beverage, caffeine, hot}
+    \item \emph{morning} $\rightarrow$ \emph{time, day, early}
+    \item \emph{drink} $\rightarrow$ \emph{consume, liquid, beverage}
+\end{itemize}
+Averaging them produces a vector roughly representing ``\emph{something people drink in the morning}''. This vector is then used to predict the missing word.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Output Prediction.}} The averaged vector is fed directly into the output layer, which \hl{computes the probability of every word in the vocabulary.} The predicted word is:
+\begin{equation*}
+    \hat{w} = \argmax_{w} P(w \, | \, \text{context})
+\end{equation*}
+During training, the correct target word is known, so the prediction error is computed and the embeddings are updated through backpropagation.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Which Embeddings are updated?}} One interesting property of CBOW is that \hl{only the embeddings of the context words are updated.} Suppose the training example is:
+\begin{center}
+    \emph{Input:} \{``the'', ``brown'', ``jumps'', ``over''\} \\
+    \emph{Target:} ``fox''
+\end{center}
+
+\noindent
+The model retrieves the embeddings of ``the'', ``brown'', ``jumps'', and ``over'' from the embedding matrix $C$. These four embeddings are averaged to produce the prediction. After computing the prediction error, \textbf{only these input (context) embeddings are modified} to better predict \emph{fox}. The target word itself is represented in the output weight matrix (often denoted $D'$ or $C'$), which is updated separately during training.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Computational Complexity}}
+\end{flushleft}
+Because CBOW removes the hidden layer, its computational cost is \textbf{dramatically lower than Bengio's NNLM}. For each training example, the complexity is approximately:
+\begin{equation}\label{eq:cbow-complexity}
+    O\left(n \cdot m + m \cdot \log\left|V\right|\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $n$ is the number of context words;
+    \item $m$ is the embedding dimension;
+    \item $\left|V\right|$ is the vocabulary size.
+\end{itemize}
+Compared to Bengio's complexity:
+\begin{equation*}
+    O\left(n \cdot m + n \cdot m \cdot h + h \cdot \left|V\right|\right)
+\end{equation*}
+The expensive \textbf{hidden-layer computations disappear}, making Word2Vec roughly \hl{three orders of magnitude faster} to train on large corpora.

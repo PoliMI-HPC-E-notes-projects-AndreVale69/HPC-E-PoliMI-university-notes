@@ -1,0 +1,139 @@
+\subsection{Neural Language Models}\label{sec:neural-language-models}
+
+\subsubsection{Bengio et al. (2003)}\label{sec:bengio-et-al-2003}
+
+At the beginning of the 2000s, language modeling faced a major obstacle. On one hand, traditional N-gram models were simple and effective. On the other hand, they suffered from the curse of dimensionality (\autopageref{sec:the-curse-of-dimensionality-in-n-gram-models}): large vocabularies, exponentially many contexts, sparse statistics, inability to generalize between similar words.
+
+\highspace
+Researchers needed a fundamentally different approach. Instead of counting occurrences of word sequences, \textbf{\emph{could a neural network learn a compact representation of words and use it to predict the next word?}} This question led to the influential work: \important{A Neural Probabilistic Language Model} by Yoshua Bengio, Réjean Ducharme, Pascal Vincent, and Christian Jauvin (2003).\cite{bengio2003neural} The paper is now considered one of the foundational works that eventually led to modern word embeddings and large language models.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{history} \textbf{Historical Context}}
+\end{flushleft}
+To understand why Bengio's work was revolutionary, recall the \textbf{main limitation of N-gram} models. Consider the contexts:
+\begin{itemize}
+    \item \emph{Obama speaks to the media.}
+    \item \emph{President addresses the press.}
+\end{itemize}
+An N-gram model \textbf{treats them as} completely \textbf{different} sequences. The model cannot exploit the fact that:
+\begin{itemize}
+    \item \emph{Obama} and \emph{President} are semantically similar.
+    \item \emph{speaks} and \emph{addresses} are semantically similar.
+    \item \emph{media} and \emph{press} are semantically similar.
+\end{itemize}
+Because every word is represented as an independent symbol. Consequently, knowledge learned from one context cannot be reused in another semantically similar context. In short, N-gram models \textbf{cannot generalize to unseen contexts}.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{The Core Observation.}} Bengio realized something fundamental: \textbf{similar contexts should produce similar predictions}. If two contexts have similar meanings, the model should be able to share statistical strength between them. For this to happen, words must no longer be represented as isolated symbols. Instead, they must be represented by \textbf{continuous vectors}.
+
+\highspace
+\begin{remarkbox}[: Difference Between Isolated Symbols and Continuous Vectors]
+    Suppose we have the vocabulary:
+    \begin{center}
+        \emph{Obama}, \emph{President}, \emph{speaks}, \emph{addresses}, \emph{media}, \emph{press}
+    \end{center}
+    An N-gram model doesn't really understand these words. It only counts occurrences. For example, the model stores something conceptually like:
+    \begin{itemize}
+        \item (``\emph{Obama}'', ``\emph{speaks}'') $\to$ 100 occurrences
+        \item (``\emph{President}'', ``\emph{addresses}') $\to$ 80 occurrences
+    \end{itemize}
+    These are completely independent entries.
+
+    \highspace
+    Now imagine we learn: ``\emph{Obama speaks to the media}'' 10'000 times. Does this help us estimate the probability of ``\emph{President addresses the press}''? No, because for the N-gram model, ``\emph{Obama}'' and ``\emph{President}'', ``\emph{speaks}'' and ``\emph{addresses}'', ``\emph{media}'' and ``\emph{press}'' are just different symbols. No information is shared.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is an isolated symbol?}} An isolated symbol is a word represented as a discrete atomic entity. For example, if the vocabulary is:
+    \begin{center}
+        \emph{Obama}, \emph{President}, \emph{speaks}, \emph{addresses}, \emph{media}, \emph{press}
+    \end{center}
+    The model may internally associate an identifier to each word:
+    \begin{itemize}
+        \item \emph{Obama} $\to$ 1
+        \item \emph{President} $\to$ 2
+        \item \emph{speaks} $\to$ 3
+        \item \emph{addresses} $\to$ 4
+        \item \emph{media} $\to$ 5
+        \item \emph{press} $\to$ 6
+    \end{itemize}
+    However, these identifiers are merely labels and carry no semantic meaning. The model has no notion that \emph{Obama} and \emph{President} are related, or that \emph{speaks} and \emph{addresses} are similar. From the model's perspective, they are simply different symbols. Therefore, the model only knows that $\emph{Obama} \neq \emph{President}$ (or equivalently $1 \neq 2$) and nothing more. Since \textbf{semantic relationships are not represented}, knowledge learned from one context cannot be transferred to similar contexts, limiting the model's ability to generalize. This is the \textbf{fundamental limitation of N-gram models}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Bengio's Insight: Continuous Vectors.}} Instead of representing words as IDs, Bengio proposed representing each word as a \textbf{continuous vector} in a high-dimensional space. For example:
+    \begin{itemize}
+        \item \emph{Obama} $\to [0.2, 0.8, -0.1, \dots]$
+        \item \emph{President} $\to [0.25, 0.75, -0.15, \dots]$
+    \end{itemize}
+    Now the vectors for \emph{Obama} and \emph{President} can be close to each other in this vector space, reflecting their semantic similarity. Similarly, \emph{speaks} and \emph{addresses} can have similar vectors, as can \emph{media} and \emph{press}.
+
+    They are called continuous vectors because their components are real numbers and every coordinate can vary continuously. Not just 0 or 1, but any real value (infinitely many possible values).
+
+    \highspace
+    \textcolor{DarkOrange3}{\faIcon{balance-scale} \textbf{The Fundamental Difference.}} N-gram models treat words as unrelated dictionary entries (isolated symbols), while Belgio's neural language model represents words as continuous vectors, so they are nearby points in a geometric space.
+\end{remarkbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Main Idea}}
+\end{flushleft}
+The key innovation of Bengio et al. (2003) can be summarized in one sentence: \hl{learn a distributed representation of words while simultaneously learning a language model.} This was a radical departure from traditional N-gram approaches. Instead of:
+\begin{center}
+    \emph{word} $\to$ \emph{count occurrences} $\to$ \emph{estimate probabilities}
+\end{center}
+The Neural Language Model performs:
+\begin{center}
+    \emph{word} $\to$ \emph{learn embedding vector} $\to$ \emph{feed vectors to neural network} $\to$ \emph{predict next word}
+\end{center}
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Two Problems Solved at Once.}} The model is trained to predict the next word:
+\begin{equation*}
+    P\left(w_t \, | \, w_{t-N+1}, \dots, w_{t-1}\right)
+\end{equation*}
+But during training it also learns an embedding vector for every word (i.e., a continuous vector representation, dense vector). Therefore, the model simultaneously solves two problems:
+\begin{enumerate}
+    \item \hl{Primary Objective}: \important{learn a language model}. The model is \textbf{trained to predict the next word} given the previous words.
+    \item \hl{Secondary Effect}: \important{learn useful word embeddings}. The model \textbf{learns a continuous vector representation for each word}, capturing semantic relationships between words.
+\end{enumerate}
+Interestingly, Bengio originally viewed the improved language modeling accuracy as the main contribution. The word vectors themselves were considered a by-product and left as future work. This is one of the great ironies of machine learning history: \emph{the ``side effect'' became one of the most important ideas in modern NLP (Natural Language Processing)}.
+
+\highspace
+\textcolor{Green3}{\faIcon{square-root-alt} \textbf{Distributed Representations.}} Bengio's model learns \textbf{distributed representations} of words. Instead of representing a word using a one-hot vector:
+\begin{equation*}
+    \emph{Obama} = \left[0, \dots, 1, \dots, 0\right]
+\end{equation*}
+The model learns a dense vector (\autopageref{def:dense-vector-representation}):
+\begin{equation*}
+    \emph{Obama} = \left[0.2, 0.8, -0.1, \dots\right]
+\end{equation*}
+Similarly, \emph{President} can be represented as:
+\begin{equation*}
+    \emph{President} = \left[0.25, 0.75, -0.15, \dots\right]
+\end{equation*}
+Because these vectors become similar, the network can naturally generalize between related contexts. For example, if the model has learned that ``\emph{Obama speaks to the media}'' is a valid sequence, it can also predict that ``\emph{President addresses the press}'' is likely, even if it has never seen that exact sequence before.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this was revolutionary?}}
+\end{flushleft}
+The breakthrough was not merely using a neural network to predict the next word, because they already existed. The revolutionary idea was: \hl{replace symbolic words with learned continuous representations}. This transforms language modeling from a counting problem into a representation learning problem. Instead of memorizing every possible N-gram:
+\begin{itemize}
+    \item \emph{Obama speaks}
+    \item \emph{President addresses}
+    \item \emph{Prime Minister says}
+\end{itemize}
+Independently, the model learns common patterns through shared embeddings.
+
+\highspace
+\textcolor{Green3}{\faIcon{link} \textbf{Connection with Autoencoders.}} Notice how the idea resembles what we saw with autoencoders (\autopageref{sec:neural-autoencoders}). In autoencoders:
+\begin{center}
+    \emph{Input} $\to$ \emph{Compressed latent representation} $\to$ \emph{Reconstruction of input}
+\end{center}
+Similarly, in Neural Language Models:
+\begin{center}
+    \emph{Input} $\to$ \emph{Embedding vector} $\to$ \emph{Prediction of next word}
+\end{center}
+In both cases:
+\begin{itemize}
+    \item A compact latent representation is learned;
+    \item The representation is not manually designed;
+    \item Useful features emerge automatically from data.
+\end{itemize}

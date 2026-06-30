@@ -1,0 +1,353 @@
+\subsubsection{Word2Vec Architectures}\label{sec:word2vec-architectures}
+
+The main innovation of \definition{Word2Vec} is not only that it is much simpler than Bengio's Neural Language Model, but also that it can be \textbf{trained in two different ways}, each optimizing a slightly different prediction task. Mikolov et al. proposed two architectures:
+\begin{itemize}
+    \item \textbf{Continuous Bag-of-Words} (CBOW, \autopageref{def:bag-of-words-bow});
+    \item \textbf{Skip-Gram}.
+\end{itemize}
+Although they differ in the prediction objective, they \textbf{both learn} the same kind of object: \hl{a dense vector (embedding) for every word in the vocabulary.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why Two Architectures?}} The central idea of Word2Vec is that \hl{a word should have a vector that allows us to predict its surrounding words.} There are two possible ways to formulate this learning task. Suppose our sentence is ``\emph{The cat eats fresh fish every day}'' and we focus on the word ``\emph{eats}''. We can ask two different questions:
+\begin{itemize}
+    \item Given the surrounding words ``\emph{The cat}'' and ``\emph{fresh fish every day}'', can we predict the missing word? This is the \definition{Continuous Bag-of-Words (CBOW)} model.
+    \item Instead, we can reverse the problem. Given the center word ``\emph{eats}'', can we predict the surrounding words? This is the \definition{Skip-Gram} model.
+\end{itemize}
+Thus the two \textbf{architectures solve opposite prediction problems}. CBOW predicts \textbf{one word from many}, while Skip-Gram predicts \textbf{many words from one}. This small difference leads to different training behaviors.
+
+\begin{center}
+    \begin{tabular}{@{} l l l @{}}
+        \toprule
+        \textbf{Architecture} & \textbf{Input} & \textbf{Output} \\
+        \midrule
+        CBOW & Context words & Target word \\
+        Skip-Gram & Target word & Context words \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Continuous Bag-of-Words (CBOW)}}
+\end{flushleft}
+\definition{Continuous Bag-of-Words (CBOW)} predicts the \textbf{center word} given the surrounding context. Suppose the sentence is ``\emph{The cat eats fresh fish}'' and we choose a context window of size $2$. Then, the context ``\emph{The cat}'' and ``\emph{fresh fish}'' should predict the center word ``\emph{eats}''. The model works with \textbf{continuous word vectors} (embeddings), not one-hot vectors, and it \textbf{ignores the order of the context words} (thus the name ``\emph{bag-of-words}''). For example, the context words ``\emph{cat eats fish}'' and ``\emph{fish eats cat}'' would produce exactly the same averaged context representation. The words are treated like a \textbf{bag}, not a sequence.
+
+\highspace
+Unlike Bengio's NNLM (Neural Network Language Model), there is \textbf{no hidden layer} and \textbf{no concatenation of embeddings}. Instead, the \hl{context embeddings are simply averaged.} Let:
+\begin{equation*}
+    C \in \mathbb{R}^{\left|V\right| \times m}
+\end{equation*}
+Be the \textbf{shared embedding matrix}, where each row corresponds to the embedding of one word in the vocabulary. Given the context words:
+\begin{equation*}
+    w_1, w_2, \ldots, w_C
+\end{equation*}
+Their embedding vectors are obtained through the lookup operation:
+\begin{equation*}
+    C\left(w_1\right), C\left(w_2\right), \ldots, C\left(w_C\right)
+\end{equation*}
+CBOW computes the \textbf{average context representation} as:
+\begin{equation}\label{eq:cbow-average-context}
+    \bar{\mathbf{v}}
+    =
+    \frac{1}{C}
+    \cdot
+    \sum_{i=1}^{C}
+    C\left(w_i\right)
+\end{equation}
+Where $C$ is the \textbf{number of context words}. The vector $\bar{\mathbf{v}}$ \hl{summarizes the semantic information contained in the surrounding context} and is then used as the input to the output layer, which predicts the most likely center word using a Softmax over the vocabulary.
+
+\highspace
+The main steps of the CBOW architecture are illustrated in \autoref{fig:cbow-architecture}:
+\begin{enumerate}
+    \item Convert each context word into one-hot form.
+    \item Retrieve its embedding vector from the shared embedding matrix $C$.
+    \item Average all embeddings to get the context representation $\bar{\mathbf{v}}$.
+    \item Use $\bar{\mathbf{v}}$ as input to a Softmax layer that predicts the center word.
+\end{enumerate}
+This architecture brings \textbf{three main advantages}:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Fast training.}} Since multiple context words are averaged together, training is computationally efficient.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Stable embeddings.}} The averaging operation reduces variance, making optimization easier.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Works well for frequent words.}} The averaging operation reduces variance, making optimization easier.
+\end{itemize}
+However, some \textbf{information is lost} by averaging:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Word order disappears.}} The \hl{model ignores syntax} due to the bag-of-words architecture.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{Rare words.}} Rare words appear only occasionally as prediction targets. Consequently, \hl{CBOW is usually less effective for infrequent vocabulary.}
+\end{itemize}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \resizebox{\textwidth}{!}{%
+        \begin{tikzpicture}[
+            >=Latex,
+            font=\small,
+            word/.style={
+                draw,
+                rounded corners,
+                minimum width=1.25cm,
+                minimum height=0.55cm,
+                align=center,
+                fill=blue!8
+            },
+            emb/.style={
+                draw,
+                rounded corners,
+                minimum width=1.45cm,
+                minimum height=0.55cm,
+                align=center,
+                fill=green!10
+            },
+            proj/.style={
+                draw,
+                rounded corners,
+                minimum width=1.35cm,
+                minimum height=0.8cm,
+                align=center,
+                fill=purple!10
+            },
+            outnode/.style={
+                draw,
+                rounded corners,
+                minimum width=1.45cm,
+                minimum height=0.65cm,
+                align=center,
+                fill=orange!15
+            },
+            title/.style={font=\bfseries\large, align=center},
+            subtitle/.style={font=\small, align=center},
+            note/.style={font=\small, align=center, text width=6cm}
+        ]
+
+            \node[title] at (0,3.1) {CBOW};
+            \node[subtitle] at (0,2.7) {Continuous Bag-of-Words};
+
+            \node[word] (c1) at (-3.8,1.6) {$w_{t-2}$};
+            \node[word] (c2) at (-3.8,0.7) {$w_{t-1}$};
+            \node[word] (c3) at (-3.8,-0.7) {$w_{t+1}$};
+            \node[word] (c4) at (-3.8,-1.6) {$w_{t+2}$};
+
+            \node[emb] (e1) at (-1.9,1.6) {$C(w_{t-2})$};
+            \node[emb] (e2) at (-1.9,0.7) {$C(w_{t-1})$};
+            \node[emb] (e3) at (-1.9,-0.7) {$C(w_{t+1})$};
+            \node[emb] (e4) at (-1.9,-1.6) {$C(w_{t+2})$};
+
+            \node[proj] (avg) at (0.3,0) {
+                $\bar{\mathbf v}$\\[-1mm]
+                \scriptsize average
+            };
+
+            \node[outnode] (soft1) at (2.8,0) {
+                Softmax\\[-1mm]
+                \scriptsize over $|V|$
+            };
+
+            \node[word] (target1) at (5.0,0) {$w_t$};
+
+            \draw[->] (c1) -- (e1);
+            \draw[->] (c2) -- (e2);
+            \draw[->] (c3) -- (e3);
+            \draw[->] (c4) -- (e4);
+
+            \draw[->] (e1) -- (avg);
+            \draw[->] (e2) -- (avg);
+            \draw[->] (e3) -- (avg);
+            \draw[->] (e4) -- (avg);
+
+            \draw[->] (avg) -- (soft1);
+            \draw[->] (soft1) -- (target1);
+
+            \node[subtitle] at (-3.8,-2.3) {Input\\context words};
+            \node[subtitle] at (-1.9,-2.3) {Embedding\\lookup};
+            \node[subtitle] at (0.3,-2.3) {Projection};
+            \node[subtitle] at (2.8,-2.3) {Output};
+            \node[subtitle] at (5.0,-2.3) {Target};
+
+            \node[note] at (0.4,-3.35) {
+            Given the surrounding context words,\\
+            CBOW predicts the center word.
+            };
+
+            \node[note] at (0.4,-4.35) {
+            $\displaystyle
+            \bar{\mathbf v}
+            =
+            \frac{1}{C}
+            \sum_{i=1}^{C}
+            C(w_i)
+            $
+            };
+
+        \end{tikzpicture}%
+    }
+    \caption{CBOW architecture in Word2Vec.\cite{mikolov2013efficient}}
+    \label{fig:cbow-architecture}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Skip-Gram}}
+\end{flushleft}
+Skip-Gram reverses the prediction problem. Instead of asking ``\emph{which word belongs in the middle?}'', it asks ``\emph{\textbf{which surrounding words are likely to appear around this word?}}''. Here, the model starts from a single word and predicts each context word independently.
+
+\highspace
+Imagine hearing only one word, for example ``\emph{football}''. Immediately, many related words come to mind: ``\emph{ball}'', ``\emph{goal}'', ``\emph{team}'', ``\emph{stadium}'', etc. Skip-Gram learns exactly these contextual associations.
+
+\highspace
+Mathematically, given a center word $w_t$, Skip-Gram \textbf{maximizes the probability of observing all neighboring context words}:
+\begin{equation}
+    P\left(\text{context} \, | \, w_{t}\right) = \prod_{j=-k}^{k} P\left(w_{t+j} \, | \, w_{t}\right) \quad j \neq 0
+\end{equation}
+Where $k$ is the context window and each surrounding word $w_{t+j}$ is predicted independently from the center word $w_t$. The Skip-Gram architecture is illustrated in \autoref{fig:skipgram-architecture}.
+
+\newpage
+
+\noindent
+The \textbf{advantages} of Skip-Gram are the downside of CBOW:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Better for rare words.}} Every occurrence of a word generates several training examples, so even infrequent words receive stronger learning signals.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{Better semantic representations.}} Empirically, Skip-Gram often\break learns higher-quality embeddings, especially for semantic relationships and analogies. Because it focuses on predicting context words, it captures richer semantic associations.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle}} However, Skip-Gram has one main disadvantage: \textbf{computational cost}. Each center word requires predicting multiple context words, making training slower than CBOW.
+
+\begin{figure}[!htp]
+    \centering
+    \resizebox{\textwidth}{!}{%
+        \begin{tikzpicture}[
+            >=Latex,
+            font=\small,
+            word/.style={
+                draw,
+                rounded corners,
+                minimum width=1.25cm,
+                minimum height=0.55cm,
+                align=center,
+                fill=blue!8
+            },
+            emb/.style={
+                draw,
+                rounded corners,
+                minimum width=1.45cm,
+                minimum height=0.55cm,
+                align=center,
+                fill=green!10
+            },
+            proj/.style={
+                draw,
+                rounded corners,
+                minimum width=1.35cm,
+                minimum height=0.8cm,
+                align=center,
+                fill=purple!10
+            },
+            outnode/.style={
+                draw,
+                rounded corners,
+                minimum width=1.45cm,
+                minimum height=0.65cm,
+                align=center,
+                fill=orange!15
+            },
+            title/.style={font=\bfseries\large, align=center},
+            subtitle/.style={font=\small, align=center},
+            note/.style={font=\small, align=center, text width=6cm}
+        ]
+
+            \node[title] at (0,3.1) {Skip-Gram};
+            \node[subtitle] at (0,2.7) {Center word predicts context};
+
+            \node[word] (sginput) at (-4.0,0) {$w_t$};
+            \node[emb] (sgemb) at (-1.8,0) {$C(w_t)$};
+            \node[proj] (sgproj) at (0.4,0) {
+                $\mathbf v_t$\\[-1mm]
+                \scriptsize projection
+            };
+
+            \node[outnode] (sgout1) at (3.0,1.5) {
+                Softmax\\[-1mm]
+                \scriptsize over $|V|$
+            };
+            \node[outnode] (sgout2) at (3.0,0.5) {
+                Softmax\\[-1mm]
+                \scriptsize over $|V|$
+            };
+            \node[outnode] (sgout3) at (3.0,-0.5) {
+                Softmax\\[-1mm]
+                \scriptsize over $|V|$
+            };
+            \node[outnode] (sgout4) at (3.0,-1.5) {
+                Softmax\\[-1mm]
+                \scriptsize over $|V|$
+            };
+
+            \node[word] (sgw1) at (5.3,1.5) {$w_{t-2}$};
+            \node[word] (sgw2) at (5.3,0.5) {$w_{t-1}$};
+            \node[word] (sgw3) at (5.3,-0.5) {$w_{t+1}$};
+            \node[word] (sgw4) at (5.3,-1.5) {$w_{t+2}$};
+
+            \draw[->] (sginput) -- (sgemb);
+            \draw[->] (sgemb) -- (sgproj);
+
+            \draw[->] (sgproj) -- (sgout1);
+            \draw[->] (sgproj) -- (sgout2);
+            \draw[->] (sgproj) -- (sgout3);
+            \draw[->] (sgproj) -- (sgout4);
+
+            \draw[->] (sgout1) -- (sgw1);
+            \draw[->] (sgout2) -- (sgw2);
+            \draw[->] (sgout3) -- (sgw3);
+            \draw[->] (sgout4) -- (sgw4);
+
+            \node[subtitle] at (-4.0,-2.3) {Input\\center word};
+            \node[subtitle] at (-1.8,-2.3) {Embedding\\lookup};
+            \node[subtitle] at (0.4,-2.3) {Projection};
+            \node[subtitle] at (3.0,-2.3) {Outputs};
+            \node[subtitle] at (5.3,-2.3) {Context};
+
+            \node[note] at (0.6,-3.35) {
+            Given the center word, Skip-Gram\\
+            predicts the surrounding context words.
+            };
+
+            \node[note] at (0.6,-4.15) {
+            $\displaystyle
+            w_t
+            \longrightarrow
+            \{w_{t-c},\ldots,w_{t-1},w_{t+1},\ldots,w_{t+c}\}
+            $
+            };
+
+        \end{tikzpicture}%
+    }
+    \caption{Skip-Gram architecture in Word2Vec.\cite{mikolov2013efficient}}
+    \label{fig:skipgram-architecture}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{DarkOrange3}{\faIcon{balance-scale} \textbf{CBOW vs Skip-Gram, which one is better?}}
+\end{flushleft}
+There is no universally superior architecture. In practice, \textbf{CBOW} is preferred when \hl{training speed is important} and the \hl{corpus is very large}. \textbf{Skip-Gram} is generally preferred when the goal is to learn the \hl{highest-quality embeddings}, especially for rare words and semantic relationships.
+
+\highspace
+Despite these differences, both architectures learn embeddings using the \textbf{same underlying principle}: \hl{words that appear in similar contexts gradually acquire similar vector representations in the embedding space.} This shared objective is what allows Word2Vec to capture meaningful semantic and syntactic relationships between words.
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Continuous Bag-of-Words (CBOW)} & \textbf{Skip-Gram} \\
+        \midrule
+        Context $\to$ Target        & Target $\to$ Context \\
+        Input: surrounding words    & Input: center word \\
+        Output: center word         & Output: surrounding words \\
+        Faster training             & Slower training \\
+        Better for frequent words   & Better for rare words \\
+        Averages context embeddings & Predicts each neighbor separately \\
+        Simpler optimization        & Richer learning signal \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison of CBOW and Skip-Gram architectures in Word2Vec.}
+    \label{tab:cbow-vs-skipgram}
+\end{table}

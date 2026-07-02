@@ -33,6 +33,8 @@
     - add `Weaknesses of Variational Algorithms`
     - add `Barren Plateaus`
     - add `Why Variational Algorithms Matter`
+  - add `Variational Quantum Eigensolver (VQE)`
+    - add `The Physical Motivation`
 
 --------------------
 

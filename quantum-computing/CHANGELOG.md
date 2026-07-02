@@ -32,6 +32,7 @@
     - add `Strengths of Variational Algorithms`
     - add `Weaknesses of Variational Algorithms`
     - add `Barren Plateaus`
+    - add `Why Variational Algorithms Matter`
 
 --------------------
 

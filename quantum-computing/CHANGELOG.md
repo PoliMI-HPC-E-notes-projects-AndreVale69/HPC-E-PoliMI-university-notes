@@ -31,6 +31,7 @@
   - add `Advantages and Limitations`
     - add `Strengths of Variational Algorithms`
     - add `Weaknesses of Variational Algorithms`
+    - add `Barren Plateaus`
 
 --------------------
 

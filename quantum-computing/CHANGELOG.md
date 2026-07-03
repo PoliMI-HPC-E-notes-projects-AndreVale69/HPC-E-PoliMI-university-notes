@@ -35,6 +35,7 @@
     - add `Why Variational Algorithms Matter`
   - add `Variational Quantum Eigensolver (VQE)`
     - add `The Physical Motivation`
+    - add `Hamiltonians and Molecular Energy`
 
 --------------------
 

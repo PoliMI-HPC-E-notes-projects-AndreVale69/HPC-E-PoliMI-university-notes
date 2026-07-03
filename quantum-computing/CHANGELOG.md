@@ -36,6 +36,7 @@
   - add `Variational Quantum Eigensolver (VQE)`
     - add `The Physical Motivation`
     - add `Hamiltonians and Molecular Energy`
+    - add `Variational Principle`
 
 --------------------
 

@@ -8,6 +8,8 @@ As I have highlighted, a student should choose the teacher's material or a book 
 
 <ul>
     <li>Course slides.</li>
+    <li>Bryan Eastin and Emanuel Knill. Restrictions on transversal encoded quantum gate sets. <i>Physical review letters</i>, 102(11):110502, 2009.</li>
+    <li>Albert Einstein, Boris Podolsky, and Nathan Rosen. Can quantum-mechanical description of physical reality be considered complete? <i>Physical review</i>, 47(10):777, 1935.</li>
 </ul>
 
 </details>

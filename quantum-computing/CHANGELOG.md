@@ -21,6 +21,7 @@
   - add `Why QAOA?`
   - add `QAOA Ingredients`
   - add `Structure of the QAOA Ansatz`
+  - add `Unitaries from Hamiltonians`
 
 --------------------
 

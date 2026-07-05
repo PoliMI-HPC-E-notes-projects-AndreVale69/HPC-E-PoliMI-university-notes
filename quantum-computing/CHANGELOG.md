@@ -20,6 +20,7 @@
 - add `Quantum Approximate Optimization Algorithm`
   - add `Why QAOA?`
   - add `QAOA Ingredients`
+  - add `Structure of the QAOA Ansatz`
 
 --------------------
 

@@ -1,0 +1,201 @@
+\subsubsection{Structure of the QAOA Ansatz}\label{sec:structure-of-the-qaoa-ansatz}
+
+In general, the Ansätz is a \hl{parameterized quantum circuit whose parameters are optimized by a classical optimizer.} In Variational Quantum Eigensolver (VQE), the user could choose the circuit architecture. For example, the user could choose a hardware-efficient Ansatz or a problem-inspired Ansatz (i.e. a circuit that is inspired by the problem Hamiltonian).
+
+\highspace
+In QAOA, the ansatz is \textbf{not arbitrary}. The \hl{ansatz is determined by the Cost Hamiltonian, the Mixer Hamiltonian and their parameters $\gamma$ and $\beta$.} So unlike VQE, we do \textbf{not} invent our own circuit. The structure is fixed. Only the parameter values change. See \autoref{fig:qaoa-ansatz} (\autopageref{fig:qaoa-ansatz}) for a visual representation of the QAOA ansatz.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we start with Hadamard gates?}} The circuit always begins with $H^{\otimes n}$. In other words, \textbf{every qubit receives one Hadamard gate}. Because we want to start from $\ket{0}^{\otimes n}$, and transform it into $\ket{+}^{\otimes n}$. This creates the uniform superposition:
+\begin{equation*}
+    \ket{+}^{\otimes n} = \frac{1}{\sqrt{2^n}} \sum_{x} \ket{x}
+\end{equation*}
+For example, suppose we have $3$ binary variables. The possible solutions are:
+\begin{equation*}
+    000, 001, 010, 011, 100, 101, 110, 111
+\end{equation*}
+Initially, the quantum state $\ket{000}$ represents only one candidate. After the Hadamards, the quantum computer simultaneously represents all $8$ candidates. This is the starting point of the optimization. 
+
+\highspace
+\textcolor{Green3}{\faIcon{history} \textbf{The repeated block.}} After initialization, QAOA \textbf{repeatedly applies} the Cost Hamiltonian ($H_C$) and the Mixer Hamiltonian ($H_M$) until it has executed $p$ \textbf{blocks}. This alternating structure is the defining characteristic of QAOA.
+
+\highspace
+Each block has two parameters: $\gamma$ and $\beta$, $\gamma, \beta \in \mathbb{R}^{p}$. These are the \textbf{parameters} (vectors) \textbf{optimized by the classical optimizer}. Each layer has \textbf{its own pair of parameters}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is $p$?}} The parameter $p$ is called the \textbf{depth} of the QAOA circuit. It indicates \textbf{how many Cost-Mixer pairs are applied}.
+\begin{itemize}
+    \item \textbf{Larger $p$} means a circuit more expressive and potentially more accurate, but also deeper, noisier, and slower to run. It also means more parameters to optimize, which can be challenging for the classical optimizer.
+    \item \textbf{Smaller $p$} means a circuit that is less expressive and potentially less accurate, but also shallower, less noisy, and faster to run. It also means fewer parameters to optimize, which can be easier for the classical optimizer.
+\end{itemize}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why repeat the block?}} One of the main questions about the QAOA architecture is \emph{why the Cost-Mixer block needs to be repeated}. Imagine the Cost Hamiltonian alone. It tries to move the state toward lower energy. Then the Mixer slightly perturbs the state, allowing exploration. Then the Cost Hamiltonian improves it again. Then another exploration, and another optimization, and so on. So the repeated block allows the algorithm to \textbf{explore and optimize} the solution space. The more blocks, the more exploration and optimization can occur. This alternation is exactly what gives the algorithm its name: \definition{Quantum Approximate Optimization Algorithm (QAOA)}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{And the optimizer? Where does it fit in?}} Notice the feedback loop in \autoref{fig:qaoa-ansatz} (\autopageref{fig:qaoa-ansatz}). After measuring, the optimizer computes the expectation value of the Cost Hamiltonian:
+\begin{equation*}
+    \bra{\psi(\gamma,\beta)} H_C \ket{\psi(\gamma,\beta)}
+\end{equation*}
+And proposes new values for $\gamma$ and $\beta$. The circuit architecture never changes. \hl{Only the parameters change.} This is another important difference from general VQE.
+
+\highspace
+It is important that only the parameters change because it means the ansatz is determined by the Hamiltonians and not the user.. The user does not invent a circuit. The user only chooses the Hamiltonians and the depth $p$. The rest is determined by the problem. This means that if tomorrow we solve Max-Cut, and the day after we solve Max-3-SAT, the overall shape of the circuit is always the same (the same Cost-Mixer block repeated $p$ times). The \textbf{only things that change are}:
+\begin{itemize}
+    \item The \textbf{Cost Hamiltonian} (because the optimization problem changes);
+    \item The optimized values of $\gamma_i$ and $\beta_i$.
+\end{itemize}
+The Mixer Hamiltonian keeps the same mathematical form in standard QAOA.
+
+\newpage
+
+\begin{landscape}
+    \begin{center}
+        \vspace*{\fill}
+        \begin{tikzpicture}[
+            classical/.style={
+                draw,
+                fill=gray!15,
+                rounded corners=2pt,
+                minimum height=0.7cm,
+                align=center
+            },
+            feedback/.style={
+                -{Latex[length=2mm]},
+                line width=0.45pt
+            }
+        ]
+
+        \node (qcircuit) {
+            \begin{quantikz}[
+                column sep=0.45cm,
+                row sep=0.45cm
+            ]
+            \lstick[3]{$|0\rangle^{\otimes n}$}
+                & \gate{H}
+                & \gate[3,style={
+                    name=UCone,
+                    fill=yellow!25,
+                    minimum width=1.05cm,
+                    minimum height=2.35cm,
+                    inner xsep=2pt
+                }]{\begin{array}{c} U_C \\[-2pt] (\gamma_1) \end{array}}
+                \gategroup[
+                    3,
+                    steps=2,
+                    style={draw=none},
+                    label style={label position=above,anchor=south,yshift=0.25cm}
+                ]{level $i=1$}
+                & \gate[3,style={
+                    name=UMone,
+                    fill=green!20,
+                    minimum width=1.05cm,
+                    minimum height=2.35cm,
+                    inner xsep=2pt
+                }]{\begin{array}{c} U_M \\[-2pt] (\beta_1) \end{array}}
+                & \push{\cdots}
+                & \gate[3,style={
+                    name=UCp,
+                    fill=yellow!25,
+                    minimum width=1.05cm,
+                    minimum height=2.35cm,
+                    inner xsep=2pt
+                }]{\begin{array}{c} U_C \\[-2pt] (\gamma_p) \end{array}}
+                \gategroup[
+                    3,
+                    steps=2,
+                    style={draw=none},
+                    label style={label position=above,anchor=south,yshift=0.25cm}
+                ]{level $i=p$}
+                & \gate[3,style={
+                    name=UMp,
+                    fill=green!20,
+                    minimum width=1.05cm,
+                    minimum height=2.35cm,
+                    inner xsep=2pt
+                }]{\begin{array}{c} U_M \\[-2pt] (\beta_p) \end{array}}
+                & \meter{}
+                & \gate[3,style={
+                    name=OPT,
+                    fill=gray!20,
+                    minimum width=3.0cm,
+                    minimum height=2.2cm,
+                    inner xsep=4pt
+                }]{%
+                    \begin{array}{c}
+                    \text{Optimize}\\[2pt]
+                    \langle\psi(\gamma,\beta)|H_C|\psi(\gamma,\beta)\rangle
+                    \end{array}
+                } \\
+
+                & \gate{H} & & & \push{\cdots} & & & \meter{} & \\
+
+                & \gate{H} & & & \push{\cdots} & & & \meter{} &
+            \end{quantikz}
+        };
+
+        % ---------------------------------------------------------
+        % Update block: centered below the QAOA layers
+        % ---------------------------------------------------------
+        \coordinate (qaoa-center) at ($(UCone.south)!0.5!(UMp.south)$);
+
+        \node[
+            classical,
+            below=1.55cm of qaoa-center,
+            minimum width=5.6cm
+        ] (update) {
+            Update $(\gamma,\beta)$
+        };
+
+        % ---------------------------------------------------------
+        % Invisible helper node around the Optimize rectangle
+        % ---------------------------------------------------------
+        \node[
+            inner sep=0pt,
+            minimum width=3.0cm,
+            minimum height=2.2cm
+        ] (OPTbox) at ($(OPT.center)+(0.6cm,-1.3cm)$) {};
+
+        % ---------------------------------------------------------
+        % Optimize -> Update arrow
+        % Start from the real bottom of the Optimize rectangle
+        % ---------------------------------------------------------
+        \draw[feedback]
+            (OPTbox.south) -- ++(0,-0.35cm)
+            |- (update.east);
+
+        % ---------------------------------------------------------
+        % Starting points on top of update box
+        % ---------------------------------------------------------
+        \coordinate (sUCone) at ($(update.north)+(-2.15cm,0)$);
+        \coordinate (sUMone) at ($(update.north)+(-0.55cm,0)$);
+        \coordinate (sUCp)   at ($(update.north)+( 1.55cm,0)$);
+        \coordinate (sUMp)   at ($(update.north)+( 2.25cm,0)$);
+
+        % ---------------------------------------------------------
+        % Target points: below the QAOA blocks, with extra margin
+        % ---------------------------------------------------------
+        \coordinate (tUCone) at ($(UCone.south)+(0.55cm,-0.28cm)$);
+        \coordinate (tUMone) at ($(UMone.south)+(0.45cm,-0.28cm)$);
+        \coordinate (tUCp)   at ($(UCp.south)+(0.55cm,-0.28cm)$);
+        \coordinate (tUMp)   at ($(UMp.south)+(0.75cm,-0.38cm)$);
+
+        % ---------------------------------------------------------
+        % Update arrows to all parameters
+        % Use shortened arrows so the arrowheads do not enter the boxes
+        % ---------------------------------------------------------
+        \draw[feedback, shorten >=6pt] (sUCone) -- (tUCone);
+        \draw[feedback, shorten >=6pt] (sUMone) -- (tUMone);
+
+        \node at ($(sUMone)!0.5!(sUCp)+(0,0.45cm)$) {$\cdots$};
+
+        \draw[feedback, shorten >=6pt] (sUCp) -- (tUCp);
+        \draw[feedback, shorten >=6pt] (sUMp) -- (tUMp);
+
+        \end{tikzpicture}
+        \captionsetup{hypcap=false}
+        \captionof{figure}{Structure of the QAOA ansatz.}
+        \label{fig:qaoa-ansatz}
+        \vspace*{\fill}
+    \end{center}
+\end{landscape}

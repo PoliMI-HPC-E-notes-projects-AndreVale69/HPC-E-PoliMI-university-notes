@@ -23,6 +23,7 @@
   - add `Structure of the QAOA Ansatz`
   - add `Unitaries from Hamiltonians`
   - add `Cost Hamiltonian and Cost Operator`
+  - add `Mixer Hamiltonian and Mixer Operator`
 
 --------------------
 

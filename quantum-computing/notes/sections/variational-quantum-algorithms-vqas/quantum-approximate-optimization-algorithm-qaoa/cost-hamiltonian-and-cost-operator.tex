@@ -1,0 +1,83 @@
+\subsubsection{Cost Hamiltonian and Cost Operator}\label{sec:cost-hamiltonian-and-cost-operator}
+
+Up to now we know that:
+\begin{itemize}
+    \item Every optimization problem becomes a \textbf{Cost Hamiltonian} $H_C$;
+    \item Every Hamiltonian generates a unitary through $U = e^{-i H t}$.
+\end{itemize}
+Now we specialize this to the Cost Hamiltonian $H_C$, obtaining the first half of every QAOA layer: the \textbf{Cost Operator} $U_C(\gamma) = e^{-i \gamma H_C}$, where $\gamma$ is a variational parameter.
+
+\highspace
+\textcolor{Green3}{\faIcon{link} \textbf{From Hamiltonian to Cost Operator.}} The previous section introduced the general rule:
+\begin{equation*}
+    U = e^{-i H t}
+\end{equation*}
+Now we simply apply it to the \definition{Cost Hamiltonian}. Since our Hamiltonian is $H_C$, its corresponding unitary is:
+\begin{equation}
+    U_C\left(\gamma_i\right) = e^{-i \gamma_i H_C} = \exp\left(-i \gamma_i H_C\right)
+\end{equation}
+Where $\gamma_i \in \mathbb{R}$ is the parameter associated with the $i$-th QAOA layer. This unitary operator (\textbf{quantum gate}) is called the \definition{Cost Operator} (or \definition{Cost Unitary}, or \definition{Cost Evolution Operator}), which evolves the quantum state according to the Cost Hamiltonian.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called the Cost Hamiltonian.}} Like in QUBO, we always begin with an optimization problem:
+\begin{equation*}
+    \min_{x} C(x)
+\end{equation*}
+The function $C(x)$ assigns a \textbf{cost} to every candidate solution $x$. The best solution is simply the one with the smallest cost. In QAOA we replace this classical function by $H_C$. Instead of assigning a cost, it assigns an energy. So, it is called the \textbf{Cost Hamiltonian} because it is a \textbf{quantum version of the classical cost function}.
+
+\highspace
+Also, the \textbf{Cost Hamiltonian encodes the problem we want to solve}. Notice that $H_C$ does \textbf{not} solve the optimization problem. Instead, it is a mathematical description of the problem. For example, suppose we have Max-Cut; we encode the entire problem in $H_C$. Then, we use QAOA to find the best solution. In other words, $H_C$ is a \textbf{problem descriptor} and the graph linked to the Max-Cut problem disappears from the QAOA algorithm. The graph is only used to build $H_C$ and then it is no longer needed.
+
+\highspace
+\textcolor{Green3}{\faIcon{bullseye} \textbf{The goal of the Cost Operator.}} The Cost Operator is defined as:
+\begin{equation*}
+    U_C\left(\gamma_i\right) = e^{-i \gamma_i H_C}
+\end{equation*}
+This operator \hl{\textbf{evolves the quantum state} according to the energy landscape defined by the Cost Hamiltonian.} Thus:
+\begin{itemize}
+    \item The \textbf{Cost Hamiltonian} defines which configurations are good or bad (their energies);
+    \item The \textbf{Cost Operator} modifies the quantum amplitudes based on those energies.
+\end{itemize}
+It does \textbf{not immediately produce the optimal solution} after one application. Instead, it is \textbf{one step in the repeated QAOA evolution}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does $\gamma_i$ control?}} Earlier we introduced the generic evolution (\autopageref{eq:unitary-from-hamiltonian}):
+\begin{equation*}
+    U = e^{-i \alpha H}
+\end{equation*}
+Where $\alpha$ is a real number that controls the evolution. In the case of the Cost Operator, we have:
+\begin{equation*}
+    U_C\left(\gamma_i\right) = e^{-i \gamma_i H_C}
+\end{equation*}
+Where $\gamma_i$ is a real number that controls \hl{how strongly the Cost Hamiltonian acts during the $i$-th QAOA layer.} This parameter is a \textbf{variational parameter} that is optimized by the classical optimizer. The optimizer will find the best $\gamma_i$ that produces the best solution.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The implementation problem}}
+\end{flushleft}
+The implementation of the Cost Operator \textbf{with suitable gates is a non-trivial step}. Because the Cost Operator:
+\begin{equation*}
+    U_C\left(\gamma_i\right) = e^{-i \gamma_i H_C}
+\end{equation*}
+Is still a \textbf{huge matrix} containing $2^n \times 2^n$ elements. We cannot implement it directly on a quantum computer. The quantum computer never materializes the entire matrix. Instead, it implements the same transformation through a sequence of elementary gates.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle}} So now the question is: \textbf{\emph{how do we implement the Cost Operator with suitable gates?}} Instead of treating $H_C$ as one giant matrix, we can write it as a \textbf{sum of tensor products of Pauli operators}:
+\begin{equation*}
+    I, \quad \sigma_X, \quad \sigma_Y, \quad \sigma_Z
+\end{equation*}
+Once the Hamiltonian is decomposed in this form, the corresponding Cost Operator can be implemented using elementary rotation gates.
+
+\highspace
+Therefore, we can \textbf{write the Cost Hamiltonian} $H_C$ as a \textbf{sum of tensor products of Pauli operators}:
+\begin{equation}
+    H_C = \sum_k c_k P_k
+\end{equation}
+Where $c_k$ are real coefficients and each $P_k$ is a tensor product of Pauli matrices. At this point, we can implement the corresponding unitary by implementing the evolution generated by each Pauli term.
+
+\highspace
+In summary, the Cost Hamiltonian $H_C$ is the quantum representation of the optimization problem. It assigns an energy to each candidate solution, and its ground state corresponds to the optimal solution. In each QAOA layer, the Cost Hamiltonian generates the Cost Operator:
+\begin{equation*}
+    U_C\left(\gamma_i\right) = e^{-i \gamma_i H_C}
+\end{equation*}
+Where $\gamma_i$ is a variational parameter. Since arbitrary Hamiltonians cannot be directly executed on quantum hardware, $H_C$ is decomposed into sums of tensor products of Pauli operators, allowing the Cost Operator to be implemented using standard quantum gates such as rotation gates.

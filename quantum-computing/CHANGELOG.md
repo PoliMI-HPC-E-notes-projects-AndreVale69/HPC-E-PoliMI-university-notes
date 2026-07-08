@@ -26,6 +26,7 @@
   - add `Mixer Hamiltonian and Mixer Operator`
   - add `Alternating Operators and p Layers`
   - add `QUBO Problems for QAOA`
+  - add `From QUBO to Cost Hamiltonian`
 
 --------------------
 

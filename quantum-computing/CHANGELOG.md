@@ -21,6 +21,7 @@
 - add `Single Qubit Gates`
   - add `Exercises`
     - add `Single-Qubit States and Probabilities`
+    - add `Bloch sphere states`
 
 ---------------------
 

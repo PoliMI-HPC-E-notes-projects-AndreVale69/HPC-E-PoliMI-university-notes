@@ -2,6 +2,7 @@
 
 <h2>Table of Contents</h2>
 
+- [v1.0.0](#v100)
 - [v0.9.0](#v090)
 - [v0.8.0](#v080)
 - [v0.7.0](#v070)
@@ -12,6 +13,14 @@
 - [v0.2.1](#v021)
 - [v0.1.1](#v011)
 - [v0.1.0](#v010)
+
+---------------------
+
+### v1.0.0
+
+- add `Single Qubit Gates`
+  - add `Exercises`
+    - add `Single-Qubit States and Probabilities`
 
 ---------------------
 

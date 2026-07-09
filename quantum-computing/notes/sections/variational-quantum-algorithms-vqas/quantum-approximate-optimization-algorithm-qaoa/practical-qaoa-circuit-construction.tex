@@ -1,0 +1,180 @@
+\subsubsection{Practical QAOA Circuit Construction}\label{sec:practical-qaoa-circuit-construction}
+
+Up to now, we have built the entire mathematical pipeline: optimization problem, QUBO formulation, spin formulation, Cost Hamiltonian $H_C$, Cost Operator $U_C(\gamma)$. There is only one question left: \emph{\textbf{how do we actually draw the quantum circuit?}}
+
+\highspace
+What we have now is the Cost Hamiltonian:
+\begin{equation*}
+    H_C = \sum_{i} S_{ii} Z_i + \sum_{i<j} S_{ij} Z_i Z_j
+\end{equation*}
+And the corresponding Cost Operator (\autopageref{eq:cost-operator}):
+\begin{equation*}
+    U_C(\gamma) = e^{-i \gamma H_C}
+\end{equation*}
+\emph{\textbf{How do we implement this exponential using elementary gates?}} The answer is really simple: \hl{implement each term of the Hamiltonian separately.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{ruler-vertical} \textbf{Step 1: Linear Terms}}
+\end{flushleft}
+This is the easy part. Consider the first term of the Hamiltonian, the linear terms:
+\begin{equation*}
+    \sum_{i} S_{ii} Z_i
+\end{equation*}
+Its corresponding evolution operator is:
+\begin{equation*}
+    e^{-i \gamma S_{ii} Z_i} = \exp\left(-i \gamma S_{ii} Z_i\right)
+\end{equation*}
+And the rotation operator is:
+\begin{equation*}
+    R_Z(\theta) = e^{-i \frac{\theta}{2} Z}
+\end{equation*}
+Immediately, we can see tht \hl{\textbf{every linear term $Z_i$ is just an $R_Z$ rotation} with an angle proportional to the coefficient $S_{ii}$ and the variational parameter $\gamma$.} Thus, for every linear term $S_{ii} Z_i$, we can implement the corresponding evolution operator $e^{-i \gamma S_{ii} Z_i}$ using a single-qubit $R_Z$ rotation on qubit $i$ with angle $\gamma S_{ii}$.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{$q_i$} & \gate{R_Z(\gamma S_{ii})} & \\
+    \end{quantikz}
+    \caption{Circuit implementing the evolution operator $e^{-i \gamma S_{ii} Z_i}$ for a single linear term $S_{ii} Z_i$.}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Step 2: Interaction Terms}}
+\end{flushleft}
+Now consider the second term of the Hamiltonian, the interaction terms:
+\begin{equation*}
+    \sum_{i<j} S_{ij} Z_i Z_j
+\end{equation*}
+This is slightly different, because it acts simultaneously on two qubits. There is \textbf{no native quantum gate} that implements this operator, therefore we must built it. The ``\emph{difficulty}'' derives from the fact that a single $R_Z$ rotation only ``\emph{looks at}'' one qubit, but the Hamiltonian term $Z_i Z_j$ depends on \textbf{both} qubits. Therefore, we need to temporarily encode the joint information of both qubits onto one qubit, apply a single $R_Z$ rotation, and then restore the original basis. This is an elegant trick.
+
+\highspace
+In general, for every interaction $S_{ij} Z_i Z_j$, we can implement the corresponding evolution operator $e^{-i \gamma S_{ij} Z_i Z_j}$ using the following circuit.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{$q_i$} & \ctrl{1} &                           & \ctrl{1} & \\
+        \lstick{$q_j$} & \gate{X} & \gate{R_Z(\gamma S_{ij})} & \gate{X} & \\
+    \end{quantikz}
+    \caption{Circuit implementing the evolution operator $e^{-i \gamma S_{ij} Z_i Z_j}$ for a single interaction term $S_{ij} Z_i Z_j$.}
+\end{figure}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does this circuit work?}} This is a beautiful trick. The \textbf{first CNOT computes the parity between the two qubits}. The $R_Z$ rotation applies a phase depending on that parity. The second CNOT undoes the temporary entanglement created by the first CNOT. The result is that the two qubits are rotated in phase depending on their parity, which is exactly what the operator $e^{-i \gamma S_{ij} Z_i Z_j}$ does.
+
+\highspace
+\begin{deepeningbox}[: Why does a single $R_Z$ rotation not work?]
+    A single $R_Z$ gate only sees one qubit. Suppose we apply:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$q_0$} & \gate{R_Z(\theta)} & \\
+        \end{quantikz}
+    \end{center}
+    The phase applied depends \textbf{only on $q_0$}. It has absolutely no information about the state of any other qubit. However, $Z_i Z_j$ depends on both qubits. Consider the interaction $Z_i Z_j$ and evaluate it:
+    \begin{center}
+        \begin{tabular}{@{} c c c c @{}}
+            \toprule
+            \textbf{State} & $Z_i$ & $Z_j$ & $Z_i Z_j$ \\
+            \midrule
+            $\ket{00}$ & $+1$ & $+1$ & $+1$ \\
+            $\ket{01}$ & $+1$ & $-1$ & $-1$ \\
+            $\ket{10}$ & $-1$ & $+1$ & $-1$ \\
+            $\ket{11}$ & $-1$ & $-1$ & $+1$ \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    Notice that the phase should depend on \textbf{both qubits together}. For example, the state \ket{00} and \ket{11} receive the \textbf{same} phase, while the states \ket{01} and \ket{10} receive another phase. Thus, a single $R_Z$ gate is not enough, because it only sees one qubit. We need to temporarily encode the joint information of both qubits onto one qubit, apply a single $R_Z$ rotation, and then restore the original basis. This is exactly what the circuit above does.
+\end{deepeningbox}
+
+\highspace
+At this point, we can summarize the translation rules from Hamiltonian terms to quantum gates:
+\begin{itemize}
+    \item For every linear term $S_{ii} Z_i$, apply a single-qubit $R_Z$ rotation on qubit $i$ with angle $\gamma S_{ii}$
+    \item For every interaction term $S_{ij} Z_i Z_j$, apply a two-qubit circuit with two CNOTs and a single $R_Z$ rotation on qubit $j$ with angle $\gamma S_{ij}$, as shown in the figure above.
+\end{itemize}
+\begin{center}
+    \begin{tabular}{@{} c c @{}}
+        \toprule
+        \textbf{Hamiltonian Term} & \textbf{Circuit} \\
+        \midrule
+        $S_{ii} Z_i$ & One $R_Z$ gate \\
+        $S_{ij} Z_i Z_j$ & CNOT $\to R_Z \to$ CNOT \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\highspace
+\begin{examplebox}[: Building a simple Cost Layer]
+    Suppose the spin Hamiltonian is:
+    \begin{equation*}
+        H_C = S_{11} Z_1 + S_{22} Z_2 + S_{12} Z_1 Z_2
+    \end{equation*}
+    The Cost Layer (i.e. the Cost Operator $U_C(\gamma)$) is:
+    \begin{equation*}
+        U_C(\gamma) = e^{-i \gamma H_C} = e^{-i \gamma (S_{11} Z_1 + S_{22} Z_2 + S_{12} Z_1 Z_2)}
+    \end{equation*}
+    Using the translation rules, we can build the corresponding quantum circuit:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$q_1$} & \gate{R_Z(\gamma S_{11})}\gategroup[2,steps=1,style={dashed,rounded corners,inner sep=1pt}]{$S_{ii} Z_i$}         & \ctrl{1}\gategroup[2,steps=3,style={dashed,rounded corners,inner sep=1pt}]{$S_{ij} Z_i Z_j$} &                           & \ctrl{1} & \\
+            \lstick{$q_2$} & \gate{R_Z(\gamma S_{22})}                                                                  & \gate{X}                                                              & \gate{R_Z(\gamma S_{12})} & \gate{X} &
+        \end{quantikz}
+    \end{center}
+
+    Notice the structure. First, all the \textbf{single-qubit} contributions, then all the \textbf{interaction} contributions.
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What about the Mixer Layer?}}
+\end{flushleft}
+The Mixer Layer is much simpler because it is always the same and it is linear (i.e. it only has single-qubit terms). Recall that the Mixer Hamiltonian is:
+\begin{equation*}
+    H_M = \sum_{i} X_i
+\end{equation*}
+And the corresponding Mixer Operator is:
+\begin{equation*}
+    U_M(\beta) = e^{-i \beta H_M} = e^{-i \beta \sum_{i} X_i}
+\end{equation*}
+The translation rule is the \textbf{same as for the linear terms of the Cost Hamiltonian}: \hl{for every $X_i$ term, apply a single-qubit $R_X$ rotation on qubit $i$ with angle $\beta$.} Therefore, the Mixer Layer is simply a layer of $R_X$ rotations, one for each qubit. Notice that the angle of the rotation is the variational parameter $\beta$, which is the same for all qubits! Thus, we can parallelize the Mixer Layer and apply all the $R_X$ rotations at the same time:
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{$q_1$} & \gate{R_X(\beta)} & \\
+        \lstick{$q_2$} & \gate{R_X(\beta)} & \\
+        \lstick{\dots} & \ \dots \ & \\
+        \lstick{$q_n$} & \gate{R_X(\beta)} & \\
+    \end{quantikz}
+    \caption{Circuit implementing the Mixer Layer $U_M(\beta)$ for $n$ qubits.}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{search} \textbf{A useful observation}}
+\end{flushleft}
+Notice something elegant. The \textbf{shape} of the QAOA circuit is almost \textbf{independent of the optimization problem}. In fact, the structure is always the same: Hadamards (to create a superposition), followed by $p$ layers of Cost and Mixer Operators, and finally measurements. What changes are only:
+\begin{itemize}
+    \item The coefficients $S_{ii}$ which determine the $R_Z$ rotation angles in the Cost Layer;
+    \item The coefficients $S_{ij}$ which determine which $Z_i Z_j$ interaction blocks are present and their rotation angles in the Cost Layer;
+    \item The variational parameters $\gamma$ and $\beta$ which determine the rotation angles in the Cost and Mixer Layers, respectively.
+\end{itemize}
+Therefore, changing from Max-Cut to Maximum Independent Set does \textbf{not} require inventing a new algorithm. We \hl{simply build a different Cost Hamiltonian, and the corresponding Cost Layer changes automatically.}
+
+\highspace
+In summary, the QAOA is a \textbf{general-purpose quantum algorithm} extremely powerful that takes a classical optimization problem, expresses it as a QUBO, converts it into a Cost Hamiltonian, transforms that Hamiltonian into a quantum circuit, alternates it with a fixed Mixer circuit, and optimizes the circuit parameters $(\gamma, \beta)$ using a classical optimizer.
+\begin{enumerate}
+    \item \textbf{Input:} A classical optimization problem, for example Max-Cut or Maximum Independent Set.
+    \item \textbf{QUBO Formulation:} Express the problem as a QUBO, which is a quadratic polynomial of binary variables.
+    \item \textbf{Spin Formulation:} Convert the QUBO into a spin Hamiltonian, which is a polynomial of Pauli $Z$ operators (Ising model).
+    \item \textbf{Cost Hamiltonian:} Build the Cost Hamiltonian $H_C$ from the spin formulation (``\emph{quantumize}'' the Ising model).
+    \item \textbf{Build Cost Layer:} Build the Cost Layer $U_C(\gamma)$ from the Cost Hamiltonian, using the translation rules for linear and interaction terms. In particular, for every linear term $S_{ii} Z_i$, apply a single-qubit $R_Z$ rotation on qubit $i$ with angle $\gamma S_{ii}$, and for every interaction term $S_{ij} Z_i Z_j$, apply a two-qubit circuit with two CNOTs and a single $R_Z$ rotation on qubit $j$ with angle $\gamma S_{ij}$.
+    \item \textbf{Build Mixer Layer:} Build the Mixer Layer $U_M(\beta)$, which is always the same: for every $X_i$ term, apply a single-qubit $R_X$ rotation on qubit $i$ with angle $\beta$. This can be parallelized, applying all the $R_X$ rotations at the same time.
+    \item \textbf{Repeat:} Repeat the Cost and Mixer Layers $p$ times, where $p$ is the depth of the QAOA circuit.
+    \item \textbf{Measure:} Measure the qubits in the computational basis to obtain a bitstring, which is a candidate solution to the original optimization problem.
+    \item \textbf{Classical Optimization:} Use a classical optimizer to adjust the variational parameters $(\gamma, \beta)$ to maximize the expected value of the Cost Hamiltonian, which corresponds to finding better solutions to the optimization problem.
+\end{enumerate}

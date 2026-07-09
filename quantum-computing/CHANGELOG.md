@@ -27,6 +27,7 @@
   - add `Alternating Operators and p Layers`
   - add `QUBO Problems for QAOA`
   - add `From QUBO to Cost Hamiltonian`
+  - add `Practical QAOA Circuit Construction`
 
 --------------------
 

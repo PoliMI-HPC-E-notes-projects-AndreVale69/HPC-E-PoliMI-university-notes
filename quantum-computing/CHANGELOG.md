@@ -18,10 +18,11 @@
 
 ### v1.0.0
 
-- add `Single Qubit Gates`
+- add `Multiple Qubit Gates`
   - add `Exercises`
     - add `Single-Qubit States and Probabilities`
     - add `Bloch sphere states`
+    - add `Tensor products and multi-qubit probabilities`
 
 ---------------------
 

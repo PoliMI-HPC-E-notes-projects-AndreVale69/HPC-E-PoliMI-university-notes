@@ -23,6 +23,7 @@
     - add `Single-Qubit States and Probabilities`
     - add `Bloch sphere states`
     - add `Tensor products and multi-qubit probabilities`
+    - add `Common factors, global phase and relative phase`
 
 ---------------------
 

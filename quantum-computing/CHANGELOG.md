@@ -26,6 +26,8 @@
     - add `Common factors, global phase and relative phase`
     - add `Unitaries, Pauli Gates, and Eigenstates of Z, X, Y, H`
     - add `Circuit notation and gate composition`
+    - add `Phase Kickback`
+      - add `Prerequisites: Eigenstates and Eigenvalues`
 
 ---------------------
 

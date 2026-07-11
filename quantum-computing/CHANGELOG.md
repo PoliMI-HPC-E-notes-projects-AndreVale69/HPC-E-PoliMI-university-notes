@@ -30,6 +30,7 @@
       - add `Prerequisites: Eigenstates and Eigenvalues`
       - add `Eigenvalues of Unitary Operators as Phase Factors`
       - add `Controlled Unitary Operators`
+      - add `Definition and Derivation of Phase Kickback`
 
 ---------------------
 

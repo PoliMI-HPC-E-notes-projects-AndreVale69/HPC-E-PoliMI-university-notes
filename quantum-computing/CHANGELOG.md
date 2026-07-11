@@ -33,6 +33,7 @@
       - add `Definition and Derivation of Phase Kickback`
       - add `Making the Kicked-Back Phase Observable`
       - add `Repeated Controlled Operations`
+      - add `Phase Kickback with CNOT`
 
 ---------------------
 

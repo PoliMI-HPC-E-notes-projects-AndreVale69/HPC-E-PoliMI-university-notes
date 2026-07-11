@@ -35,6 +35,7 @@
       - add `Repeated Controlled Operations`
       - add `Phase Kickback with CNOT`
       - add `Phase Kickback with Controlled Phase Gates`
+      - add `Phase Kickback with Controlled Hadamard`
 
 ---------------------
 

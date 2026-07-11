@@ -32,6 +32,7 @@
       - add `Controlled Unitary Operators`
       - add `Definition and Derivation of Phase Kickback`
       - add `Making the Kicked-Back Phase Observable`
+      - add `Repeated Controlled Operations`
 
 ---------------------
 

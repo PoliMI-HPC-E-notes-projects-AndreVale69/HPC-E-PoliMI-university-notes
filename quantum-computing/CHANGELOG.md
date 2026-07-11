@@ -34,6 +34,7 @@
       - add `Making the Kicked-Back Phase Observable`
       - add `Repeated Controlled Operations`
       - add `Phase Kickback with CNOT`
+      - add `Phase Kickback with Controlled Phase Gates`
 
 ---------------------
 

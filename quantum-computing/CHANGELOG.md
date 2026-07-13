@@ -36,6 +36,8 @@
       - add `Phase Kickback with CNOT`
       - add `Phase Kickback with Controlled Phase Gates`
       - add `Phase Kickback with Controlled Hadamard`
+    - add `Deutsch's Algorithm`
+      - add `Problem Definition and the Four Possible Functions`
 
 ---------------------
 

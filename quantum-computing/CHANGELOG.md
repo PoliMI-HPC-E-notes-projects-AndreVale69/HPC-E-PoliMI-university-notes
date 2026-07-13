@@ -38,6 +38,7 @@
       - add `Phase Kickback with Controlled Hadamard`
     - add `Deutsch's Algorithm`
       - add `Problem Definition and the Four Possible Functions`
+      - add `Classical Solution and Query Complexity`
 
 ---------------------
 

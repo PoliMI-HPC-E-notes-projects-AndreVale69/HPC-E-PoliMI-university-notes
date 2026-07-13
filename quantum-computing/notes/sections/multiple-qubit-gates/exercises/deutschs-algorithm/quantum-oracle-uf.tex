@@ -1,0 +1,150 @@
+\paragraph{Quantum Oracle \texorpdfstring{$U_f$}{Uf}}\label{ex:quantum-oracle-uf}
+
+In the classical version of the problem, the oracle receives one bit $x$ and returns $f(x)$, where $f$ is a function that maps $\{0,1\}$ to $\{0,1\}$. Since Deutsch's algorithm is a \textbf{quantum algorithm}, we need a \hl{quantum circuit that performs the same computation.} A first idea would be to define a quantum operator satisfying:
+\begin{equation*}
+    \ket{x} \mapsto \ket{f(x)}
+\end{equation*}
+It means that the oracle would take a qubit in state $\ket{x}$ and return a qubit in state $\ket{f(x)}$. Unfortunately, this construction is \textbf{not valid in general}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why doesn't this work?}} Every operation performed by a quantum computer must be represented by a \textbf{unitary operator}. One fundamental property of unitary operators is that they are \textbf{reversible}. In other words, every output state must uniquely determine the corresponding input state. Mathematically:
+\begin{equation*}
+    U^{-1}U = UU^{-1} = I
+\end{equation*}
+Therefore, no two different input states may evolve into the same output state.
+
+\highspace
+If we're not sure why this doesn't work, consider the example of a constant function $f(x) = 0$. Using the naive mapping:
+\begin{equation*}
+    \ket{x} \mapsto \ket{f(x)}
+\end{equation*}
+We obtain:
+\begin{align*}
+    \ket{0} &\mapsto \ket{f(0)} = \ket{0} \\
+    \ket{1} &\mapsto \ket{f(1)} = \ket{0}
+\end{align*}
+But this is not reversible, since both $\ket{0}$ and $\ket{1}$ are mapped to the same output state $\ket{0}$. Therefore, this \textbf{mapping is not a valid quantum operation}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Preserving the input}}
+\end{flushleft}
+The solution is remarkably simple. Instead of replacing the input by the function value, we \textbf{keep the original input unchanged} and \textbf{store the result in a second qubit}. The oracle therefore acts on \textbf{two qubits} instead of one. The first qubit stores the function input $x$, while the second qubit stores an auxiliary value, $y$. The oracle computes the function by modifying only the second qubit (the auxiliary qubit).
+
+\highspace
+The standard \definitionWithSpecificIndex{Quantum Oracle}{Quantum Oracle}{Oracle} $U_f$ is defined as follows:
+\begin{equation}
+    U_f\ket{x, y} = \ket{x, y \oplus f(x)}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $x$ is the input bit to the function $f$. It is called \definition{Data Qubit} and contains the function input $\ket{x}$ and remains unchanged throught the oracle evaluation.
+
+    \item $y$ is an auxiliary (or computation) bit that is used to store the result of the function evaluation. It is called \definition{Computation Qubit} and stores the auxiliary value $\ket{y}$, which becomes $\ket{y \oplus f(x)}$ after the oracle evaluation. It is called also \definition{Ancilla Qubit} or \definition{Target Qubit}.
+
+    \item $\oplus$ denotes addition modulo 2 (XOR operation).\footnote{%
+        The XOR operation is defined as follows:
+        \begin{equation*}
+            0 \oplus 0 = 0, \quad 0 \oplus 1 = 1, \quad 1 \oplus 0 = 1, \quad 1 \oplus 1 = 0
+        \end{equation*}%
+    }
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does XOR make the oracle reversible?}} The XOR operation has a crucial property:
+\begin{equation*}
+    \left(a \oplus b\right) \oplus b = a
+\end{equation*}
+Applying the same XOR twice restores the original value. Indeed:
+\begin{align*}
+    U_f^2 \ket{x,y} &= U_f \ket{x, y \oplus f(x)} \\
+    &= \ket{x, (y \oplus f(x)) \oplus f(x)} \\
+    &= \ket{x, y}
+\end{align*}
+Therefore:
+\begin{equation*}
+    U_f^{-1} = U_f
+\end{equation*}
+Meaning that the \textbf{oracle is its own inverse}. The transformation is reversible for \textbf{every} Boolean function, including the constant ones.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Oracle implementations for the four functions}}
+\end{flushleft}
+The four possible Boolean functions correspond to four different quantum circuits:
+\begin{itemize}
+    \item \hl{$f(x)=0$}, the oracle action is:
+    \begin{equation*}
+        \ket{x,y} \mapsto \ket{x,y}
+    \end{equation*}
+    The circuit implementation is an \textbf{identity gate}:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$\ket{x}$} & & \\
+            \lstick{$\ket{y}$} & & 
+        \end{quantikz}
+    \end{center}
+
+    \item \hl{$f(x)=1$}, the oracle action is:
+    \begin{equation*}
+        \ket{x,y} \mapsto \ket{x,y \oplus 1}
+    \end{equation*}
+    The circuit implementation is a \textbf{Pauli-$X$ gate on the computation qubit}:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$\ket{x}$} & & \\
+            \lstick{$\ket{y}$} & \gate{X} & 
+        \end{quantikz}
+    \end{center}
+
+    \item \hl{$f(x)=x$}, the oracle action is:
+    \begin{equation*}
+        \ket{x,y} \mapsto \ket{x,y \oplus x}
+    \end{equation*}
+    The circuit implementation is a \textbf{Controlled-NOT gate}, with the \textbf{data qubit as control} and the \textbf{computation qubit as target}:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$\ket{x}$} & \ctrl{1} & \\
+            \lstick{$\ket{y}$} & \targ{} & 
+        \end{quantikz}
+    \end{center}
+
+    \item \hl{$f(x)=\overline{x}$}, the oracle action is:
+    \begin{equation*}
+        \ket{x,y} \mapsto \ket{x,y \oplus \overline{x}}
+    \end{equation*}
+    Since:
+    \begin{equation*}
+        \overline{x} = 1 \oplus x
+    \end{equation*}
+    We can write:
+    \begin{equation*}
+        y \oplus \overline{x} = y \oplus 1 \oplus x
+    \end{equation*}
+    The circuit implementation is:
+    \begin{enumerate}
+        \item Apply a CNOT from $x$ to $y$;
+        \item Apply a Pauli-$X$ gate to the \textbf{computation qubit} $y$.
+    \end{enumerate}
+    The order may also reversed because an $X$ on the target commutes with this CNOT:
+    \begin{equation*}
+        CX\left(I \otimes X\right) = \left(I \otimes X\right) CX
+    \end{equation*}
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$\ket{x}$} & \ctrl{1} &          & \\
+            \lstick{$\ket{y}$} & \targ{}  & \gate{X} & 
+        \end{quantikz}
+        =
+        \begin{quantikz}
+            \lstick{$\ket{x}$} &          & \ctrl{1} & \\
+            \lstick{$\ket{y}$} & \gate{X} & \targ{}  &
+        \end{quantikz}
+    \end{center}
+\end{itemize}
+
+\noindent
+Notice an interesting pattern:
+\begin{itemize}
+    \item The \textbf{constant} functions require \textbf{no controlled operation};
+    \item The \textbf{balanced} functions always involve a \textbf{controlled-NOT gate}.
+\end{itemize}
+At this point this may seem like a coincidence. In the next sections we will see that Deutsch's algorithm exploits this difference using \textbf{phase kickback}, allowing the presence or absence of the controlled operation to be detected with a single oracle query.

@@ -41,6 +41,7 @@
       - add `Classical Solution and Query Complexity`
       - add `Quantum Oracle U_f`
       - add `Preparing the Input State`
+      - add `Oracle Action and Phase Kickback`
 
 ---------------------
 

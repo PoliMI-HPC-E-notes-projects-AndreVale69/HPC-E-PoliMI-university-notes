@@ -42,6 +42,8 @@
       - add `Quantum Oracle U_f`
       - add `Preparing the Input State`
       - add `Oracle Action and Phase Kickback`
+      - add `Interference and Final Measurement`
+      - add `Quantum Advantage and Importance`
 
 ---------------------
 

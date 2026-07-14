@@ -40,6 +40,7 @@
       - add `Problem Definition and the Four Possible Functions`
       - add `Classical Solution and Query Complexity`
       - add `Quantum Oracle U_f`
+      - add `Preparing the Input State`
 
 ---------------------
 

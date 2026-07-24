@@ -44,6 +44,9 @@
       - add `Oracle Action and Phase Kickback`
       - add `Interference and Final Measurement`
       - add `Quantum Advantage and Importance`
+- add `Limits of Quantum Information`
+  - add `Quantum Teleportation`
+    - add `Problem Definition and Required Resources`
 
 ---------------------
 

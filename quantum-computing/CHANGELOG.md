@@ -49,6 +49,8 @@
     - add `Problem Definition and Required Resources`
     - add `Shared Bell Pair and Initial Three-Qubit State`
     - add `Alice's Operations and Mathematical Derivation`
+    - add `Measurement Outcomes and Bob's Corrections`
+    - add `Why Teleportation Works`
 
 ---------------------
 

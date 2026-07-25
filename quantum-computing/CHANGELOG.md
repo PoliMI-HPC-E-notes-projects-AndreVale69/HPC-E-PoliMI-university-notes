@@ -47,6 +47,8 @@
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`
+    - add `Shared Bell Pair and Initial Three-Qubit State`
+    - add `Alice's Operations and Mathematical Derivation`
 
 ---------------------
 

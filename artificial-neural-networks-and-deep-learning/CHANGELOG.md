@@ -34,6 +34,8 @@
     - add `Geometric Interpretation`
     - add `Image-based Interpretation`
     - add `Linear Classifier as Template Matching`
+  - add `Why Image Classification is Difficult`
+    - add `Dimensionality`
 
 --------------------
 

@@ -2,6 +2,8 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.9.0](#v090)
+- [v0.8.0](#v080)
 - [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
@@ -10,6 +12,49 @@
 - [v0.2.1](#v021)
 - [v0.1.1](#v011)
 - [v0.1.0](#v010)
+
+---------------------
+
+### v0.9.0
+
+- add `Quantum Approximate Optimization Algorithm`
+  - add `Why QAOA?`
+  - add `QAOA Ingredients`
+  - add `Structure of the QAOA Ansatz`
+  - add `Unitaries from Hamiltonians`
+  - add `Cost Hamiltonian and Cost Operator`
+  - add `Mixer Hamiltonian and Mixer Operator`
+  - add `Alternating Operators and p Layers`
+  - add `QUBO Problems for QAOA`
+  - add `From QUBO to Cost Hamiltonian`
+  - add `Practical QAOA Circuit Construction`
+
+--------------------
+
+### v0.8.0
+
+- add `Variational Quantum Algorithms (VQAs)`
+  - add `Why Variational Algorithms?`
+  - add `General Structure of a VQA`
+    - add `Variational Quantum Algorithms`
+    - add `Parametric Quantum Circuits (Ansätze)`
+    - add `Classical Optimizer`
+    - add `Iterative Optimization Loop`
+  - add `Building Blocks of Variational Algorithms`
+    - add `Cost Function`
+    - add `Ansatz Design`
+    - add `Optimizer Choice`
+    - add `Hardware Efficient Ansatz`
+  - add `Advantages and Limitations`
+    - add `Strengths of Variational Algorithms`
+    - add `Weaknesses of Variational Algorithms`
+    - add `Barren Plateaus`
+    - add `Why Variational Algorithms Matter`
+  - add `Variational Quantum Eigensolver (VQE)`
+    - add `The Physical Motivation`
+    - add `Hamiltonians and Molecular Energy`
+    - add `Variational Principle`
+    - add `VQE Objective Function`
 
 --------------------
 

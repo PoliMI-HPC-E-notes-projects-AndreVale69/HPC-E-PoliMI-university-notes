@@ -1,0 +1,103 @@
+\subsubsection{VQE Objective Function}\label{sec:vqe-objective-function}
+
+In the previous section, the Rayleigh-Ritz Variational Principle told us:
+\begin{equation*}
+    \bra{\psi} H \ket{\psi} \geq \lambda_{\min}
+\end{equation*}
+But now, \emph{\textbf{what exactly should the optimizer minimize?}} The answer is the \textbf{VQE objective function}.
+
+\highspace
+The \definition{VQE Objective Function} is defined as:
+\begin{equation}
+    \argmin_{\theta} C\left(\theta\right) = \bra{\psi(\theta)} H \ket{\psi(\theta)}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $C(\theta)$ is the cost function. It measures how well the current parameters $\theta$ are performing.
+    \item $\theta$ are the parameters of the quantum gates. They are simply the angles of the parameterized gates. The optimizer never changes the circuit structure. It only changes these angles.
+    \item $H$ is the Hamiltonian of the molecule.
+    \item $\ket{\psi(\theta)}$ is the state prepared by the Ansatz circuit. Obviously, if we change the parameters $\theta$, we obtain a \textbf{different quantum state}. So the ansatz is actually a \textbf{family of quantum states} $\ket{\psi(\theta)}$.
+
+    Once the circuit prepares the state $\ket{\psi(\theta)}$, we evaluate its energy by measuring the expectation value of the Hamiltonian $H$:
+    \begin{equation*}
+        \bra{\psi(\theta)} H \ket{\psi(\theta)}
+    \end{equation*}
+    After that, we feed the result to a classical optimizer, which will minimize the energy by changing the parameters $\theta$ of the quantum circuit. The optimizer will repeat this process until it finds the optimal parameters $\theta^*$ that minimize the energy:
+    \begin{equation*}
+        \theta^* = \argmin_{\theta} C(\theta) \quad \to \quad C\left(\theta^*\right) = \bra{\psi(\theta^*)} H \ket{\psi(\theta^*)} \approx \lambda_{\min} 
+    \end{equation*}
+
+    \item $\argmin_{\theta}$ is the operator that returns the parameters $\theta^*$ that minimize the cost function $C(\theta)$.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does the quantum computer compute this expectation value?}}
+\end{flushleft}
+The molecular Hamiltonian is actually a \textbf{sum of many Pauli strings}. For example:
+\begin{equation*}
+    H = 0.5I - 1.2Z_0 + 0.8 X_0 X_1 - 0.3 Y_0 Y_1 + 0.6 Z_0 Z_1
+\end{equation*}
+Notice that every term is a coefficient multiplied by a tensor product of Pauli operators. This \hl{decomposition comes from \textbf{mapping the molecular Hamiltonian onto qubits}} (using transformations such as Jordan-Wigner or Bravyi-Kitaev, techniques not covered in this course).  Now comes the beautiful mathematical trick. Expectation values are \textbf{linear}, which means that we can compute the expectation value of the Hamiltonian by computing the expectation value of each Pauli string separately and then summing them up:
+\begin{equation*}
+    \begin{aligned}
+        \bra{\psi(\theta)} H \ket{\psi(\theta)} &= 0.5 \bra{\psi(\theta)} I \ket{\psi(\theta)} - 1.2 \bra{\psi(\theta)} Z_0 \ket{\psi(\theta)} \\
+        &\quad + 0.8 \bra{\psi(\theta)} X_0 X_1 \ket{\psi(\theta)} - 0.3 \bra{\psi(\theta)} Y_0 Y_1 \ket{\psi(\theta)} \\
+        &\quad + 0.6 \bra{\psi(\theta)} Z_0 Z_1 \ket{\psi(\theta)}
+    \end{aligned}
+\end{equation*}
+Or more compactly:
+\begin{equation*}
+    \left\langle H \right\rangle = 0.5 \left\langle I \right\rangle - 1.2 \left\langle Z_0 \right\rangle + 0.8 \left\langle X_0 X_1 \right\rangle - 0.3 \left\langle Y_0 Y_1 \right\rangle + 0.6 \left\langle Z_0 Z_1 \right\rangle
+\end{equation*}
+Measuring the expectation value of a Pauli string is easy. We prepare the state $\ket{\psi(\theta)}$ and then measure \textbf{both qubits in the computational $Z$ basis}. For example, suppose after many repetitions on the Pauli string $\left\langle Z_0 Z_1 \right\rangle$ we get the following measurement results:
+\begin{equation*}
+    \begin{aligned}
+        \text{Outcome } 00 &\quad \text{Frequency } 0.4 \\
+        \text{Outcome } 01 &\quad \text{Frequency } 0.1 \\
+        \text{Outcome } 10 &\quad \text{Frequency } 0.2 \\
+        \text{Outcome } 11 &\quad \text{Frequency } 0.3
+    \end{aligned}
+\end{equation*}
+Now assign the eigenvalues of $Z$ to the measurement outcomes:
+\begin{equation*}
+    \begin{aligned}
+        \text{Outcome } 00 &\quad \text{Eigenvalue } Z\ket{0} = +1\ket{0} \to +1 \\
+        \text{Outcome } 01 &\quad \text{Eigenvalue } Z\ket{1} = -1\ket{1} \to -1 \\
+        \text{Outcome } 10 &\quad \text{Eigenvalue } Z\ket{0} = +1\ket{0} \to +1 \\
+        \text{Outcome } 11 &\quad \text{Eigenvalue } Z\ket{1} = -1\ket{1} \to -1
+    \end{aligned}
+\end{equation*}
+Now we can compute the expectation value of $Z_0 Z_1$ as follows:
+\begin{equation*}
+    \begin{aligned}
+        \left\langle Z_0 Z_1 \right\rangle &= 0.4 \cdot (+1) + 0.1 \cdot (-1) + 0.2 \cdot (-1) + 0.3 \cdot (+1) \\
+        &= 0.4 - 0.1 - 0.2 + 0.3 = 0.4
+    \end{aligned}
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How do we measure the expectation value of Pauli strings that contain $X$ or $Y$ operators?}} The quantum computer naturally measures in the $Z$ basis only.\footnote{%
+    The measurement apparatus of a quantum computer is designed to directly distinguish the two \textbf{physical basis states} of the qubit, denoted by $\ket{0}$ and $\ket{1}$. These states form the \textbf{computational basis}, which is also the eigenbasis of the Pauli $Z$ operator. Therefore, the hardware naturally performs measurements in the Z basis. In contrast, the eigenstates of the Pauli X and Y operators are superpositions of the computational basis states and cannot be directly distinguished by the measurement device.%
+} So we simply rotate the basis \textbf{before} measuring. For $X$ operators, we apply a Hadamard gate $H$ to rotate the basis from $X$ to $Z$ (\autopageref{eq:hadamard-conjugation}):
+\begin{equation*}
+    H X H = Z
+\end{equation*}
+For $Y$ operators, we apply a $S^\dagger$ gate followed by a Hadamard gate to rotate the basis from $Y$ to $Z$:
+\begin{equation*}
+    H S^\dagger Y S H = Z
+\end{equation*}
+Finally, the classical computer combines all the measured values:
+\begin{equation*}
+    \left\langle H \right\rangle = 0.5 \left\langle I \right\rangle - 1.2 \left\langle Z_0 \right\rangle + 0.8 \left\langle X_0 X_1 \right\rangle - 0.3 \left\langle Y_0 Y_1 \right\rangle + 0.6 \left\langle Z_0 Z_1 \right\rangle
+\end{equation*}
+This final number is the \textbf{cost function} $C(\theta)$ that the classical optimizer will minimize by changing the parameters $\theta$ of the quantum circuit.
+
+\highspace
+In summary, in VQE, the objective function is the expectation value of the Hamiltonian with respect to the state prepared by the parameterized ansatz:
+\begin{equation*}
+    C(\theta) = \bra{\psi(\theta)} H \ket{\psi(\theta)} = \sum_i c_i \bra{\psi(\theta)} P_i \ket{\psi(\theta)} = \sum_i c_i \left\langle P_i \right\rangle_{\theta}
+\end{equation*}
+Where $c_i$ are the Hamiltonian coefficients, and $H$ is decomposed as:
+\begin{equation*}
+    H = \sum_i c_i P_i
+\end{equation*}
+Each $P_i$ is a Pauli string, for example $P_i = X_0 X_1$, $P_i = Y_0 Y_1$, or $P_i = Z_0 Z_1$. The classical optimizer searches for the parameters $\theta$ that minimize this expectation value. By the Rayleigh-Ritz Variational Principle, the minimum possible expectation value equals the ground-state energy if the ansatz can represent the ground state. Since the Hamiltonian is expressed as a sum of Pauli operators, its expectation value is obtained by measuring the corresponding Pauli observables and combining the results.

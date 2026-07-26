@@ -1,0 +1,151 @@
+\subsubsection{Iterative Optimization Loop}\label{sec:iterative-optimization-loop}
+
+The main idea behind VQAs is to leverage the power of quantum computers to evaluate a cost function that is hard to compute classically, and then use a classical optimizer to find the optimal parameters that minimize this cost function. This process is iterative, as the classical optimizer updates the parameters based on the cost function evaluations from the quantum computer.
+
+\highspace
+The \textbf{iterative optimization loop} can be summarized as follows:
+\begin{enumerate}
+    \item \important{Initialize Parameters}. We start with some \textbf{initial guess} for the parameters $\boldsymbol{\theta}$ of the parametric quantum circuit (ansatz). This can be done randomly, based on some heuristic, or using prior knowledge about the problem.
+    
+    
+    \item \important{Run the Quantum Circuit}. We execute the parametric quantum circuit on the quantum computer with the current parameters $\boldsymbol{\theta}$ to prepare a quantum state $\ket{\psi(\boldsymbol{\theta})}$. This state is the \textbf{candidate solution} currently being tested.
+    
+    
+    \item \important{Measure}. The quantum computer \textbf{measures the output state}. Here, the important point is that the \textbf{measurement outcomes must be classical information}. Because the \hl{optimizer cannot directly read the quantum state}. It only receives measurement results. This step is crucial, as it bridges the quantum and classical parts of the algorithm.
+    
+    
+    \item \important{Compute the Cost Function}. Now that we have the measurement outcomes, we ask: ``\emph{\textbf{was this candidate solution good or bad?}}'' To answer this, we compute the \textbf{cost function} $C(\boldsymbol{\theta})$ based on the measurement results. The cost function is designed such that its value reflects how well the current parameters $\boldsymbol{\theta}$ perform with respect to the problem we are trying to solve. For example, in VQE, the cost function is the expectation value of the Hamiltonian, which we want to minimize. The key point is that the \textbf{optimizer does not need to understand quantum mechanics}; it \textbf{only needs to know the score} (cost) associated with the current parameters.
+    
+    
+    \item \important{Feed the Result to the Optimizer}. The computed cost function value $C(\boldsymbol{\theta})$ is then \textbf{fed into the classical optimizer}. It stores this information and uses it (later) to decide where to search for better parameters $\boldsymbol{\theta}'$ in the next iteration.
+    
+    
+    \item \important{Update Parameters}. The classical optimizer \textbf{updates the parameters} $\boldsymbol{\theta}$ based on the cost function evaluations it has received so far. This update can be done using various optimization algorithms, such as gradient descent, Nelder-Mead, or Bayesian optimization. The optimizer's goal is to find new parameters $\boldsymbol{\theta}'$ that will hopefully yield a lower cost function value in the next iteration.
+    
+
+    \item \important{Repeat}. The loop then repeats from step 2 with the new parameters $\boldsymbol{\theta}'$. This iterative \textbf{process continues until a stopping criterion is met}, such as a maximum number of iterations, convergence of the cost function, or reaching a satisfactory solution.
+\end{enumerate}
+In a Variational Quantum Algorithm, the parameters of the ansatz are initialized and the quantum circuit is executed. The output is measured and used to compute a cost function. The cost value is sent to a classical optimizer, which updates the parameters and runs the circuit again. This quantum-classical feedback loop continues iteratively until a termination condition is reached, producing the parameters that optimize the objective function.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        transform shape,
+        titleblock/.style={
+            draw,
+            very thick,
+            minimum width=3.7cm,
+            minimum height=1.6cm,
+            align=center,
+            inner sep=3pt
+        },
+        arrow/.style={
+            -{Latex[length=4mm]},
+            very thick,
+            yellow!70!orange
+        }
+    ]
+
+    %--------------------------------
+    % Parameter initialization
+    %--------------------------------
+    \node[
+        titleblock,
+        draw=orange,
+        text width=3.2cm
+    ] (init)
+    {
+        \textbf{\textcolor{orange}{Parameter Initialization}}\\[0.25cm]
+        $\theta_0$
+    };
+
+    %--------------------------------
+    % Quantum circuit box
+    %--------------------------------
+    \node[
+        draw=violet,
+        very thick,
+        minimum width=9.2cm,
+        minimum height=4.4cm,
+        below=1.8cm of init
+    ] (qc) {};
+
+    \node at ([yshift=1.75cm]qc.center)
+    {
+        \normalsize\textbf{\textcolor{violet}{Quantum Circuit Execution}}
+    };
+
+    \node[inner sep=0pt, outer sep=0pt] at ([yshift=-0.3cm]qc.center)
+    {
+        \begin{quantikz}[row sep=0.25cm,column sep=0.32cm,scale=0.85]
+            \lstick{$q_0$} & \gate{H} & \gate{R_x(\theta_0)} & \ctrl{1} & \gate{R_z(\theta_4)} & \meter{} \\
+            \lstick{$q_1$} & \gate{H} & \gate{R_z(\theta_1)} & \targ{}  & \ctrl{2}              & \meter{} \\
+            \lstick{$q_2$} & \gate{H} & \gate{R_y(\theta_2)} &          &                       & \meter{} \\
+            \lstick{$q_3$} & \gate{H} & \gate{R_y(\theta_3)} &          & \targ{}               & \meter{}
+        \end{quantikz}
+    };
+
+    %--------------------------------
+    % Cost function
+    %--------------------------------
+    \node[
+        titleblock,
+        draw=blue,
+        text width=3.2cm,
+        below=1.8cm of qc
+    ] (cost)
+    {
+        \textbf{\textcolor{blue}{Cost Function Evaluation}}\\[0.25cm]
+        $C(\theta_k)$
+    };
+
+    %--------------------------------
+    % Optimal parameter
+    %--------------------------------
+    \node[
+        titleblock,
+        draw=green!70!black,
+        text width=3.2cm,
+        right=2.4cm of cost
+    ] (opt)
+    {
+        \textbf{\textcolor{green!70!black}{Optimal\break Parameter}}\\[0.25cm]
+        $\theta_{\mathrm{opt}}$
+    };
+
+    %--------------------------------
+    % Parameter update
+    %--------------------------------
+    \node[
+        titleblock,
+        draw=red,
+        text width=3.2cm,
+        below=1.8cm of cost
+    ] (update)
+    {
+        \textbf{\textcolor{red}{Parameter Update}}\\[0.25cm]
+        $\theta_k \rightarrow \theta_{k+1}$
+    };
+
+    %--------------------------------
+    % Main arrows
+    %--------------------------------
+    \draw[arrow] (init.south) -- (qc.north);
+
+    \draw[arrow] (qc.south) -- (cost.north);
+
+    \draw[arrow] (cost.south) -- (update.north);
+
+    \draw[arrow] (cost.east) -- (opt.west);
+
+    % Feedback loop
+    \draw[arrow]
+    (update.west) -- ++(-2.1cm,0)
+        -- ($(qc.south)+(-4.0cm,0)$);
+    % -- ++(-2.0cm,0)
+    % |- (qc.south);
+
+    \end{tikzpicture}
+    \caption{Schematic representation of the iterative optimization loop in a Variational Quantum Algorithm. The process starts with parameter initialization, followed by quantum circuit execution, cost function evaluation, and parameter update. The loop continues until convergence to the optimal parameters $\theta_{\mathrm{opt}}$.}
+\end{figure}

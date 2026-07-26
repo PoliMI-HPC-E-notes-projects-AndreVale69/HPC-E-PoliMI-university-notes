@@ -1,0 +1,88 @@
+\subsubsection{QUBO Problems for QAOA}\label{sec:qubo-problems-for-qaoa}
+
+This section is where QAOA reconnects with everything we saw in QUBO Formulation (\autopageref{sec:qubo-formulation}). In fact, there is almost no new mathematics here, but rather we answer an important practical question: \emph{\textbf{which optimization problems can we naturally solve with QAOA?}} The answer is: \textbf{QUBO problems}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why QUBO?}} At the beginning of the QAOA section, we saw that given an optimization problem, we can construct a cost Hamiltonian $H_C$ and a mixer Hamiltonian $H_M$, run the QAOA circuit, and measure the output state to get a solution. But there is one missing step. \emph{\textbf{How do we build the Cost Hamiltonian?}} The answer is simple: given an optimization problem, we can always write it in QUBO form, and then we can construct the Cost Hamiltonian from the QUBO matrix $Q$. Therefore, \textbf{QUBO} is \textbf{not the algorithm}, but rather the \textbf{standard mathematical representation} used before constructing the Cost Hamiltonian.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{But why QUBO and not some other representation?}} In this course, we will focus on QUBO because it is well suited for QAOA. The reason is that \hl{QUBO already has exactly the mathematical structure that we need to construct a Hamiltonian.} Let's see why.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{The general QUBO formulation.}} Recall that a QUBO problem (\autopageref{sec:introduction-to-qubo}) is defined as follows:
+\begin{equation*}
+    \min_{x\in\{0,1\}^n} x^T Q x
+\end{equation*}
+Where $x$ is a binary vector $x \in \left\{0,1\right\}^n$ and $Q$ is an $n \times n$ matrix containing the linear and quadratic coefficients of the objective function.\footnote{%
+    The matrix $Q$ contains all the coefficients describing the optimization problem.
+} Also, we know that the main diagonal entries $Q_{ii}$ represent the \textbf{linear terms} $x_i$ (i.e., contribution of individual variables), while the off-diagonal entries $Q_{ij}$ represent the \textbf{quadratic terms} $x_i x_j$ (i.e., interaction between pairs of variables).
+
+\begin{examplebox}[: QUBO representation of a polynomial]
+    Suppose our object function is:
+    \begin{equation*}
+        E(x) = x_1 + x_2 - 2x_1 x_2
+    \end{equation*}
+    This polynomial is the optimization problem. Now, let's encode it into a matrix. We want to find a way to represent:
+    \begin{equation*}
+        E(x) = x^T Q x = x_1 + x_2 - 2x_1 x_2 \quad \text{with } x = \begin{bmatrix} x_1 \\ x_2 \end{bmatrix}
+    \end{equation*}
+    There are \textbf{two} ways to write this polynomial as a quadratic form.
+    \begin{enumerate}
+        \item \textbf{Symmetric matrix}. Substitute the values of $x_1$ and $x_2$ into the polynomial and rewrite it as a quadratic form:
+        \begin{equation*}
+            E(x) = x^T \begin{bmatrix} 1 & -1 \\ -1 & 1 \end{bmatrix} x
+        \end{equation*}
+        Where the matrix $Q$ is composed as follows:
+        \begin{itemize}
+            \item The diagonal entries $Q_{11} = 1$ and $Q_{22} = 1$ correspond to the linear terms $x_1$ and $x_2$.
+            \item The off-diagonal entries $Q_{12} = -1$ and $Q_{21} = -1$ correspond to the quadratic term $-2x_1 x_2$.
+        \end{itemize}
+        Now compote $Qx$:
+        \begin{equation*}
+            Qx = \begin{bmatrix} 1 & -1 \\ -1 & 1 \end{bmatrix} \begin{bmatrix} x_1 \\ x_2 \end{bmatrix} = \begin{bmatrix} x_1 - x_2 \\ -x_1 + x_2 \end{bmatrix}
+        \end{equation*}
+        Then compute $x^T Q x$:
+        \begin{equation*}
+            \begin{aligned}
+                x^T Q x &= \begin{bmatrix} x_1 & x_2 \end{bmatrix} \begin{bmatrix} x_1 - x_2 \\ -x_1 + x_2 \end{bmatrix} \\
+                &= x_1\left(x_1 - x_2\right) + x_2\left(-x_1 + x_2\right) \\
+                &= x_1^2 - x_1 x_2 - x_2 x_1 + x_2^2 \\
+                &= x_1 + x_2 - 2x_1 x_2
+            \end{aligned}
+        \end{equation*}
+        So we have successfully represented the polynomial as a quadratic form using a symmetric matrix. However, notice something: the interaction appeared \textbf{twice} $-x_1 x_2$ and $-x_2 x_1$, is stored in two different entries of the matrix.
+
+
+        \item \textbf{Upper triangular}. Instead, we can write the polynomial as a quadratic form using an upper triangular matrix:
+        \begin{equation*}
+            E(x) = x^T \begin{bmatrix} 1 & -2 \\ 0 & 1 \end{bmatrix} x
+        \end{equation*}
+        Where the matrix $Q$ is composed as follows:
+        \begin{itemize}
+            \item The diagonal entries $Q_{11} = 1$ and $Q_{22} = 1$ correspond to the linear terms $x_1$ and $x_2$.
+            \item The off-diagonal entry $Q_{12} = -2$ corresponds to the quadratic term $-2x_1 x_2$.
+        \end{itemize}
+        Now compote $Qx$:
+        \begin{equation*}
+            Qx = \begin{bmatrix} 1 & -2 \\ 0 & 1 \end{bmatrix} \begin{bmatrix} x_1 \\ x_2 \end{bmatrix} = \begin{bmatrix} x_1 - 2x_2 \\ x_2 \end{bmatrix}
+        \end{equation*}
+        Then compute $x^T Q x$:
+        \begin{equation*}
+            \begin{aligned}
+                x^T Q x &= \begin{bmatrix} x_1 & x_2 \end{bmatrix} \begin{bmatrix} x_1 - 2x_2 \\ x_2 \end{bmatrix} \\
+                &= x_1\left(x_1 - 2x_2\right) + x_2\left(x_2\right) \\
+                &= x_1^2 - 2x_1 x_2 + x_2^2 \\
+                &= x_1 + x_2 - 2x_1 x_2
+            \end{aligned}
+        \end{equation*}
+        So we have successfully represented the polynomial as a quadratic form using an upper triangular matrix. Notice that the interaction appeared \textbf{once} $-2x_1 x_2$, and is stored in a single entry of the matrix.
+    \end{enumerate}
+    So when we construct $Q$, we have to decide \textbf{how to store the interaction coefficients}: symmetric (split the coefficient equally between $Q_{ij}$ and $Q_{ji}$) or upper triangular (store the coefficient in a single entry $Q_{ij}$). The choice is arbitrary.
+\end{examplebox}
+
+\highspace
+In summary, QUBO provides a standard mathematical formulation for many combinatorial optimization problems. A QUBO problem is written as:
+\begin{equation*}
+    \min_{x \in \{0,1\}^n} x^T Q x
+\end{equation*}
+Where $x$ is a binary vector and $Q$ contains the linear and quadratic coefficients of the objective function. Since this formulation can be systematically converted into spin variables and then into a Cost Hamiltonian, QUBO is particularly well suited for QAOA. The matrix $Q$ may be symmetric or upper triangular because the interaction terms $x_i x_j$ are symmetric.

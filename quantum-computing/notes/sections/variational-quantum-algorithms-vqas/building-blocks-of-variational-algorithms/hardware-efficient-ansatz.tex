@@ -1,0 +1,79 @@
+\subsubsection{Hardware Efficient Ansätze}\label{sec:hardware-efficient-ansatz}
+
+In the previous sections, we learned that the ansatz is one of the three fundamental building blocks of a Variational Quantum Algorithm. However, \hl{there is not a single universal ansatz}: many different circuit architectures have been proposed, each characterized by different gate arrangements, parameterizations, and expressive power.
+
+\highspace
+Among the various possibilities, one of the most widely used is the \definition{Hardware Efficient Ansatz (HEA)}. As its name suggests, this ansatz is specifically designed to be \textbf{easy to execute on real quantum hardware}, making it particularly suitable for today's NISQ devices.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need a Hardware Efficient Ansatz?}}
+\end{flushleft}
+When designing an ansatz, one might think that \hl{adding more gates would always produce a better quantum circuit} because it allows the preparation of a larger variety of quantum states. While this is true in principle, there is an important \textbf{trade-off}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle}} Recall that current quantum computers are affected by: decoherence (\autopageref{def:coherence}), gate errors, measurement errors. As the \textbf{circuit becomes deeper}, these \textbf{errors accumulate} and progressively \textbf{destroy the quantum state} before the computation finishes. For this reason, an ideal ansatz should satisfy two seemingly conflicting objectives:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] It should be \textbf{expressive} enough to represent the solution;
+    \item[\textcolor{Green3}{\faIcon{check}}] It should \textbf{remain simple} enough to be executed reliably on noisy hardware.
+\end{itemize}
+The Hardware Efficient Ansatz (HEA) was introduced precisely to \textbf{achieve this compromise}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Main Idea}}
+\end{flushleft}
+The Hardware Efficient Ansatz is \hl{one of the many possible ansatz architectures.} Its construction is remarkably simple; it consists of \textbf{alternating layers of}:
+\begin{enumerate}
+    \item The first type of layer contains \hl{single-qubit parameterized rotation gates} (i.e., $R_y$, $R_z$), where the rotation angles are variational parameters optimized by the classical optimizer.
+    \item After rotating the individual qubits, the circuit applies \hl{entangling two-qubit gates}. These are usually CNOT gates (although other native two-qubit gates may also be used). These gates \textbf{create entanglement} among the qubits, enabling the circuit to represent quantum states that cannot be expressed as independent single-qubit states. \textbf{Without} these entangling layers, the ansatz would \hl{only generate product states, severely limiting its expressive power.}
+\end{enumerate}
+This basic block is then \textbf{repeated several times}, usually denoted by a depth parameter $D$. Each repetition introduces additional variational parameters and increases the expressive power of the circuit. However, it also increases the circuit depth, making the algorithm more susceptible to noise.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{\ket{0}} & \gate{R_{Y}}\gategroup[4,steps=4,style={inner sep=3pt}]{$\times D$} & \gate{R_{Z}} & \ctrl{1}   &             & \gate{R_{Y}} & \gate{R_{Z}} & \rstick[4,brackets=none]{\ket{\psi(\vec{\theta})}} \\
+        \lstick{\ket{0}} & \gate{R_{Y}} & \gate{R_{Z}} & \control{} & \ctrl{1}    & \gate{R_{Y}} & \gate{R_{Z}} & \\
+        \lstick{\ket{0}} & \gate{R_{Y}} & \gate{R_{Z}} & \ctrl{1}   & \control{}  & \gate{R_{Y}} & \gate{R_{Z}} & \\
+        \lstick{\ket{0}} & \gate{R_{Y}} & \gate{R_{Z}} & \control{} &             & \gate{R_{Y}} & \gate{R_{Z}} &
+    \end{quantikz}
+    \caption{Generic Hardware Efficient Ansatz on 4 qubits. The final $R_Y$ and $R_Z$ gates are an additional final rotation layer. They are placed after the repeated entangling block because, after entanglement has been created, we may still want to independently adjust each qubit before measuring or evaluating the cost function.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called Hardware Efficient?}}
+\end{flushleft}
+The adjective \textbf{\emph{hardware efficient}} comes from the fact that the \hl{circuit is specifically designed to match the capabilities of existing quantum hardware.} Instead of requiring arbitrary quantum operations, it uses:
+\begin{itemize}
+    \item Rotation gates that are directly supported by most quantum processors;
+    \item Simple entangling gates (typically CNOTs) that correspond to the hardware's native two-qubit interactions.
+\end{itemize}
+As a result, the circuit: contains relatively few gates; is shallow; can be executed with fewer errors than more complicated ansatzes. This is particularly important for NISQ devices, where every additional gate increases the probability of errors.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages}}
+\end{flushleft}
+The Hardware Efficient Ansatz offers several important advantages:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Easy to implement}, since it uses only standard quantum gates.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Compatible with existing hardware}, exploiting the native gate set of the processor.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Shallow circuits}, reducing the effects of decoherence and gate noise.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Highly flexible}, as increasing the depth $D$ allows more expressive quantum states to be prepared.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}}
+\end{flushleft}
+Although very practical, the Hardware Efficient Ansatz also has some drawbacks. Because it is \hl{designed to be problem-independent}, it \textbf{does not exploit any specific knowledge about the problem being solved}. As a consequence:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] It may require many parameters;
+    \item[\textcolor{Red2}{\faIcon{times}}] Optimization can become more difficult;
+    \item[\textcolor{Red2}{\faIcon{times}}] Increasing the depth too much can introduce excessive noise and contribute to optimization challenges such as \textbf{barren plateaus}, which will be discussed in the next sections.
+\end{itemize}
+Thus, the Hardware Efficient Ansatz represents a compromise between \textbf{hardware compatibility} and \textbf{expressive power}.
+
+\highspace
+In summary, the Hardware Efficient Ansatz (HEA) is one of the most commonly used ansatz architectures for Variational Quantum Algorithms. It is constructed by alternating layers of \textbf{parameterized single-qubit rotation gates} and \textbf{entangling two-qubit gates}, repeating this pattern a number of times determined by the circuit depth D. The use of simple, native quantum gates makes the ansatz particularly suitable for current NISQ devices, where shallow circuits are essential to mitigate noise. While increasing the depth improves the expressive power of the circuit, it also increases its susceptibility to errors and makes the optimization process more challenging.

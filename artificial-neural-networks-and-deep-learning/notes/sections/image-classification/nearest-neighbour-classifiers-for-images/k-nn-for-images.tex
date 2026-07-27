@@ -1,0 +1,79 @@
+\subsubsection{k-NN for Images}\label{sec:k-nn-for-images}
+
+In the previous section, we answered the question: \emph{\textbf{how can we measure similarity between two images?}} Our answer was Euclidean distance ($\ell_2$ distance) and Manhattan distance ($\ell_1$ distance) between the pixel values of the two images. Now we \hl{use these distances to build an actual classifier.} This classifier is called \definition{k-Nearest Neighbours (k-NN)}.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The main idea.}} Suppose we have a huge collection of labeled images. Now a new image arrives, and we want to classify it. Instead of learning a model, k-NN simply asks: \emph{\textbf{which training images look most similar to this new image?}} Then it predicts the label from those neighbors.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called ``\emph{Nearest Neighbour}''?}} Because every image is now a point in $\mathbb{R}^{d}$, where $d$ is the number of pixels in the image (after flattening). The query image (i.e., the new image we want to classify) is also a point in $\mathbb{R}^{d}$ and it has no label (because it is new). We \hl{compute the distance from the query to every training image, and the closest ones are called its \textbf{nearest neighbours}.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{The algorithm}}
+\end{flushleft}
+Suppose we have a training set:
+\begin{equation*}
+    TR = \left\{\left(x_1, y_1\right), \left(x_2, y_2\right), \ldots, \left(x_n, y_n\right)\right\}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $n$ is the \textbf{number} of training \textbf{images}.
+    \item $x_i \in \mathbb{R}^{d}$ is the $i$-th \textbf{training image} (flattened).
+    \item $y_i \in \mathbb{R}$ is the \textbf{label} of the $i$-th training image.
+\end{itemize}
+Given a new image (query) $x_q$, the algorithm works as follows:
+\begin{enumerate}
+    \item \hl{Compute the distance from the query to every training image.} For example:
+    \begin{equation*}
+        d\left(x_q, x_1\right), \quad d\left(x_q, x_2\right), \quad \ldots, \quad d\left(x_q, x_n\right)
+    \end{equation*}
+    Usually we use Euclidean distance ($\ell_2$ distance) or Manhattan distance ($\ell_1$ distance).
+
+
+    \item \hl{Sort the distances.} For example, given a query image $x_q$, we might get:
+    \begin{gather*}
+        d\left(x_q, \text{Dog}\right) = 3.2, \quad d\left(x_q, \text{Dog}\right) = 4.1, \quad d\left(x_q, \text{Cat}\right) = 5.0, \\
+        d\left(x_q, \text{Horse}\right) = 8.3, \quad d\left(x_q, \text{Car}\right) = 12.4
+    \end{gather*}
+    The smallest distances correspond to the most similar images. In this case, the query image is most similar to a \emph{Dog}, then another \emph{Dog}, then a \emph{Cat}, then a \emph{Horse}, and finally a \emph{Car}.
+
+
+    \item \hl{Take the first $k$ images.} If $k=3$, then the first three images are \emph{Dog}, \emph{Dog}, and \emph{Cat}.
+    
+
+    \item \hl{Vote for the most common label among the $k$ images.} In this case, the most common label is \emph{Dog}, so we predict that the query image is a \emph{Dog}.
+\end{enumerate}
+The parameter $k$ simply means \textbf{\emph{how many neighbours do we consider?}} This is the only parameter of the algorithm.
+\begin{itemize}
+    \item $k=1$. This is the \textbf{simplest} possible classifier. We look only at the closest image and predict its label. Thus, the last step (voting) is not needed.
+
+
+    \item $k=3$. Instead of trusting one image, we trust the three closest images. We take a vote among them and predict the most common label. So \hl{increasing $k$ makes the classifier \textbf{less sensitive to noise and mislabeled examples}.}
+
+
+    \item \emph{What if $k$ becomes too large?} If $k$ is too large, the classifier will start to ignore the local neighborhood and will simply predict the most common classes in the training set. For example, if $k=n$, then the classifier will always predict the most common class in the training set, regardless of the query image. So:
+    \begin{itemize}
+        \item Very small $k$, then there is too noise (i.e., mislabeled examples).
+        \item Very large $k$, then the classifier is oversmoothed (i.e., it ignores the local neighborhood).
+    \end{itemize}
+\end{itemize}
+\hl{Choosing $k$ is therefore a trade-off that is typically selected using a validation set.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{There is no training}}
+\end{flushleft}
+This is the most important point about k-NN. Unlike neural networks, there is \textbf{no optimization problem}. So, no weights $W$ are learned, no biases $b$ are learned, no loss function is minimized, and no gradient descent is performed. The \hl{training phase is literally just storing the training images and their labels.} This is why k-NN is called a \textbf{lazy learning algorithm}. It postpones all the work until a query arrives.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{dollar-sign} \textbf{The cost of k-NN}}
+\end{flushleft}
+The \textbf{computational cost} of a k-NN classifier is clear. For \textbf{every} new test image we must compute the distance to \textbf{every} training image. If each image has $d$ number of pixels (the feature dimension after flattening), and we have $n$ number of training images, then for each query image we must compute the distance to each of the $n$ training images; and each distance computation compares $d$ components (the pixel values). Thus, computing one distance requires $O(d)$ operations, and computing the distance to all $n$ training images requires $n \times O(d) = O(n \cdot d)$ operations. This is a \textbf{huge cost} for \textbf{every single prediction}.
+
+\highspace
+Another drawback is \textbf{memory}. A neural network stores only its learned parameters. In contrast, a k-NN classifier stores \textbf{every training image}. For CIFAR-10, that's already tens of thousands of images. For ImageNet, that's millions of images. So \textbf{memory grows directly with the training set size}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The hidden assumption.}} Everything depends on the distance. The \textbf{algorithm assumes that a small pixel distance between two images implies that they are perceptually similar} (\autopageref{sec:perceptual-similarity-vs-pixel-similarity}). But this is not always true. The algorithm is only as good as the distance measure it uses.

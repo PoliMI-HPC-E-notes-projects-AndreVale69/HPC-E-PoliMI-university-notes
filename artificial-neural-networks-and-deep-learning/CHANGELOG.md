@@ -38,6 +38,7 @@
     - add `Dimensionality`
     - add `Label Ambiguity`
     - add `Transformations`
+    - add `Inter-Class Variability`
 
 --------------------
 

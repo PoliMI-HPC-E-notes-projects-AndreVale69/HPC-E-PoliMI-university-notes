@@ -37,6 +37,7 @@
   - add `Why Image Classification is Difficult`
     - add `Dimensionality`
     - add `Label Ambiguity`
+    - add `Transformations`
 
 --------------------
 

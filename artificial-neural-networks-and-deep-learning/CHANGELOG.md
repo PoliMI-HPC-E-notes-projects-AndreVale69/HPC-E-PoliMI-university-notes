@@ -39,6 +39,7 @@
     - add `Label Ambiguity`
     - add `Transformations`
     - add `Inter-Class Variability`
+    - add `Perceptual Similarity vs Pixel Similarity`
 
 --------------------
 

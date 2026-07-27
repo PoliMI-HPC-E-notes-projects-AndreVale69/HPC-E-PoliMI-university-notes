@@ -40,6 +40,8 @@
     - add `Transformations`
     - add `Inter-Class Variability`
     - add `Perceptual Similarity vs Pixel Similarity`
+  - add `Nearest Neighbour Classifiers for Images`
+    - add `Pixel-wise Distances`
 
 --------------------
 

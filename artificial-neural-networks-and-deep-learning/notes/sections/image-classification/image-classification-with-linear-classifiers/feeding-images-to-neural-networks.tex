@@ -1,0 +1,303 @@
+\subsubsection{Feeding Images to Neural Networks}\label{sec:feeding-images-to-neural-networks}
+
+So far, we know that an RGB image is represented as:
+\begin{equation*}
+    I \in \mathbb{R}^{R \times C \times 3}
+\end{equation*}
+Where $R$ is the number of rows, $C$ is the number of columns, and $3$ is the number of channels (Red, Green, Blue). This is a \textbf{3-dimensional tensor} because it has three dimensions: height, width, and channels. However, a standard fully-connected neural network expects something completely different:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d}
+\end{equation*}
+A \textbf{1-dimensional vector} of size $d$. Therefore, we need to convert the 3D tensor into a 1D vector.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why can't we feed the image directly to the neural network?}} A dense (fully-connected) neuron computes a weighted sum of all its inputs and a bias term:
+\begin{equation*}
+    y = \sum_{i=1}^{d} w_i x_i + b
+\end{equation*}
+So the neural network expects a \textbf{list of numbers}, not a matrix or a 3D tensor. Therefore, before entering the network, the image must become a 1D vector.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How do we convert a 3D tensor into a 1D vector?}}
+\end{flushleft}
+The process of converting a 3D tensor into a 1D vector is called \definition{Flattening} (or \definition{Unfolding}, or \definition{Vectorization}). Simply put, instead of keeping pixels arranged spatially, we place them one after another into a single long vector.
+
+\highspace
+In general, the flattening process can be implemented in multiple ways:
+\begin{itemize}
+    \item \definition{Row-Wise Flattening}: We take \hl{each row} of the image and place it \hl{one after another} into a single long vector.
+    
+    \item \definition{Column-Wise Flattening}: We take \hl{each column} of the image and place it \hl{one after another} into a single long vector.
+
+    \begin{examplebox}[: Column-wise flattening]
+        Suppose we have a tiny grayscale image:
+        \begin{equation*}
+            I = \begin{bmatrix}
+                1 & 2 \\
+                3 & 4
+            \end{bmatrix}
+        \end{equation*}
+        Reading \textbf{column by column} gives us the following vector:
+        \begin{equation*}
+            \mathbf{x} = \begin{bmatrix}
+                1 \\
+                3 \\
+                2 \\
+                4
+            \end{bmatrix}
+        \end{equation*}
+    \end{examplebox}
+    
+    \item \definition{Channel-First Flattening}: We \hl{flatten all the values of the first channel}, then all the values of the second channel, \hl{and so on}, until all channels have been concatenated into a single vector. Obviously, this is only relevant for images with multiple channels (e.g., RGB images).
+    
+    \item \definition{Channel-Last Flattening}: For each spatial location (pixel), we place all of its \hl{channel values consecutively into the vector before moving to the next pixel.} Again, this is only relevant for images with multiple channels (e.g., RGB images).
+\end{itemize}
+Also, row/column-wise and channel-first/last describe \textbf{different aspects} of the ordering. Row and column-wise flattening describe the \textbf{spatial dimensions} ($R$ and $C$) are traversed, while channel-first and channel-last describe where the \textbf{channel dimension} ($C$) appears in the traversal. Therefore, they can be \textbf{combined} (e.g., row-wise channel-first flattening, column-wise channel-last flattening, etc.).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What about RGB images?}} We described the flattening process for grayscale images, but RGB images have \textbf{three channels} (matrices). Conceptually, we can concatenate the three channels into a single long vector. As explained above, there are two common ways to define the order of concatenation: \textbf{channel-first} and \textbf{channel-last flattening}.
+
+\highspace
+However, regardless of the order of concatenation, the \textbf{complete vector} contains the following, mathematically:
+\begin{equation*}
+    d = R \times C \times 3
+\end{equation*}
+\textbf{Elements}. So, an RGB image of size $R \times C$:
+\begin{equation*}
+    I \in \mathbb{R}^{R \times C \times 3}
+\end{equation*}
+Is transformed into a vector of size $d$:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d} \to \mathbf{x} \in \mathbb{R}^{R \times C \times 3}
+\end{equation*}
+This transformation \textbf{changes only the data layout}, not the data itself.
+
+\highspace
+\begin{examplebox}[: Channel-first/last flattening]
+    For example, if we have a very small RGB image of size $2 \times 2$ ($R=2$, $C=2$), where each color channel is represented as a $2 \times 2$ matrix:
+    \begin{equation*}
+        \text{Red} = \begin{bmatrix}
+            10 & 20 \\
+            30 & 40
+        \end{bmatrix}
+        \quad
+        \text{Green} = \begin{bmatrix}
+            1 & 2 \\
+            3 & 4
+        \end{bmatrix}
+        \quad
+        \text{Blue} = \begin{bmatrix}
+            5 & 6 \\
+            7 & 8
+        \end{bmatrix}
+    \end{equation*}
+    Flattening each channel using column-wise flattening and concatenating them in channel-first order gives us the following vector:
+    \begin{equation*}
+        \mathbf{x} = [
+            \underbrace{10, \, 30, \, 20, \, 40}_{\text{Red channel}}, \, \underbrace{1, \, 3, \, 2, \, 4}_{\text{Green channel}}, \, \underbrace{5, \, 7, \, 6, \, 8}_{\text{Blue channel}}
+        ]^{T}
+    \end{equation*}
+    Thus, the final vector has $d = 2 \times 2 \times 3 = 12$ elements.
+
+    \highspace
+    Just to clarify, the order of concatenation can be changed (e.g., \textbf{channel-last flattening}), but the total number of elements remains the same. Indeed:
+    \begin{equation*}
+        \mathbf{x} = [
+            \underbrace{10, \, 1, \, 5}_{\text{Pixel (1,1)}}, \, \underbrace{30, \, 3, \, 7}_{\text{Pixel (2,1)}}, \, \underbrace{20, \, 2, \, 6}_{\text{Pixel (1,2)}}, \, \underbrace{40, \, 4, \, 8}_{\text{Pixel (2,2)}}
+        ]^{T}
+    \end{equation*}
+    Which is the same vector as before, just with a different ordering of the elements.
+\end{examplebox}
+
+\begin{figure}[!htp]
+    \centering
+    \begin{tikzpicture}[
+        >=Latex,
+        font=\small,
+        cell/.style={
+            draw,
+            minimum width=0.75cm,
+            minimum height=0.75cm,
+            align=center
+        },
+        vec/.style={
+            draw,
+            minimum width=0.95cm,
+            minimum height=0.55cm,
+            align=center
+        },
+        title/.style={
+            font=\bfseries
+        }
+    ]
+
+        % ------------------------------------------------------------
+        % Parameters
+        % ------------------------------------------------------------
+        \def\xsep{0.75}
+        \def\ysep{0.75}
+
+        % ------------------------------------------------------------
+        % Red channel matrix: R in R^{2 x 3}
+        % ------------------------------------------------------------
+        \node[title] at (0.75, 1.0) {Red channel};
+
+        \node[cell, fill=red!25] (R11) at (0,   0) {$R_{1,1}$};
+        \node[cell, fill=red!25] (R12) at (0.75,0) {$R_{1,2}$};
+        \node[cell, fill=red!25] (R13) at (1.5, 0) {$R_{1,3}$};
+
+        \node[cell, fill=red!25] (R21) at (0,  -0.75) {$R_{2,1}$};
+        \node[cell, fill=red!25] (R22) at (0.75,-0.75) {$R_{2,2}$};
+        \node[cell, fill=red!25] (R23) at (1.5,-0.75) {$R_{2,3}$};
+
+        % Column-wise path for R
+        \draw[->, thick, red!70!black] (R11.center) -- (R21.center);
+        \draw[->, thick, red!70!black] (R21.center) -- (R12.center);
+        \draw[->, thick, red!70!black] (R12.center) -- (R22.center);
+        \draw[->, thick, red!70!black] (R22.center) -- (R13.center);
+        \draw[->, thick, red!70!black] (R13.center) -- (R23.center);
+
+        % ------------------------------------------------------------
+        % Green channel matrix
+        % ------------------------------------------------------------
+        \node[title] at (0.75, -2.0) {Green channel};
+
+        \node[cell, fill=green!25] (G11) at (0,   -3.0) {$G_{1,1}$};
+        \node[cell, fill=green!25] (G12) at (0.75,-3.0) {$G_{1,2}$};
+        \node[cell, fill=green!25] (G13) at (1.5, -3.0) {$G_{1,3}$};
+
+        \node[cell, fill=green!25] (G21) at (0,  -3.75) {$G_{2,1}$};
+        \node[cell, fill=green!25] (G22) at (0.75,-3.75) {$G_{2,2}$};
+        \node[cell, fill=green!25] (G23) at (1.5,-3.75) {$G_{2,3}$};
+
+        % Column-wise path for G
+        \draw[->, thick, green!50!black] (G11.center) -- (G21.center);
+        \draw[->, thick, green!50!black] (G21.center) -- (G12.center);
+        \draw[->, thick, green!50!black] (G12.center) -- (G22.center);
+        \draw[->, thick, green!50!black] (G22.center) -- (G13.center);
+        \draw[->, thick, green!50!black] (G13.center) -- (G23.center);
+
+        % ------------------------------------------------------------
+        % Blue channel matrix
+        % ------------------------------------------------------------
+        \node[title] at (0.75, -5.0) {Blue channel};
+
+        \node[cell, fill=blue!25] (B11) at (0,   -6.0) {$B_{1,1}$};
+        \node[cell, fill=blue!25] (B12) at (0.75,-6.0) {$B_{1,2}$};
+        \node[cell, fill=blue!25] (B13) at (1.5, -6.0) {$B_{1,3}$};
+
+        \node[cell, fill=blue!25] (B21) at (0,  -6.75) {$B_{2,1}$};
+        \node[cell, fill=blue!25] (B22) at (0.75,-6.75) {$B_{2,2}$};
+        \node[cell, fill=blue!25] (B23) at (1.5,-6.75) {$B_{2,3}$};
+
+        % Column-wise path for B
+        \draw[->, thick, blue!70!black] (B11.center) -- (B21.center);
+        \draw[->, thick, blue!70!black] (B21.center) -- (B12.center);
+        \draw[->, thick, blue!70!black] (B12.center) -- (B22.center);
+        \draw[->, thick, blue!70!black] (B22.center) -- (B13.center);
+        \draw[->, thick, blue!70!black] (B13.center) -- (B23.center);
+
+        % ------------------------------------------------------------
+        % Big arrow toward vector
+        % ------------------------------------------------------------
+        \draw[->, very thick] (2.4,-3.4) -- (4.1,-3.4)
+            node[midway, above] {flatten}
+            node[midway, below] {column-wise};
+
+        % ------------------------------------------------------------
+        % Flattened vector x
+        % ------------------------------------------------------------
+        \node[title] at (5.3, 1.0) {Input vector $\mathbf{x} \in \mathbb{R}^{d}$};
+
+        \node[vec, fill=red!25]   (x1)  at (5.3,  0.2) {$R_{1,1}$};
+        \node[vec, fill=red!25]   (x2)  at (5.3, -0.35) {$R_{2,1}$};
+        \node[vec, fill=red!25]   (x3)  at (5.3, -0.90) {$R_{1,2}$};
+        \node[vec, fill=red!25]   (x4)  at (5.3, -1.45) {$R_{2,2}$};
+        \node[vec, fill=red!25]   (x5)  at (5.3, -2.00) {$R_{1,3}$};
+        \node[vec, fill=red!25]   (x6)  at (5.3, -2.55) {$R_{2,3}$};
+
+        \node[vec, fill=green!25] (x7)  at (5.3, -3.10) {$G_{1,1}$};
+        \node[vec, fill=green!25] (x8)  at (5.3, -3.65) {$G_{2,1}$};
+        \node[vec, fill=green!25] (x9)  at (5.3, -4.20) {$G_{1,2}$};
+        \node[vec, fill=green!25] (x10) at (5.3, -4.75) {$G_{2,2}$};
+        \node[vec, fill=green!25] (x11) at (5.3, -5.30) {$G_{1,3}$};
+        \node[vec, fill=green!25] (x12) at (5.3, -5.85) {$G_{2,3}$};
+
+        \node[vec, fill=blue!25]  (x13) at (5.3, -6.40) {$B_{1,1}$};
+        \node[vec, fill=blue!25]  (x14) at (5.3, -6.95) {$B_{2,1}$};
+        \node[vec, fill=blue!25]  (x15) at (5.3, -7.50) {$B_{1,2}$};
+        \node[vec, fill=blue!25]  (x16) at (5.3, -8.05) {$B_{2,2}$};
+        \node[vec, fill=blue!25]  (x17) at (5.3, -8.60) {$B_{1,3}$};
+        \node[vec, fill=blue!25]  (x18) at (5.3, -9.15) {$B_{2,3}$};
+
+        % Vector brackets
+        \draw[thick] (4.65,0.55) -- (4.45,0.55) -- (4.45,-9.5) -- (4.65,-9.5);
+        \draw[thick] (5.95,0.55) -- (6.15,0.55) -- (6.15,-9.5) -- (5.95,-9.5);
+
+    \end{tikzpicture}
+    \caption{Flattening an RGB image of size $R \times C$ into a vector of size $d = R \times C \times 3$. The flattening is done in a column-wise manner, and the channels are concatenated in a channel-first order.}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What information is lost during flattening?}}
+\end{flushleft}
+Before flattening an image, the pixels are arranged in a 2D grid, which preserves the spatial relationships between neighboring pixels:
+\begin{equation*}
+    \begin{bmatrix}
+        p_{1,1} & p_{1,2} & p_{1,3} \\
+        p_{2,1} & p_{2,2} & p_{2,3}
+    \end{bmatrix}
+\end{equation*}
+But after flattening, the pixels are arranged in a 1D vector, which loses the spatial relationships between neighboring pixels:
+\begin{equation*}
+    \begin{bmatrix}
+        p_{1,1} &
+        p_{2,1} &
+        p_{1,2} &
+        p_{2,2} &
+        p_{1,3} &
+        p_{2,3}
+    \end{bmatrix}^{T}
+\end{equation*}
+Thus, the \hl{network no longer knows that two pixels were neighbors in the original image.} Ultimately, a layer of a neural network simply takes a vector of numbers as input; it doesn't know anything about the spatial relationships between pixels. Flattening \textbf{preserves every pixel value} but \textbf{destroys the explicit spatial organization}.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is flattening a problem?}} Imagine these two binary images of size $2 \times 2$:
+\begin{equation*}
+    I_1 = \begin{bmatrix}
+        1 & 0 \\
+        0 & 0
+    \end{bmatrix}
+    \quad
+    I_2 = \begin{bmatrix}
+        0 & 0 \\
+        1 & 0
+    \end{bmatrix}
+\end{equation*}
+The white pixels (1s) are in different locations in the two images. Humans immediately recognize them as very similar images because they are both just a single white pixel in a $2 \times 2$ black image. However, after flattening, the two images become:
+\begin{equation*}
+    \mathbf{x}_1 = \begin{bmatrix}
+        1 \\
+        0 \\
+        0 \\
+        0
+    \end{bmatrix}
+    \quad
+    \mathbf{x}_2 = \begin{bmatrix}
+        0 \\
+        1 \\
+        0 \\
+        0
+    \end{bmatrix}
+\end{equation*}
+Now, the two vectors are \textbf{orthogonal} (perpendicular) to each other, which means they are \textbf{maximally different} in the eyes of the neural network. The \hl{network} has \textbf{no built-in notion of locality or neighboring pixels}.
+
+\highspace
+Despite this limitation, flattening was the simplest way to apply existing neural networks to images, because this approach allowed us to reuse the same architecture that was already used for other types of data (e.g., tabular data). However, this approach:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] Ignore the two-dimensional structure of images;
+    \item[\textcolor{Red2}{\faIcon{times}}] Every pixel is treated as an independent input feature;
+    \item[\textcolor{Red2}{\faIcon{times}}] The network must learn spatial relationships from scratch.
+\end{itemize}
+This inefficiency is precisely why \textbf{Convolutional Neural Networks (CNNs)} were later introduced: they process images directly in their 2D (or 3D with channels) form instead of flattening them at the input.

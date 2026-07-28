@@ -2,11 +2,49 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.6.0](#v060)
 - [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.6.0
+
+- add `Image Classification`
+  - add `Computer Vision and Digital Images`
+    - add `What is Computer Vision?`
+    - add `Examples of Visual Recognition Tasks`
+    - add `Digital Images as Arrays`
+    - add `RGB Images and Videos`
+  - add `Local Spatial Transformations and Correlation`
+    - add `Local Neighbourhoods`
+    - add `Spatial Filters`
+    - add `Correlation as a Local Linear Operation`
+    - add `Correlation as Template Matching`
+    - add `Correlation on RGB Images`
+  - add `Image Classification with Linear Classifiers`
+    - add `The Image Classification Problem`
+    - add `Feeding Images to Neural Networks`
+    - add `One-layer Neural Network for Images`
+    - add `Training the Linear Classifier`
+  - add `Interpreting Linear Classifiers on Images`
+    - add `Geometric Interpretation`
+    - add `Image-based Interpretation`
+    - add `Linear Classifier as Template Matching`
+  - add `Why Image Classification is Difficult`
+    - add `Dimensionality`
+    - add `Label Ambiguity`
+    - add `Transformations`
+    - add `Inter-Class Variability`
+    - add `Perceptual Similarity vs Pixel Similarity`
+  - add `Nearest Neighbour Classifiers for Images`
+    - add `Pixel-wise Distances`
+    - add `k-NN for Images`
+    - add `Why Pixel Distance is Not Perceptual Distance`
+    - add `CIFAR-10 and t-SNE Interpretation`
 
 --------------------
 

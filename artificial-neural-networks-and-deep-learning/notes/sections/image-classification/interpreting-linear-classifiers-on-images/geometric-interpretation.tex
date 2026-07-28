@@ -1,0 +1,147 @@
+\subsection{Interpreting Linear Classifiers on Images}\label{sec:interpreting-linear-classifiers-on-images}
+
+Now that we know \textbf{how to train} a linear classifier, the next question is: \emph{\textbf{what has the classifier actually learned?}} This is the purpose of this section. Instead of discussing optimization, we now interpret the learned parameters $W$ and $b$. We present two complementary viewpoints:
+\begin{itemize}
+    \item \textbf{Geometric Interpretation}: each class corresponds to a hyperplane in the input space.
+    \item \textbf{Image-based interpretation}: each row of $W$ can be visualized as an image template.
+\end{itemize}
+Let's begin with the geometric view.
+
+\longline
+
+\subsubsection{Geometric Interpretation}\label{sec:geometric-interpretation}
+
+Once training has finished, we have learned the parameters:
+\begin{itemize}
+    \item Weight matrix $W$;
+    \item Bias vector $b$.
+\end{itemize}
+The original training images are no longer needed. Instead of storing thousands of labeled examples, we only keep the learned parameters $W$ and $b$. The \hl{classifier has compressed everything it learned about the training set into these parameters.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does one row of $W$ represent?}}
+\end{flushleft}
+The weight matrix $W$ is defined as:
+\begin{equation*}
+    W = \begin{bmatrix}
+        \mathbf{w}_{1}^{T} \\
+        \mathbf{w}_{2}^{T} \\
+        \vdots \\
+        \mathbf{w}_{L}^{T}
+    \end{bmatrix}
+    \quad
+    W \in \mathbb{R}^{L \times d}
+\end{equation*}
+Where $L$ is the number of classes and $d$ is the number of image features (pixels). Each row $\mathbf{w}_{i}^{T}$ contains \textbf{all the weights associated with class $i$}:
+\begin{equation*}
+    \mathbf{w}_{i} = W\left[i, :\right] = \begin{bmatrix}
+        W_{i, 1} & W_{i, 2} & \cdots & W_{i, d}
+    \end{bmatrix}
+\end{equation*}
+Each row has exactly one weight for every input pixel.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Inner product between a row of $W$ and an input image $\mathbf{x}$}}
+\end{flushleft}
+For the class $i$, the classifier computes:
+\begin{equation*}
+    s_i = \mathbf{w}_{i}^{T} \mathbf{x} + b_i
+\end{equation*}
+Where $\mathbf{w}_{i}^{T} \mathbf{x}$ is the inner product between:
+\begin{itemize}
+    \item The input image vector $\mathbf{x}$;
+    \item The weight vector $\mathbf{w}_{i}$ for class $i$.
+\end{itemize}
+This inner product measures \textbf{how well two vectors align}. If the two vectors point in the same direction, the inner product is large and positive. If they point in opposite directions, the inner product is large and negative. If they are orthogonal, the inner product is zero.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Intuition.}} Think of the weight vector as asking: ``\emph{does this image look like the pattern I am searching for?}'' If the image resembles the pattern, the inner product becomes large. If it is very different, the inner product becomes small or even negative.
+
+\highspace
+\textcolor{Green3}{\faIcon{unlink} \textbf{Independence.}} Each row contains all the weights associated with class $i$. Thus, \textbf{each row of $W$ works independently of the other rows}, because there is no link between the rows (each row has its own bias term $b_i$). The network computes the scores for each class independently:
+\begin{equation*}
+    \begin{aligned}
+        s_1 &= \mathbf{w}_{1}^{T} \mathbf{x} + b_1 \\
+        s_2 &= \mathbf{w}_{2}^{T} \mathbf{x} + b_2 \\
+        &\vdots \\
+        s_L &= \mathbf{w}_{L}^{T} \mathbf{x} + b_L
+    \end{aligned}
+\end{equation*}
+Only after all scores are computed do we compare them and choose the largest. So we can imagine having $L$ \textbf{independent binary classifiers}, one for each class, competing against one another.
+
+\highspace
+Remember that this independence is true \textbf{only for a single linear layer}. If we introduce a hidden layer, the output neurons all depend on the hidden representation. So, changing one hidden neuron affects \textbf{every output class simultaneously}. Consequently, the simple interpretation ``each row of $W$ is independent'' no longer holds.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{map} \textbf{Geometric Interpretation}}
+\end{flushleft}
+Now that we understand the inner product, we can explain the geometric interpretation of linear classifiers. Instead of thinking of $\mathbf{x}$ as an image, imagine it as \textbf{a point in a very high-dimensional space}. For CIFAR-10 images, this space has $32 \times 32 \times 3 = 3072$ dimensions. Therefore every image corresponds to one point in this 3072-dimensional space $\mathbb{R}^{3072}$. This is called the \textbf{feature space} or \textbf{input space}.
+
+\highspace
+Since understanding 3072 dimensions is impossible, for example, let's imagine a simpler case with only two dimensions $d=2$ (i.e., each image has only two pixels):
+\begin{equation*}
+    x = \begin{bmatrix}
+        x_1 \\
+        x_2
+    \end{bmatrix}
+    \xrightarrow{\text{for example}}
+    x = \begin{bmatrix}
+        3 \\
+        5
+    \end{bmatrix}
+\end{equation*}
+In this case, each image becomes simple point in a 2D plane $\left(x_1, x_2\right)$. Now the score is:
+\begin{equation*}
+    f\left(x_1, x_2\right) = w_1 x_1 + w_2 x_2 + b
+\end{equation*}
+This is just a linear function of two variables.
+
+\highspace
+Suppose we are trying to recognize \textbf{cats}. The classifier has learned (i.e., trained):
+\begin{equation*}
+    w = \begin{bmatrix}
+        2 \\ 1
+    \end{bmatrix}
+    \quad
+    b = -6
+\end{equation*}
+Now to compute the score for a new image, we simply plug in the pixel values $x_1$ and $x_2$:
+\begin{equation*}
+    f\left(x_1, x_2\right) = 2 x_1 + 1 x_2 - 6
+\end{equation*}
+For example, suppose a new image is: $x = \left(1, 1\right)$. Then the score is:
+\begin{equation*}
+    f\left(1, 1\right) = 2 \cdot 1 + 1 \cdot 1 - 6 = -3
+\end{equation*}
+Instead, if the new image is: $x = \left(4, 2\right)$, then the score is:
+\begin{equation*}
+    f\left(4, 2\right) = 2 \cdot 4 + 1 \cdot 2 - 6 = 4
+\end{equation*}
+And finally, if the new image is: $x = \left(2, 2\right)$, then the score is:
+\begin{equation*}
+    f\left(2, 2\right) = 2 \cdot 2 + 1 \cdot 2 - 6 = 0
+\end{equation*}
+So every image gets a number.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Where does the classifier change its decision?}} This happens when the score is exactly zero:
+\begin{equation*}
+    2 x_1 + 1 x_2 - 6 = 0
+\end{equation*}
+Generally, for any linear classifier, the \textbf{decision boundary} is defined by the equation:
+\begin{equation*}
+    w^T x + b = 0
+\end{equation*}
+In two dimensions, this is a \textbf{line}:
+\begin{equation*}
+    w_1 x_1 + w_2 x_2 + b = 0
+\end{equation*}
+That line divides the plane into two halves:
+\begin{itemize}
+    \item One half where the score is positive (the classifier predicts ``cat'');
+    \item One half where the score is negative (the classifier predicts ``not cat'').
+\end{itemize}
+So the classifier is really asking: ``\emph{which side of the line does this point belong to?}''. For binary classification, one hyperplane separates the two classes. For multiclass classification, each class has its own weight vector, so there are many competing hyperplanes. The predicted class is simply the one whose hyperplane produces the \textbf{largest score}.

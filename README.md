@@ -63,7 +63,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
         <td><a href="https://onlineservices.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_PRODOTTI=evento&n_docente=Matteucci%20Matteo&k_doc=104160&lang=EN&aa=2025&tab_ricerca=1" target="_blank">Matteucci Matteo</a></td>
         <td><ul>
             <li><a href="artificial-neural-networks-and-deep-learning">Course Details</a></li>
-            <li><a href="artificial-neural-networks-and-deep-learning/notes/artificial-neural-networks-and-deep-learning.pdf">PDF v0.5.0</a></li>
+            <li><a href="artificial-neural-networks-and-deep-learning/notes/artificial-neural-networks-and-deep-learning.pdf">PDF v0.6.0</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-1">Challenge 1</a></li>
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-2">Challenge 2</a></li>
         </ul></td>

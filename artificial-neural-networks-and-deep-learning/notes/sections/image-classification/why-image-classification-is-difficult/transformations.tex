@@ -1,0 +1,89 @@
+\subsubsection{Transformations}\label{sec:transformations}
+
+After dimensionality and label ambiguity, another challenge in image classification is the presence of \textbf{transformations} in the images. \hl{Many transformations change the image dramatically, while leaving its semantic class unchanged.} This is one of the fundamental reasons why image classification is difficult.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The central idea.}} \hl{Humans have no problem recognizing an object under many different appearances.} For example, consider a picture of a cat. Now imagine we apply some transformations: translate it a few pixels, rotate it slightly, scale it, crop it, mirror it, change its position inside the image. Every transformed image still represents a cat. The \textbf{pixels have changed}, often a lot, but the \textbf{semantic meaning} (i.e., the class) \textbf{has not changed}. This is exactly what makes computer vision hard: the same object can look very different in different images, and yet we want to classify them as the same class.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this difficult for a linear classifier?}}
+\end{flushleft}
+Recall how our simple linear classifier works. After flattening, an image becomes a vector of pixel values:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d}
+\end{equation*}
+The classifier computes:
+\begin{equation*}
+    \mathbf{s} = W \mathbf{x} + b
+\end{equation*}
+Where $W$ is a weight matrix and $b$ is a bias vector. The output $\mathbf{s}$ is a vector of scores, one for each class. The predicted class is the one with the highest score. However, notice that the \hl{classifier only sees $d$ numbers} (e.g., $d=3072$ for CIFAR-10 dataset). It has \textbf{no notion} of objects, shapes, positions, rotations. It only compares pixel values. Therefore, moving an object even slightly changes many entries of the input vector $\mathbf{x}$, which can drastically change the output scores $\mathbf{s}$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Desired property: Invariance}}
+\end{flushleft}
+Ideally, we would like our classifier to be \textbf{invariant} to transformations. This means that if we apply a transformation to an image, the predicted class should remain the same. Formally, if $T$ is a transformation and $\mathbf{x}$ is an image, we want:
+\begin{equation*}
+    \text{class}(T(\mathbf{x})) = \text{class}(\mathbf{x})
+\end{equation*}
+In other words, the \textbf{predictions should remain unchanged}, even though the pixels have changed. This property is called \definition{Transformation Invariance}.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Couldn't we reach invariance by simply applying \emph{Data Augmentation}?}} Data Augmentation (\autopageref{def:data-augmentation}) is very simple, because it \hl{artificially creates new training images by applying transformations that do not change the image label.} For example, we can take an image of a cat and create new images by rotating it, translating it, scaling it, etc. This way, the classifier sees many different appearances of the same object during training. Therefore, the \textbf{model generalizes much better to unseen images} than a model trained on the original dataset.
+
+\highspace
+\emph{Ok, so we win! We apply data augmentation, and then we're done, right?} Not quite. \hl{Data Augmentation does not magically ``\emph{give}'' invariance.} Instead, it \textbf{encourages the network to learn invariance} (or, more precisely, \textbf{robustness}) by repeatedly seeing transformed versions of the same object during training. However, there are \textbf{several limitations}:
+\begin{itemize}
+    \item We cannot augment with \textbf{every possible transformation}, because there are essentially \textbf{infinitely many possible transformations}. It is impossible to collect examples for every possible variation.
+    \item Some transformations are \textbf{hard to model}. For example, consider a picture of a cat. If we rotate it by 90 degrees, it is still a cat. But if we rotate it by 180 degrees, it may look like an upside-down cat, which is not a common appearance. Similarly, if we scale it down too much, it may become unrecognizable. Therefore, some transformations can change the semantic meaning of the image.
+\end{itemize}
+In general, a \hl{classifier \textbf{must generalize} from the example it has seen to unseen examples. Data augmentation helps, but it cannot guarantee invariance to all possible transformations.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why this motivates CNNs?}} This challenge is one of the strongest motivations for convolutional neural networks. CNNs exploit two key ideas: \textbf{local receptive fields} (detect local patterns regardless of where they appear); \textbf{shared filters} (the same detector is applied everywhere in the image). As a result, if a feature moves slightly, the same filter can still detect it. A fully connected network does \textbf{not} naturally possess this property.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Illumination Changes}}
+\end{flushleft}
+One of the most common transformations in images is a \textbf{change in illumination}.
+
+\highspace
+An image can be taken under very different lighting conditions. For example, the same object may be photographed: on a sunny day, on a cloudy day, at sunset, at night, indoors, with artificial light, with shadows partially covering the object, etc. Although the \textbf{appearance of the pixels changes significantly}, humans immediately recognize that the object is still the same.
+
+\highspace
+For a classifier, however, this is a very difficult problem. A change in illumination can drastically change the pixel values, and therefore the input vector $\mathbf{x}$. As a result, the output scores $\mathbf{s}$ may change significantly, leading to incorrect predictions. This is another example of how transformations can make image classification challenging.
+
+\highspace
+Again, \emph{can data augmentation help?} Of course, as we discussed previously, it can improve robustness by generating training images with random brightness, contrast, color jitter and gamma changes. The network therefore learns that these different appearances correspond to the same class. However, just as with geometric transformations, \textbf{data augmentation cannot cover every possible lighting condition}. The \hl{model must still generalize to unseen illumination changes.}
+
+\highspace
+So CNNs are generally more robust than fully connected networks because they learn \textbf{local features} such as edges, corners, textures, which are often less sensitive to global brightness changes than raw pixel values. This does \textbf{not} make CNNs perfectly illumination invariant, but it makes learning much easier than relying on raw pixel intensities alone.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Deformations and Viewpoint Changes}}
+\end{flushleft}
+Besides geometric transformations and illumination changes, objects may also appear very different because of \textbf{deformations} or \textbf{changes in te viewpoint} (camera position). Despite these changes, humans immediately recognize that the object is the same, whereas a classifier operating directly on pixels may struggle.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is a deformation?}} A \definition{Deformation} changes the \textbf{shape of the object itself}. Unlike a rigid transformation (translation or rotation), the object is no longer simply moved or rotated. Instead, different parts of the object change their relative positions. For example a smiling face, a bent arm, a running dog, a cat stretching, a waving flag, a crumpled piece of paper, etc. In all these cases, the object is still the same, but its geometry has changed.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is deformation difficult to handle?}} Similar to the other transformations, a \textbf{deformation can drastically change the pixel values of an image}. For example, a cat stretching its body may look very different from a cat sitting still. A classifier that relies on raw pixel values may fail to recognize that both images represent the same class.
+
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is viewpoint change?}} A \definition{Viewpoint Change} occurs when the \textbf{camera observes the same object from a different position or angle}. The object itself does not change. Only the observer moves. For example, a car can be photographed from the front, the side, the back, or from above. A cat can be photographed from the left, the right, or from below. In all these cases, although these images look very different, humans immediately recognize them as the same object.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{What is viewpoint change difficult to handle?}} Changing the viewpoint can dramatically modify the image. Different parts of the object may become visible, disappear, overlap each other, or appear larger or smaller because of perspective. A classifier that relies on raw pixel values may fail to recognize that these images represent the same class.
+
+\highspace
+In general, humans do \textbf{not} memorize one image for every object. Instead, our visual system learns the \textbf{concept} of a car (wheels, windows, doors, headlights, etc.) and can recognize it from many different viewpoints. Deep CNNs aim to learn similarly \textbf{abstract features}, making them much more robust to viewpoint changes than linear classifiers.
+
+\highspace
+The common goal of all these transformations remains exactly the same: \textbf{different images should still map to the same semantic class}.

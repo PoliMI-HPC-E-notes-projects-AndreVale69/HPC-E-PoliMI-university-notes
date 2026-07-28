@@ -43,6 +43,8 @@
   - add `Nearest Neighbour Classifiers for Images`
     - add `Pixel-wise Distances`
     - add `k-NN for Images`
+    - add `Why Pixel Distance is Not Perceptual Distance`
+    - add `CIFAR-10 and t-SNE Interpretation`
 
 --------------------
 

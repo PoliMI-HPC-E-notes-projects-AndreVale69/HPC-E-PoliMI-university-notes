@@ -16,7 +16,7 @@ The oracle acts on \textbf{two quantum registers}:
     \item A single \textbf{ancilla qubit} \ket{y}.
 \end{itemize}
 Its action is defined as follows:
-\begin{equation}
+\begin{equation}\label{eq:bernstein-vazirani-oracle-action}
     U_{f_w} \ket{x} \ket{y} = \ket{x} \ket{y \oplus f_w (x)}
 \end{equation}
 Notice that the \textbf{oracle never changes the input register}. It simply computes the function $f_w(x)$ and \textbf{XORs the result into the ancilla} qubit \ket{y}. This is exactly the same reversible construction used in Deutsch's algorithm, but now the input consists of $n$ qubits instead of one.
@@ -112,3 +112,128 @@ This mechanism is the key to recovering the entire hidden bitstring with only on
     \end{equation*}
     Where $f_w (x) = w \cdot x \mod 2$. When the ancilla is later prepared in \ket{-}, these CNOTs produce phase kickback instead of storing the function value directly.
 \end{takeawaysbox}
+
+\highspace
+\begin{examplebox}[: $w = 101$ Oracle Construction]
+    In general, the hidden string $w$ is unknown, and the oracle is treated as a black box. However, here we would like to illustrate the construction of the oracle for a specific example.
+    
+    \highspace
+    To illustrate how the oracle is constructed, let us consider the hidden bitstring:
+    \begin{equation*}
+        w = 101
+    \end{equation*}
+    Since the first and third bits of $w$ are equal to $1$, while the second bit is $0$, the oracle contains exactly \textbf{two CNOT gates}:
+    \begin{itemize}
+        \item One controlled by the first data qubit \ket{q_1} and targeting the ancilla \ket{y}.
+        \item One controlled by the third data qubit \ket{q_3} and targeting the ancilla \ket{y}.
+        \item The second data qubit \ket{q_2} does not control any CNOT, since the second bit of $w$ is equal to $0$.
+    \end{itemize}
+    The resulting oracle circuit has the following structure:
+    \begin{center}
+        \begin{quantikz}[slice all, slice style=blue]
+            \lstick{$\ket{q_1}$}\slice[style=blue]{0}   & \ctrl{3} &           &           & \\
+            \lstick{$\ket{q_2}$}                        &          & \gate{I}  &           & \\
+            \lstick{$\ket{q_3}$}                        &          &           & \ctrl{1}  & \\
+            \lstick{$\ket{y}$}                          & \targ{}  &           & \targ{}   &
+        \end{quantikz}
+        $\xrightarrow{\text{no vertical lines}}$
+        \begin{quantikz}
+            \lstick{$\ket{q_1}$}    & \ctrl{3} &           &           & \\
+            \lstick{$\ket{q_2}$}    &          & \gate{I}  &           & \\
+            \lstick{$\ket{q_3}$}    &          &           & \ctrl{1}  & \\
+            \lstick{$\ket{y}$}      & \targ{}  &           & \targ{}   &
+        \end{quantikz}
+    \end{center}
+    The oracle acts on the computational basis according to \autoref{eq:bernstein-vazirani-oracle-action}, \autopageref{eq:bernstein-vazirani-oracle-action}. Note that for completeness, the oracle also contains an identity gate on the second qubit, which is not connected to the ancilla, but we can omit it in the circuit diagram, since it does not affect the computation:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$\ket{q_1}$}    & \ctrl{3} &           &           & \\
+            \lstick{$\ket{q_2}$}    &          & \gate{I}  &           & \\
+            \lstick{$\ket{q_3}$}    &          &           & \ctrl{1}  & \\
+            \lstick{$\ket{y}$}      & \targ{}  &           & \targ{}   &
+        \end{quantikz}
+        \,
+        $\boldsymbol{\equiv}$
+        \,
+        \begin{quantikz}
+            \lstick{$\ket{q_1}$}    & \ctrl{3} &    &           & \\
+            \lstick{$\ket{q_2}$}    &          &    &           & \\
+            \lstick{$\ket{q_3}$}    &          &    & \ctrl{1}  & \\
+            \lstick{$\ket{y}$}      & \targ{}  &    & \targ{}   &
+        \end{quantikz}
+    \end{center}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{tools} \textbf{The Corresponding Boolean Function.}} The hidden string $w = 101$ defines the function:
+    \begin{equation*}
+        f_{101} \left(x_1, x_2, x_3\right) = \left(1 \cdot x_1\right) \oplus \left(0 \cdot x_2\right) \oplus \left(1 \cdot x_3\right)
+    \end{equation*}
+    Since multiplying by zero always gives zero, the expression simplifies to:
+    \begin{equation*}
+        f_{101} \left(x_1, x_2, x_3\right) = x_1 \oplus x_3
+    \end{equation*}
+    And this tells us something very important: \textbf{the second input bit $x_2$ does not affect the output of the function at all}. This also explains why the oracle contains CNOT gates only on qubits $q_1$ and $q_3$, while qubit $q_2$ is not connected to the ancilla (identity gate).
+    
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Input Testing.}} We can see the action of the oracle on a few inputs.
+    \begin{itemize}
+        \item $x = 100$. The function value (oracle output) is:
+        \begin{equation*}
+            \begin{aligned}
+                f_{101} \left(1, 0, 0\right) &= \left(1 \cdot 1\right) \oplus \left(0 \cdot 0\right) \oplus \left(1 \cdot 0\right) \\
+                &= 1 \oplus 0 \oplus 0 \\
+                &= 1
+            \end{aligned}
+        \end{equation*}
+        If the ancilla is initially \ket{0}, the oracle produces:
+        \begin{equation*}
+            U_{f_{101}} \left(\ket{100} \ket{0 \oplus f_{101}\left(1,0,0\right)}\right) = U_{f_{101}} \left(\ket{100} \ket{0 \oplus 1}\right) = \ket{100} \ket{1}
+        \end{equation*}
+        Only the first CNOT is activated because only the first qubit is equal to 1. The second CNOT is not activated because the third qubit is equal to 0.
+        \begin{center}
+            \tikzset{
+                phase label/.append style={label position=above}
+            }
+            \begin{quantikz}
+                \lstick{\ket{q_{1}} = \ket{1}}  & \ctrl{3} & \phase{\ket{1}} &          & \rstick{\ket{1}} \\
+                \lstick{\ket{q_{2}} = \ket{0}}  &          & \phase{\ket{0}} &          & \rstick{\ket{0}} \\
+                \lstick{\ket{q_{3}} = \ket{0}}  &          & \phase{\ket{0}} & \ctrl{1} & \rstick{\ket{0}} \\
+                \lstick{\ket{y} = \ket{0}}      & \targ{}  & \phase{\ket{1}} & \targ{}  & \rstick{\ket{1}}
+            \end{quantikz}
+        \end{center}
+        \item $x = 111$. The function value (oracle output) is:
+        \begin{equation*}
+            \begin{aligned}
+                f_{101} \left(1, 1, 1\right) &= \left(1 \cdot 1\right) \oplus \left(0 \cdot 1\right) \oplus \left(1 \cdot 1\right) \\
+                &= 1 \oplus 0 \oplus 1 \\
+                &= 0
+            \end{aligned}
+        \end{equation*}
+        The first and third CNOT gates are both activated, but the ancilla is flipped twice, so it ends up in the same state as it started:
+        \begin{equation*}
+            U_{f_{101}} \left(\ket{111} \ket{0 \oplus f_{101}\left(1,1,1\right)}\right) = U_{f_{101}} \left(\ket{111} \ket{0 \oplus 0}\right) = \ket{111} \ket{0}
+        \end{equation*}
+        Although two CNOT gates were applied, their effects cancel because XORing with 1 twice returns the original value.
+        \begin{center}
+            \tikzset{
+                phase label/.append style={label position=above}
+            }
+            \begin{quantikz}
+                \lstick{\ket{q_{1}} = \ket{1}}  & \ctrl{3} & \phase{\ket{1}} &          & \rstick{\ket{1}} \\
+                \lstick{\ket{q_{2}} = \ket{1}}  &          & \phase{\ket{1}} &          & \rstick{\ket{1}} \\
+                \lstick{\ket{q_{3}} = \ket{1}}  &          & \phase{\ket{1}} & \ctrl{1} & \rstick{\ket{1}} \\
+                \lstick{\ket{y} = \ket{0}}      & \targ{}  & \phase{\ket{1}} & \targ{}  & \rstick{\ket{0}}
+            \end{quantikz}
+        \end{center}
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What should we notice?}} This example illustrates a \textbf{general rule} for constructing Bernstein-Vazirani oracles. The \hl{hidden string directly specifies which data qubits are connected to the ancilla:}
+    \begin{itemize}
+        \item Every bit $w_i = 1$ produces a CNOT;
+        \item Every bit $w_i = 0$ produces no gate.
+    \end{itemize}
+    As a result, the oracle computes exactly the XOR of the input bits corresponding to the positions where $w$ contains a $1$. In this example, $w = 101$ means:
+    \begin{equation*}
+        f_{101} \left(x_1, x_2, x_3\right) = x_1 \oplus x_3
+    \end{equation*}
+    The quantum algorithm will exploit this seemingly simple circuit in an unexpected way: instead of evaluating the function on a single input, it will query the oracle with a \textbf{superposition of all possible inputs simultaneously}, allowing the hidden bitstring to be recovered with a single oracle call. We will see how this works in the next section, where we will introduce the connection with phase kickback.
+\end{examplebox}

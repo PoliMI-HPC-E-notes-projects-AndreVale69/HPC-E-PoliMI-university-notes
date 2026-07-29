@@ -26,27 +26,27 @@
     - add `Common factors, global phase and relative phase`
     - add `Unitaries, Pauli Gates, and Eigenstates of Z, X, Y, H`
     - add `Circuit notation and gate composition`
-    - add `Phase Kickback`
-      - add `Prerequisites: Eigenstates and Eigenvalues`
-      - add `Eigenvalues of Unitary Operators as Phase Factors`
-      - add `Controlled Unitary Operators`
-      - add `Definition and Derivation of Phase Kickback`
-      - add `Making the Kicked-Back Phase Observable`
-      - add `Repeated Controlled Operations`
-      - add `Phase Kickback with CNOT`
-      - add `Phase Kickback with Controlled Phase Gates`
-      - add `Phase Kickback with Controlled Hadamard`
-    - add `Deutsch's Algorithm`
-      - add `Problem Definition and the Four Possible Functions`
-      - add `Classical Solution and Query Complexity`
-      - add `Quantum Oracle U_f`
-      - add `Preparing the Input State`
-      - add `Oracle Action and Phase Kickback`
-      - add `Interference and Final Measurement`
-      - add `Quantum Advantage and Importance`
-    - add `Bernstein-Vazirani's Algorithm`
-      - add `Problem Definition and Classical Solution`
-      - add `Quantum Oracle Construction`
+  - add `Phase Kickback`
+    - add `Prerequisites: Eigenstates and Eigenvalues`
+    - add `Eigenvalues of Unitary Operators as Phase Factors`
+    - add `Controlled Unitary Operators`
+    - add `Definition and Derivation of Phase Kickback`
+    - add `Making the Kicked-Back Phase Observable`
+    - add `Repeated Controlled Operations`
+    - add `Phase Kickback with CNOT`
+    - add `Phase Kickback with Controlled Phase Gates`
+    - add `Phase Kickback with Controlled Hadamard`
+  - add `Deutsch's Algorithm`
+    - add `Problem Definition and the Four Possible Functions`
+    - add `Classical Solution and Query Complexity`
+    - add `Quantum Oracle U_f`
+    - add `Preparing the Input State`
+    - add `Oracle Action and Phase Kickback`
+    - add `Interference and Final Measurement`
+    - add `Quantum Advantage and Importance`
+  - add `Bernstein-Vazirani's Algorithm`
+    - add `Problem Definition and Classical Solution`
+    - add `Quantum Oracle Construction`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

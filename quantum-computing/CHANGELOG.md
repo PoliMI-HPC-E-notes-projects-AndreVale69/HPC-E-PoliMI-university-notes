@@ -46,6 +46,7 @@
       - add `Quantum Advantage and Importance`
     - add `Bernstein-Vazirani's Algorithm`
       - add `Problem Definition and Classical Solution`
+      - add `Quantum Oracle Construction`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

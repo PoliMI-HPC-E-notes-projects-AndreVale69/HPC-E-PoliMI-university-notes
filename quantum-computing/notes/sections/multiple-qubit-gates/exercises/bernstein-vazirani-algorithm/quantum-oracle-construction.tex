@@ -1,0 +1,114 @@
+\paragraph{Quantum Oracle Construction}\label{sec:quantum-oracle-construction}
+
+This section should answer one question: ``\emph{\textbf{how do we build a quantum oracle that computes $f_w (x) = w \cdot x \mod 2$?}}''. The great thing is that the construction is extremely simple. For \textbf{each 1 in the hidden string, there is one CNOT gate} in the quantum circuit. Let's see how this works.
+
+\highspace
+The Bernstein-Vazirani algorithm assumes access to a quantum oracle implementing the function:
+\begin{equation*}
+    f_w (x) = w \cdot x \mod 2
+\end{equation*}
+As in Deutsch's algorithm, the oracle must be represented by a \textbf{unitary operator}, since every quantum computation must be reversible.
+
+\highspace
+The oracle acts on \textbf{two quantum registers}:
+\begin{itemize}
+    \item An $n$-\textbf{qubit data register} containing the input \ket{x}.
+    \item A single \textbf{ancilla qubit} \ket{y}.
+\end{itemize}
+Its action is defined as follows:
+\begin{equation}
+    U_{f_w} \ket{x} \ket{y} = \ket{x} \ket{y \oplus f_w (x)}
+\end{equation}
+Notice that the \textbf{oracle never changes the input register}. It simply computes the function $f_w(x)$ and \textbf{XORs the result into the ancilla} qubit \ket{y}. This is exactly the same reversible construction used in Deutsch's algorithm, but now the input consists of $n$ qubits instead of one.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{lock} \textbf{Encoding the Hidden Bitstring}}
+\end{flushleft}
+The hidden string (algorithm's goal):
+\begin{equation*}
+    w = \left(w_1, w_2, \ldots, w_n\right)
+\end{equation*}
+Determines the oracle completely. Recall that the function $f_w(x)$ is defined as:
+\begin{equation*}
+    f_w (x) = w \cdot x \mod 2 \implies w_1 x_1 \oplus w_2 x_2 \oplus \ldots \oplus w_n x_n
+\end{equation*}
+\hl{Each term contributes to the final XOR only when the corresponding bit of $w$ is equal to $1$} (if $w_i = 0$, then $w_i x_i = 0$ regardless of the value of $x_i$). Therefore, the \textbf{oracle's action is determined entirely by the positions of the 1s in the hidden string}.
+
+\highspace
+This observation leads to a remarkably \textbf{simple implementation}. For every position $i$:
+\begin{itemize}
+    \item If $w_i = 1$, then insert a CNOT whose:
+    \begin{itemize}
+        \item \textbf{Control} qubit is the \textbf{data qubit} \ket{q_i} corresponding to the $i$-th bit of the input \ket{x}.
+        \item \textbf{Target} qubit is the \textbf{ancilla qubit} \ket{y}.
+    \end{itemize}
+    \item If $w_i = 0$, then do nothing.
+\end{itemize}
+Therefore, \textbf{every 1 in the hidden string corresponds to exactly one CNOT gate}. The oracle is simply a collection of CNOT gates, one for each 1 in the hidden string.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Does This Work?}}
+\end{flushleft}
+Recall that a CNOT flips its target only when its control qubit is equal to 1. Suppose the ancilla initially contains \ket{y}. If a control qubit has value $x_i = 1$, the corresponding CNOT performs the operation:
+\begin{equation*}
+    y \to y \oplus 1
+\end{equation*}
+If instead the control qubit has value $x_i = 0$, the ancilla is left unchanged:
+\begin{equation*}
+    y \to y \oplus 0 = y
+\end{equation*}
+Applying all the required CNOT gates one after another accumulates the XOR of all selected input bits into the ancilla qubit. The final value of the ancilla is:
+\begin{equation*}
+    y \to y \oplus \left(w_1 x_1\right) \oplus \left(w_2 x_2\right) \oplus \ldots \oplus \left(w_n x_n\right)
+\end{equation*}
+Which is exactly the desired result:
+\begin{equation*}
+    y \to y \oplus f_w (x)
+\end{equation*}
+Thus the oracle realizes the unitary transformation:
+\begin{equation*}
+    U_{f_w} \ket{x} \ket{y} = \ket{x} \ket{y \oplus f_w (x)}
+\end{equation*}
+For example, if the hidden string is $w = 10110$, the result is:
+\begin{center}
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        \textbf{Position} & $w_i$ & \textbf{Oracle Action} \\
+        \midrule
+        1 & 1 & CNOT with control \ket{q_1} and target \ket{y} \\
+        2 & 0 & Do nothing \\
+        3 & 1 & CNOT with control \ket{q_3} and target \ket{y} \\
+        4 & 1 & CNOT with control \ket{q_4} and target \ket{y} \\
+        5 & 0 & Do nothing \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+Without knowing $w$, we do not know which CNOTs are present inside the oracle. The \textbf{purpose of the Bernstein-Vazirani algorithm is precisely to discover this hidden pattern} using a single oracle query. When we will introduce the connection with phase kickback, it will become clear how this is possible.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Connection with Phase Kickback}}
+\end{flushleft}
+At this point, the oracle may appear to do nothing more than compute a classical Boolean function. However, the crucial idea is that the ancilla will \textbf{not} be initialized in \ket{0}. Instead, it will be prepared in the state \ket{-}:
+\begin{equation*}
+    \ket{-} = \frac{\ket{0} - \ket{1}}{\sqrt{2}}
+\end{equation*}
+Which is an eigenstate of the Pauli-X operator with eigenvalue $-1$.
+
+\highspace
+Because each CNOT applies an $X$ gate to the ancilla whenever its control qubit is $1$, the oracle no longer stores the value of $f_w(x)$ in the ancilla. Instead, it transfers that information into a \textbf{phase} of the data register through \textbf{phase kickback}.
+
+\highspace
+This mechanism is the key to recovering the entire hidden bitstring with only one oracle query and will be examined in detail on \autopageref{sec:phase-kickback-intuition}.
+
+\highspace
+\begin{takeawaysbox}[: Quantum Oracle Construction]
+    The Bernstein-Vazirani oracle is constructed by placing \textbf{one CNOT for every position where the hidden bitstring has a 1}, using the corresponding data qubit as the control and the ancilla as the target. Acting on \ket{x}\ket{y}, the oracle computes:
+    \begin{equation*}
+        U_{f_w} \ket{x} \ket{y} = \ket{x} \ket{y \oplus f_w (x)}
+    \end{equation*}
+    Where $f_w (x) = w \cdot x \mod 2$. When the ancilla is later prepared in \ket{-}, these CNOTs produce phase kickback instead of storing the function value directly.
+\end{takeawaysbox}

@@ -1,0 +1,176 @@
+\subsubsection{Circuit and Algorithm Steps}\label{sec:bernstein-vazirani-circuit-and-algorithm-steps}
+
+The Bernstein-Vazirani algorithm uses a circuit that is almost identical to Deutsch's algorithm (\autopageref{fig:deutsch-algorithm-circuit}). The main difference is that the single input qubit is replaced by an $n$-qubit register, allowing the algorithm to process all input bits simultaneously.
+
+\highspace
+The circuit has the following structure:
+\begin{equation*}
+    \begin{aligned}
+        \ket{0}^{\otimes n} \xrightarrow{H^{\otimes n}} & U_{f_w} \xrightarrow{H^{\otimes n}} \text{Measure} \\
+        \ket{1} \xrightarrow{H} &
+    \end{aligned}
+\end{equation*}
+The first $n$ qubits form the \textbf{data register}, while the last qubit is an \textbf{ancilla} used during the oracle computation. As in Deutsch's algorithm, the ancilla is prepared in the state:
+\begin{equation*}
+    \ket{-} = \frac{\ket{0} - \ket{1}}{\sqrt{2}}
+\end{equation*}
+Which enables phase kickback.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{play} \textbf{Step 1: Initial State}}
+\end{flushleft}
+The computation begins with \hl{all data qubits initialized to $\ket{0}$ and the ancilla qubit initialized to $\ket{1}$}:
+\begin{equation}\label{eq:bernstein-vazirani-initial-state}
+    \ket{\psi_0} = \ket{0}^{\otimes n} \otimes \ket{1}
+\end{equation}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & \\[0.7em]
+        \lstick{$\ket{1}$}                                                                                          &
+    \end{quantikz}
+\end{center}
+\noindent
+For example, when $n=3$, the initial state is:
+\begin{equation*}
+    \ket{\psi_0} = \ket{000}\ket{1} = \ket{0001}
+\end{equation*}
+At this point, no information about the hidden string has yet been extracted.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{random} \textbf{Step 2: First Hadamard Layer}}
+\end{flushleft}
+Next, a Hadamard gate is applied to every qubit. The data register becomes an equal superposition of all $2^{n}$ possible input strings:
+\begin{equation*}
+    \ket{0}^{\otimes n} \longrightarrow \frac{1}{\sqrt{2^{n}}} \sum_{x \in \left\{0,1\right\}^{n}} \ket{x} = \left(
+        \frac{\ket{0} + \ket{1}}{\sqrt{2}}
+    \right)^{\otimes n} = \ket{+}^{\otimes n}
+\end{equation*}
+While the ancilla transforms as:
+\begin{equation*}
+    \ket{1} \longrightarrow \frac{\ket{0} - \ket{1}}{\sqrt{2}} = \ket{-}
+\end{equation*}
+The complete state is therefore:
+\begin{equation}\label{eq:bernstein-vazirani-first-hadamard}
+    \ket{\psi_1} = \frac{1}{\sqrt{2^{n}}} \sum_{x \in \left\{0,1\right\}^{n}} \ket{x} \otimes \ket{-}
+\end{equation}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & & \qwbundle{n}  & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_1}} & \\
+        \lstick{$\ket{1}$}                                                                                          & &               & \gate{H}                                                                                                   &
+    \end{quantikz}
+\end{center}
+Conceptually, the \hl{oracle is now ready to evaluate \textbf{every possible input $x$ simultaneously}.} This quantum parallelism is the starting point of the algorithm's speedup.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{magic} \textbf{Step 3: Oracle Application}}
+\end{flushleft}
+The oracle is applied once: $U_{f_w}$. Its actions is:
+\begin{equation}\label{eq:bernstein-vazirani-oracle-action-expanded}
+    U_{f_w} \ket{x} \ket{-} = (-1)^{f_w(x)} \ket{x} \ket{-}
+\end{equation}
+Rather than changing the ancilla, the \hl{oracle encodes the value of the Boolean function into the \textbf{phase} of each basis state of the superposition.}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & & \qwbundle{n} &\gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_1}} & \gate[2][2.7cm]{U_{f_w}}\gateinput{$\ket{x}$}\gateoutput{$\ket{x}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_2}} & \\
+        \lstick{$\ket{1}$}                                                                                          & &              &\gate{H}                                                                                          & \gateinput{\ket{y}}\gateoutput{\ket{y \oplus f_w (x)}}                                                                                               &
+    \end{quantikz}
+\end{center}
+
+\highspace
+At this stage, the \textbf{hidden bitstring} $w$ has not yet appeared explicitly in the data register. Instead, it is \hl{encoded in the relative phases of the quantum state.} The reason why this happens will be explained in the next section through the phenomenon of \textbf{phase kickback}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{compress-arrows-alt} \textbf{Step 4: Final Hadamard Layer}}
+\end{flushleft}
+A second layer of Hadamard gates is applied to the data register: $H^{\otimes n}$. This is the crucial \textbf{decoding step}.
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & & \qwbundle{n} & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_1}} & \gate[2][2.7cm]{U_{f_w}}\gateinput{$\ket{x}$}\gateoutput{$\ket{x}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_2}}      &  & \qwbundle{n} & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_3}} & \\
+        \lstick{$\ket{1}$}                                                                                          & &              & \gate{H}                                                                                          & \gateinput{\ket{y}}\gateoutput{\ket{y \oplus f_w (x)}}                                                                                                &  &              &                                                                                                   & 
+    \end{quantikz}
+\end{center}
+
+\noindent
+The Hadamard transform \textbf{converts the phase} information introduced by the oracle \textbf{into amplitudes of the computational basis states}.
+
+\highspace
+As a result, constructive \hl{interference occurs only for the basis state corresponding to the hidden bitstring $\ket{w}$}, while all other basis states interfere destructively. The mathematical proof of this phenomenon is provided in the next sections.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{eye} \textbf{Step 5: Measurement}}
+\end{flushleft}
+Finally, the first $n$ qubits are measured. Unlike many quantum algorithms that produce the correct answer only with high probability, the \textbf{Bernstein-Vazirani algorithm is deterministic}.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & & \qwbundle{n} & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_1}} & \gate[2][2.7cm]{U_{f_w}}\gateinput{$\ket{x}$}\gateoutput{$\ket{x}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_2}}      &  & \qwbundle{n} & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_3}} & \meter{} \\
+        \lstick{$\ket{1}$}                                                                                          & &              & \gate{H}                                                                                          & \gateinput{\ket{y}}\gateoutput{\ket{y \oplus f_w (x)}}                                                                                                &  &              &                                                                                                   & 
+    \end{quantikz}
+    \caption{Circuit for the Bernstein-Vazirani algorithm.}
+    \label{fig:bernstein-vazirani-circuit}
+\end{figure}
+
+\noindent
+The \hl{measurement always returns $\ket{w}$}, so the hidden bitstring is recovered after a \textbf{single execution of the circuit}. The ancilla qubit is irrelevant at this point and may be ignored.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is the Oracle written this way?}} A quantum gate must be reversible (unitary), the oracle cannot directly use the input $x$ to produce the output $f_w(x)$. Instead, an additional qubit (the ancilla) must be used to store the result of the computation. The oracle is therefore defined as:
+\begin{equation*}
+    U_{f_w} \ket{x}\ket{y} = \ket{x}\ket{y \oplus f_w(x)}
+\end{equation*}
+The input \ket{x} is \textbf{preserved} in the output, while the ancilla qubit \ket{y} changes. Also, the \hl{XOR operation $\oplus$ gives the oracle a \textbf{reversible} structure}, since applying the same oracle twice returns the original state:
+\begin{equation*}
+    U_{f_w} U_{f_w} \ket{x}\ket{y} = U_{f_w} \ket{x}\ket{y \oplus f_w(x)} = \ket{x}\ket{y \oplus f_w(x) \oplus f_w(x)} = \ket{x}\ket{y}
+\end{equation*}
+And this is important because \hl{all quantum gates must be reversible}. Instead, suppose we tried to define the oracle as:
+\begin{equation*}
+    \ket{x} \mapsto \ket{f(x)}
+\end{equation*}
+Take a simple example $f(00) = 0$ and $f(11) = 0$. Then we would have:
+\begin{equation*}
+    \ket{00} \mapsto \ket{0} \quad \text{and} \quad \ket{11} \mapsto \ket{0}
+\end{equation*}
+Now imagine we observe the output state \ket{0}/ Can we determine whether the input was \ket{00} or \ket{11}? No, because the information about the input has been destroyed. This is a \textbf{non-reversible} operation, therefore the transformation cannot be unitary. Instead, the oracle introduces an additional qubit to store the output, preserving the input \ket{x} in the output state. Again, XOR is used to ensure reversibility:
+\begin{equation*}
+    \begin{aligned}
+        \ket{x}\ket{y}  & \xrightarrow{U_f} \ket{x}\ket{y \oplus f(x)} \\
+                        & \xrightarrow{U_f} \ket{x}\ket{\left(y \oplus f(x)\right) \oplus f(x)} \\
+                        & = \ket{x}\ket{y}
+    \end{aligned}
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{The oracle writes the function value into the ancilla. However, in Bernstein-Vazirani, we don't care about the ancilla.}} Exactly. This is the key point. Initially it looks like the oracle is ``\emph{computing the function}'' into the ancilla. However, the ancilla is prepared in the state \ket{-}, which is an eigenstate of the Pauli-$X$ operator with eigenvalue $-1$. Therefore, when the oracle applies the required CNOT operations, the ancilla remains in the state \ket{-}. \hl{Instead of storing the function value in the ancilla, the oracle introduces a phase factor:}
+\begin{equation*}
+    \left(-1\right)^{f_w (x)}
+\end{equation*}
+\hl{Into the joint state:}
+\begin{equation*}
+    \ket{+}\ket{-} \mapsto \left(-1\right)^{f_w (x)} \ket{x}\ket{-}
+\end{equation*}
+Since the ancilla is unchanged, this phase effectively becomes associated with the data register. This phenomenon is known as \textbf{phase kickback} and is the key idea behind the Bernstein-Vazirani algorithm. It will be explained in detail in the next section.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Summary of the Algorithm}}
+\end{flushleft}
+The entire procedure can be summarized as follows:
+\begin{enumerate}
+    \item[$\ket{\psi_0}$] Prepare the initial state:
+    \begin{equation*}
+        \ket{0}^{\otimes n} \otimes \ket{1}
+    \end{equation*}
+    \item[$\ket{\psi_1}$] Apply Hadamard gates to all qubits, creating a uniform superposition and preparing the ancilla in \ket{-}.
+    \item[$\ket{\psi_2}$] Query the oracle once.
+    \item[$\ket{\psi_3}$] Apply Hadamard gates to the data register.
+    \setcounter{enumi}{3}
+    \item Measure the data register to obtain the hidden bitstring $w$.
+\end{enumerate}
+Remarkably, although the oracle is queried only once, the final measurement reveals all $n$ bits of the hidden string simultaneously.
+
+\highspace
+Now the missing piece of the puzzle is to understand \hl{how the oracle converts the hidden string into phase information} and \hl{why the final Hadamard gates decode those phases into the binary representation of $w$.} We will explore these questions in the next sections, starting with the phenomenon of \textbf{phase kickback}.

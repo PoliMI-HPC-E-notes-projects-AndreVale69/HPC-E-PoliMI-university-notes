@@ -47,6 +47,7 @@
   - add `Bernstein-Vazirani's Algorithm`
     - add `Problem Definition and Classical Solution`
     - add `Quantum Oracle Construction`
+    - add `Circuit and Algorithm Steps`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

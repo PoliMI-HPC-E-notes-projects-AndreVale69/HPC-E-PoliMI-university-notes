@@ -49,6 +49,7 @@
     - add `Quantum Oracle Construction`
     - add `Circuit and Algorithm Steps`
     - add `Phase-Kickback Intuition`
+    - add `Complete Example for w = 101 (Exam Question)`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

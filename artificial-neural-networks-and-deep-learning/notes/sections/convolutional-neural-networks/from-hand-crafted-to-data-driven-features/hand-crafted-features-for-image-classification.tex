@@ -1,0 +1,287 @@
+\subsubsection{Hand-Crafted Features for Image Classification}\label{sec:hand-crafted-features-for-image-classification}
+
+The previous section introduced the general principle:
+\begin{equation*}
+    \text{raw image} \to \text{useful representation} \to \text{classifier}
+\end{equation*}
+Now, we will discuss how this was traditionally implemented before data-driven feature learning became dominant. The central idea is that the image is first converted into a \textbf{small vector of manually designed measurements}, and only then passed to a classifier. This approach is known as \textbf{hand-crafted features}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Hand-Crafted Features}}
+\end{flushleft}
+A \definition{Hand-Crafted Feature} is a \textbf{measurement chosen and implemented by a human expert}. It is called \emph{hand-crafted} because the learning algorithm does not decide what information to extract. A person designs the extraction procedure based on prior knowledge of the problem. The important point is that these choices come from \textbf{human reasoning about the task}.
+
+\highspace
+\begin{examplebox}[: Hand-Crafted Features]
+    For example, suppose we want to build a system that classifies fruit images. The input is an RGB image and the goal is to predict the type of fruit: apple or orange.
+    \begin{itemize}
+        \item The computer \textbf{doesn't know what an apple or an orange looks like}. It only receives pixels, thousands of numbers, and those numbers alone are not easy to classify.
+        
+        
+        \item Now imagine we are an engineer. We ask ourselves: ``\emph{what characteristics distinguish apples from oranges?}'' We may come up with a few ideas: average color, roundness, texture, diameter, weight, etc. Suppose we implement algorithms that compute these characteristics from the image.
+        
+        For every image we obtain a small vector of measurements, for example:
+        \begin{equation*}
+            \text{image} \to \begin{pmatrix}
+                \text{average color} \\
+                \text{roundness} \\
+                \text{texture} \\
+                \text{diameter} \\
+                \text{weight}
+            \end{pmatrix} \in \mathbb{R}^5
+        \end{equation*}
+        
+        
+        \item We collect many examples of apples and oranges, then we can train a classifier on these vectors of measurements. The \textbf{neural network never sees the original image}, it only sees the measurements we designed. 
+    \end{itemize}
+    This is the essence of hand-crafted features: we design a small set of measurements that we believe are useful for the classification task, and then we train a classifier on those measurements.
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{From an image to a feature vector}}
+\end{flushleft}
+Let the input image be:
+\begin{equation*}
+    I \in \mathbb{R}^{r \times c}
+\end{equation*}
+It contains $r \cdot c$ pixel values. The feature-extraction algorithm transforms it into:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d}
+\end{equation*}
+Where usually $d \ll r \cdot c$. For example, the vector could be:
+\begin{equation*}
+    \mathbf{x} = \begin{pmatrix}
+        \text{area} \\
+        \text{minimum height} \\
+        \text{mean height} \\
+        \text{maximum height} \\
+        \text{perimeter} \\
+        \text{aspect ratio}
+    \end{pmatrix}
+\end{equation*}
+The image-classification problem is therefore split into two transformations:
+\begin{equation*}
+    I \xrightarrow{\text{feature extraction}} \mathbf{x} \xrightarrow{\text{classifier}} t
+\end{equation*}
+Where $t \in \Lambda$ is one class from the label set $\Lambda$. The classifier never sees the original image. It only sees the extracted vector $\mathbf{x}$.
+
+\begin{examplebox}[: Continue Apple vs Orange]
+    Suppose we extract these features from the fruit images:
+    \begin{itemize}
+        \item Average red: 220
+        \item Roundness: 0.95
+        \item Texture roughness: 0.1
+    \end{itemize}
+    Now we have a small vector of measurements:
+    \begin{equation*}
+        \mathbf{x} = \begin{pmatrix}
+            220 \\
+            0.95 \\
+            0.1
+        \end{pmatrix} \in \mathbb{R}^3
+    \end{equation*}
+    Instead of the original image, the classifier receives this vector $\mathbf{x}$ and predicts whether it is an apple or an orange.
+
+    \highspace
+    As classifiers, we can use a simple decision tree where we ask a sequence of questions about the features. For example:
+    \begin{center}
+        \begin{tikzpicture}[
+            level distance=1.8cm,
+            level 1/.style={sibling distance=6cm},
+            level 2/.style={sibling distance=3cm},
+            question/.style={
+                draw,
+                rounded corners,
+                align=center,
+                minimum width=3.2cm,
+                minimum height=0.9cm
+            },
+            decision/.style={
+                draw,
+                circle,
+                align=center,
+                minimum size=1.1cm
+            },
+            leaf/.style={
+                draw,
+                rounded corners,
+                align=center,
+                minimum width=2.2cm,
+                minimum height=0.8cm
+            },
+            edge from parent/.style={
+                draw,
+                -{Latex}
+            },
+            edge label/.style={
+                midway,
+                fill=Green4!5!white,
+                inner sep=2pt
+            }
+        ]
+
+        \node[question] {Is average red\\greater than \(200\)?}
+            child {
+                node[question] {Is texture roughness\\less than \(0.2\)?}
+                child {
+                    node[leaf] {Apple}
+                    edge from parent
+                    node[edge label, left] {Yes}
+                }
+                child {
+                    node[leaf] {Orange}
+                    edge from parent
+                    node[edge label, right] {No}
+                }
+                edge from parent
+                node[edge label, left] {Yes}
+            }
+            child {
+                node[leaf] {Orange}
+                edge from parent
+                node[edge label, right] {No}
+            };
+
+        \end{tikzpicture}
+    \end{center}
+    Again, the classifier never sees the original image. It only sees the extracted features and makes a decision based on them.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{The classifier can also be learned from data}}
+\end{flushleft}
+The decision rules could be manually written, but the more general approach is:
+\begin{equation*}
+    \text{hand-crafted feature extraction } + \text{ data-driven classification}
+\end{equation*}
+The \textbf{engineer defines the features} (i.e., the hand-crafted features), but the \textbf{classifier learns how to combine them from labelled examples}.
+
+\highspace
+Suppose the feature extractor produces a vector:
+\begin{equation*}
+    \mathbf{x} = \begin{pmatrix}
+        \text{area} \\
+        \text{min} \\
+        \text{mean} \\
+        \text{max} \\
+        \text{perimeter} \\
+        \text{aspect ratio}
+    \end{pmatrix} \in \mathbb{R}^{d}
+\end{equation*}
+A training set then consists of pairs of feature vectors and labels:
+\begin{equation*}
+    \mathcal{D} = \{(\mathbf{x}_1, t_1), (\mathbf{x}_2, t_2), \ldots, (\mathbf{x}_n, t_n)\}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\mathbf{x}_n$ is the manually extracted feature vector for the $n$-th image.
+    \item $t_n$ is the correct class label for the $n$-th image.
+\end{itemize}
+The classifier uses these examples to learn a mapping from feature vectors to class labels:
+\begin{equation*}
+    f_{\theta}: \; \mathbb{R}^{d} \to \Lambda
+\end{equation*}
+The parameters $\theta$ may belong to a decision tree, a linear classifier, a neural network, or another supervised classifier. So \hl{even in the traditional pipeline, part of the system is already data-driven.} \textbf{What is not data-driven is the choice of representation (the features), which is still hand-crafted}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{brain} \textbf{Using a neural network as the classifier}}
+\end{flushleft}
+At some point, researchers started asking: \emph{\textbf{why not use a neural network after the hand-crafted feature extraction?}} This is perfectly reasonable, and the pipeline would look like this:
+\begin{equation*}
+    I \xrightarrow{\text{hand-crafted feature extraction}} \mathbf{x} \to \text{MLP} \to \text{class probabilities}
+\end{equation*}
+Where the MLP (Multi-Layer Perceptron) is a neural network that takes the hand-crafted feature vector $\mathbf{x} \in \mathbb{R}^{d}$ as input and outputs class probabilities. The neural network then contains:
+\begin{itemize}
+    \item An \textbf{input layer} of dimension $d$ (the number of hand-crafted features).
+    \item One or more \textbf{hidden layers} with a certain number of neurons.
+    \item An \textbf{output layer with one output for each class}.
+\end{itemize}
+After training, the outputs may represent probabilities such as:
+\begin{equation*}
+    \text{MLP}(\mathbf{x}) = \begin{pmatrix}
+        P(\text{apple} \mid \mathbf{x}) \\
+        P(\text{orange} \mid \mathbf{x})
+    \end{pmatrix}
+\end{equation*}
+The predicted class is typically the one with the highest probability:
+\begin{equation*}
+    \hat{l} = \arg\max_{l \in \Lambda} P\left(l \mid \mathbf{x}\right)
+\end{equation*}
+Notice that this is still \textbf{not a CNN}. The neural network only learns the classifier $\mathbf{x} \to t$, while the feature extraction $\text{image} \to \mathbf{x}$ is still hand-crafted. It does not learn how to transform the original image into $\mathbf{x}$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Which parts of the pipeline are learned?}}
+\end{flushleft}
+To summarize, the traditional pipeline consists of two parts:
+\begin{enumerate}
+    \item \textbf{Hand-crafted feature extraction}:
+    \begin{equation*}
+        I \xrightarrow{\text{hand-crafted feature extraction}} \mathbf{x}
+    \end{equation*}
+    This part is designed by a human expert (\textbf{hand-crafted}). It is not learned from data. The engineer decides which features to extract based on prior knowledge of the problem.
+    
+    For example, a human decides which measurements to compute from the image, how to segment the object, how to calculate area and perimeter, how to measure height, which features to keep, and which to discard. This is \textbf{all done manually}.
+
+    
+    \item \textbf{Classification}:
+    \begin{equation*}
+        \mathbf{x} \xrightarrow{\text{classifier}} t
+    \end{equation*}
+    This part is \textbf{data-driven}. The classifier learns from labeled examples how to map the feature vector $\mathbf{x}$ to the correct class label $t$. For a tree-based classifier, it learns the decision rules. For a linear classifier, it learns how to separate the classes in the feature space. For a neural network, it learns the weights and biases that define the mapping from $\mathbf{x}$ to $t$.
+\end{enumerate}
+In general, we can separate the pipeline into two stages:
+\begin{equation*}
+    \underbrace{\text{image} \to \mathbf{x}}_{\textbf{hand-crafted}} \quad \underbrace{\mathbf{x} \to t}_{\textbf{data-driven}}
+\end{equation*}
+And the complete system contains \textbf{two kinds of intelligence}:
+\begin{itemize}
+    \item The \important{human expert} contributes knowledge by deciding what to measure.
+    \item The \important{learning algorithm} contributes adaptability by learning how those measurements correspond to the classes.
+\end{itemize}
+So the traditional pipeline can be written as:
+\begin{equation*}
+    \text{expert knowledge } + \text{ supervised learning } \to \text{ image classifier}
+\end{equation*}
+This works well when the useful properties are easy to describe, as in the apple vs orange example. But the upcoming problem is that, for \textbf{more complex images}, it becomes \hl{extremely difficult to decide manually which features should represent an object.} That limitation motivates the \textbf{transition from hand-crafted to data-driven} feature extraction.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why use an intermediate feature vector?}}
+\end{flushleft}
+Assume the original image has size $r \times c$. A direct classifier would receive $r \cdot c$ pixel values as input. Instead, the manually designed extractor produces only $d$ features, where $d \ll r \cdot c$.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle}} This can make the task much easier because the \hl{classifier works in a compact space} containing measurements already believed to be relevant for the task.
+
+\highspace
+For example, separating apples from oranges may be easier in a 3D space of features (average color, roundness, texture) than in the original high-dimensional pixel space.
+
+\highspace
+Conceptually, the feature extractor tries to \textbf{transform a difficult problem into an easier} one:
+\begin{equation*}
+    \text{complex pixel-space boundary} \to \text{simple feature-space boundary}
+\end{equation*}
+That is why a \hl{simple decision tree may work after good feature extraction, while it may fail in the original pixel space.}
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item A hand-crafted feature is a measurement manually designed by an expert.
+        \item The image $I \in \mathbb{R}^{r \times c}$ is converted into a compact vector:
+        \begin{equation*}
+            \mathbf{x} \in \mathbb{R}^d, \quad d \ll r \cdot c
+        \end{equation*}
+        \item A decision tree can classify objects using simple thresholds on the features.
+        \item An MLP can also operate on the extracted vector and output class probabilities.
+        \item In the traditional approach:
+        \begin{equation*}
+            \underbrace{I \to \mathbf{x}}_{\text{hand-crafted}} \quad \underbrace{\mathbf{x} \to t}_{\text{data-driven}}
+        \end{equation*}
+        \item The classifier learns from data, but the representation is still chosen by humans. This is a limitation for complex images, motivating the transition to data-driven feature extraction.
+        \item CNNs will change precisely the first part: they will learn the feature extractor as well as the classifier, making the entire pipeline data-driven.
+    \end{itemize}
+\end{takeawaysbox}

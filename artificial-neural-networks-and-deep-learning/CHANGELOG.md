@@ -17,6 +17,7 @@
 - add `Convolutional Neural Networks (CNNs)`
   - add `From Hand-Crafted to Data-Driven Features`
     - add `The Feature-Extraction Perspective`
+    - add `Hand-Crafted Features for Image Classification`
 
 --------------------
 

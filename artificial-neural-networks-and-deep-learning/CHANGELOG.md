@@ -18,6 +18,7 @@
   - add `From Hand-Crafted to Data-Driven Features`
     - add `The Feature-Extraction Perspective`
     - add `Hand-Crafted Features for Image Classification`
+    - add `Advantages and Limitations of Hand-Crafted Features`
 
 --------------------
 

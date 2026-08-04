@@ -21,7 +21,8 @@
     - add `Advantages and Limitations of Hand-Crafted Features`
     - add `Data-Driven Feature Learning`
   - add `From Image Filtering to CNNs`
-    - add `Correlation as a Local Linear Operation`
+    - add `Correlation as a Local Linear Operation`add
+    - add `Examples of Linear Image Filters`
 
 --------------------
 

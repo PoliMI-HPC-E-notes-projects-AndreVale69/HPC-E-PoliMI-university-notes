@@ -20,6 +20,8 @@
     - add `Hand-Crafted Features for Image Classification`
     - add `Advantages and Limitations of Hand-Crafted Features`
     - add `Data-Driven Feature Learning`
+  - add `From Image Filtering to CNNs`
+    - add `Correlation as a Local Linear Operation`
 
 --------------------
 

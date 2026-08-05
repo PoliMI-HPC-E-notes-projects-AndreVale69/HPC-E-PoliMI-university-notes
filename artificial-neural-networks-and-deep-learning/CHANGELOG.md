@@ -24,6 +24,8 @@
     - add `Correlation as a Local Linear Operation`add
     - add `Examples of Linear Image Filters`
   - add `The Typical CNN Architecture`
+  - add `Convolutional Layers`
+    - add `Convolution over Multi-Channel Inputs`
 
 --------------------
 

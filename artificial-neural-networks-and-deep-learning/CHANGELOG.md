@@ -23,6 +23,7 @@
   - add `From Image Filtering to CNNs`
     - add `Correlation as a Local Linear Operation`add
     - add `Examples of Linear Image Filters`
+  - add `The Typical CNN Architecture`
 
 --------------------
 

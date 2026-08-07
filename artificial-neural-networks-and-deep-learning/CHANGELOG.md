@@ -26,6 +26,7 @@
   - add `The Typical CNN Architecture`
   - add `Convolutional Layers`
     - add `Convolution over Multi-Channel Inputs`
+    - add `Multiple Filters and Output Feature Maps`
 
 --------------------
 

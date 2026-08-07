@@ -28,6 +28,7 @@
     - add `Convolution over Multi-Channel Inputs`
     - add `Multiple Filters and Output Feature Maps`
     - add `General Formula for a Convolutional Layer`
+    - add `Convolutional-Layer Hyperparameters`
 
 --------------------
 

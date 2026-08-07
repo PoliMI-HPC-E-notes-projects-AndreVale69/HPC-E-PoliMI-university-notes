@@ -1,0 +1,279 @@
+\subsubsection{Multiple Filters}\label{sec:multiple-filters}
+
+Suppose the input is a single-channel image:
+\begin{equation*}
+    H \times W \times 1
+\end{equation*}
+Now use two different filters:
+\begin{equation*}
+    w_1 \in \mathbb{R}^{k_h \times k_w \times 1}, \quad w_2 \in \mathbb{R}^{k_h \times k_w \times 1}
+\end{equation*}
+Each filter is applied independently to the same input map, producing two different output feature maps:
+\begin{equation*}
+    \text{input} \to \begin{cases}
+        w_1 \to \text{output feature map 1} \\
+        w_2 \to \text{output feature map 2}
+    \end{cases}
+\end{equation*}
+Since one filter produces one output feature map, then the \textbf{number of output channels is equal to the number of filters}:
+\begin{equation*}
+    \text{number of output channels} = \text{number of filters}
+\end{equation*}
+
+\begin{examplebox}[: Multiple filters and output feature maps]
+    Suppose:
+    \begin{equation*}
+        \text{input} = 32 \times 32 \times 1 \quad \text{and} \quad 2 \text{ filters of size } 5 \times 5
+    \end{equation*}
+    Assuming stride $1$ and no padding, each filter produces an output feature map of size:
+    \begin{equation*}
+        32 - 5 + 1 = 28 \Rightarrow
+        28 \times 28 \times 1
+    \end{equation*}
+    Stacking the two output feature maps together, we get an output volume of size:
+    \begin{equation*}
+        28 \times 28 \times 2
+    \end{equation*}
+    The spatial dimensions are determined by the convolution geometry, while the \textbf{depth 2 comes from the two filters}.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are the two output maps different?}} Because the filters have different learned weights. For example, conceptually:
+    \begin{itemize}
+        \item Filter 1 may respond strongly to vertical structures;
+        \item Filter 2 may respond strongly to horizontal structures.
+    \end{itemize}
+    So even though both filters receive the same input, they usually produce different activation maps. This is why \hl{increasing the number of filters increases the number of patterns the layer can represent}.
+\end{examplebox}
+
+\begin{takeawaysbox}
+    Each convolutional filter independently produces one feature map, so the \hl{number of filters determines the depth of the output volume.} In symbols: $C_{\text{out}} = N_F$.
+\end{takeawaysbox}
+
+\begin{figure}[!htp]
+    \centering
+
+    \definecolor{inputbg}{HTML}{EBF3FA}
+    \definecolor{inputborder}{HTML}{3B7EA1}
+
+    \definecolor{f1bg}{HTML}{E8F8F5}
+    \definecolor{f1border}{HTML}{1ABC9C}
+
+    \definecolor{f2bg}{HTML}{FEF9E7}
+    \definecolor{f2border}{HTML}{F39C12}
+
+    \definecolor{darktext}{HTML}{2C3E50}
+
+    \begin{tikzpicture}[
+        >=Stealth,
+        text=darktext,
+        title/.style={font=\bfseries\small, text=darktext, align=center},
+        subtitle/.style={font=\scriptsize, text=darktext!80, align=center},
+        gridcell/.style={
+            draw=inputborder!70,
+            fill=inputbg,
+            minimum size=0.52cm,
+            inner sep=0pt,
+            anchor=center,
+            font=\small
+        },
+        f1cell/.style={
+            draw=f1border!80,
+            fill=f1bg,
+            minimum size=0.52cm,
+            inner sep=0pt,
+            anchor=center,
+            font=\small\bfseries
+        },
+        f2cell/.style={
+            draw=f2border!80,
+            fill=f2bg,
+            minimum size=0.52cm,
+            inner sep=0pt,
+            anchor=center,
+            font=\small\bfseries
+        },
+        out1cell/.style={
+            draw=f1border!70,
+            fill=f1bg!60,
+            minimum size=0.52cm,
+            inner sep=0pt,
+            anchor=center
+        },
+        out2cell/.style={
+            draw=f2border!70,
+            fill=f2bg!60,
+            minimum size=0.52cm,
+            inner sep=0pt,
+            anchor=center
+        },
+        arrow/.style={
+            ->,
+            line width=0.9pt,
+            draw=darktext!60,
+            shorten >=3pt,
+            shorten <=3pt
+        }
+    ]
+
+    % =========================================================
+    % INPUT MAP
+    % =========================================================
+
+    \node[title] (inputtitle) at (0,0) {Input map};
+
+    \matrix[
+        matrix of nodes,
+        nodes={gridcell},
+        row sep=-\pgflinewidth,
+        column sep=-\pgflinewidth,
+        below=0.2cm of inputtitle
+    ] (input) {
+        1 & 2 & 3 & 2 & 1 \\
+        2 & 4 & 5 & 4 & 2 \\
+        1 & 3 & 6 & 3 & 1 \\
+        0 & 2 & 4 & 2 & 0 \\
+        1 & 1 & 2 & 1 & 1 \\
+    };
+
+    \node[subtitle, below=0.15cm of input] (inputdim) {$5 \times 5 \times 1$};
+
+    % =========================================================
+    % FILTERS
+    % =========================================================
+
+    \node[title, below left=1.4cm and 1.8cm of inputdim] (f1title) {Filter $w_1$};
+
+    \matrix[
+        matrix of nodes,
+        nodes={f1cell},
+        row sep=-\pgflinewidth,
+        column sep=-\pgflinewidth,
+        below=0.2cm of f1title
+    ] (f1) {
+        1 & 0 & -1 \\
+        1 & 0 & -1 \\
+        1 & 0 & -1 \\
+    };
+
+    \node[subtitle, below=0.15cm of f1] (f1dim) {$3 \times 3 \times 1$};
+
+
+    \node[title, below right=1.4cm and 1.8cm of inputdim] (f2title) {Filter $w_2$};
+
+    \matrix[
+        matrix of nodes,
+        nodes={f2cell},
+        row sep=-\pgflinewidth,
+        column sep=-\pgflinewidth,
+        below=0.2cm of f2title
+    ] (f2) {
+        1 &  1 &  1 \\
+        0 &  0 &  0 \\
+        -1 & -1 & -1 \\
+    };
+
+    \node[subtitle, below=0.15cm of f2] (f2dim) {$3 \times 3 \times 1$};
+
+    % Arrows: Input -> Filters
+    \draw[arrow] (inputdim.south) -- (f1title.north);
+    \draw[arrow] (inputdim.south) -- (f2title.north);
+
+    % =========================================================
+    % OUTPUT MAPS
+    % =========================================================
+
+    \node[title, below=1.2cm of f1dim] (o1title) {Output map 1};
+
+    \matrix[
+        matrix of nodes,
+        nodes={out1cell},
+        row sep=-\pgflinewidth,
+        column sep=-\pgflinewidth,
+        below=0.2cm of o1title
+    ] (o1) {
+        {} & {} & {} \\
+        {} & {} & {} \\
+        {} & {} & {} \\
+    };
+
+    \node[subtitle, below=0.15cm of o1] (o1dim) {$3 \times 3 \times 1$};
+
+
+    \node[title, below=1.2cm of f2dim] (o2title) {Output map 2};
+
+    \matrix[
+        matrix of nodes,
+        nodes={out2cell},
+        row sep=-\pgflinewidth,
+        column sep=-\pgflinewidth,
+        below=0.2cm of o2title
+    ] (o2) {
+        {} & {} & {} \\
+        {} & {} & {} \\
+        {} & {} & {} \\
+    };
+
+    \node[subtitle, below=0.15cm of o2] (o2dim) {$3 \times 3 \times 1$};
+
+    % Arrows: Filters -> Outputs
+    \draw[arrow] (f1dim.south) -- (o1title.north);
+    \draw[arrow] (f2dim.south) -- (o2title.north);
+
+    % =========================================================
+    % STACKED OUTPUT VOLUME
+    % =========================================================
+
+    \coordinate (midoutputs) at ($(o1dim.south)!0.5!(o2dim.south)$);
+
+    \node[title, below=1.1cm of midoutputs] (voltitle) {Output volume};
+
+    \coordinate (volcenter) at ($(voltitle.south) + (0, -1.2cm)$);
+
+    \def\offx{0.25cm}
+    \def\offy{0.25cm}
+
+    % 1. Draw Back Channel (Channel 2 - Orange)
+    \begin{scope}[shift={($(volcenter)+(\offx,\offy)$)}]
+        \foreach \r in {0,1,2} {
+            \foreach \c in {0,1,2} {
+                \draw[fill=f2bg, draw=f2border!80, line width=0.5pt]
+                    ({-0.78 + \c*0.52}, {0.78 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % 2. Draw depth projection lines on Top and Right faces
+    \foreach \c in {0,1,2,3} {
+        \draw[f2border!80, line width=0.5pt]
+            ($(volcenter) + ({-0.78 + \c*0.52}, 0.78)$) -- ++(\offx,\offy);
+    }
+    \foreach \r in {0,1,2,3} {
+        \draw[f2border!80, line width=0.5pt]
+            ($(volcenter) + (0.78, {0.78 - \r*0.52})$) -- ++(\offx,\offy);
+    }
+
+    % Outer depth borders
+    \draw[f2border!80, line width=0.5pt]
+        ($(volcenter) + (-0.78+\offx, 0.78+\offy)$) -- ($(volcenter) + (0.78+\offx, 0.78+\offy)$) -- ($(volcenter) + (0.78+\offx, -0.78+\offy)$);
+
+    % 3. Draw Front Channel (Channel 1 - Teal) over back channel
+    \begin{scope}[shift={(volcenter)}]
+        \foreach \r in {0,1,2} {
+            \foreach \c in {0,1,2} {
+                \draw[fill=f1bg, draw=f1border!80, line width=0.5pt]
+                    ({-0.78 + \c*0.52}, {0.78 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % Volume labels
+    \node[subtitle, below=1.0cm of volcenter] (voldim) {$3 \times 3 \times 2$};
+    \node[subtitle, below=0.08cm of voldim] (voldesc) {$2\text{ filters} \Rightarrow 2\text{ output channels}$};
+
+    % Arrows: Outputs -> Stacked Volume
+    \draw[arrow] (o1dim.south) -- (voltitle.north);
+    \draw[arrow] (o2dim.south) -- (voltitle.north);
+
+    \end{tikzpicture}
+    \caption{Multiple filters operating on the same input feature map. Each filter is independently applied to the entire input map and produces its own output feature map. The output feature maps are then stacked along the depth dimension to form the output volume. Consequently, the \hl{number of output channels is equal to the number of convolutional filters.}}
+    \label{fig:multiple-filters}
+\end{figure}

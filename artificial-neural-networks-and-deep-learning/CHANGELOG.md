@@ -29,6 +29,8 @@
     - add `Multiple Filters and Output Feature Maps`
     - add `General Formula for a Convolutional Layer`
     - add `Convolutional-Layer Hyperparameters`
+  - add `CNN Arithmetic and Parameter Counting`
+    - add `One Input Channel and One Filter`
 
 --------------------
 

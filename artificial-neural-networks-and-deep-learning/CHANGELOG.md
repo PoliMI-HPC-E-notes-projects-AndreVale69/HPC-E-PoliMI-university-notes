@@ -32,6 +32,7 @@
   - add `CNN Arithmetic and Parameter Counting`
     - add `One Input Channel and One Filter`
     - add `Multiple Filters`
+    - add `Multiple Input Channels`
 
 --------------------
 

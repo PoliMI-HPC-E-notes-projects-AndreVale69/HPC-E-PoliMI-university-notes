@@ -35,6 +35,8 @@
     - add `Multiple Input Channels`
     - add `Counting Convolutional Parameters`
     - add `CNN-Arithmetic Recap`
+  - add `Important Details of Convolution`
+    - add `Correlation vs. Mathematical Convolution`
 
 --------------------
 

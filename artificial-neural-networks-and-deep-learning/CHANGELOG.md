@@ -33,6 +33,7 @@
     - add `One Input Channel and One Filter`
     - add `Multiple Filters`
     - add `Multiple Input Channels`
+    - add `Counting Convolutional Parameters`
 
 --------------------
 

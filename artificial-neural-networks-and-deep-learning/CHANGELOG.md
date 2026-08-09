@@ -40,6 +40,8 @@
     - add `CNN Convolution vs. RGB Image Filtering`
     - add `Padding`
     - add `Stride`
+  - add `Activation Functions`
+    - add `Why CNNs Need Nonlinearities`
 
 --------------------
 

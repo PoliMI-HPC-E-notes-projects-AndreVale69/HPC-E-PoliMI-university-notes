@@ -39,6 +39,7 @@
     - add `Correlation vs. Mathematical Convolution`
     - add `CNN Convolution vs. RGB Image Filtering`
     - add `Padding`
+    - add `Stride`
 
 --------------------
 

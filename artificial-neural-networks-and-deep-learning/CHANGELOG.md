@@ -34,6 +34,7 @@
     - add `Multiple Filters`
     - add `Multiple Input Channels`
     - add `Counting Convolutional Parameters`
+    - add `CNN-Arithmetic Recap`
 
 --------------------
 

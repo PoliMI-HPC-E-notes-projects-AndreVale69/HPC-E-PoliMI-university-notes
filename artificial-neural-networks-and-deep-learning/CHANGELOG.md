@@ -37,6 +37,7 @@
     - add `CNN-Arithmetic Recap`
   - add `Important Details of Convolution`
     - add `Correlation vs. Mathematical Convolution`
+    - add `CNN Convolution vs. RGB Image Filtering`
 
 --------------------
 

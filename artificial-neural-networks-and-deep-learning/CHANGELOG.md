@@ -43,6 +43,7 @@
   - add `Activation Functions`
     - add `Why CNNs Need Nonlinearities`
     - add `ReLU and Leaky ReLU`
+    - add `Hyperbolic Tangent and Other Activations`
 
 --------------------
 

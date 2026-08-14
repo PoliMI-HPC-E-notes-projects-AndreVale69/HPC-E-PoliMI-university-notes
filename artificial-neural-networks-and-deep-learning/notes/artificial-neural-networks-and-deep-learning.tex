@@ -33,7 +33,7 @@
 \usepackage{float}
 \usepackage{cite}                       % references
 \usepackage{imakeidx}                   % index
-\makeindex[program=makeindex, columns=1,
+\makeindex[program=makeindex, noautomatic, columns=1,
            title=Index, 
            intoc,
            options={-s index-style.ist}]
@@ -42,7 +42,6 @@
 \usepackage{soul}                       % highlight text (as a highlighter)
 \usepackage{adjustbox}                  % avoid table overfull
 \usepackage{pgf}                        % insert pgf images
-\usepackage{gensymb}                    % for textdegree
 \usepackage{tikz}
 \usepackage{tikz-3dplot}
 \usetikzlibrary{
@@ -76,6 +75,13 @@
 %   - The LaTeX compiler must run with `-shell-escape` (configured in VSCode
 %     LaTeX-Workshop settings via `latex-workshop.latex.tools`).
 %   - The target directory (`tikz-cache/`) must exist.
+%
+% How to bypass caching during active development (WIP figures):
+%   - For a SINGLE figure (compile inline without caching):
+%       Place `\tikzset{external/export next=false}` immediately before
+%       `\begin{tikzpicture}`.
+%   - For a whole FILE / BLOCK:
+%       `\tikzset{external/export=false}` at start, `\tikzset{external/export=true}` at end.
 %
 % How to rebuild / invalidate cache:
 %   - Rebuild ALL figures:
@@ -190,7 +196,6 @@
 
 
 % table of content links
-\usepackage{xcolor}
 \usepackage[linkcolor=black, citecolor=blue, urlcolor=cyan]{hyperref} % hypertexnames=false
 \hypersetup{
 	colorlinks=true
@@ -221,14 +226,18 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \newcommand{\version}{v0.7.0}
 
-% Toggle this flag to enable/disable the \includeonly scope.
+% Toggle this flag to enable/disable the \includeonly scope & fast draft settings.
 \newif\ifuseincludeonly
-% To enable the includeonly behavior, uncomment the next line:
+% To enable the includeonly behavior (and disable PDF compression for drafting), uncomment the next line:
 % \useincludeonlytrue
 % To explicitly disable, uncomment the next line (default is false):
 % \useincludeonlyfalse
 
 \ifuseincludeonly
+    % Faster drafting: disable PDF stream compression when drafting single sections
+    \pdfcompresslevel=0
+    \pdfobjcompresslevel=0
+
     \includeonly{
         sections/convolutional-neural-networks/convolutional-neural-networks,
         sections/convolutional-neural-networks/from-hand-crafted-to-data-driven-features/the-feature-extraction-perspective,
@@ -256,10 +265,28 @@
         sections/convolutional-neural-networks/activation-functions/hyperbolic-tangent-and-other-activations,
         sections/convolutional-neural-networks/pooling-layers/max-pooling,
         sections/convolutional-neural-networks/pooling-layers/pooling-size-and-stride,
+        sections/convolutional-neural-networks/dense-layers-and-the-complete-cnn/flattening-and-dense-layers,
         sections/bibliography-and-index
     }
 \fi
 
+% -----------------------------------------------------------------------------
+% Preamble Precompilation Marker (mylatexformat)
+% -----------------------------------------------------------------------------
+% How it works:
+%   Freezes all 40+ loaded packages into a precompiled binary `.fmt` format.
+%   When invoked, TeX skips package parsing entirely and jumps straight to
+%   `\begin{document}`, dropping startup latency from ~1.2s to ~0.03s.
+%
+% How to generate the precompiled format (one-time or when preamble packages change):
+%   Run in terminal:
+%     pdftex -ini -shell-escape -jobname="artificial-neural-networks-and-deep-learning" "&pdflatex" mylatexformat.ltx artificial-neural-networks-and-deep-learning.tex
+%
+% How to use the precompiled format in compilation:
+%   Add `&artificial-neural-networks-and-deep-learning` or `-fmt=artificial-neural-networks-and-deep-learning`
+%   to pdflatex tool arguments in settings.json.
+% -----------------------------------------------------------------------------
+\csname endofdump\endcsname
 
 \begin{document}
     \newcounter{definition}[section]
@@ -524,6 +551,7 @@
     \include{sections/convolutional-neural-networks/activation-functions/hyperbolic-tangent-and-other-activations}
     \include{sections/convolutional-neural-networks/pooling-layers/max-pooling}
     \include{sections/convolutional-neural-networks/pooling-layers/pooling-size-and-stride}
+    \include{sections/convolutional-neural-networks/dense-layers-and-the-complete-cnn/flattening-and-dense-layers}
 
     %
     % TODO:

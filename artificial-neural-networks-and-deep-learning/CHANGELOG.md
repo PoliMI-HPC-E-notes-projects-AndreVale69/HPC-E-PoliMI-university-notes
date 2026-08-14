@@ -46,6 +46,9 @@
     - add `Hyperbolic Tangent and Other Activations`
   - add `Pooling Layers`
     - add `Max Pooling`
+    - add `Pooling Size and Stride`
+  - add `Dense Layers and the Complete CNN`
+    - add `Flattening and Dense Layers`
 
 --------------------
 

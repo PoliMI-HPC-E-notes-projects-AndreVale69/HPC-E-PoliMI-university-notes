@@ -33,10 +33,6 @@
 \usepackage{float}
 \usepackage{cite}                       % references
 \usepackage{imakeidx}                   % index
-\makeindex[program=makeindex, noautomatic, columns=1,
-           title=Index, 
-           intoc,
-           options={-s index-style.ist}]
 \usepackage{fancyhdr}
 \setlength{\headheight}{23.0982pt}
 \usepackage{soul}                       % highlight text (as a highlighter)
@@ -91,7 +87,7 @@
 %       Place `\tikzset{external/remake next}` immediately before the target
 %       `\begin{tikzpicture}` environment.
 % -----------------------------------------------------------------------------
-\tikzexternalize[prefix=tikz-cache/]
+\tikzexternalize[prefix=tikz-cache/, only named]
 \tcbset{shield externalize} % Protect tcolorbox environments from externalization
 
 
@@ -226,6 +222,16 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \newcommand{\version}{v0.7.0}
 
+% -----------------------------------------------------------------------------
+% Preamble Precompilation Marker (mylatexformat)
+% -----------------------------------------------------------------------------
+% How it works:
+%   Freezes all loaded packages above this line into a binary `.fmt` format.
+%   When invoked with `-fmt=...`, TeX skips the entire static preamble above
+%   and jumps directly here in ~0.03s.
+% -----------------------------------------------------------------------------
+\csname endofdump\endcsname
+
 % Toggle this flag to enable/disable the \includeonly scope & fast draft settings.
 \newif\ifuseincludeonly
 % To enable the includeonly behavior (and disable PDF compression for drafting), uncomment the next line:
@@ -266,27 +272,20 @@
         sections/convolutional-neural-networks/pooling-layers/max-pooling,
         sections/convolutional-neural-networks/pooling-layers/pooling-size-and-stride,
         sections/convolutional-neural-networks/dense-layers-and-the-complete-cnn/flattening-and-dense-layers,
+        sections/convolutional-neural-networks/dense-layers-and-the-complete-cnn/following-shapes-through-a-cnn,
         sections/bibliography-and-index
     }
 \fi
 
-% -----------------------------------------------------------------------------
-% Preamble Precompilation Marker (mylatexformat)
-% -----------------------------------------------------------------------------
-% How it works:
-%   Freezes all 40+ loaded packages into a precompiled binary `.fmt` format.
-%   When invoked, TeX skips package parsing entirely and jumps straight to
-%   `\begin{document}`, dropping startup latency from ~1.2s to ~0.03s.
-%
-% How to generate the precompiled format (one-time or when preamble packages change):
-%   Run in terminal:
-%     pdftex -ini -shell-escape -jobname="artificial-neural-networks-and-deep-learning" "&pdflatex" mylatexformat.ltx artificial-neural-networks-and-deep-learning.tex
-%
-% How to use the precompiled format in compilation:
-%   Add `&artificial-neural-networks-and-deep-learning` or `-fmt=artificial-neural-networks-and-deep-learning`
-%   to pdflatex tool arguments in settings.json.
-% -----------------------------------------------------------------------------
-\csname endofdump\endcsname
+\ifdefined\tikzexternalrealjob
+    % In TikZ child compilations: disable printindex & skip makeindex to prevent imakeidx crash
+    \renewcommand{\printindex}{}
+\else
+    \makeindex[program=makeindex, noautomatic, columns=1,
+               title=Index, 
+               intoc,
+               options={-s index-style.ist}]
+\fi
 
 \begin{document}
     \newcounter{definition}[section]
@@ -552,6 +551,7 @@
     \include{sections/convolutional-neural-networks/pooling-layers/max-pooling}
     \include{sections/convolutional-neural-networks/pooling-layers/pooling-size-and-stride}
     \include{sections/convolutional-neural-networks/dense-layers-and-the-complete-cnn/flattening-and-dense-layers}
+    \include{sections/convolutional-neural-networks/dense-layers-and-the-complete-cnn/following-shapes-through-a-cnn}
 
     %
     % TODO:

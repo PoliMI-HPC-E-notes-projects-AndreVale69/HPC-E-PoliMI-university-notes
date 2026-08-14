@@ -1,0 +1,226 @@
+\subsubsection{Following Shapes Through a CNN}\label{sec:following-shapes-through-a-cnn}
+
+This section puts together everything we have studied so far. We take the CNN architecture introduced on \autopageref{fig:typical-cnn-architecture} and now explain what happens to the data \textbf{layer by layer}.
+
+\highspace
+First of all, the central idea is:
+\begin{equation*}
+    \text{image} \to \text{sequence of feature volumes} \to \text{feature vector} \to \text{class scores}
+\end{equation*}
+Let's follow the architecture of a CNN, layer by layer, and see how the data changes shape.
+\begin{enumerate}
+    \item \important{Input image}. We start from an image:
+    \begin{equation*}
+        X \in \mathbb{R}^{H \times W \times C}
+    \end{equation*}
+    For an RGB image: $C = 3$. At this point, we \textbf{still have the original spatial structure} of the image.
+
+
+    \item \important{First convolution}. Suppose that the first convolutional layer has $8$ \textbf{filters}. Remember the rule:
+    \begin{equation*}
+        C_{\text{out}} = \text{number of filters}
+    \end{equation*}
+    Therefore:
+    \begin{equation*}
+        H \times W \times C \xrightarrow{\text{Conv. 8 filters}} H' \times W' \times 8
+    \end{equation*}
+    The precise $H'$ and $W'$ depend on kernel size, padding and stride. Here we can assume \textbf{zero padding} (\autopageref{fig:zero-padding-technique}), so the convolution preserves the spatial dimensions of the input. Therefore, we have:
+    \begin{equation*}
+        H \times W \times C \xrightarrow{\text{Conv. 8 filters}} H \times W \times 8
+    \end{equation*}
+    Each of those $8$ channels is the activation map produced by one learned filter.
+
+
+    \item \important{Activation}. We then apply the nonlinear activation function, such as ReLU (\autopageref{sec:activation-functions-in-cnns}):
+    \begin{equation*}
+        a \mapsto \max(0, a)
+    \end{equation*}
+    As we established on \autopageref{sec:activation-functions-in-cnns}, the activation function operates \textbf{element by element} on the feature volume. Therefore, it \hl{does not change the shape of the data}: it changes the \textbf{values} of the feature volume, but not its shape. Therefore, we still have:
+    \begin{equation*}
+        H \times W \times 8 \xrightarrow{\text{ReLU}} H \times W \times 8
+    \end{equation*}
+
+
+    \item \important{Subsampling / Max Pooling}. Then we perform pooling (\autopageref{sec:max-pooling}). It \textbf{halves the spatial dimensions} of the feature volume, assuming the usual $2 \times 2$ pooling with stride $2$. Therefore, we have:
+    \begin{equation*}
+        H \times W \times 8 \xrightarrow{\text{Max Pooling}} \frac{H}{2} \times \frac{W}{2} \times 8
+    \end{equation*}
+    Notice that the number of channels stays 8, because \hl{pooling operates independently on each feature map.} So:
+    \begin{equation*}
+        \text{Pooling changes } H, W \text{ but not } C
+    \end{equation*}
+
+
+    \item \important{Another convolutional block}. Now we can repeat the \textbf{same pattern}:
+    \begin{equation*}
+        \text{Conv} \to \text{ReLU / Leaky ReLU} \to \text{Max Pooling}
+    \end{equation*}
+    The second convolution could have, for example, $24$ filters. So its output depth becomes $C = 24$.
+    \begin{equation*}
+        32 \times 32 \times 8 \xrightarrow{\text{Conv. 24 filters}} 32 \times 32 \times 24
+    \end{equation*}
+    Followed by ReLU:
+    \begin{equation*}
+        32 \times 32 \times 24 \xrightarrow{\text{ReLU}} 32 \times 32 \times 24
+    \end{equation*}
+    And then max pooling:
+    \begin{equation*}
+        32 \times 32 \times 24 \xrightarrow{\text{Max Pooling}} 16 \times 16 \times 24
+    \end{equation*}
+    This pattern follows the same tendency explained on \autopageref{sec:depth-increases-while-width-decreases}:
+    \begin{equation*}
+        \text{deeper CNN} \quad \Rightarrow \quad \begin{cases}
+            H, W & \text{generally decrease} \\
+            C    & \text{generally increases}
+        \end{cases}
+    \end{equation*}
+
+
+    \item \important{Flattening: volume $\to$ vector}. The convolutional part is still producing something like:
+    \begin{equation*}
+        16 \times 16 \times 24
+    \end{equation*}
+    Dense layers need a vector as input, so we need to \textbf{flatten} the feature volume into a one-dimensional vector (\autopageref{sec:flattening-and-dense-layers}):
+    \begin{equation*}
+        16 \times 16 \times 24 \xrightarrow{\text{Flatten}} 16 \cdot 16 \cdot 24 = 6144
+    \end{equation*}
+    Thus:
+    \begin{equation*}
+        16 \times 16 \times 24 \xrightarrow{\text{Flatten}} \mathbf{x} \in \mathbb{R}^{6144}
+    \end{equation*}
+    Flattening \hl{changes only the organization of the activations} and has no trainable parameters.
+
+
+    \item \important{Dense classification}. Now we have left the convolutional feature volumes behind and we are in the dense classification part of the CNN. The vector is processed by traditional fully connected layers:
+    \begin{equation*}
+        6144 \to N_1 \to N_2 \to \dots \to N_{\text{classes}}
+    \end{equation*}
+    The final layer has \textbf{one output per class} and provides a score for each possible class.
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{cnn-shapes-following}
+    \begin{tikzpicture}[
+        scale=0.88,
+        >=Stealth,
+        font=\small,
+        % Arrow styling
+        transarrow/.style={->, line width=1.1pt, draw=black!75},
+        % Text styles
+        oplabel/.style={align=left, font=\small, text=black!90, anchor=west},
+        shapenode/.style={align=left, font=\bfseries\small, text=blue!85!black, anchor=west},
+        titlelabel/.style={align=left, font=\bfseries\normalsize, text=black!90, anchor=west},
+        % Volume & Node styles
+        volbox/.style={line width=0.8pt, draw=black!85},
+        fcnode/.style={circle, draw=black!80, fill=purple!25, inner sep=0pt, minimum size=7.5pt, line width=0.7pt}
+    ]
+
+        % Macro to draw 3D Cuboids centered horizontally at (0, y_center)
+        % \drawvol{y_center}{width(dx)}{height(dy)}{depth(dz)}{fill_front}{fill_top}{fill_side}
+        \newcommand{\drawvol}[7]{
+            \begin{scope}[shift={({-#2/2}, {#1-#3/2})}]
+                % Top face
+                \filldraw[volbox, fill=#6] (0, #3) -- (0+#4*0.45, #3+#4*0.3) -- (#2+#4*0.45, #3+#4*0.3) -- (#2, #3) -- cycle;
+                % Right side face
+                \filldraw[volbox, fill=#7] (#2, 0) -- (#2+#4*0.45, #4*0.3) -- (#2+#4*0.45, #3+#4*0.3) -- (#2, #3) -- cycle;
+                % Front face
+                \filldraw[volbox, fill=#5] (0, 0) rectangle (#2, #3);
+            \end{scope}
+        }
+
+        % =========================================================================
+        % 1. INPUT IMAGE (64 x 64 x 3)
+        % =========================================================================
+        \drawvol{0}{1.8}{1.8}{0.4}{blue!25}{blue!15}{blue!35}
+        \node[titlelabel] at (2.2, 0.4) {Input Image};
+        \node[shapenode]  at (2.2, -0.2) {$64 \times 64 \times 3$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -0.6) {RGB Channels ($C=3$)};
+
+        % Transition 1: Conv1 + ReLU
+        \draw[transarrow] (0, -1.2) -- (0, -2.1) 
+            node[midway, right=6pt, oplabel] {\textbf{Conv} ($8\text{ filters}$, Same Padding) $\boldsymbol{\to}$ \textbf{ReLU}};
+
+        % =========================================================================
+        % 2. CONV1 OUTPUT (64 x 64 x 8)
+        % =========================================================================
+        \drawvol{-3.2}{1.8}{1.8}{0.8}{teal!25}{teal!15}{teal!35}
+        \node[titlelabel] at (2.2, -2.8) {Conv Layer 1};
+        \node[shapenode]  at (2.2, -3.4) {$64 \times 64 \times 8$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -3.8) {Preserves spatial size; $C_{\text{out}}=8$};
+
+        % Transition 2: MaxPool 2x2
+        \draw[transarrow] (0, -4.4) -- (0, -5.3) 
+            node[midway, right=6pt, oplabel] {\textbf{MaxPool} ($2 \times 2$, Stride $2$)};
+
+        % =========================================================================
+        % 3. POOL1 OUTPUT (32 x 32 x 8)
+        % =========================================================================
+        \drawvol{-6.3}{1.1}{1.1}{0.8}{teal!40}{teal!28}{teal!52}
+        \node[titlelabel] at (2.2, -5.9) {Pooled Feature Map 1};
+        \node[shapenode]  at (2.2, -6.4) {$32 \times 32 \times 8$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -6.8) {Halves $H, W$; channels unchanged};
+
+        % Transition 3: Conv2 + ReLU
+        \draw[transarrow] (0, -7.2) -- (0, -8.1) 
+            node[midway, right=6pt, oplabel] {\textbf{Conv} ($24\text{ filters}$, Same Padding) $\boldsymbol{\to}$ \textbf{ReLU}};
+
+        % =========================================================================
+        % 4. CONV2 OUTPUT (32 x 32 x 24)
+        % =========================================================================
+        \drawvol{-9.2}{1.1}{1.1}{1.8}{orange!30}{orange!20}{orange!45}
+        \node[titlelabel] at (2.2, -8.8) {Conv Layer 2};
+        \node[shapenode]  at (2.2, -9.3) {$32 \times 32 \times 24$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -9.7) {Deeper representation; $C_{\text{out}}=24$};
+
+        % Transition 4: MaxPool 2x2
+        \draw[transarrow] (0, -10.1) -- (0, -11.0) 
+            node[midway, right=6pt, oplabel] {\textbf{MaxPool} ($2 \times 2$, Stride $2$)};
+
+        % =========================================================================
+        % 5. POOL2 OUTPUT (16 x 16 x 24)
+        % =========================================================================
+        \drawvol{-11.8}{0.7}{0.7}{1.8}{orange!45}{orange!32}{orange!60}
+        \node[titlelabel] at (2.2, -11.5) {Final Conv Volume};
+        \node[shapenode]  at (2.2, -12.0) {$16 \times 16 \times 24$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -12.4) {Spatially compact, feature-dense};
+
+        % Transition 5: Flatten
+        \draw[transarrow] (0, -12.7) -- (0, -13.6) 
+            node[midway, right=6pt, oplabel] {\textbf{Flatten} (Rearrange volume into 1D)};
+
+        % =========================================================================
+        % 6. FLATTENED FEATURE VECTOR (6144-D)
+        % =========================================================================
+        \begin{scope}[shift={(0, -14.35)}]
+            \filldraw[volbox, fill=purple!20] (-1.3, -0.22) rectangle (1.3, 0.22);
+            \foreach \x in {-0.9, -0.5, -0.1, 0.3, 0.7, 1.1} {
+                \draw[black!40, line width=0.5pt] (\x, -0.22) -- (\x, 0.22);
+            }
+        \end{scope}
+        \node[titlelabel] at (2.2, -14.05) {Feature Vector};
+        \node[shapenode, text=purple!90!black] at (2.2, -14.45) {$\mathbf{x} \in \mathbb{R}^{6144}$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -14.85) {$16 \times 16 \times 24 = 6144\text{ activations}$};
+
+        % Transition 6: Fully Connected
+        \draw[transarrow] (0, -15.15) -- (0, -16.25) 
+            node[midway, right=6pt, oplabel] {\textbf{Dense Layers} (Fully Connected)};
+
+        % =========================================================================
+        % 7. FINAL CLASS SCORES (128)
+        % =========================================================================
+        \begin{scope}[shift={(0, -17.2)}]
+            \node[fcnode] (c1) at (-1.2, 0) {};
+            \node[fcnode] (c2) at (-0.6, 0) {};
+            \node[fcnode] (c3) at (0.0, 0) {};
+            \node[font=\bfseries, text=black!60] at (0.6, -0.05) {$\dots$};
+            \node[fcnode] (c4) at (1.2, 0) {};
+        \end{scope}
+        \node[titlelabel] at (2.2, -16.9) {Class Scores / Logits};
+        \node[shapenode, text=purple!90!black] at (2.2, -17.3) {$\mathbf{h} \in \mathbb{R}^{128}$};
+        \node[oplabel, font=\footnotesize, text=black!60] at (2.2, -17.7) {$128\text{ output scores (Softmax ready)}$};
+
+    \end{tikzpicture}
+    \caption{\textbf{Step-by-step shape transformation across a Convolutional Neural Network.} The spatial dimensions ($H, W$) shrink via Max Pooling while channel depth ($C$) increases through learned convolutions, culminating in a 1D flattened feature vector for dense classification.}
+    \label{fig:cnn-shape-pipeline}
+\end{figure}

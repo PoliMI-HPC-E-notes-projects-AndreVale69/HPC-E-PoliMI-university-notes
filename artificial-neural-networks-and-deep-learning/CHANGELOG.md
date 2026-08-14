@@ -49,6 +49,7 @@
     - add `Pooling Size and Stride`
   - add `Dense Layers and the Complete CNN`
     - add `Flattening and Dense Layers`
+    - add `Following Shapes Through a CNN`
 
 --------------------
 

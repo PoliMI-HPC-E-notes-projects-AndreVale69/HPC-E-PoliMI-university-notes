@@ -1,0 +1,289 @@
+\subsubsection{Pooling Size and Stride}\label{sec:pooling-size-and-stride}
+
+In the previous section, we have seen that pooling layers are used to reduce the spatial dimensions of the input feature maps. But, \emph{\textbf{how does the pooling window move across the feature map?}} The movement of the pooling window is determined by two parameters: the \textbf{pooling size} and the \textbf{stride}. Typically, the \hl{stride is assumed equal to the pooling size.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{th-large} \text{Pooling size}}
+\end{flushleft}
+The \textbf{pooling size} specifies the \hl{spatial neighborhood over which we compute the maximum.}
+
+\highspace
+For example, with $K = 2 \times 2$, each output activation summarizes a $2 \times 2$ region of the input feature map. And as we have seen, this is done \textbf{independently for every channel} of the input feature map.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{arrows-alt-h} \text{Stride}}
+\end{flushleft}
+The \textbf{stride} $S$ (\autopageref{sec:stride}) tells us \hl{how far the pooling window moves between two consecutive operations.} The most common configuration is to set the stride equal to the pooling size, i.e., $S = K$.
+
+\highspace
+For example:
+\begin{equation*}
+    K = 2 \times 2, \quad S = 2 \times 2
+\end{equation*}
+The first $2 \times 2$ region is processed, then the window moves $2$ \textbf{positions}, so the regions do not overlap. If we have one feature map of size $8 \times 8$, and apply a $2 \times 2$ max pooling with stride $2$, along the width, 8 positions are divided into groups of 2:
+\begin{equation*}
+    \boxed{1 \; 2} \quad \boxed{3 \; 4} \quad \boxed{5 \; 6} \quad \boxed{7 \; 8}
+\end{equation*}
+From each pair/group, pooling produces one output position. Therefore, the output width is $4$. The same happens along the height, so the output height is also $4$. The output feature map has size $4 \times 4$. Consequently, the \textbf{total number of spatial activations} becomes:
+\begin{equation*}
+    \text{Reduction Width} \times \text{Reduction Height} = \dfrac{1}{2} \times \dfrac{1}{2} = \dfrac{1}{4}
+\end{equation*}
+So a $2 \times 2$ max pooling with stride 2 \textbf{reduces the spatial size to 25\%}, or equivalently \hl{discards 75\% of the spatial samples.} However, the number of channels remains the same.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{What if stride is 1?}}
+\end{flushleft}
+Suppose we have a $2 \times 2$ max pooling with stride $1$:
+\begin{equation*}
+    K = 2 \times 2, \quad S = 1
+\end{equation*}
+Now the pooling windows \textbf{overlap} because the window moves only one position at a time. So we're computing a \textbf{local maximum around essentially every spatial position} of the input feature map (see \autoref{fig:pooling-stride-comparison}). So, stride $1$ can be used when pooling is intended primarily as a \textbf{local nonlinear maximum operation}, rather than primarily for spatial reduction.
+
+\highspace
+\begin{examplebox}[: Pooling Size and Stride]
+    Suppose a convolutional filter produced this $4 \times 4$ feature map:
+    \begin{equation*}
+        X = \begin{bmatrix}
+            1 & 2 & 1 & 0 \\
+            3 & \mathbf{9} & 2 & 1 \\
+            1 & 2 & 4 & 2 \\
+            0 & 1 & 2 & 3
+        \end{bmatrix}
+    \end{equation*}
+    The bold value $9$ means that \hl{the convolutional filter detected its feature very strongly at that position.} Now, we apply a $2 \times 2$ max pooling:
+    \begin{itemize}
+        \item Stride $S = 2$ (non-overlapping), we move the window \textbf{two positions at a time}:
+        \begin{gather*}
+            \begin{bmatrix}
+                1 & 2 \\
+                3 & \mathbf{9}
+            \end{bmatrix} \to 9, \quad
+            \begin{bmatrix}
+                1 & 0 \\
+                2 & 1
+            \end{bmatrix} \to 2, \\
+            \begin{bmatrix}
+                1 & 2 \\
+                0 & 1
+            \end{bmatrix} \to 2, \quad
+            \begin{bmatrix}
+                4 & 2 \\
+                2 & 3
+            \end{bmatrix} \to 4
+        \end{gather*}
+        Therefore:
+        \begin{equation*}
+            \begin{bmatrix}
+                1 & 2 & 1 & 0 \\
+                3 & 9 & 2 & 1 \\
+                1 & 2 & 4 & 2 \\
+                0 & 1 & 2 & 3
+            \end{bmatrix}
+            \xrightarrow[\text{stride 2}]{2 \times 2 \text{ max pool}}
+            \begin{bmatrix}
+                9 & 2 \\
+                2 & 4
+            \end{bmatrix}
+        \end{equation*}
+        We went from $4 \times 4$ to $2 \times 2$, discarding $75\%$ of the spatial samples. So here pooling is clearly being used for \textbf{downsampling}.
+
+
+        \item Stride $S = 1$ (overlapping), we move the window \textbf{one position at a time}. First window:
+        \begin{equation*}
+            \begin{bmatrix}
+                1 & 2 \\
+                3 & \mathbf{9}
+            \end{bmatrix} \to 9
+        \end{equation*}
+        Move one position to the right:
+        \begin{equation*}
+            \begin{bmatrix}
+                2 & 1 \\
+                \mathbf{9} & 2
+            \end{bmatrix} \to 9
+        \end{equation*}
+        Move one position right again:
+        \begin{equation*}
+            \begin{bmatrix}
+                1 & 0 \\
+                2 & 1
+            \end{bmatrix} \to 2
+        \end{equation*}
+        Then we repeat the same process for the next rows, moving one position at a time. The final output is:
+        \begin{equation*}
+            \begin{bmatrix}
+                1 & 2 & 1 & 0 \\
+                3 & 9 & 2 & 1 \\
+                1 & 2 & 4 & 2 \\
+                0 & 1 & 2 & 3
+            \end{bmatrix}
+            \xrightarrow[\text{stride 1}]{2 \times 2 \text{ max pool}}
+            \begin{bmatrix}
+                9 & 9 & 2 \\
+                9 & 9 & 4 \\
+                2 & 4 & 4
+            \end{bmatrix}
+        \end{equation*}
+        Notice something interesting: the maximum value $9$ is repeated four times in the output. Because the original 9 belongs to \textbf{four different overlapping $2 \times 2$ windows}, and it is the maximum in all of them.
+
+        \textcolor{Green3}{\faIcon{question-circle} \textbf{So why would I ever want this?}} Imagine that 9 means that the convolutional filter detected its feature very strongly at that position. After stride-1 max pooling, we're saying that the feature is still present in the \textbf{local neighborhood} of that position. So stride-1 max pooling is a way to \textbf{preserve local maxima} and \textbf{suppress weaker activations within each neighborhood}, rather than aggressively downsampling the feature map.
+    \end{itemize}
+\end{examplebox}
+
+\begin{figure}[htbp]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        >=Stealth,
+        font=\small,
+        header/.style={font=\normalsize\bfseries, align=center},
+        sublabel/.style={font=\footnotesize, text=black!75, align=center},
+        badge/.style={draw=#1!80!black, fill=#1!15, text=#1!90!black, font=\scriptsize\bfseries, inner sep=2pt, rounded corners=2pt}
+    ]
+
+        % ========================================================
+        % LEFT PANEL: STANDARD POOLING (K=2, S=2)
+        % ========================================================
+        \begin{scope}[shift={(0,0)}]
+            % Title & Subtitle centered over left panel (x=2.8)
+            \node[header] at (2.8, 4.4) {Standard: $K=2\times 2,\ S=2$};
+            \node[sublabel] at (2.8, 3.95) {(Non-Overlapping $\to$ Halved Dimensions)};
+
+            % Input Grid 4x4 (Size: 2.8cm x 2.8cm, cell size = 0.7cm)
+            \fill[blue!15]   (0, 1.4)   rectangle (1.4, 2.8);
+            \fill[orange!15] (1.4, 1.4) rectangle (2.8, 2.8);
+            \fill[teal!15]   (0, 0)     rectangle (1.4, 1.4);
+            \fill[purple!15] (1.4, 0)   rectangle (2.8, 1.4);
+
+            \draw[step=0.7cm, black!25] (0,0) grid (2.8,2.8);
+            \draw[line width=1.1pt, draw=black!70] (0,0) rectangle (2.8,2.8);
+            \draw[line width=0.8pt, draw=black!50, dashed] (1.4,0) -- (1.4,2.8);
+            \draw[line width=0.8pt, draw=black!50, dashed] (0,1.4) -- (2.8,1.4);
+
+            % Window Outlines & Badges
+            \draw[line width=1.3pt, draw=blue!85!black] (0, 1.4) rectangle (1.4, 2.8);
+            \node[badge=blue] at (0.7, 2.1) {Pos 1};
+
+            \draw[line width=1.3pt, draw=orange!85!black] (1.4, 1.4) rectangle (2.8, 2.8);
+            \node[badge=orange] at (2.1, 2.1) {Pos 2};
+
+            % Stride jump arrow (S = 2)
+            \draw[->, line width=1.1pt, draw=blue!85!black] 
+                (0.7, 2.95) to[out=40, in=140] 
+                node[above=2pt, font=\scriptsize\bfseries] {Stride $S=2$} (2.1, 2.95);
+
+            % Input Dimension Brace
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!60] 
+                (0, -0.2) -- (2.8, -0.2) node[midway, below=5pt, font=\footnotesize] {$N_{\text{in}} = 4$};
+
+            % Mapping Arrow
+            \draw[->, line width=1.2pt, black!60] (3.1, 1.4) -- (3.9, 1.4) 
+                node[midway, above=2pt, font=\footnotesize\bfseries] {MaxPool};
+
+            % Output Grid 2x2
+            \begin{scope}[shift={(4.2, 0.7)}]
+                \fill[blue!20]   (0, 0.7)   rectangle (0.7, 1.4);
+                \fill[orange!20] (0.7, 0.7) rectangle (1.4, 1.4);
+                \fill[teal!20]   (0, 0)     rectangle (0.7, 0.7);
+                \fill[purple!20] (0.7, 0)   rectangle (1.4, 0.7);
+
+                \draw[step=0.7cm, black!40] (0,0) grid (1.4,1.4);
+                \draw[line width=1.1pt, black!70] (0,0) rectangle (1.4,1.4);
+
+                \node[font=\footnotesize\bfseries, blue!85!black]   at (0.35, 1.05) {$m_1$};
+                \node[font=\footnotesize\bfseries, orange!85!black] at (1.05, 1.05) {$m_2$};
+                \node[font=\footnotesize\bfseries, teal!85!black]   at (0.35, 0.35) {$m_3$};
+                \node[font=\footnotesize\bfseries, purple!85!black] at (1.05, 0.35) {$m_4$};
+            \end{scope}
+
+            % Output Dimension Brace
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!60] 
+                (4.2, 0.5) -- (5.6, 0.5) node[midway, below=5pt, font=\footnotesize] {$N_{\text{out}} = 2$};
+
+            % Arithmetic / Summary
+            \node[align=center, font=\small] at (2.8, -1.5) {
+                $\displaystyle N_{\text{out}} = \left\lfloor\frac{4-2}{2}\right\rfloor+1 = 2$\\[4pt]
+                \footnotesize Spatial size: $25\%$ ($75\%$ discarded)
+            };
+        \end{scope}
+
+        % ========================================================
+        % VERTICAL SEPARATOR LINE
+        % ========================================================
+        \draw[black!20, line width=1pt, dashed] (6.1, -2.1) -- (6.1, 4.6);
+
+        % ========================================================
+        % RIGHT PANEL: OVERLAPPING POOLING (K=2, S=1)
+        % ========================================================
+        \begin{scope}[shift={(6.7, 0)}]
+            % Title & Subtitle centered over right panel (x=3.15)
+            \node[header] at (3.15, 4.4) {Overlapping: $K=2\times 2,\ S=1$};
+            \node[sublabel] at (3.15, 3.95) {(Window Step $= 1$ $\to$ Dense Feature Map)};
+
+            % Input Grid 4x4 (Fills first)
+            \fill[blue!18] (0, 1.4)   rectangle (1.4, 2.8);
+            \fill[red!18]  (0.7, 1.4) rectangle (2.1, 2.8);
+
+            % Grid lines and outer frame
+            \draw[step=0.7cm, black!25] (0,0) grid (2.8,2.8);
+            \draw[line width=1.1pt, draw=black!70] (0,0) rectangle (2.8,2.8);
+
+            % Window Outlines
+            \draw[line width=1.3pt, draw=blue!85!black] (0, 1.4) rectangle (1.4, 2.8);
+            \draw[line width=1.3pt, draw=red!80!black, dashed] (0.7, 1.4) rectangle (2.1, 2.8);
+
+            % Enhanced & Non-Colliding Badges
+            \node[badge=blue] at (0.35, 2.1) {Pos 1};
+            \node[badge=red]  at (1.75, 2.1) {Pos 2};
+
+            % Stride jump arrow (S = 1)
+            \draw[->, line width=1.1pt, draw=red!80!black] 
+                (0.7, 2.95) to[out=45, in=135] 
+                node[above=2pt, font=\scriptsize\bfseries] {Stride $S=1$} (1.4, 2.95);
+
+            % Input Dimension Brace
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!60] 
+                (0, -0.2) -- (2.8, -0.2) node[midway, below=5pt, font=\footnotesize] {$N_{\text{in}} = 4$};
+
+            % Mapping Arrow
+            \draw[->, line width=1.2pt, black!60] (3.1, 1.4) -- (3.9, 1.4) 
+                node[midway, above=2pt, font=\footnotesize\bfseries] {MaxPool};
+
+            % Output Grid 3x3 (Fully Integrated)
+            \begin{scope}[shift={(4.2, 0.35)}]
+                % Cell Fills
+                \fill[blue!20] (0, 1.4)   rectangle (0.7, 2.1);
+                \fill[red!20]  (0.7, 1.4) rectangle (1.4, 2.1);
+
+                % Grid Lines over the full 3x3 area
+                \draw[step=0.7cm, black!30] (0,0) grid (2.1,2.1);
+                \draw[line width=1.1pt, black!70] (0,0) rectangle (2.1,2.1);
+
+                % Matching Cell Borders for m1 and m2
+                \draw[line width=1.2pt, draw=blue!85!black] (0, 1.4) rectangle (0.7, 2.1);
+                \draw[line width=1.2pt, draw=red!80!black, dashed] (0.7, 1.4) rectangle (1.4, 2.1);
+
+                % Output values
+                \node[font=\footnotesize\bfseries, blue!85!black] at (0.35, 1.75) {$m_1$};
+                \node[font=\footnotesize\bfseries, red!85!black]  at (1.05, 1.75) {$m_2$};
+            \end{scope}
+
+            % Output Dimension Brace
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!60] 
+                (4.2, 0.15) -- (6.3, 0.15) node[midway, below=5pt, font=\footnotesize] {$N_{\text{out}} = 3$};
+
+            % Arithmetic / Summary
+            \node[align=center, font=\small] at (3.15, -1.5) {
+                $\displaystyle N_{\text{out}} = \left\lfloor\frac{4-2}{1}\right\rfloor+1 = 3$\\[4pt]
+                \footnotesize Dense local maximum (no halving)
+            };
+        \end{scope}
+
+    \end{tikzpicture}%
+    }
+    \caption{Side-by-side comparison of standard non-overlapping pooling ($S=2$) and overlapping pooling ($S=1$).}
+    \label{fig:pooling-stride-comparison}
+\end{figure}

@@ -1,0 +1,215 @@
+\subsection{Pooling Layers}\label{sec:pooling-layers}
+
+We now move to another important component of the classical CNN architecture: \textbf{pooling}.
+
+\highspace
+Until now, convolutional layers have extracted features and activation functions have introduced nonlinearity. Pooling has a different purpose: it \hl{reduces the spatial size of the feature maps.} They operate independently on every depth slice and spatially resizing it, commonly using the \textbf{maximum} operation.
+
+\longline
+
+\subsubsection{Max Pooling}\label{sec:max-pooling}
+
+Suppose we have one feature map produced by a convolution followed by ReLU:
+\begin{equation*}
+    A = \begin{bmatrix}
+        1 & 3 & 2 & 0 \\
+        4 & 6 & 1 & 2 \\
+        2 & 1 & 5 & 3 \\
+        0 & 2 & 4 & 7
+    \end{bmatrix}
+\end{equation*}
+With a $2 \times 2$ \emph{max-pooling window}, we \hl{divide the feature map into local regions and keep only the \textbf{largest activation} from each region.} For example, the max pooling operation on the top-left $2 \times 2$ region of $A$ is:
+\begin{equation*}
+    \mathrm{MaxPool}\left(\begin{bmatrix}
+        1 & 3 \\
+        4 & 6
+    \end{bmatrix}\right) = 6
+\end{equation*}
+Doing this for all four regions gives us the following output:
+\begin{equation*}
+    \mathrm{MaxPool}(A) = \begin{bmatrix}
+        6 & 2 \\
+        2 & 7
+    \end{bmatrix}
+\end{equation*}
+So we have \textbf{compressed} the $4 \times 4$ feature map into a $2 \times 2$ feature map, while \hl{keeping the most important information.} A $2 \times 2$ support discards $75\%$ of the spatial samples when used for this downsampling operation.
+
+\begin{figure}[!htp]
+    \centering
+
+    \begin{tikzpicture}[
+        font=\small,
+        >=Stealth,
+        % Grid cell styles
+        incell/.style={
+            rectangle, 
+            draw=black!25, 
+            minimum size=0.9cm, 
+            inner sep=0pt, 
+            font=\normalsize,
+            align=center
+        },
+        outcell/.style={
+            rectangle, 
+            minimum size=1.1cm, 
+            inner sep=0pt, 
+            font=\large\bfseries,
+            align=center
+        },
+        % Quadrant Colors (Soft pastel fills)
+        tl_color/.style={fill=red!15},
+        tr_color/.style={fill=blue!15},
+        bl_color/.style={fill=green!18},
+        br_color/.style={fill=orange!18}
+    ]
+
+        % ==========================================
+        % 1. INPUT FEATURE MAP (4x4)
+        % ==========================================
+        \node[font=\bfseries\normalsize] (in_title) at (1.5, 2.5) {Input Feature Map $A$ ($4\times 4$)};
+
+        % Row 0 (Top)
+        \node[incell, tl_color] (c00) at (0, 1.5) {1};
+        \node[incell, tl_color] (c01) at (1, 1.5) {3};
+        \node[incell, tr_color] (c02) at (2, 1.5) {2};
+        \node[incell, tr_color] (c03) at (3, 1.5) {0};
+
+        % Row 1
+        \node[incell, tl_color] (c10) at (0, 0.5) {4};
+        \node[incell, tl_color, font=\large\bfseries, text=red!70!black] (c11) at (1, 0.5) {6};
+        \node[incell, tr_color] (c12) at (2, 0.5) {1};
+        \node[incell, tr_color, font=\large\bfseries, text=blue!70!black] (c13) at (3, 0.5) {2};
+
+        % Row 2
+        \node[incell, bl_color] (c20) at (0,-0.5) {2};
+        \node[incell, bl_color] (c21) at (1,-0.5) {1};
+        \node[incell, br_color] (c22) at (2,-0.5) {5};
+        \node[incell, br_color] (c23) at (3,-0.5) {3};
+
+        % Row 3 (Bottom)
+        \node[incell, bl_color] (c30) at (0,-1.5) {0};
+        \node[incell, bl_color, font=\large\bfseries, text=green!60!black] (c31) at (1,-1.5) {2};
+        \node[incell, br_color] (c32) at (2,-1.5) {4};
+        \node[incell, br_color, font=\large\bfseries, text=orange!75!black] (c33) at (3,-1.5) {7};
+
+        % Outer Grid Boundaries for 2x2 pooling windows
+        \draw[line width=1.5pt, red!70!black]    (-0.45, 1.95) rectangle (1.45, 0.05);
+        \draw[line width=1.5pt, blue!70!black]   ( 1.55, 1.95) rectangle (3.45, 0.05);
+        \draw[line width=1.5pt, green!60!black]  (-0.45,-0.05) rectangle (1.45,-1.95);
+        \draw[line width=1.5pt, orange!75!black] ( 1.55,-0.05) rectangle (3.45,-1.95);
+
+        % Caption under input
+        \node[anchor=north, text=black!75, font=\footnotesize] at (1.5, -2.15) {Non-overlapping $2\times 2$ pooling windows};
+
+        % ==========================================
+        % 2. CENTRAL ARROW
+        % ==========================================
+        \draw[->, line width=1.6pt, black!80] (4.0, 0.0) -- (5.9, 0.0) 
+            node[midway, above=4pt, font=\bfseries\small] {MaxPool}
+            node[midway, below=4pt, font=\footnotesize, text=black!70] {$2\times 2$, Stride $2$};
+
+        % ==========================================
+        % 3. OUTPUT FEATURE MAP (2x2)
+        % ==========================================
+        \node[font=\bfseries\normalsize] (out_title) at (7.5, 2.5) {Pooled Output ($2\times 2$)};
+
+        % Output cells with matching boundary colors & large text
+        \node[outcell, tl_color, draw=red!70!black, line width=1.5pt, text=red!70!black]    (o00) at (6.95, 0.55) {6};
+        \node[outcell, tr_color, draw=blue!70!black, line width=1.5pt, text=blue!70!black]   (o01) at (8.05, 0.55) {2};
+        \node[outcell, bl_color, draw=green!60!black, line width=1.5pt, text=green!60!black]  (o10) at (6.95,-0.55) {2};
+        \node[outcell, br_color, draw=orange!75!black, line width=1.5pt, text=orange!75!black] (o11) at (8.05,-0.55) {7};
+
+        % Caption under output
+        \node[anchor=north, text=black!75, font=\footnotesize] at (7.5, -2.15) {$75\%$ spatial reduction};
+
+    \end{tikzpicture}
+
+    \caption{Illustration of a $2 \times 2$ max pooling operation on a $4 \times 4$ feature map.}
+    \label{fig:max-pooling}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why take the maximum?}}
+\end{flushleft}
+In a feature map, the numbers represent the \textbf{activation} of a feature detector at a particular spatial location. A convolutional filter may have learned to respond strongly to some pattern. After ReLU, a large activation roughly tells us: ``\emph{\textbf{the feature detected by this filter is strongly present here}}''.
+
+\highspace
+Max pooling summarizes a small neighborhood by retaining its strongest response:
+\begin{equation}
+    y(r, c) = \max_{(u, v) \in U} x(r + u, c + v)
+\end{equation}
+So instead of preserving the exact activation values, we only keep the strongest response. We \textbf{lose spatial detail}, but \textbf{preserve the strongest evidence} that the feature occurred somewhere inside that region.
+
+\highspace
+This connects to the broader CNN idea: as representations become deeper, we are often increasingly interested in \textbf{whether a feature exists}, rather than its exact pixel-level position.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Pooling does NOT mix channels}}
+\end{flushleft}
+Pooling behaves very differently from convolution. Suppose the input volume is $32 \times 32 \times 64$. There are \textbf{64 feature maps}. Max pooling is applied independently to each feature map:
+\begin{align*}
+    A_1 &= \mathrm{MaxPool}(A_1) \\
+    A_2 &= \mathrm{MaxPool}(A_2) \\
+    &\vdots \\
+    A_{64} &= \mathrm{MaxPool}(A_{64})
+\end{align*}
+It \textbf{acts separately on each layer of the depth dimension}. Therefore, for a typical $2 \times 2$ pooling operation:
+\begin{equation*}
+    32 \times 32 \times 64 \xrightarrow{\text{MaxPool}} 16 \times 16 \times 64
+\end{equation*}
+The \hl{spatial dimensions $H$ and $W$ decrease}, but the \hl{number of channels remains unchanged.}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c @{}}
+        \toprule
+        & \textbf{Convolution} & \textbf{Max Pooling} \\
+        \midrule
+        \emph{Mixes input channels?} & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\
+        \emph{Can change depth?} & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Red2}{\faIcon{times}} No \\
+        \emph{Operates spatially?} & \textcolor{Green3}{\faIcon{check}} Yes & \textcolor{Green3}{\faIcon{check}} Yes \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between convolution and max pooling.}
+\end{table}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{There are no trainable parameters in pooling layers}}
+\end{flushleft}
+Another crucial distinction is that max pooling does \textbf{not learn anything}. For convolution, we had parameters such as:
+\begin{equation*}
+    w_1, w_2, \dots, w_{n}, b
+\end{equation*}
+Max pooling simply performs the predefined operation of taking the maximum value in a local region: $\max(\cdot)$. \hl{There are no filter weights and no biases to learn.} Therefore:
+\begin{equation*}
+    \text{\# trainable parameters in max pooling} = 0
+\end{equation*}
+The pooling-window size and stride are \textbf{hyperparameters}, not trainable parameters.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{What pooling is doing conceptually}}
+\end{flushleft}
+Max Pooling is a form of \textbf{downsampling}. It reduces the spatial size of the feature maps. So it completes the three main functions of a CNN:
+\begin{equation*}
+    \underbrace{\text{Convolution}}_{\text{detect features}} \to \underbrace{\text{ReLU}}_{\text{nonlinearity}} \to \underbrace{\text{Max Pooling}}_{\text{spatially summarize/compress}}
+\end{equation*}
+For example:
+\begin{equation*}
+    32 \times 32 \times 3 \xrightarrow[\text{32 filters}]{\text{Conv}} 32 \times 32 \times 32 \xrightarrow{\text{ReLU}} 32 \times 32 \times 32 \xrightarrow{\text{MaxPool}} 16 \times 16 \times 32
+\end{equation*}
+Where:
+\begin{itemize}
+    \item \textbf{Convolution} determines the new depth through its number of filters.
+    \item \textbf{ReLU} changes values but not dimensions.
+    \item \textbf{Max pooling} reduces spatial dimensions but does not change depth.
+\end{itemize}
+
+\highspace
+\begin{takeawaysbox}
+    Max pooling reduces the spatial resolution of CNN feature maps by replacing each local region with its maximum activation. It operates independently on every channel, so it reduces height and width without mixing or changing the number of feature maps. Max pooling contains no trainable parameters: its window size and stride are predefined hyperparameters.
+\end{takeawaysbox}

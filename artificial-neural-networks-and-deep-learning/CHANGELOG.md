@@ -44,6 +44,8 @@
     - add `Why CNNs Need Nonlinearities`
     - add `ReLU and Leaky ReLU`
     - add `Hyperbolic Tangent and Other Activations`
+  - add `Pooling Layers`
+    - add `Max Pooling`
 
 --------------------
 

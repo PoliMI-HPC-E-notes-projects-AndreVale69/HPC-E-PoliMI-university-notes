@@ -1,0 +1,237 @@
+\subsubsection{Feature Extraction Network and Classifier}\label{sec:feature-extraction-network-and-classifier}
+
+Now that we have a good understanding of convolutional and pooling layers, we can interpret the entire CNN as two systems that work together rather than as a long sequence of layers:
+\begin{equation*}
+    \text{CNN} = \text{Feature Extraction Network (FEN)} + \text{Feature Classifier}
+\end{equation*} 
+The \definition{Feature Extraction Network (FEN)} is the \textbf{convolutional block}: \hl{convolution, activation, and pooling layers progressively transform raw pixels into a learned representation.} The \textbf{classifier} is the \hl{fully connected part that takes that learned representation and maps it to class scores or probabilities.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{network-wired} \textbf{The Feature Extraction Network}}
+\end{flushleft}
+The FEN is the part before the dense classifier:
+\begin{equation*}
+    \text{Image} \to \text{Conv} \to \text{Activation} \to \text{Pooling} \to \text{Conv} \to \text{Activation} \to \cdots
+\end{equation*}
+Its \textbf{goal} is not directly to say: ``\emph{this image is a cat}''. Instead, it transforms the raw image into a \textbf{useful set of learned features}. So conceptually:
+\begin{equation*}
+    I \longrightarrow \mathrm{FEN}(I)
+\end{equation*}
+Where $I$ is the input image and $\mathrm{FEN}(I)$ is the learned representation of the image. We will call this learned representation the \textbf{latent representation} or \textbf{data-driven feature vector} of the image, because it is a vector of features that the network has learned to extract from the image.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is the latent representation?}}
+\end{flushleft}
+Suppose the convolutional part ends with:
+\begin{equation*}
+    16 \times 16 \times 24
+\end{equation*}
+After flattening, the latent representation is a vector of size:
+\begin{equation*}
+    16 \cdot 16 \cdot 24 = 6144
+\end{equation*}
+That resulting feature vector can be thought of as:
+\begin{equation*}
+    \mathbf{z} = \mathrm{FEN}(I)
+\end{equation*}
+Where $\mathbf{z}$ is a vector of size $6144$ that contains the network's learned representation of the input image $I$. The important idea is that $\mathbf{z}$ is \textbf{not raw pixels anymore}. It contains features learned by the CNN to be useful for the classification task.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Then the classifier uses those features: Feature Classifier}}
+\end{flushleft}
+Once we have the latent vector $\mathbf{z}$, the dense part acts like a conventional Multi-Layer Perceptron (MLP) classifier:
+\begin{equation*}
+    \mathbf{z} \to \text{Dense} \to \text{Dense} \to \text{Softmax} \to \text{Class Probabilities}
+\end{equation*}
+So FEN asks ``\emph{what useful features are present?}'', while the classifier asks ``\emph{given these features, which class is it?}''.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Why is this better than the old hand-crafted pipeline?}} At the beginning, the pipeline for image classification was:
+\begin{equation*}
+    \text{Image} \longrightarrow \underbrace{\text{Hand-crafted Extractor}}_{\text{Fixed / Expert Designed}} \longrightarrow \underbrace{\text{Classifier}}_{\text{Data-Driven}}
+\end{equation*}
+Now it becomes:
+\begin{equation*}
+    \text{Image} \longrightarrow \underbrace{\text{learned feature extractor}}_{\text{data driven}} \longrightarrow \underbrace{\text{learned classifier}}_{\text{data driven}}
+\end{equation*}
+The key difference is that the feature extractor is now \textbf{learned from data}, rather than being hand-crafted by experts. It also allows for \textbf{end-to-end training}, where the feature extractor and classifier are trained together to minimize the classification loss.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does end-to-end training mean?}} Suppose the final prediction is wrong. The loss is computed at the classifier output:
+\begin{equation*}
+    L\left(\hat{y}, y\right)
+\end{equation*}
+Backpropagation does \textbf{not stop at the dense classifier}. Instead, the gradient is propagated back through the entire network, including the FEN. This means that the FEN is updated to produce better features for the classifier, leading to a more effective overall model. So the classifier effectively tells the feature extractor: ``\emph{the features you are producing are not good enough for this classification task; change them}''. That is what makes the \hl{features \textbf{task-dependent and data-driven}.}
+
+\highspace
+Formally, if:
+\begin{equation*}
+    \hat{y} = C\left(\mathrm{FEN}(I)\right)
+\end{equation*}
+Where $\hat{y}$ is the predicted class probabilities, $C$ is the classifier, and $\mathrm{FEN}(I)$ is the latent representation of the input image $I$. The \hl{training adjusts the parameters of \textbf{both}} the FEN and the classifier $C$ to minimize the loss $L(\hat{y}, y)$, where $y$ is the true label.
+
+\highspace
+\textcolor{Green3}{\faIcon{exclamation-triangle} \textbf{Why does this decomposition matter?}} This is not just a conceptual trick. Later, it becomes extremely useful for \textbf{transfer learning}, where we can take a pretrained FEN and use it as a fixed feature extractor for a new classification task, only training a new classifier on top of it. This allows us to leverage learned features from large datasets and apply them to smaller datasets.
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{cnn-feature-extraction-network-and-classifier}
+    \begin{tikzpicture}[
+        >=Stealth,
+        % Standard layer node styling (native width: 5.6cm)
+        layer/.style={
+            draw=black!75, rounded corners=4pt, align=center, line width=0.8pt, 
+            minimum width=5.6cm, minimum height=0.82cm, inner sep=3.5pt, font=\small
+        },
+        inputnode/.style={layer, fill=gray!12, draw=gray!60},
+        convnode/.style={layer, fill=blue!8, draw=blue!70!black},
+        poolnode/.style={layer, fill=cyan!8, draw=cyan!70!black},
+        latentnode/.style={layer, fill=orange!15, draw=orange!85!black, line width=1.1pt, minimum height=0.95cm},
+        densenode/.style={layer, fill=red!8, draw=red!70!black},
+        lossnode/.style={layer, fill=purple!10, draw=purple!80!black, line width=0.9pt},
+        % Header banner style
+        sectionhdr/.style={
+            rounded corners=3pt, align=center, font=\bfseries\footnotesize,
+            inner sep=3pt, minimum width=5.6cm, minimum height=0.55cm
+        },
+        % Arrow styles
+        fwdarrow/.style={->, line width=1.0pt, draw=black!80},
+        backarrow/.style={->, dashed, line width=0.9pt, draw=purple!85!black}
+    ]
+
+        % -------------------------------------------------------------------------
+        % 1. INPUT IMAGE
+        % -------------------------------------------------------------------------
+        \node[inputnode] (input) at (0, 0) {
+            \textbf{Input Image $I$}\\[1pt]
+            \footnotesize Raw Pixels $(H \times W \times C)$
+        };
+
+        % -------------------------------------------------------------------------
+        % 2. FEATURE EXTRACTION NETWORK (FEN)
+        % -------------------------------------------------------------------------
+        \node[sectionhdr, fill=blue!15, draw=blue!70!black, text=blue!90!black, below=0.75cm of input] (fen_hdr) {
+            1. Feature Extraction Network (FEN)
+        };
+
+        \node[convnode, below=0.35cm of fen_hdr] (c1) {
+            \textbf{Convolution + ReLU}\\[1pt]
+            \footnotesize Low-level features (edges, textures)
+        };
+
+        \node[poolnode, below=0.35cm of c1] (p1) {
+            \textbf{Pooling Layer}\\[1pt]
+            \footnotesize Spatial downsampling ($2 \times 2$)
+        };
+
+        \node[convnode, below=0.35cm of p1] (c2) {
+            \textbf{Convolution + Pooling (\dots)}\\[1pt]
+            \footnotesize High-level features (shapes, parts)
+        };
+
+        \node[convnode, below=0.35cm of c2] (fvol) {
+            \textbf{Final Feature Volume}\\[1pt]
+            \footnotesize Dimension: $16 \times 16 \times 24$
+        };
+
+        % -------------------------------------------------------------------------
+        % 3. LATENT REPRESENTATION (BRIDGE)
+        % -------------------------------------------------------------------------
+        \node[latentnode, below=0.9cm of fvol] (latent) {
+            \textbf{Latent Feature Vector $\mathbf{z} = \text{FEN}(I)$}\\[1.5pt]
+            \footnotesize \textbf{$6144$-D Vector} (Learned Representation)
+        };
+
+        % -------------------------------------------------------------------------
+        % 4. FEATURE CLASSIFIER (MLP)
+        % -------------------------------------------------------------------------
+        \node[sectionhdr, fill=red!15, draw=red!70!black, text=red!90!black, below=0.75cm of latent] (clf_hdr) {
+            2. Feature Classifier ($C$)
+        };
+
+        \node[densenode, below=0.35cm of clf_hdr] (d1) {
+            \textbf{Dense Layer(s) + ReLU}\\[1pt]
+            \footnotesize Fully connected layers
+        };
+
+        \node[densenode, fill=red!14, below=0.35cm of d1] (out) {
+            \textbf{Class Predictions $\hat{y} = C(\mathbf{z})$}\\[1pt]
+            \footnotesize Softmax / Logits for target classes
+        };
+
+        % -------------------------------------------------------------------------
+        % 5. LOSS NODE
+        % -------------------------------------------------------------------------
+        \node[lossnode, below=0.65cm of out] (loss) {
+            \textbf{Classification Loss $\mathcal{L}(\hat{y}, y)$}\\[1pt]
+            \footnotesize Error evaluated at classifier output
+        };
+
+        % -------------------------------------------------------------------------
+        % FORWARD CONNECTIONS
+        % -------------------------------------------------------------------------
+        \draw[fwdarrow] (input) -- (fen_hdr);
+        \draw[fwdarrow] (fen_hdr) -- (c1);
+        \draw[fwdarrow] (c1) -- (p1);
+        \draw[fwdarrow] (p1) -- (c2);
+        \draw[fwdarrow] (c2) -- (fvol);
+        \draw[fwdarrow] (fvol) -- node[fill=white, inner sep=2pt, font=\scriptsize\bfseries] {Flatten ($16\times16\times24 \to 6144$)} (latent);
+        \draw[fwdarrow] (latent) -- (clf_hdr);
+        \draw[fwdarrow] (clf_hdr) -- (d1);
+        \draw[fwdarrow] (d1) -- (out);
+        \draw[fwdarrow] (out) -- (loss);
+
+        % -------------------------------------------------------------------------
+        % BACKGROUND DASHED ENCLOSURES
+        % -------------------------------------------------------------------------
+        \begin{scope}[on background layer]
+            \node[
+                fit={(fen_hdr) (fvol)}, 
+                fill=blue!3, draw=blue!45, dashed, rounded corners=6pt, 
+                line width=0.8pt, inner xsep=8pt, inner ysep=6pt
+            ] (fen_box) {};
+
+            \node[
+                fit={(clf_hdr) (out)}, 
+                fill=red!3, draw=red!40, dashed, rounded corners=6pt, 
+                line width=0.8pt, inner xsep=8pt, inner ysep=6pt
+            ] (clf_box) {};
+        \end{scope}
+
+        % -------------------------------------------------------------------------
+        % BACKPROPAGATION END-TO-END FEEDBACK (LEFT SIDE CHANNEL)
+        % -------------------------------------------------------------------------
+        \coordinate (bpx) at (-4.6, 0);
+        
+        % Main dashed spine
+        \draw[dashed, line width=1.0pt, draw=purple!85!black] 
+            (loss.west) -- (-4.6, 0 |- loss.center) 
+            -- node[midway, left=3pt, rotate=90, font=\scriptsize\bfseries, text=purple!90!black, anchor=south] 
+            {$\longleftarrow$ Backpropagation: End-to-End Joint Optimization $\longleftarrow$}
+            (-4.6, 0 |- c1.center);
+
+        % Horizontal taps into each stage
+        \draw[backarrow] (-4.6, 0 |- c1.center) -- (c1.west)
+            node[midway, above=1pt, font=\scriptsize, text=purple!90!black] {$\nabla_{W_{\text{conv}}}\mathcal{L}$};
+
+        \draw[backarrow] (-4.6, 0 |- latent.center) -- (latent.west)
+            node[midway, above=1pt, font=\scriptsize, text=purple!90!black] {$\nabla_{\mathbf{z}}\mathcal{L}$};
+
+        \draw[backarrow] (-4.6, 0 |- d1.center) -- (d1.west)
+            node[midway, above=1pt, font=\scriptsize, text=purple!90!black] {$\nabla_{W_{\text{dense}}}\mathcal{L}$};
+
+    \end{tikzpicture}
+    \captionsetup{singlelinecheck=off}
+    \caption[]{Decomposition of a CNN into a Feature Extraction Network (FEN) and a Classifier, linked by the learned latent vector $\mathbf{z}$. End-to-end backpropagation jointly optimizes all parameters directly from data. The $\nabla$ symbols indicate the gradients computed during backpropagation for each component:
+    \begin{itemize}
+        \item $\nabla_{W_{\text{conv}}}\mathcal{L}$ represents the \textbf{gradient of the loss} with respect to the convolutional weights, which is used to update the FEN during training.
+        \item $\nabla_{\mathbf{z}}\mathcal{L}$ term indicates \textbf{how the latent representation} $\mathbf{z}$ \textbf{is adjusted} to improve classification performance.
+        \item $\nabla_{W_{\text{dense}}}\mathcal{L}$ shows the \textbf{gradient for the dense classifier} weights.
+    \end{itemize}
+    }
+    \label{fig:fen-classifier}
+\end{figure}

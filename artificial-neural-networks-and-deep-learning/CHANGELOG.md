@@ -50,6 +50,9 @@
   - add `Dense Layers and the Complete CNN`
     - add `Flattening and Dense Layers`
     - add `Following Shapes Through a CNN`
+    - add `Feature Extraction Network and Classifier`
+  - add `Understanding CNN Activations`
+    - add `CNNs in Action`
 
 --------------------
 

@@ -51,8 +51,9 @@
     - add `Flattening and Dense Layers`
     - add `Following Shapes Through a CNN`
     - add `Feature Extraction Network and Classifier`
-  - add `Understanding CNN Activations`
-    - add `CNNs in Action`
+  - add `CNNs in Action`
+  - add `LeNet-5: The First Famous CNN`
+    - add `Historical Motivation`
 
 --------------------
 

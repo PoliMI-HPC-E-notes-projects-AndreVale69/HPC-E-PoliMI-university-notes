@@ -54,6 +54,7 @@
   - add `CNNs in Action`
   - add `LeNet-5: The First Famous CNN`
     - add `Historical Motivation`
+    - add `LeNet-5 Architecture`
 
 --------------------
 

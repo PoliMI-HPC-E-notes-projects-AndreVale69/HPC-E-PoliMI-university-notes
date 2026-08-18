@@ -40,6 +40,7 @@
     - add `CNN Convolution vs. RGB Image Filtering`
     - add `Padding`
     - add `Stride`
+    - add `General Output-Size Formula`
   - add `Activation Functions`
     - add `Why CNNs Need Nonlinearities`
     - add `ReLU and Leaky ReLU`
@@ -55,6 +56,11 @@
   - add `LeNet-5: The First Famous CNN`
     - add `Historical Motivation`
     - add `LeNet-5 Architecture`
+    - add `LeNet-5 Implementation`
+- improve `lstlisting` code styling:
+  - add rounded card-style container with custom border and background
+  - add dedicated syntax highlighting for classes, libraries/modules, strings, and numbers
+  - optimize inner padding, line height, and line-number gutter spacing
 
 --------------------
 

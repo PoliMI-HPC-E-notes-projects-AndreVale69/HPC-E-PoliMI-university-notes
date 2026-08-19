@@ -1,0 +1,113 @@
+\subsubsection{CNN vs Direct MLP Parameter Count}\label{sec:cnn-vs-direct-mlp-parameter-count}
+
+After looking at the LeNet-5 architecture, the next question is: \emph{\textbf{if most of LeNet's parameters are in its dense layers anyway, why not simply flatten the original image and feed it directly to an MLP?}}
+
+\highspace
+First of all, LeNet has $61'706$ parameters in total. Its convolutional layers contain only:
+\begin{equation*}
+    156+2416=2572
+\end{equation*}
+Parameters, while the dense part contains:
+\begin{equation*}
+    48'120 + 10'164 + 850 = 59'134
+\end{equation*}
+So about $59'134 \div 61'706 \approx 95.8\%$ of the parameters are in the MLP classifier part of the network. But that does \textbf{not} mean that the convolutional part is useless. Quite the opposite: it \hl{efficiently transforms the raw image into a much smaller, meaningful representation before classification.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What if we remove the CNN?}}
+\end{flushleft}
+The grayscale input contains $32 \times 32 = 1024$ pixels. Instead of using the CNN to reduce the input size:
+\begin{equation*}
+    32 \times 32 \to \text{CNN} \to 400 \to 120 \to 84 \to 10
+\end{equation*}
+Suppose we flatten the image immediately and feed all 1024 pixels directly to an MLP:
+\begin{equation*}
+    1024\rightarrow84\rightarrow10
+\end{equation*}
+Why $84$? Because we are using the last FC (fully connected) part of LeNet-5 as a simple comparison. The first dense layer requires:
+\begin{equation*}
+    1024 \times 84 + 84 = 86'100 \text{ parameters}
+\end{equation*}
+The output layer requires:
+\begin{equation*}
+    84 \times 10 + 10 = 850 \text{ parameters}
+\end{equation*}
+Therefore:
+\begin{equation*}
+    86'100 + 850 = 86'950 \text{ parameters in total}
+\end{equation*}
+So \textbf{the MLP has $86'950 - 61'706 = 25'244$ more parameters than LeNet-5, which is about $41\%$ more.} This is a \hl{significant increase in the number of parameters.}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{But the more important issue is how they scale.}} The difference becomes much clearer when the input changes. The original LeNet input is grayscale $32 \times 32 \times 1$. Now suppose that the same image becomes \textbf{RGB} $32 \times 32 \times 3$. This triples the amount of input data $1024 \to 3072$ pixels. And this is where CNN and MLP behave very differently.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What happens to the CNN with RGB?}} Originally, the first convolution has 6 filters. Since the image is grayscale, each filter has $5 \times 5 \times 1$ weights. Its parameters are:
+\begin{equation*}
+    6 \times (5 \times 5 \times 1 + 1) = 156
+\end{equation*}
+With RGB, each filter must span all three channels $5 \times 5 \times 3$ weights. Therefore, the first convolution now has:
+\begin{equation*}
+    6 \times (5 \times 5 \times 3 + 1) = 456 \text{ parameters}
+\end{equation*}
+But crucially, \textbf{only this first convolution changes}. The remainder of the architecture still receives 6 feature maps from \texttt{Conv1}, so its parameter count remains unchanged. So adding two extra color channels only adds:
+\begin{equation*}
+    456 - 156 = 300 \text{ parameters}
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{And what happens to the MLP with RGB?}} For the MLP, the input vector changes from $1024$ to $32 \times 32 \times 3 = 3072$ pixels. Every one of the 84 neurons is connected to \textbf{every input value}. Therefore, the weight matrix changes from $1024 \times 84$ to $3072 \times 84$. The number of \hl{weights in that first dense layer is literally \textbf{tripled}.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why is convolution so much more efficient?}}
+\end{flushleft}
+Because the convolution has two key properties:
+\begin{itemize}
+    \item \textbf{Local connectivity}. A dense neuron sees the \textbf{entire image}:
+    \begin{equation*}
+        \text{every input} \to \text{every neuron}
+    \end{equation*}
+    A convolutional neuron sees only a \textbf{small patch} of the image. In our case, $5 \times 5 \times C_\text{in}$, where $C_\text{in}$ is the number of input channels.
+
+    So rather than learning separate connections from every pixel, the \hl{CNN exploits the fact that image information is strongly \textbf{spatially correlated}.}
+
+
+    \item \textbf{Weight sharing}. Even more importantly, the same filter is reused at \textbf{every spatial position}. Suppose a $5 \times 5$ filter learns to detect some useful local patterns. The CNN does \textbf{not} learn a different $5 \times 5$ detector for every spatial position. Instead, it learns \textbf{one filter} and slides it over the whole image. Therefore, \hl{same weights are reused across spatial positions.} This is the reason why the convolution does not require a separate parameter for every spatial connection.
+\end{itemize}
+\textcolor{DarkOrange3}{\faIcon{balance-scale} \textbf{Scaling Difference.}} For a \textbf{dense layer} receiving an image, the number of parameters scales with the \textbf{number of input pixels} $H \times W$, the \textbf{number of input channels} $C_\text{in}$ and the \textbf{number of output neurons} in the layer $C_\text{out}$:
+\begin{equation*}
+    \text{\#} W_{\text{MLP}} = H \times W \times C_\text{in} \times N_\text{out}
+\end{equation*}
+Therefore, if the image becomes larger, the height $H$ and width $W$ increase, and the number of weights in the dense layer increases too:
+\begin{equation*}
+    H \; \uparrow, \quad W \; \uparrow \quad \Rightarrow \quad \text{\#} W_{\text{MLP}} \; \uparrow
+\end{equation*}
+Instead, for a \textbf{convolutional layer}, the number of weights depends only on the \textbf{filter size} $K_{\text{h}} \times K_{\text{w}}$, the \textbf{number of input channels} $C_\text{in}$ and the \textbf{number of output channels} (number of filters) $C_\text{out}$:
+\begin{equation*}
+    \text{\#} W_{\text{Conv}} = K_{\text{h}} \times K_{\text{w}} \times C_\text{in} \times C_\text{out}
+\end{equation*}
+So if the image becomes larger, the height $H$ and width $W$ increase, but the number of weights in the convolutional layer \textbf{does not change}. In other words, the \hl{convolutional parameter count does not depend directly on the spatial dimensions of the image.}
+
+\begin{table}[!htp]
+    \centering
+    \begin{adjustbox}{width={\textwidth},totalheight={\textheight},keepaspectratio}
+        \begin{tabular}{@{} l l l @{}}
+            \toprule
+            & \textbf{Direct MLP} & \textbf{Convolution} \\
+            \midrule
+            Connectivity & Global & Local \\
+            Weight Sharing & No & Yes \\
+            Exploits image spatial structure & Not explicitly & Yes \\
+            Parameters depend on $H$, $W$ & \textbf{Yes} & \textbf{No, for a given conv layer} \\
+            Larger image & Many more parameters & Same filters reused \\
+            More input channels & First dense weights scale & First conv filters deepen \\
+            \bottomrule
+        \end{tabular}
+    \end{adjustbox}
+    \caption{Comparison between Direct MLP and Convolution for image inputs.}
+    \label{tab:cnn-vs-direct-mlp}
+\end{table}
+
+\begin{takeawaysbox}
+    \textbf{Convolutional layers are much more parameter-efficient for images because they exploit local connectivity and weight sharing.} A direct MLP requires separate connections from every input pixel to every neuron, so its parameter count grows directly with image height, width, and number of channels. A convolution instead learns small filters and reuses them over the whole image; therefore, for a fixed convolutional layer, its parameter count depends on the kernel size and channel depths, \textbf{not on the spatial image dimensions}.
+\end{takeawaysbox}

@@ -58,6 +58,7 @@
     - add `LeNet-5 Architecture`
     - add `LeNet-5 Implementation`
     - add `LeNet-5 Performance`
+    - add `CNN vs Direct MLP Parameter Count`
 - improve `lstlisting` code styling:
   - add rounded card-style container with custom border and background
   - add dedicated syntax highlighting for classes, libraries/modules, strings, and numbers

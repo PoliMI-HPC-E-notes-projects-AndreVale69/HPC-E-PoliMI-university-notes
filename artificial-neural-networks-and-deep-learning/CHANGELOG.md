@@ -59,6 +59,9 @@
     - add `LeNet-5 Implementation`
     - add `LeNet-5 Performance`
     - add `CNN vs Direct MLP Parameter Count`
+  - add `Latent Representations Learned by CNNs`
+    - add `The CNN Latent Representation`
+    - add `Visualizing CNN Features with t-SNE`
 - improve `lstlisting` code styling:
   - add rounded card-style container with custom border and background
   - add dedicated syntax highlighting for classes, libraries/modules, strings, and numbers

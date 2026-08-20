@@ -19,6 +19,7 @@
   - add `CNNs as Structured Neural Networks`
     - add `Convolution as a Linear Operation`
     - add `Sparse Connectivity and Weight Sharing`
+    - add `Translation Invariance as an Inductive Bias`
 
 --------------------
 

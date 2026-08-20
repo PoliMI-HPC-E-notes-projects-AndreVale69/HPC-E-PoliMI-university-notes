@@ -18,6 +18,7 @@
 - add `CNN Anatomy, Transfer Learning, and Data Scarcity`
   - add `CNNs as Structured Neural Networks`
     - add `Convolution as a Linear Operation`
+    - add `Sparse Connectivity and Weight Sharing`
 
 --------------------
 

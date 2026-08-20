@@ -1,0 +1,164 @@
+\subsubsection{Sparse Connectivity and Weight Sharing}\label{sec:sparse-connectivity-and-weight-sharing}
+
+From the previous section, both dense and convolutional layers can be written as
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+So the question is: \emph{\textbf{what is different about $W$ in a convolutional layer compared to a dense layer?}} The answer depends on two properties of convolutional layers: \textbf{sparse connectivity} and \textbf{weight sharing}. \hl{These are what make convolution fundamentally more parameter-efficient than a fully connected layer.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{hourglass-half} \textbf{Dense connectivity in a fully connected layer}}
+\end{flushleft}
+In a dense layer, every output neuron has its own weight connecting it to \textbf{every input neuron}. If:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{N_{\text{in}}}, \quad \mathbf{a} \in \mathbb{R}^{N_{\text{out}}}
+\end{equation*}
+Where $N_{\text{in}}$ is the number of input neurons and $N_{\text{out}}$ is the number of output neurons, then the weight matrix $W$ has dimensions:
+\begin{equation*}
+    W \in \mathbb{R}^{N_{\text{out}} \times N_{\text{in}}}
+\end{equation*}
+Schematically, the matrix $W$ looks like this:
+\begin{equation*}
+    W = \begin{bmatrix}
+        w_{11} & w_{12} & \cdots & w_{1N_{\text{in}}} \\
+        w_{21} & w_{22} & \cdots & w_{2N_{\text{in}}} \\
+        \vdots & \vdots & \ddots & \vdots \\
+        w_{N_{\text{out}}1} & w_{N_{\text{out}}2} & \cdots & w_{N_{\text{out}}N_{\text{in}}}
+    \end{bmatrix}
+\end{equation*}
+There are generally \textbf{no forced zeros} and \textbf{no requirement} that \textbf{two entries be equal}. Therefore the layer has $N_{\text{in}} \cdot N_{\text{out}}$ weights, plus $N_{\text{out}}$ biases, for a total of $N_{\text{in}} \cdot N_{\text{out}} + N_{\text{out}}$ parameters.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Sparse connectivity}}
+\end{flushleft}
+A convolutional neuron is different because it does \textbf{not depend on the entire input}. It only receives information from a \textbf{local spatial neighbourhood}.
+
+\highspace
+For example, with a $3 \times 3$ convolution, one output activation depends only on the corresponding $3 \times 3$ region of the input, while all pixels outside that region have no influence on that particular activation.
+
+\highspace
+In the flattened matrix representation, this means that most entries of $W$ are zero:
+\begin{equation*}
+    W =
+    \begin{bmatrix}
+    w_1 & w_2 & w_3 & 0 & 0 \\
+    0 & w_1 & w_2 & w_3 & 0 \\
+    0 & 0 & w_1 & w_2 & w_3
+    \end{bmatrix}
+\end{equation*}
+Each row corresponds to one output neuron. Look at the first row:
+\begin{equation*}
+    a_1 = w_1 x_1 + w_2 x_2 + w_3 x_3
+\end{equation*}
+The weights multiplying $x_4, x_5$ are implicitly zero. Then:
+\begin{equation*}
+    a_2 = w_1 x_2 + w_2 x_3 + w_3 x_4
+\end{equation*}
+So $x_1$ and $x_5$ have zero connection to $a_2$. This is why the matrix representation of convolution is \textbf{sparse}. In other words, sparse connectivity means that \hl{each output neuron sees only a local part of the input, and therefore most entries of the equivalent matrix are zero.}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Sparse does not mean the learned filters contain many zeros.}} When we say ``\emph{convolutional layers have sparse weights}'', we are referring to the \textbf{equivalent large matrix} $W$. The actual convolutional filter:
+\begin{equation*}
+    w = \begin{bmatrix}
+        w_1 & w_2 & w_3
+    \end{bmatrix}
+\end{equation*}
+Does not need to contain any zeros. Rather, when that small filter is represented as a full input-to-output matrix, all the connections that do not belong to the local receptive field become zero. Thus, \hl{sparsity comes from local connectivity, not necessarily from zero filter coefficients.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Weight sharing}}
+\end{flushleft}
+There is a second restriction. Suppose the filter contains:
+\begin{equation*}
+    w_1, w_2, w_3
+\end{equation*}
+When we move the filter to another spatial position, we \textbf{do not learn another set of weights}. We reuse exactly the same parameters:
+\begin{align*}
+    a_1 &= w_1 x_1 + w_2 x_2 + w_3 x_3 \\
+    a_2 &= w_1 x_2 + w_2 x_3 + w_3 x_4 \\
+    a_3 &= w_1 x_3 + w_2 x_4 + w_3 x_5
+\end{align*}
+Indeed, the same weights $w_1, w_2, w_3$ are used for all output neurons. In matrix form:
+\begin{equation*}
+    \begingroup
+    \setlength{\fboxsep}{2pt}
+    \renewcommand{\arraystretch}{1.2}
+    W = \left[\begin{array}{@{\hspace{4pt}}ccccc@{\hspace{4pt}}}
+        \boxed{w_1} & \boxed{w_2} & \boxed{w_3} & 0 & 0 \\
+        0 & \boxed{w_1} & \boxed{w_2} & \boxed{w_3} & 0 \\
+        0 & 0 & \boxed{w_1} & \boxed{w_2} & \boxed{w_3}
+    \end{array}\right]
+    \endgroup
+\end{equation*}
+Those repeated entries are not independent parameters. There are still only 3 learnable weights. This is \textbf{weight sharing}: \hl{the same filter parameters are reused at every spatial location.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{share-alt} \textbf{Bias sharing}}
+\end{flushleft}
+The same idea applies to the bias. A \textbf{dense layer} generally has \textbf{one bias per output neuron}:
+\begin{equation*}
+    b=
+    \begin{bmatrix}
+    b_1 \\ b_2 \\ b_3 \\ \vdots
+    \end{bmatrix}
+\end{equation*}
+In a \textbf{convolutional layer}, the bias belongs to the \textbf{filter}, not to each spatial output neuron. For filter $l$, the activation at every spatial location is:
+\begin{equation*}
+    a(r, c, l) = \sum_{u, v, k} w_l (u, v, k) x(r + u, c + v, k) + b_l
+\end{equation*}
+The bias $b_l$ is \textbf{used for every spatial location} $(r, c)$ in feature map $l$. In the equivalent flattened representation, the bias vector therefore looks conceptually like:
+\begin{equation*}
+    b = \begin{bmatrix}
+        \underbrace{b_1, b_1, b_1}_{\text{all spatial locations of feature map 1}} & \underbrace{b_2, b_2, b_2}_{\text{all spatial locations of feature map 2}} & \ldots
+    \end{bmatrix}^T
+\end{equation*}
+For this reason, we call it \textbf{block-wise constant} (i.e., constant within each feature map).
+
+\highspace
+Now, we can refine the previously stated idea:
+\begin{equation*}
+    \text{CNN} = \text{structured fully connected layer}
+\end{equation*}
+Where the structure is:
+\begin{equation*}
+    W = \text{sparse} + \text{shared}
+\end{equation*}
+And:
+\begin{equation*}
+    \mathbf{b} = \text{shared within each output channel}
+\end{equation*}
+So if we imagine the enormous $W$ corresponding to convolution:
+\begin{itemize}
+    \item Most entries are \textbf{0} because connections are local;
+    \item The nonzero entries repeatedly contain the \textbf{same filter weights};
+    \item The corresponding biases repeatedly contain the \textbf{same filter bias}.
+\end{itemize}
+
+\highspace
+\begin{takeawaysbox}
+    The core distinction is:
+    \begin{equation*}
+        \text{Fully connected layer}
+    \end{equation*}
+    \begin{itemize}
+        \item Every output sees every input;
+        \item Each connection has its own weight;
+        \item Each output neuron has its own bias;
+        \item $W$ is dense.
+    \end{itemize}
+    Whereas:
+    \begin{equation*}
+        \text{Convolutional layer}
+    \end{equation*}
+    \begin{itemize}
+        \item \textbf{Sparse Connectivity}: Each output sees only a local region;
+        \item \textbf{Weight Sharing}: The same filter is reused at all spatial positions;
+        \item \textbf{Bias Sharing}: One bias is reused over an entire feature map;
+        \item Therefore the number of learnable parameters is dramatically smaller.
+    \end{itemize}
+    In summary, a convolutional layer is equivalent to a fully connected linear layer whose weight matrix is sparse because of local connectivity and contains repeated entries because the same filter is shared across spatial locations. The bias is also shared across all neurons of the same output feature map.
+\end{takeawaysbox}

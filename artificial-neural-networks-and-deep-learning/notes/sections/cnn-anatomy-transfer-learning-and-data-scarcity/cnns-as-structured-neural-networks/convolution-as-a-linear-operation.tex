@@ -1,0 +1,138 @@
+\section{CNN Anatomy, Transfer Learning, and Data Scarcity}\label{sec:cnn-anatomy-transfer-learning-and-data-scarcity}
+
+This section deepens the understanding of CNNs by interpreting convolution through sparse connectivity, weight sharing, and receptive fields. It then covers CNN backpropagation and the practical ingredients that enabled deep CNN training, before addressing data scarcity through data augmentation and transfer learning.
+
+\longline
+
+\subsection{CNNs as Structured Neural Networks}\label{subsec:cnns-as-structured-neural-networks}
+
+\subsubsection{Convolution as a Linear Operation}\label{subsubsec:convolution-as-a-linear-operation}
+
+We already know \textbf{how} a convolutional layer works. The goal here is to look at the same operation from a different perspective: \hl{a convolutional layer is fundamentally a linear layer, just like a fully connected layer.} The important \textbf{difference} between them is \hl{not the mathematical type of operation,} but the \textbf{structure imposed on their weights}.
+
+\highspace
+\textcolor{Green3}{\faIcon{project-diagram} \textbf{Convolution is a linear operation.}} Consider an input activation volume $\mathbf{x}$. For one filter $l$, the activation at spatial position $(r,c)$ is (\autopageref{eq:convolutional-layer}):
+\begin{equation*}
+    a(r,c,l)
+    =
+    \sum_{\substack{u,v \in U \\ k = 1, \ldots, C}}
+    w_{l} (u,v,k)\,
+    x(r+u,c+v,k)
+    +
+    b_{l}
+\end{equation*}
+This is exactly the convolutional operation introduced in the previous section: the filter looks at a \textbf{local spatial region}, spans \textbf{all input channels}, computes a weighted sum, and adds a bias.
+
+\highspace
+For fixed weights, every output activation is therefore just a \textbf{linear combination of input values plus a bias}. This is the same fundamental operation performed by a dense neuron:
+\begin{equation*}
+    a_j = \sum_i W_{ji} x_i + b_j
+\end{equation*}
+So both can ultimately be written as:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+Both convolutional and dense layers can be described as the same linear operator.
+
+\highspace
+\textcolor{Green3}{\faIcon{times} \textbf{But an image is not a vector.}} At first this might look strange. A convolution works on something like a 3D tensor:
+\begin{equation*}
+    X \in \mathbb{R}^{H \times W \times C}
+\end{equation*}
+While the matrix expression:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+Expects a vector input $\mathbf{x}$. The trick is simply to \textbf{flatten the input volume conceptually}:
+\begin{equation*}
+    X \in \mathbb{R}^{H \times W \times C} \longrightarrow \mathbf{x} \in \mathbb{R}^{HWC}
+\end{equation*}
+We can do the same with the output activation volume:
+\begin{equation*}
+    A \in \mathbb{R}^{H' \times W' \times C_{\text{out}}} \longrightarrow \mathbf{a} \in \mathbb{R}^{H'W'C_{\text{out}}}
+\end{equation*}
+Then there must exist some matrix $W$ such that:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+Importantly, \hl{we are not saying that CNN implementations actually need to flatten the image and construct this enormous matrix.} This is a mathematical interpretation that lets us compare convolution with a dense layer.
+
+\highspace
+\begin{examplebox}[: Convolution as a Linear Layer]
+    Suppose for simplicity that we have a 1D input:
+    \begin{equation*}
+        \mathbf{x} = 
+        \begin{bmatrix}
+            x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5
+        \end{bmatrix}
+    \end{equation*}
+    And a convolutional filter of size 3 with weights:
+    \begin{equation*}
+        \mathbf{w} =
+        \begin{bmatrix}
+            w_1 & w_2 & w_3
+        \end{bmatrix}
+    \end{equation*}
+    With stride 1 and no padding, the output of the convolutional layer is:
+    \begin{align*}
+        a_1 &= w_1 x_1 + w_2 x_2 + w_3 x_3 + b \\
+        a_2 &= w_1 x_2 + w_2 x_3 + w_3 x_4 + b \\
+        a_3 &= w_1 x_3 + w_2 x_4 + w_3 x_5 + b
+    \end{align*}
+    We can rewrite all three equations as a single matrix multiplication:
+    \begin{equation*}
+        \begin{bmatrix}
+            a_1 \\ a_2 \\ a_3
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            w_1 & w_2 & w_3 & 0 & 0 \\
+            0 & w_1 & w_2 & w_3 & 0 \\
+            0 & 0 & w_1 & w_2 & w_3
+        \end{bmatrix}
+        \begin{bmatrix}
+            x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5
+        \end{bmatrix}
+        +
+        \begin{bmatrix}
+            b \\ b \\ b
+        \end{bmatrix}
+    \end{equation*}
+    And now it visibly has the familiar form of a linear layer:
+    \begin{equation*}
+        \mathbf{a} = W\mathbf{x} + \mathbf{b}
+    \end{equation*}
+    This simple matrix already hints at what the next section will discuss: $W$ contains many \textbf{zeros}, and the same weights $w_1, w_2, w_3$ appear repeatedly. 
+\end{examplebox}
+
+\newpage
+
+\textcolor{Green3}{\faIcon{balance-scale} \textbf{So what is the difference between a CNN and an MLP?}} If both dense and convolutional layers compute $\mathbf{a} = W\mathbf{x} + \mathbf{b}$, then what makes them different? The answer is that \hl{the difference is in the structure of the weight matrix $W$.}
+\begin{itemize}
+    \item For a \textbf{dense layer}, $W$ is dense: every output neuron can have an independent connection to every input neuron.
+
+
+    \item For a \textbf{convolutional layer}, $W$ has a very particular constrained structure because convolution imposes \textbf{local connectivity} and \textbf{reuse of the same filter at different locations}. In other words, the weight matrix is \textbf{sparse} and \textbf{structured} (as shown in the example above).
+\end{itemize}
+Previously we described convolution operationally:
+\begin{equation*}
+    \text{filter} \to \text{slide over input} \to \text{activation map}
+\end{equation*}
+Now we have a second, equivalent perspective:
+\begin{equation*}
+    \text{convolution} \equiv \text{a specially structured linear layer}
+\end{equation*}
+This is useful because \hl{CNNs are not a completely different mathematical species from ordinary neural networks.} They are neural networks in which \hl{we impose a carefully chosen structure on the connections.} That structure is especially appropriate for images.
+
+\highspace
+\begin{takeawaysbox}
+    Essentially, a convolutional layer is a linear layer with a \textbf{structured weight matrix}:
+    \begin{align*}
+        \text{Dense layer: } & \mathbf{a} = W\mathbf{x} + \mathbf{b} \\
+        \text{Convolutional layer: } & \mathbf{a} = W\mathbf{x} + \mathbf{b}
+    \end{align*}
+    So the difference is not in the type of operation, but in the \textbf{structure of the weights}:
+    \begin{equation*}
+        \text{CNN vs. MLP} \quad \Rightarrow \quad \text{same linear formulation, different structure of } W
+    \end{equation*}
+\end{takeawaysbox}

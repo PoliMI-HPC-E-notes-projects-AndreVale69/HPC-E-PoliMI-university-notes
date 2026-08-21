@@ -20,6 +20,7 @@
     - add `Convolution as a Linear Operation`
     - add `Sparse Connectivity and Weight Sharing`
     - add `Translation Invariance as an Inductive Bias`
+    - add `Convolution-as-Fully Connected Summary`
 
 --------------------
 

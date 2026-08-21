@@ -1,0 +1,67 @@
+\subsubsection{Convolution-as-Fully Connected Summary}\label{sec:convolution-as-fully-connected-summary}
+
+In general, we have seen that \hl{any convolutional layer can be represented by a fully connected layer performing the same computation.} After flattening the input and the output, convolution can still be written as:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+The difference is entirely in the \textbf{structure} of $W$ and $\mathbf{b}$.
+
+\highspace
+\textcolor{Green3}{\faIcon{exclamation-triangle} \textbf{The equivalent weight matrix is very large.}} Suppose the flattened input has $N_{\text{in}}$ values and the flattened output has $N_{\text{out}}$ activations. Then the equivalent weight matrix $W$ has shape:
+\begin{equation*}
+    W \in \mathbb{R}^{N_{\text{out}} \times N_{\text{in}}}
+\end{equation*}
+Exactly as for a dense layer. So, one \textbf{row} corresponds to one output neuron, and one \textbf{column} corresponds to one input neuron. The matrix may therefore be enormous, but unlike the matrix of an ordinary dense layer, \textbf{most of its entries are not independent parameters}:
+\begin{enumerate}
+    \item \important{The matrix is sparse}: Because convolution is a \textbf{local operation}, each output activation depends only on a small region of the input. So most input-output connections do not exist. In the equivalent weight matrix,\footnote{%
+        With equivalent weight matrix, we mean the weight matrix that would be used if we were to implement the convolution as a fully connected layer.%
+    } most entries of $W$ are zero. For example, in a simple 1D convolution:
+    \begin{equation*}
+        W = \begin{bmatrix}
+            w_1 & w_2 & w_3 & 0 & 0 & 0 \\
+            0 & w_1 & w_2 & w_3 & 0 & 0 \\
+            0 & 0 & w_1 & w_2 & w_3 & 0 \\
+            0 & 0 & 0 & w_1 & w_2 & w_3
+        \end{bmatrix}
+    \end{equation*}
+    Each row contains nonzero entries only where the corresponding receptive field lies.
+    The matrix is mostly zero except in the blocks where local connectivity takes place.
+    This is the \textbf{sparse connectivity} discussed on \autopageref{sec:sparse-connectivity-and-weight-sharing}.
+
+
+    \item \important{The nonzero entries are shared}. The nonzero entries are also \textbf{not arbitrary}. The same convolutional filter is reused at every spatial position, therefore the same values appear repeatedly:
+    \begin{equation*}
+        \begingroup
+        \setlength{\fboxsep}{2pt}
+        \renewcommand{\arraystretch}{1.2}
+        W = \left[\begin{array}{@{\hspace{4pt}}ccccc@{\hspace{4pt}}}
+            \boxed{w_1} & \boxed{w_2} & \boxed{w_3} & 0 & 0 \\
+            0 & \boxed{w_1} & \boxed{w_2} & \boxed{w_3} & 0 \\
+            0 & 0 & \boxed{w_1} & \boxed{w_2} & \boxed{w_3} \\[.4em]
+        \end{array}\right]
+        \endgroup
+    \end{equation*}
+    The blocks are essentially \textbf{shifted copies of the same filter parameters}. This is the parameter sharing, or \textbf{weight sharing}, discussed on \autopageref{sec:sparse-connectivity-and-weight-sharing}, precisely on \autopageref{sec:weight-sharing}.
+    
+    
+    \item \important{The bias vector is block-wise constant}. A dense layer normally has one independent bias for every output neuron. A convolution layer instead has one bias per filter $b_{l}$. That same bias is added at every spatial location in output channel $l$:
+    \begin{equation*}
+        a(r, c, l) = \dots + b_l
+    \end{equation*}
+    After flattening the output, the bias vector therefore looks conceptually like:
+    \begin{equation*}
+        \mathbf{b} = \begin{bmatrix}
+            b_1 & b_1 & \cdots & b_1 & b_2 & b_2 & \cdots & b_2 & \cdots
+        \end{bmatrix}^{T}
+    \end{equation*}
+    Hence $\mathbf{b}$ is \textbf{block-wise constant}, because the bias belongs to the \textbf{filter}, not to each spatial output neuron individually.
+\end{enumerate}
+In summary, for a \emph{fully connected layer}, the output is computed as:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+With $W$ that is \textbf{dense} and \textbf{independently parameterized}. For a \emph{convolutional layer}:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+But $W$ is \textbf{sparse} and \textbf{shared} (repeated entries), and $\mathbf{b}$ is \textbf{shared within each output channel} (block-wise constant). So the convolution operation can be understood as a \textbf{constrained fully connected layer}.

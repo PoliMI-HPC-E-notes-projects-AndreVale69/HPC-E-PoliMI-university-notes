@@ -1,0 +1,242 @@
+\subsection{The Receptive Field}\label{sec:the-receptive-field}
+
+The previous section established that convolutional layers are sparsely connected: each output neuron depends only on a local portion of the previous layer.
+
+\highspace
+The idea of \textbf{receptive field} tells us exactly \textbf{which portion of the original input can influence a given neuron}. It is one of the fundamental concepts for understanding deep CNNs.
+
+\longline
+
+\subsubsection{Definition of Receptive Field}\label{sec:definition-of-receptive-field}
+
+In a fully connected layer, every output neuron depends on the entire input. If:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+With $W$ dense, then an output neuron $a_j$ can potentially depend on every component of the input $\mathbf{x}$.
+
+\highspace
+A convolutional layer is \textbf{different}. Because of \textbf{sparse connectivity}, one output activation only depends on a specific local region of the input. This local region is called the \textbf{receptive field} of that output neuron. In other words, the \definition{Receptive Field} of a neuron is the \textbf{region of the input that can affect its value} (i.e, its activation).
+
+\begin{examplebox}[: Receptive Field of a 1D Convolution]
+    Consider a 1D convolution with a kernel of size 3:
+    \begin{align*}
+        a_1 &= w_1 x_1 + w_2 x_2 + w_3 x_3 \\
+        a_2 &= w_1 x_2 + w_2 x_3 + w_3 x_4 \\
+        a_3 &= w_1 x_3 + w_2 x_4 + w_3 x_5
+    \end{align*}
+    What can influence $a_2$? Only $x_2, x_3, x_4$. Therefore the receptive field of $a_2$ is:
+    \begin{equation*}
+        \text{Receptive Field of } a_2 = \left\{x_2, x_3, x_4\right\}
+    \end{equation*}
+    Its size is 3. The other input values cannot influence $a_2$ directly, because they are outside the receptive field. The same reasoning applies to $a_1$ and $a_3$.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Receptive field in a 2D CNN}}
+\end{flushleft}
+Now consider the usual image case. Suppose an input image is processed with a $3 \times 3$ convolutional filter. One activation depends on the $3 \times 3$ patch underneath the filter. Therefore, the relative to the input of that layer:
+\begin{equation*}
+    \text{Receptive Field of a 2D convolutional neuron} = 3 \times 3
+\end{equation*}
+For that activation, \hl{only} the $3 \times 3$ \hl{patch of the input can influence its value.} The other pixels are outside the receptive field and have no effect on that particular activation.
+
+\highspace
+In contrast, in a Multi-Layer Perceptron (MLP), every output neuron depends on the entire input:
+\begin{itemize}
+    \item For an \textbf{MLP}, each output neuron is connected to the entire previous layer, so its \hl{receptive field is the entire input to that layer.}
+    \item For a \textbf{CNN}, each output neuron is connected only to a local neighbourhood of the previous layer, so its \hl{receptive field is a small patch of the input.}
+\end{itemize}
+Thus, with a fully connected mapping, an output unit is influenced by all input units; with convolution, only the inputs inside its local receptive field matter.
+
+\highspace
+\textcolor{Green3}{\faIcon{balance-scale} \textbf{Direct vs. Indirect dependencies.}}
+The dependencies described above are \textbf{direct dependencies}: the output neuron is directly connected to the input neurons in its receptive field. In a multi-layer CNN, an output neuron can also depend on input neurons that are \textbf{indirectly connected} through intermediate layers. Any intermediate activation $a^{(l)}(r,c,k)$ has a receptive field that is the region of the network input whose values can propagate through the preceding layers and affect that activation. Thus, every spatial neuron in every feature map has its own receptive field.
+
+\highspace
+For example, at the \textbf{first convolutional layer}, the receptive field of an output neuron is equal to the kernel size. If the kernel size is $3 \times 3$, then the receptive field is $3 \times 3$. At the \textbf{second convolutional layer}, the receptive field of an output neuron can be larger than the kernel size, because it can depend on a larger patch of the network input through the first layer. We will \hl{discuss this in more detail in the next section.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why receptive field matters}}
+\end{flushleft}
+The \hl{receptive field tells us \textbf{how much context a neuron can use}.} Imagine trying to detect a \emph{small edge}. A tiny receptive filed may be sufficient. But for something more complex, such as a \emph{face}, the network eventually needs activations that depend on progressively larger portions of the image. So \textbf{deep CNNs combine two apparently contradictory ideas}:
+\begin{itemize}
+    \item \hl{Direct connections remain local}, i.e., each neuron only depends on a small patch of the previous layer.
+    \item \hl{Deep neurons indirectly depend on increasingly large regions}, i.e., the receptive field grows with depth, allowing the network to capture global context.
+\end{itemize}
+The deep-learning reference book \cite{Goodfellow-et-al-2016} makes exactly this observation: \hl{\emph{despite sparse direct connections, deeper units can indirectly interact with much or even all of the input image.}}
+
+\highspace
+\begin{takeawaysbox}
+    The definition to remember is:
+    \begin{center}
+        \emph{Receptive Field is the region of the input that can influence a particular activation.}
+    \end{center}
+    Where:
+    \begin{itemize}
+        \item In an \textbf{MLP}: the RF (Receptive Field) is \textbf{effectively global}, because every output neuron is connected to all inputs.
+        \item In a \textbf{CNN}: the RF \textbf{starts local} (equal to the kernel size) because of sparse connectivity, but as layers as stacked, \textbf{deeper neurons} acquire progressively \textbf{larger receptive fields}, even though every individual convolution remains local.
+    \end{itemize}
+    In summary, the receptive field of a CNN neuron is the portion of the network input that can affect that neuron's activation. Unlike fully connected networks, convolutional neurons have local receptive fields because of sparse connectivity. As layers are stacked, deeper neurons indirectly depend on increasingly larger regions of the original input.
+\end{takeawaysbox}
+
+\begin{figure}[htbp]
+\centering
+\tikzsetnextfilename{direct-receptive-field}
+\begin{tikzpicture}[
+    >=Stealth,
+    font=\small,
+    % Node styles
+    node1d/.style={circle, draw=black!60, fill=gray!10, minimum size=0.75cm, inner sep=0pt, font=\footnotesize\bfseries},
+    active1d/.style={circle, draw=blue!85!black, fill=blue!15, line width=1.1pt, minimum size=0.75cm, inner sep=0pt, font=\footnotesize\bfseries, text=blue!90!black},
+    outnode/.style={circle, draw=orange!85!black, fill=orange!20, line width=1.2pt, minimum size=0.8cm, inner sep=0pt, font=\footnotesize\bfseries, text=orange!90!black},
+    header/.style={font=\normalsize\bfseries, align=center},
+    sublabel/.style={font=\footnotesize, text=black!75, align=center},
+    graybox/.style={
+        draw=black!25,
+        fill=gray!4,
+        rounded corners=4pt,
+        inner sep=7pt,
+        text width=7.0cm,
+        font=\footnotesize,
+        align=left
+    }
+]
+
+    % =========================================================================
+    % PANEL A: 1D DIRECT RECEPTIVE FIELD (K = 3)
+    % Shifted to y = 9.8 to provide exact non-overlapping vertical separation
+    % =========================================================================
+    \begin{scope}[shift={(0, 9.8)}]
+        % Centered Titles
+        \node[header, text=blue!90!black] at (3.6, 4.2) {1D Discrete Convolution ($K=3$)};
+        \node[sublabel] at (3.6, 3.7) {Single-layer receptive field of activation $a_2$};
+
+        % 1. Shaded RF Box (Behind nodes)
+        \fill[blue!8, draw=blue!65, dashed, rounded corners=4pt, line width=0.9pt] 
+            (2.1, 1.05) rectangle (5.1, 2.15);
+
+        % 2. Receptive Field Dimension Brace
+        \draw[decorate, decoration={brace, amplitude=4pt}, thick, blue!85!black] 
+            (2.1, 2.35) -- (5.1, 2.35) 
+            node[midway, above=4pt, font=\scriptsize\bfseries, text=blue!90!black] {Receptive Field of $a_2$ (Size = $3$)};
+
+        % 3. Input Layer Label and 1D Nodes
+        \node[font=\footnotesize\bfseries, text=black!70, anchor=east] at (0.9, 1.6) {Input $\mathbf{x}$:};
+        
+        \node[node1d]   (x1) at (1.6, 1.6) {$x_1$};
+        \node[active1d] (x2) at (2.6, 1.6) {$x_2$};
+        \node[active1d] (x3) at (3.6, 1.6) {$x_3$};
+        \node[active1d] (x4) at (4.6, 1.6) {$x_4$};
+        \node[node1d]   (x5) at (5.6, 1.6) {$x_5$};
+
+        % 4. Output Layer Label and Node a_2
+        \node[font=\footnotesize\bfseries, text=black!70, anchor=east] at (0.9, -0.3) {Output $\mathbf{a}$:};
+        \node[outnode] (a2) at (3.6, -0.3) {$a_2$};
+
+        % 5. Active Weight Connections
+        \draw[->, line width=1.1pt, draw=blue!80!black] (x2.south) -- (a2.north west) 
+            node[midway, left=2pt, font=\scriptsize\bfseries] {$w_1$};
+        \draw[->, line width=1.1pt, draw=blue!80!black] (x3.south) -- (a2.north) 
+            node[midway, right=2pt, font=\scriptsize\bfseries] {$w_2$};
+        \draw[->, line width=1.1pt, draw=blue!80!black] (x4.south) -- (a2.north east) 
+            node[midway, right=3pt, font=\scriptsize\bfseries] {$w_3$};
+
+        % Inactive Nodes Indicators
+        \draw[->, line width=0.6pt, draw=black!25, dashed] (x1.south) -- (a2.west);
+        \draw[->, line width=0.6pt, draw=black!25, dashed] (x5.south) -- (a2.east);
+        \node[font=\tiny, text=black!45] at (2.1, 0.3) {No link};
+        \node[font=\tiny, text=black!45] at (5.1, 0.3) {No link};
+
+        % Itemized Math Box Below Diagram
+        \node[graybox, anchor=north] at (3.6, -1.05) {
+            \centering \textbf{Activation Formula:}\quad $\mathbf{a_2 = w_1 x_2 + w_2 x_3 + w_3 x_4 + b}$\par\vspace{5pt}
+            \raggedright
+            \begin{tabular}{@{\raisebox{0.5pt}{\tiny$\bullet$}\ }p{6.4cm}}
+            \textbf{Direct Influence:} $\{x_2, x_3, x_4\}$ connect directly to $a_2$.\\[3pt]
+            \textbf{Receptive Field:} $\text{RF}(a_2) = \{x_2, x_3, x_4\}$ (Size = $3$).\\[3pt]
+            \textbf{Sparse Connectivity:} $x_1$ and $x_5$ have zero influence on $a_2$.
+            \end{tabular}
+        };
+    \end{scope}
+
+    % =========================================================================
+    % HORIZONTAL DIVIDER (Cleanly positioned midway at y = 5.2)
+    % =========================================================================
+    % \draw[black!20, line width=0.8pt, dashed] (0.2, 5.2) -- (7.0, 5.2);
+
+    % =========================================================================
+    % PANEL B: 2D DIRECT RECEPTIVE FIELD (3x3 KERNEL)
+    % =========================================================================
+    \begin{scope}[shift={(0, 0)}]
+        % Centered Titles
+        \node[header, text=blue!90!black] at (3.6, 4.3) {2D Convolution on Image Grid ($3\times 3$)};
+        \node[sublabel] at (3.6, 3.8) {Spatial footprint of activation $a(r,c)$ relative to input};
+
+        % Input Grid 5x5 (Cell size: 0.55cm, total 2.75cm x 2.75cm)
+        \begin{scope}[shift={(0.4, 0.0)}]
+            % Shaded Receptive Field Patch
+            \fill[blue!20] (0.55, 0.55) rectangle (2.20, 2.20);
+
+            % Full Grid Lines
+            \draw[step=0.55cm, black!25] (0, 0) grid (2.75, 2.75);
+            \draw[line width=1.1pt, black!70] (0, 0) rectangle (2.75, 2.75);
+
+            % Receptive Field Border Highlight
+            \draw[step=0.55cm, blue!60!black] (0.55, 0.55) grid (2.20, 2.20);
+            \draw[line width=1.2pt, blue!85!black] (0.55, 0.55) rectangle (2.20, 2.20);
+
+            % Bottom Image Dimension Label
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!60] 
+                (0, -0.15) -- (2.75, -0.15) node[midway, below=4pt, font=\scriptsize] {Input Image ($5\times 5$)};
+
+            % Top Receptive Field Brace
+            \draw[decorate, decoration={brace, amplitude=3pt}, thick, blue!85!black] 
+                (0.55, 2.90) -- (2.20, 2.90) node[midway, above=3pt, font=\scriptsize\bfseries, text=blue!90!black] {$\text{RF} = 3\times 3$};
+        \end{scope}
+
+        % Conv Operation Label
+        \node[font=\footnotesize\bfseries, text=black!75, align=center] at (3.85, 1.4) {$\xrightarrow{\text{Conv } 3\times 3}$};
+
+        % Output Feature Map 3x3 (Cell size: 0.55cm, total 1.65cm x 1.65cm)
+        \begin{scope}[shift={(4.6, 0.55)}]
+            % Highlighted single activation cell a(r,c)
+            \fill[orange!25] (0.55, 0.55) rectangle (1.10, 1.10);
+
+            % Grid Lines
+            \draw[step=0.55cm, black!30] (0, 0) grid (1.65, 1.65);
+            \draw[line width=1.1pt, black!70] (0, 0) rectangle (1.65, 1.65);
+
+            % Cell Border & Text
+            \draw[line width=1.2pt, orange!85!black] (0.55, 0.55) rectangle (1.10, 1.10);
+            \node[font=\tiny\bfseries, text=orange!95!black] at (0.825, 0.825) {$a_{r,c}$};
+
+            % Output Dimension Label
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!60] 
+                (0, -0.15) -- (1.65, -0.15) node[midway, below=4pt, font=\scriptsize] {Feature Map ($3\times 3$)};
+        \end{scope}
+
+        % Projection Rays (Connecting 3x3 patch corners to output cell corners)
+        \draw[line width=0.8pt, draw=orange!80!black, dashed] (0.95, 2.20) -- (5.15, 1.65); % TL
+        \draw[line width=0.8pt, draw=orange!80!black, dashed] (2.60, 2.20) -- (5.70, 1.65); % TR
+        \draw[line width=0.8pt, draw=orange!80!black, dashed] (0.95, 0.55) -- (5.15, 1.10); % BL
+        \draw[line width=0.8pt, draw=orange!80!black, dashed] (2.60, 0.55) -- (5.70, 1.10); % BR
+
+        % Itemized Math Box Below Diagram
+        \node[graybox, anchor=north] at (3.6, -0.95) {
+            \centering \textbf{2D Spatial Activation:}\quad $\mathbf{a(r,c) = \sum_{u,v} w(u,v) \cdot x(r+u, c+v)}$\par\vspace{5pt}
+            \raggedright
+            \begin{tabular}{@{\raisebox{0.5pt}{\tiny$\bullet$}\ }p{6.4cm}}
+            \textbf{Single-Layer Rule:} $\text{RF} = K \times K = 3 \times 3$.\\[3pt]
+            \textbf{Localized Dependency:} Only the highlighted $3\times 3$ patch affects $a(r,c)$.\\[3pt]
+            \textbf{Kernel Equivalence:} Kernel size matches the direct receptive field at Layer 1.
+            \end{tabular}
+        };
+    \end{scope}
+
+\end{tikzpicture}
+\caption{\textbf{Direct receptive field of a convolutional activation.} A convolutional neuron depends only on a local region of its input due to sparse connectivity. In the 1D example, the activation $a_2$ is directly influenced only by $\{x_2,x_3,x_4\}$; analogously, in the 2D case, an activation $a(r,c)$ produced by a $3\times3$ convolution depends directly only on the corresponding $3\times3$ input patch. Thus, for the first convolutional layer, the spatial receptive field coincides with the kernel size.}
+\label{fig:direct-receptive-field}
+\end{figure}

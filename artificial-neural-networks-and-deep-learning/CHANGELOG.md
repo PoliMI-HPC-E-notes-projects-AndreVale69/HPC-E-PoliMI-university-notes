@@ -21,6 +21,8 @@
     - add `Sparse Connectivity and Weight Sharing`
     - add `Translation Invariance as an Inductive Bias`
     - add `Convolution-as-Fully Connected Summary`
+  - add `The Receptive Field`
+    - add `Definition of Receptive Field`
 
 --------------------
 

@@ -23,6 +23,7 @@
     - add `Convolution-as-Fully Connected Summary`
   - add `The Receptive Field`
     - add `Definition of Receptive Field`
+    - add `Receptive Field Growth with Depth`
 
 --------------------
 

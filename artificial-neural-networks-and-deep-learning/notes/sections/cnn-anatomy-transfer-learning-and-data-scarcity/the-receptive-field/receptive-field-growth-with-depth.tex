@@ -1,0 +1,235 @@
+\subsubsection{Receptive Field Growth with Depth}\label{sec:receptive-field-growth-with-depth}
+
+In the previous section, we anticipated that \hl{stacking convolutional layers increases the Receptive Field (RF)} of deeper neurons even when every layer uses only small kernels. This increase is also observed when convolutional layers are placed one after the other without pooling.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why deeper neurons see larger regions}}
+\end{flushleft}
+Consider two consecutive $3\times3$ convolutional layers. A neuron in the first convolution depends on a $3 \times 3$ region of the input. Now consider a neuron in the second convolution. It depends on a $3 \times 3$ region of the output of the \textbf{first feature map}. But each of those first-layer activations already depends on its own $3\times3$ patch of the original input. So the second-layer neuron indirectly depends on a larger region of the original image. For stride $1$, the second-layer neuron depends on a $5\times5$ region of the input (see \autoref{fig:receptive-field-growth} for a visual explanation). This is the \textbf{Receptive Field (RF) growth with depth}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does it become $5 \times 5$?}} Take the 1D case first, because it is easier to visualize. Imagine the 1D input:
+\begin{equation*}
+    x_1, x_2, x_3, x_4, x_5
+\end{equation*}
+And a convolutional kernel of size $3$. The first layer contains, among others, the following neurons:
+\begin{align*}
+    h_1 &= f(x_1, x_2, x_3) \\
+    h_2 &= f(x_2, x_3, x_4) \\
+    h_3 &= f(x_3, x_4, x_5)
+\end{align*}
+Where $f$ is the activation function, in this case, the convolution operation. Each $h_i$ individually sees \textbf{3 input positions}. Therefore:
+\begin{equation*}
+    \mathrm{RF}(h_1) = \mathrm{RF}(h_2) = \mathrm{RF}(h_3) = 3
+\end{equation*}
+Now we \textbf{add the second convolutional layer}. Suppose the second convolution also has kernel size $3$. One neuron $y$ in layer $2$ looks at three neurons in layer $1$:
+\begin{equation*}
+    y = f(h_1, h_2, h_3)
+\end{equation*}
+So \textbf{directly}, $y$ has only three inputs: $h_1, h_2, h_3$. But Receptive Field is measured \textbf{with respect to the original input}, not the immediately preceding layer. So expand what $h_1, h_2, h_3$ themselves depend on:
+\begin{align*}
+    h_1 &\leftarrow \left\{x_1, x_2, x_3\right\} \\
+    h_2 &\leftarrow \left\{x_2, x_3, x_4\right\} \\
+    h_3 &\leftarrow \left\{x_3, x_4, x_5\right\}
+\end{align*}
+Now take their \textbf{union}:
+\begin{equation*}
+    \mathrm{RF}(y) = \left\{x_1, x_2, x_3\right\} \cup \left\{x_2, x_3, x_4\right\} \cup \left\{x_3, x_4, x_5\right\} = \left\{x_1, x_2, x_3, x_4, x_5\right\} = 5
+\end{equation*}
+Even though the second convolution itself still has a kernel of size $3$, the Receptive Field of its neurons has grown to $5$ because they depend on a larger region of the original input.
+
+\highspace
+Visually, on \autoref{fig:receptive-field-growth}, we can see this effect.
+\begin{itemize}
+    \item The red $h_1^{(1)}$ neuron depends on the first three input values $x_1, x_2, x_3$.
+    \item The blue $h_2^{(1)}$ neuron depends on the middle three input values $x_2, x_3, x_4$.
+    \item The orange $h_3^{(1)}$ neuron depends on the last three input values $x_3, x_4, x_5$.
+\end{itemize}
+The top neuron $y^{(2)}$ in the second layer depends on \textbf{all three} of these first-layer neurons, and therefore indirectly depends on all five input values $x_1, x_2, x_3, x_4,\break x_5$. For example, changing $x_1$ (the leftmost input) could change $h_1^{(1)}$, which could change $y^{(2)}$.
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{receptive-field-growth}
+    \begin{tikzpicture}[
+            >=Stealth,
+            font=\small,
+            % Node Styles
+            inputnode/.style={circle, draw=black!75, fill=#1, line width=1.1pt, minimum size=0.85cm, inner sep=0pt, font=\footnotesize\bfseries},
+            midnode/.style={circle, draw=#1!80!black, fill=#1!20, line width=1.2pt, minimum size=0.88cm, inner sep=0pt, font=\footnotesize\bfseries, text=#1!95!black},
+            outnode/.style={circle, draw=purple!85!black, fill=purple!20, line width=1.3pt, minimum size=0.95cm, inner sep=0pt, font=\footnotesize\bfseries, text=purple!95!black},
+            tag/.style={font=\footnotesize\bfseries, text=black!80, anchor=east}
+        ]
+
+        % =========================================================================
+        % 0. BACKGROUND CONES & CONTAINERS
+        % =========================================================================
+        \begin{scope}[on background layer]
+            % Layer 2 -> Layer 1 Cone
+            \fill[purple!10, rounded corners=4pt] (4.0, 6.3) -- (1.9, 3.7) -- (6.1, 3.7) -- cycle;
+
+            % Layer 1 -> Input Cones
+            \fill[red!12, rounded corners=3pt]    (2.4, 3.7) -- (0.8, 1.4) -- (4.0, 1.4) -- cycle;
+            \fill[teal!14, rounded corners=3pt]   (4.0, 3.7) -- (2.4, 1.4) -- (5.6, 1.4) -- cycle;
+            \fill[orange!12, rounded corners=3pt] (5.6, 3.7) -- (4.0, 1.4) -- (7.2, 1.4) -- cycle;
+
+            % Layer 1 Grouping Box
+            \draw[draw=purple!60!black, fill=purple!3, dashed, line width=0.85pt, rounded corners=5pt]
+            (1.6, 3.1) rectangle (6.4, 4.35);
+        \end{scope}
+
+        % =========================================================================
+        % 1. TOP LAYER: LAYER 2 NEURON (Output)
+        % =========================================================================
+        \node[tag] at (-0.2, 6.3) {Layer $2$ ($\text{Conv}_2$):};
+        \node[outnode] (y2) at (4.0, 6.3) {$y^{(2)}$};
+
+        % Connections: Layer 1 -> Layer 2
+        \draw[->, line width=1.2pt, draw=purple!85!black] (2.4, 4.14) -- (y2.south west);
+        \draw[->, line width=1.2pt, draw=purple!85!black] (4.0, 4.14) -- (y2.south);
+        \draw[->, line width=1.2pt, draw=purple!85!black] (5.6, 4.14) -- (y2.south east);
+
+        % =========================================================================
+        % 2. MIDDLE LAYER: LAYER 1 FEATURE MAP
+        % =========================================================================
+        \node[tag] at (-0.2, 3.7) {Layer $1$ ($\text{Conv}_1$):};
+
+        % Kernel Badge: Anchored safely to the top-left margin (Zero collision with any arrow)
+        \node[draw=purple!70!black, fill=white, rounded corners=3pt, line width=0.7pt,
+        font=\scriptsize\bfseries, text=purple!90!black, anchor=south east, inner sep=2.5pt]
+        at (1.5, 4.4) {Kernel Window ($K_2 = 3$)};
+
+        \node[midnode=red]    (h1) at (2.4, 3.7) {$h_1^{(1)}$};
+        \node[midnode=teal]   (h2) at (4.0, 3.7) {$h_2^{(1)}$};
+        \node[midnode=orange] (h3) at (5.6, 3.7) {$h_3^{(1)}$};
+
+        % =========================================================================
+        % 3. CONNECTIONS: INPUT -> LAYER 1
+        % =========================================================================
+        % Left filter h1: {x1, x2, x3}
+        \draw[->, line width=0.8pt, draw=red!75!black, dashed] (0.8, 1.85) -- (h1.south west);
+        \draw[->, line width=0.8pt, draw=red!75!black, dashed] (2.4, 1.85) -- (h1.south);
+        \draw[->, line width=0.8pt, draw=red!75!black, dashed] (4.0, 1.85) -- (h1.south east);
+
+        % Center filter h2: {x2, x3, x4}
+        \draw[->, line width=1.0pt, draw=teal!85!black] (2.4, 1.85) -- (h2.south west);
+        \draw[->, line width=1.0pt, draw=teal!85!black] (4.0, 1.85) -- (h2.south);
+        \draw[->, line width=1.0pt, draw=teal!85!black] (5.6, 1.85) -- (h2.south east);
+
+        % Right filter h3: {x3, x4, x5}
+        \draw[->, line width=0.8pt, draw=orange!85!black, dotted] (4.0, 1.85) -- (h3.south west);
+        \draw[->, line width=0.8pt, draw=orange!85!black, dotted] (5.6, 1.85) -- (h3.south);
+        \draw[->, line width=0.8pt, draw=orange!85!black, dotted] (7.2, 1.85) -- (h3.south east);
+
+        % =========================================================================
+        % 4. BOTTOM LAYER: INPUT ARRAY & TIERED RECEPTIVE FIELD BREAKDOWN
+        % =========================================================================
+        \node[tag] at (-0.2, 1.4) {Input Signal $\mathbf{x}$:};
+
+        \node[inputnode=red!20, text=red!90!black, draw=red!80!black]       (x1) at (0.8, 1.4) {$x_1$};
+        \node[inputnode=teal!15, text=teal!90!black, draw=teal!75!black]     (x2) at (2.4, 1.4) {$x_2$};
+        \node[inputnode=teal!20, text=teal!90!black, draw=teal!80!black]     (x3) at (4.0, 1.4) {$x_3$};
+        \node[inputnode=teal!15, text=teal!90!black, draw=teal!75!black]     (x4) at (5.6, 1.4) {$x_4$};
+        \node[inputnode=orange!25, text=orange!95!black, draw=orange!85!black] (x5) at (7.2, 1.4) {$x_5$};
+
+        % --- TIER 1: Individual Component Brackets ---
+        \draw[decorate, decoration={brace, amplitude=3pt, mirror}, thick, red!85!black]
+        (0.45, 0.75) -- (1.15, 0.75)
+        node[midway, below=3pt, font=\scriptsize\bfseries, text=red!90!black] {$+1$ (via $h_1$)};
+
+        \draw[decorate, decoration={brace, amplitude=3.5pt, mirror}, thick, teal!85!black]
+        (2.0, 0.75) -- (6.0, 0.75)
+        node[midway, below=3pt, font=\scriptsize\bfseries, text=teal!90!black] {Base RF ($K_1 = 3$)};
+
+        \draw[decorate, decoration={brace, amplitude=3pt, mirror}, thick, orange!85!black]
+        (6.85, 0.75) -- (7.55, 0.75)
+        node[midway, below=3pt, font=\scriptsize\bfseries, text=orange!90!black] {$+1$ (via $h_3$)};
+
+        % --- TIER 2: Cumulative Receptive Field Bracket ---
+        \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, blue!85!black]
+        (0.3, -0.1) -- (7.7, -0.1)
+        node[midway, below=5pt, font=\scriptsize\bfseries, text=blue!90!black] {Cumulative Receptive Field on Input $\mathbf{x}$ (Span = $5$ elements)};
+
+    \end{tikzpicture}
+    \caption{\textbf{Receptive Field (RF) growth through stacked convolutions.} A second-layer neuron $y^{(2)}$ directly processes three adjacent Layer-1 activations using a kernel of size $K_2=3$. Each of these activations already depends on three neighboring input values. Because their receptive fields overlap, their union spans $x_1,\ldots,x_5$, so the receptive field of $y^{(2)}$ with respect to the original input has size $5$, even though its direct kernel size remains $3$.}
+    \label{fig:receptive-field-growth}
+\end{figure}
+
+\noindent
+\textcolor{Green3}{\faIcon{book} \textbf{The Receptive Field (RF) Formula.}} The receptive field (RF) can be automatically calculated for each layer using a simple rule. Assuming a \textbf{kernel size} of $K$ and a \textbf{stride} of $S = 1$, the \textbf{general recursive rule} is:
+\begin{equation}
+    R_{l} = R_{l-1} + \left(K_{l} - 1\right)
+\end{equation}
+Where $R_{l}$ is the \hl{receptive field after layer $l$}, and \hl{$K_{l}$ is the kernel size of that layer.}
+
+\highspace
+This formula makes the difference between the \textbf{kernel size} and the \textbf{receptive field} more explicit. A neuron may belong to a layer whose filter size is still only $3\times3$, but its receptive field relative to the original input may already be much larger, e.g. $13 \times 13$. So the \hl{kernel size tells us the local operation of one layer}, whereas the \hl{receptive field tells us how much of the original input can influence a deeper neuron.} They are equal only for the first convolutional layer.
+
+\highspace
+\begin{examplebox}[: Receptive Field Growth with Depth]
+    Start from the input: $R_0=1$.
+    If \textbf{every} convolution is $3\times3$, then $K_l=3$, so every new layer adds:
+    \begin{equation*}
+        K-1=3-1=2
+    \end{equation*}
+    Therefore:
+    \begin{equation*}
+        \begin{aligned}
+            R_0 &= 1\\
+            R_1 &= 1+2=3\\
+            R_2 &= 3+2=5\\
+            R_3 &= 5+2=7\\
+            R_4 &= 7+2=9
+        \end{aligned}
+    \end{equation*}
+    After $L$ such layers, we've added $2$ exactly $L$ times:
+    \begin{equation*}
+        R_L=1+2L=2L+1
+    \end{equation*}
+    So, we can simplify:
+    \begin{equation}\label{eq:receptive-field-with-constant-kernel-3}
+        R_l=R_{l-1}+(K_l-1)
+        \quad\xrightarrow[\text{all }K_l=3]{}
+        \quad
+        R_L=2L+1
+    \end{equation}
+    However, the recursive formula:
+    \begin{equation*}
+        R_l=R_{l-1}+(K_l-1)
+    \end{equation*}
+    Is more useful because the \textbf{kernels can differ}. For example:
+    \begin{equation*}
+        K_1=3,\quad K_2=5,\quad K_3=3
+    \end{equation*}
+    Gives:
+    \begin{equation*}
+        1\xrightarrow{3}3\xrightarrow{5}7\xrightarrow{3}9
+    \end{equation*}
+    \hl{The shortcut:}
+    \begin{equation*}
+        R_L=2L+1
+    \end{equation*}
+    \hl{Only works when all $L$ convolutions are $3\times3$, stride 1.}
+\end{examplebox}
+
+\newpage
+
+\begin{takeawaysbox}
+    For stacked stride-1 convolutions, the receptive field is calculated recursively as:
+    \begin{equation*}
+        R_l=R_{l-1}+(K_l-1)
+    \end{equation*}
+    And for repeated $3\times3$ convolutions, a common shortcut is:
+    \begin{equation*}
+        R_L=2L+1
+    \end{equation*}
+    Therefore:
+    \begin{equation*}
+        \text{6 stacked } 3\times3 \text{ convolutions} \implies 13 \times 13 \text{ receptive field}
+    \end{equation*}
+    The architecture principle is that:
+    \begin{equation*}
+        \text{small local convolutions} + \text{depth} \implies \text{large contextual receptive field}
+    \end{equation*}
+    And, importantly, \hl{max pooling is not necessary for Receptive Field growth.}
+\end{takeawaysbox}

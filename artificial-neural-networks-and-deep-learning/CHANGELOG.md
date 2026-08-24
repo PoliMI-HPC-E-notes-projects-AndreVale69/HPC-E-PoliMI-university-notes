@@ -24,6 +24,7 @@
   - add `The Receptive Field`
     - add `Definition of Receptive Field`
     - add `Receptive Field Growth with Depth`
+    - add `Effect of Pooling and Stride`
 
 --------------------
 

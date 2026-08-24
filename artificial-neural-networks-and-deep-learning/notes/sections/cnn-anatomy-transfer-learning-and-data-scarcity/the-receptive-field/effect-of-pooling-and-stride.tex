@@ -1,0 +1,321 @@
+\subsubsection{Effect of Pooling and Stride}\label{sec:effect-of-pooling-and-stride}
+
+In the previous section we considered the simplest case of a convolutional network:
+\begin{equation*}
+    \text{Conv } 3 \times 3, \quad \text{stride } = 1
+\end{equation*}
+There, every additional convolution enlarged the Receptive Field (RF) by exactly 2 pixels per dimension:
+\begin{equation*}
+    1 \to 3 \to 5 \to 7 \to \dots
+\end{equation*}
+However, in practice, convolutional networks often use pooling layers and/or convolutions with stride greater than 1. And we will see that these operations can significantly increase the growth of the RF. In particular, \hl{\textbf{max pooling} and \textbf{stride} greater than 1 increase the spacing between neighbouring activations relative to the original image.} As a consequence, \hl{subsequent kernels cover much larger regions of the original input.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does pooling change Receptive Field (RF) growth?}}
+\end{flushleft}
+Consider a standard $2 \times 2$ max pooling layer (\autopageref{sec:max-pooling}) with stride $2$. It does two things simultaneously:
+\begin{enumerate}
+    \item Each output depends on a $2 \times 2$ region of the previous layer;
+    \item The spatial resolution of the output is halved.
+\end{enumerate}
+The second point is particularly important: \hl{after pooling, two adjacent activations no longer correspond to adjacent locations in the original input.} Instead, they are now separated by a distance of 2 pixels in the original input.
+
+\highspace
+Therefore, when we later apply a $3 \times 3$ convolution, moving one position inside that $3 \times 3$ kernel corresponds to moving \textbf{two pixels in the original input}, rather than one. This means that the RF formula \textbf{must be modified} to account for the pooling or stride.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{band-aid} \textbf{How to modify the RF formula for pooling and stride?}}
+\end{flushleft}
+To extend the RF \autoref{eq:receptive-field-formula-no-pooling-stride-1} (\autopageref{eq:receptive-field-formula-no-pooling-stride-1}) to the \textbf{general case} of pooling and stride, we need to keep track of two quantities:
+\begin{itemize}
+    \item $R_{l}$: the \hl{Receptive Field size} at layer $l$;
+    \item $J_{l}$: the \textbf{jump} (sometimes called \textbf{effective stride}), that is the \hl{distance} (in original-input pixels) \hl{between two adjacent activations} at layer $l$.
+\end{itemize}
+Initially, the first layer has a receptive field of size $1$, because each input pixel corresponds to itself, and a jump of size $1$, because adjacent pixels are separated by a distance of $1$:
+\begin{equation*}
+    R_0 = 1, \quad J_0 = 1
+\end{equation*}
+Then, for a layer with kernel size $K_l$ and stride $S_l$, the receptive field is updated as follows:
+\begin{equation}\label{eq:receptive-field-formula-general}
+    R_{l} = R_{l-1} + \left(K_{l} - 1\right) \cdot J_{l-1}
+\end{equation}
+And the jump is updated as follows:
+\begin{equation}\label{eq:jump-formula-general}
+    J_{l} = J_{l-1} \cdot S_{l}
+\end{equation}
+
+\highspace
+\begin{examplebox}[: Convolution without downsampling ($\text{stride } = 1$)]
+    For a $3 \times 3$ convolution with stride $1$:
+    \begin{equation*}
+        K = 3, \quad S = 1
+    \end{equation*}
+    Initially, we have:
+    \begin{equation*}
+        R_0 = 1, \quad J_0 = 1
+    \end{equation*}
+    After the first convolution, we have:
+    \begin{equation*}
+        R_1 = 1 + (3 - 1) \cdot 1 = 3, \quad J_1 = 1 \cdot 1 = 1
+    \end{equation*}
+    Because there was \textbf{no downsampling}, neighbouring activations are still one input pixel apart. After the second convolution, we have:
+    \begin{equation*}
+        R_2 = 3 + (3 - 1) \cdot 1 = 5, \quad J_2 = 1 \cdot 1 = 1
+    \end{equation*}
+    Again, neighbouring activations are still one input pixel apart. This recovers the previous formula for the case of convolution without downsampling (\autopageref{eq:receptive-field-formula-no-pooling-stride-1}).
+\end{examplebox}
+
+\highspace
+\begin{examplebox}[: Convolution with downsampling ($\text{stride } = 2$)]
+    Suppose instead we have:
+    \begin{equation*}
+        \text{Conv } 3 \times 3 \to \text{MaxPool } 2 \times 2, \quad S = 2
+    \end{equation*}
+    After the first convolution, we have:
+    \begin{equation*}
+        R_1 = 1 + (3 - 1) \cdot 1 = 3, \quad J_1 = 1 \cdot 1 = 1
+    \end{equation*}
+    As before, neighbouring activations are still one input pixel apart. After the max pooling layer, we have:
+    \begin{equation*}
+        R_2 = 3 + (2 - 1) \cdot 1 = 4, \quad J_2 = 1 \cdot 2 = 2
+    \end{equation*}
+    Now neighbouring activations are \textbf{two input pixels apart}, because of the downsampling. The Receptive Field (RF) itself increased from $3$ to $4$, but the jump increased from $1$ to $2$. Now adjacent neurons correspond to positions separated by $2$ pixels in the original input.
+
+    \highspace
+    \textcolor{DarkOrange3}{\faIcon{exclamation-triangle} \textbf{What happens to the next convolution?}} If add another $3 \times 3$ convolution, its Receptive Field (RF) growth is no longer merely:
+    \begin{equation*}
+        \text{\textcolor{Red2}{\faIcon{times}}} \quad R_3 = 4 + (3 - 1) \cdot 1 = 6
+    \end{equation*}
+    Because the jump is now $2$, each step of its kernel represents a movement of $2$ pixels in the original input. Therefore, the Receptive Field (RF) growth is:
+    \begin{equation*}
+        R_{3} = 4 + (3 - 1) \cdot 2 = 8
+    \end{equation*}
+    So after just one convolution after the max pooling layer, the Receptive Field (RF) has already grown to $8$, which is \textbf{larger than the $5$ we would have obtained without pooling}.
+\end{examplebox}
+
+\highspace
+From the two examples above, we can see that \hl{pooling increase the jump $J$, which in turn increases the growth of the Receptive Field (RF) in subsequent layers.} In other words, pooling allows deeper neurons to depend on larger regions of the original input.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{And what about Stride?}}
+\end{flushleft}
+The \textbf{same reasoning} applies to convolutions with stride greater than $1$. In general, \textbf{max pooling}, \textbf{convolutions}, and \textbf{stride} operations all increase the jump $J$ when they have a \hl{value greater than $1$}. For example, a convolution with a kernel size of $K = 3$ and a stride of $S = 2$, simultaneously:
+\begin{itemize}
+    \item Performs feature extraction;
+    \item Downsamples the feature map;
+    \item Increases the jump $J$ by a factor of $2$: $J_{l} = J_{l-1} \cdot 2$.
+\end{itemize}
+Therefore subsequent convolutions again experience faster Receptive Field (RF) growth. So in general:
+\begin{equation*}
+    \text{downsampling} \Rightarrow \text{larger effective stride} \Rightarrow \text{faster Receptive Field (RF) growth}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why is downsampling useful?}}
+\end{flushleft}
+Downsampling gives a CNN an \textbf{efficient way} to progressively move from \textbf{local details} toward \textbf{larger context}.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{layer-group}}] \textbf{Early layers} may see \emph{small edges} and \emph{textures},
+    \item[\textcolor{Green3}{\faIcon{cubes}}] While \textbf{deeper layers} can combine information over \emph{larger shapes} and \emph{structures}.
+\end{itemize}
+Pooling/downsampling \hl{allows that Receptive Field (RF) to grow much faster} than stacking stride-1 convolutions alone.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle}} However, there is a \textbf{trade-off}:
+\begin{equation*}
+    \text{larger Receptive Field (RF)} \iff \text{lower spatial resolution}
+\end{equation*}
+After stride $2$, the feature map has fewer spatial positions (i.e., lower resolution), and therefore the \hl{network has less information about the exact location of features.} This will lead directly into the next section, where we will discuss what happens to CNN representations as we move deeper into the network.
+
+\highspace
+\begin{takeawaysbox}
+    For the \textbf{simple no-downsampling case}:
+    \begin{equation*}
+        R_{l} = R_{l-1} + (K_{l} - 1)
+    \end{equation*}
+    Works because the jump $J$ is always $1$. But for the \textbf{general case} of pooling and stride, we need to keep track of the jump $J$:
+    \begin{equation*}
+        R_{l} = R_{l-1} + (K_{l} - 1) \cdot J_{l-1}, \quad J_{l} = J_{l-1} \cdot S_{l}
+    \end{equation*}
+    From a conceptual point of view, the chain of reasoning is:
+    \begin{enumerate}
+        \item Stride $> 1$ or pooling;
+        \item Spatial downsampling;
+        \item Larger spacing between neighbouring activations in input coordinates;
+        \item Subsequent kernels cover larger portions of the original input;
+        \item Receptive Field (RF) grows faster.
+    \end{enumerate}
+    So convolution \textbf{alone} can increase the receptive field, as we saw previously, but pooling or other stride $> 1$ operations make the growth substantially faster.
+
+    \highspace
+    In summary, pooling and stride greater than one increase the effective spacing between neighbouring activations relative to the original input. Consequently, subsequent convolutional kernels cover increasingly larger input regions, causing the receptive field to grow faster.
+\end{takeawaysbox}
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{effect-of-pooling-and-stride}
+    \begin{tikzpicture}[
+            >=Stealth,
+            font=\small,
+            % Node Styles
+            inputnode/.style={circle, draw=black!75, fill=blue!12, line width=1.0pt, minimum size=0.50cm, inner sep=0pt, font=\scriptsize\bfseries, text=blue!90!black},
+            convnode/.style={circle, draw=teal!80!black, fill=teal!15, line width=1.0pt, minimum size=0.50cm, inner sep=0pt, font=\scriptsize\bfseries, text=teal!90!black},
+            poolnode/.style={circle, draw=orange!85!black, fill=orange!20, line width=1.1pt, minimum size=0.54cm, inner sep=0pt, font=\scriptsize\bfseries, text=orange!95!black},
+            outnode/.style={circle, draw=purple!85!black, fill=purple!20, line width=1.2pt, minimum size=0.62cm, inner sep=0pt, font=\scriptsize\bfseries, text=purple!95!black},
+            tag/.style={font=\footnotesize\bfseries, text=black!80, anchor=east},
+            header/.style={font=\small\bfseries, text=blue!90!black, align=center},
+            % Compact 2-Line Zero-Collision Badge
+            jumpbadge/.style={
+                fill=white,
+                rounded corners=2pt,
+                line width=0.45pt,
+                inner xsep=2.0pt,
+                inner ysep=1.2pt,
+                align=center
+            }
+        ]
+
+        % =========================================================================
+        % SECTION 1: CONVOLUTION WITHOUT DOWNSAMPLING (S = 1, J = 1)
+        % Center axis at x = 4.50
+        % =========================================================================
+        \begin{scope}[shift={(0, 7.0)}]
+            % Header Title
+            \node[header] at (4.5, 4.05) {Stacking Convolutions ($S=1,\ J=1$)};
+
+            % Background Cones
+            \begin{scope}[on background layer]
+                \fill[purple!10, rounded corners=3pt] (4.5, 3.15) -- (2.85, 1.50) -- (6.15, 1.50) -- cycle;
+                \fill[blue!8, rounded corners=3pt]   (2.85, 1.50) -- (6.15, 1.50) -- (7.55, 0.0) -- (1.45, 0.0) -- cycle;
+            \end{scope}
+
+            % Layer 2: Output
+            \node[tag] at (0.2, 3.15) {Layer $2$ ($\text{Conv}_2$):};
+            \node[outnode] (yA) at (4.5, 3.15) {$y$};
+
+            % Layer 1: Conv 1 (J = 1)
+            \node[tag] at (0.2, 1.50) {Layer $1$ ($\text{Conv}_1$):};
+            \node[convnode] (h1A) at (3.10, 1.50) {$h_1$};
+            \node[convnode] (h2A) at (4.50, 1.50) {$h_2$};
+            \node[convnode] (h3A) at (5.90, 1.50) {$h_3$};
+
+            % Layer 0: Input Signal (5 pixels: x1 to x5)
+            \node[tag] at (0.2, 0.0) {Input $\mathbf{x}$ ($L_0$):};
+            \node[inputnode] (x1A) at (1.70, 0.0) {$x_1$};
+            \node[inputnode] (x2A) at (3.10, 0.0) {$x_2$};
+            \node[inputnode] (x3A) at (4.50, 0.0) {$x_3$};
+            \node[inputnode] (x4A) at (5.90, 0.0) {$x_4$};
+            \node[inputnode] (x5A) at (7.30, 0.0) {$x_5$};
+
+            % Connections: Layer 0 -> Layer 1
+            \foreach \i [evaluate=\i as \ip using int(\i+1), evaluate=\i as \ipp using int(\i+2)] in {1,2,3} {
+                \draw[->, line width=0.5pt, draw=teal!70!black, shorten >=1.5pt, shorten <=1.5pt] (x\i A) -- (h\i A);
+                \draw[->, line width=0.5pt, draw=teal!70!black, shorten >=1.5pt, shorten <=1.5pt] (x\ip A) -- (h\i A);
+                \draw[->, line width=0.5pt, draw=teal!70!black, shorten >=1.5pt, shorten <=1.5pt] (x\ipp A) -- (h\i A);
+            }
+
+            % Connections: Layer 1 -> Layer 2
+            \draw[->, line width=1.1pt, draw=purple!85!black, shorten >=1.5pt, shorten <=1.5pt] (h1A) -- (yA);
+            \draw[->, line width=1.1pt, draw=purple!85!black, shorten >=1.5pt, shorten <=1.5pt] (h2A) -- (yA);
+            \draw[->, line width=1.1pt, draw=purple!85!black, shorten >=1.5pt, shorten <=1.5pt] (h3A) -- (yA);
+
+            % Jump Indicator
+            \draw[<->, line width=0.65pt, draw=teal!90!black] (h1A.east) -- (h2A.west)
+            node[midway, jumpbadge, draw=teal!70!black, text=teal!90!black]
+            {\fontsize{4.8}{5.6}\selectfont\bfseries Jump\\[-2.5pt]\fontsize{5.2}{6.2}\selectfont\bfseries $J_1{=}1$};
+
+            % RF Bracket
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, blue!85!black]
+            (1.45, -0.42) -- (7.55, -0.42)
+            node[midway, below=4pt, font=\scriptsize\bfseries, text=blue!90!black] {$\text{RF}_2 = 5\text{ pixels } (1 \to 3 \to 5)$};
+        \end{scope}
+
+        % =========================================================================
+        % DIVIDER
+        % =========================================================================
+        \draw[black!20, line width=0.8pt, dashed] (0.0, 5.75) -- (8.8, 5.75);
+
+        % =========================================================================
+        % SECTION 2: CONVOLUTION WITH MAX POOLING (S = 2, J = 2)
+        % Center axis at x = 4.50
+        % =========================================================================
+        \begin{scope}[shift={(0, 0)}]
+            % Header Title
+            \node[header] at (4.5, 5.15) {Downsampling via Max Pooling ($S=2 \implies J=2$)};
+
+            % Background Cones
+            \begin{scope}[on background layer]
+                \fill[purple!10, rounded corners=3pt] (4.5, 4.30) -- (2.40, 2.70) -- (6.60, 2.70) -- cycle;
+                \fill[orange!10, rounded corners=3pt] (2.40, 2.70) -- (6.60, 2.70) -- (7.05, 1.35) -- (1.95, 1.35) -- cycle;
+                \fill[blue!8, rounded corners=3pt]   (1.95, 1.35) -- (7.05, 1.35) -- (7.95, 0.0) -- (1.05, 0.0) -- cycle;
+            \end{scope}
+
+            % Layer 3: Output
+            \node[tag] at (0.2, 4.30) {Layer $3$ ($\text{Conv}_2$):};
+            \node[outnode] (yB) at (4.5, 4.30) {$y$};
+
+            % Layer 2: Max Pooling (K=2, S=2 -> J_2 = 2)
+            \node[tag] at (0.2, 2.70) {Layer $2$ ($\text{MaxPool}$):};
+            \node[poolnode] (p1) at (2.70, 2.70) {$p_1$};
+            \node[poolnode] (p2) at (4.50, 2.70) {$p_2$};
+            \node[poolnode] (p3) at (6.30, 2.70) {$p_3$};
+
+            % Connections: Layer 2 -> Layer 3
+            \draw[->, line width=1.1pt, draw=purple!85!black, shorten >=1.5pt, shorten <=1.5pt] (p1) -- (yB);
+            \draw[->, line width=1.1pt, draw=purple!85!black, shorten >=1.5pt, shorten <=1.5pt] (p2) -- (yB);
+            \draw[->, line width=1.1pt, draw=purple!85!black, shorten >=1.5pt, shorten <=1.5pt] (p3) -- (yB);
+
+            % Jump Indicator
+            \draw[<->, line width=0.65pt, draw=orange!90!black] (p1.east) -- (p2.west)
+            node[midway, jumpbadge, draw=orange!75!black, text=orange!95!black]
+            {\fontsize{4.8}{5.6}\selectfont\bfseries Jump\\[-2.5pt]\fontsize{5.2}{6.2}\selectfont\bfseries $J_2{=}2$};
+
+            % Layer 1: Conv 1 (K=3, S=1)
+            \node[tag] at (0.2, 1.35) {Layer $1$ ($\text{Conv}_1$):};
+            \node[convnode] (h1B) at (2.25, 1.35) {$h_1$};
+            \node[convnode] (h2B) at (3.15, 1.35) {$h_2$};
+            \node[convnode] (h3B) at (4.05, 1.35) {$h_3$};
+            \node[convnode] (h4B) at (4.95, 1.35) {$h_4$};
+            \node[convnode] (h5B) at (5.85, 1.35) {$h_5$};
+            \node[convnode] (h6B) at (6.75, 1.35) {$h_6$};
+
+            % Layer 0: Input Signal (8 Pixels: x1 to x8)
+            \node[tag] at (0.2, 0.0) {Input $\mathbf{x}$ ($L_0$):};
+            \node[inputnode] (x1B) at (1.35, 0.0) {$x_1$};
+            \node[inputnode] (x2B) at (2.25, 0.0) {$x_2$};
+            \node[inputnode] (x3B) at (3.15, 0.0) {$x_3$};
+            \node[inputnode] (x4B) at (4.05, 0.0) {$x_4$};
+            \node[inputnode] (x5B) at (4.95, 0.0) {$x_5$};
+            \node[inputnode] (x6B) at (5.85, 0.0) {$x_6$};
+            \node[inputnode] (x7B) at (6.75, 0.0) {$x_7$};
+            \node[inputnode] (x8B) at (7.65, 0.0) {$x_8$};
+
+            % Connections: Layer 0 -> Layer 1
+            \foreach \i [evaluate=\i as \ip using int(\i+1), evaluate=\i as \ipp using int(\i+2)] in {1,2,3,4,5,6} {
+                \draw[->, line width=0.45pt, draw=teal!70!black, opacity=0.55, shorten >=1.2pt, shorten <=1.2pt] (x\i B) -- (h\i B);
+                \draw[->, line width=0.45pt, draw=teal!70!black, opacity=0.55, shorten >=1.2pt, shorten <=1.2pt] (x\ip B) -- (h\i B);
+                \draw[->, line width=0.45pt, draw=teal!70!black, opacity=0.55, shorten >=1.2pt, shorten <=1.2pt] (x\ipp B) -- (h\i B);
+            }
+
+            % Connections: Layer 1 -> Layer 2 (Pairwise pooling)
+            \draw[->, line width=0.85pt, draw=orange!85!black, shorten >=1.5pt, shorten <=1.5pt] (h1B) -- (p1);
+            \draw[->, line width=0.85pt, draw=orange!85!black, shorten >=1.5pt, shorten <=1.5pt] (h2B) -- (p1);
+            \draw[->, line width=0.85pt, draw=orange!85!black, shorten >=1.5pt, shorten <=1.5pt] (h3B) -- (p2);
+            \draw[->, line width=0.85pt, draw=orange!85!black, shorten >=1.5pt, shorten <=1.5pt] (h4B) -- (p2);
+            \draw[->, line width=0.85pt, draw=orange!85!black, shorten >=1.5pt, shorten <=1.5pt] (h5B) -- (p3);
+            \draw[->, line width=0.85pt, draw=orange!85!black, shorten >=1.5pt, shorten <=1.5pt] (h6B) -- (p3);
+
+            % RF Bracket
+            \draw[decorate, decoration={brace, amplitude=4pt, mirror}, thick, blue!85!black]
+            (1.05, -0.42) -- (7.95, -0.42)
+            node[midway, below=4pt, font=\scriptsize\bfseries, text=blue!90!black] {$\text{RF}_3 = 8\text{ pixels } (1 \to 3 \to 4 \to \mathbf{8})$};
+        \end{scope}
+
+    \end{tikzpicture}
+    \caption{\textbf{Effect of downsampling on receptive-field growth.} Without downsampling (top), adjacent activations remain one input position apart ($J=1$), so stacked convolutions progressively enlarge the receptive field from $1$ to $3$ to $5$. With stride-2 max pooling (bottom), the effective jump becomes $J=2$; consequently, the following convolution spans more distant input positions and the receptive field grows faster, from $1$ to $3$ to $4$ to $8$.}
+    \label{fig:effect-of-pooling-and-stride}
+\end{figure}

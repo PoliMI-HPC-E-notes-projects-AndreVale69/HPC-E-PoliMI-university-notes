@@ -25,6 +25,7 @@
     - add `Definition of Receptive Field`
     - add `Receptive Field Growth with Depth`
     - add `Effect of Pooling and Stride`
+  - add `How CNN Representations Change with Depth`
 
 --------------------
 

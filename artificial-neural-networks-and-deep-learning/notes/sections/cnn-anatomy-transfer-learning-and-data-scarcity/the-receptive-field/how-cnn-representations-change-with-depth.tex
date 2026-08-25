@@ -1,0 +1,250 @@
+\subsection{How CNN Representations Change with Depth}\label{sec:how-cnn-representations-change-with-depth}
+
+The previous section explained \textbf{why the Receptive Field (RF) grows} as we move deeper into a CNN. However, we left unexplored the trade-off between the \textbf{size of the RF} and the \textbf{resolution of the representation}. There is an architectural trend in CNNs:
+\begin{equation*}
+    \text{deeper layers} \implies \text{lower spatial resolution} + \text{more feature maps}
+\end{equation*}
+And, correspondingly, the network moves from representing \textbf{local low-level} details toward \textbf{higher-level patterns}.
+
+\highspace
+In general, a CNN activation volume can be thought of as:
+\begin{equation*}
+    H \times W \times C
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $H,W$ describe \textbf{where} the information is located;
+    \item $C$ describes \textbf{which kinds of features} are represented at that location.
+\end{itemize}
+As we go deeper, CNN architectures commonly evolve approximately as follows:
+\begin{equation*}
+    H \downarrow \quad W \downarrow \quad C \uparrow
+\end{equation*}
+So \textbf{spatial dimensions} (i.e., the resolution of the representation) \textbf{shrink}, while \textbf{channel depth} (i.e., the number of feature maps) \textbf{grows}. We already discussed this phenomenon on \autopageref{sec:depth-increases-while-width-decreases}.
+
+\highspace
+\textcolor{Green3}{\faIcon{arrow-down} \textbf{Spatial resolution decreases.}} Suppose an early activation volume is:
+\begin{equation*}
+    64\times64\times32
+\end{equation*}
+After downsampling, we may obtain:
+\begin{equation*}
+    32\times32\times64
+\end{equation*}
+Then:
+\begin{equation*}
+    16\times16\times128
+\end{equation*}
+And later:
+\begin{equation*}
+    8\times8\times256
+\end{equation*}
+The exact numbers depend on the architecture, but the general trend is:
+\begin{equation*}
+    64\times64
+    \rightarrow
+    32\times32
+    \rightarrow
+    16\times16
+    \rightarrow
+    8\times8
+\end{equation*}
+In spatial resolution. This happens because operations such as pooling or stride greater than 1 in convolutional layers discard spatial samples. As discussed on \autopageref{sec:effect-of-pooling-and-stride}, this also increases the effective stride and allows the \textbf{Receptive Field to grow faster}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does lower spatial resolution mean?}}
+\end{flushleft}
+Consider an \textbf{early feature map} of size $64\times64$. There are many spatial positions, so the \hl{representation can preserve relatively precise information about \textbf{where} a pattern occurred.}
+
+\highspace
+\textbf{After several downsampling} operations, imagine a map of only $8\times8$. Now each \hl{activation corresponds to a much larger region of the original image.} Therefore the \hl{representation becomes \textbf{less precise} spatially.} Conceptually, in an early layer, for example, we might have a feature map that represents the presence of edges. While deeper layers increasingly represent something closer to \textbf{object parts} or even \textbf{whole objects}. The deeper we go, the more we can say about the \textbf{kind of structure} present in a larger region, but we lose information about the \textbf{exact location} of that structure.
+
+\highspace
+\textcolor{Green3}{\faIcon{exclamation} \textbf{And this is the trade-off we mentioned earlier!}} In the previous section, we discussed how the downsampling gives us \textbf{larger Receptive Field} but simultaneously \textbf{lower spatial resolution}. So yes, the \hl{network gradually sacrifices precise localization in exchange for access to more contextual information.} The same activation can now \textbf{integrate evidence from a much larger input region}, but there are fewer distinct spatial locations left in the feature map.
+
+\highspace
+So, the \textbf{trade-off} is clear:
+\begin{equation*}
+    \text{more context} \iff \text{less precise position}
+\end{equation*}
+Thus \textbf{aggressive downsampling} is a \textbf{double-edged sword}: it allows the network to \textbf{see more of the input} and \textbf{integrate information from a larger region}, but it also \textbf{loses spatial precision}. This is why, in some applications, it can be problematic to downsample too aggressively, especially if the task requires precise localization (e.g., object detection or segmentation\footnote{%
+        Segmentation is a task where the goal is to assign a class label to each pixel in the image, which requires precise localization of objects within the image. For example, in medical imaging, accurately segmenting tumors or organs is crucial for diagnosis and treatment planning.%
+}).
+
+\highspace
+\textcolor{Green3}{\faIcon{arrow-up} \textbf{The number of feature maps increases.}} We analyzed the decrease in spatial resolution, but \emph{what about the increase in the number of feature maps?} CNN architectures usually increase $C$. For example:
+\begin{equation*}
+    64\times64\times32
+\end{equation*}
+May become:
+\begin{equation*}
+    32\times32\times64
+\end{equation*}
+And eventually:
+\begin{equation*}
+    8\times8\times256
+\end{equation*}
+Because different channels correspond to different learned feature detectors.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{layer-group}}] At \textbf{shallow layers} we may only need \textbf{filters} for relatively \textbf{simple local structures}: \emph{edges}, \emph{orientations}, \emph{simple textures}, etc.
+    \item[\textcolor{Green3}{\faIcon{cubes}}] At \textbf{deeper layers}, combinations of these \textbf{features} can form many \textbf{different higher-level patterns}.
+\end{itemize}
+In other words, \hl{there are more high-level patterns than low-level details}, so the \textbf{number of maps increases} as we go deeper. This is why the \textbf{channel depth} $C$ tends to grow with depth.
+
+\highspace
+Also, we can think of the architectural evolution as:
+\begin{equation*}
+    \text{spatial richness} \to \text{feature richness}
+\end{equation*}
+Because the network gradually shifts from representing \textbf{local low-level details} toward \textbf{higher-level patterns}. In other words, the network moves from representing \textbf{``where''} (\emph{where something is present}) to representing \textbf{``what''} (\emph{what is present}). This does \textbf{not} mean the later representation necessarily contains ``\emph{more information}'' in an information-theoretic sense. It means its \textbf{capacity is organized differently}.
+
+\begin{figure}[!htp]
+    \centering
+    \tikzsetnextfilename{how-cnn-representations-change-with-depth}
+    \begin{tikzpicture}[
+            >=Latex,
+            line cap=round,
+            line join=round,
+            font=\small,
+            % Trend & Transition Arrows
+            trendarr/.style={line width=1.3pt, ->},
+            oparrow/.style={->, line width=0.9pt, draw=black!65},
+            % Uniform Bottom Card Style (fits 3 columns naturally)
+            cardstyle/.style={
+                draw=#1!45,
+                fill=#1!4,
+                rounded corners=4pt,
+                line width=0.7pt,
+                text width=3.45cm,
+                minimum height=2.1cm,
+                align=center,
+                inner sep=4pt
+            }
+        ]
+
+        % =========================================================================
+        % MACRO: 3D Feature Volume
+        % \drawvolume{x}{y}{width}{height}{depth_scale}{color}{grid_divisions}
+        % =========================================================================
+        \newcommand{\drawvolume}[7]{
+            \begin{scope}[shift={(#1,#2)}]
+                \pgfmathsetmacro{\dx}{#5 * 0.70}
+                \pgfmathsetmacro{\dy}{#5 * 0.45}
+
+                % Top Face
+                \filldraw[draw=black!70, line width=0.6pt, line join=round, fill=#6!20]
+                (0, #4) -- (\dx, #4+\dy) -- (#3+\dx, #4+\dy) -- (#3, #4) -- cycle;
+
+                % Right Side Face
+                \filldraw[draw=black!70, line width=0.6pt, line join=round, fill=#6!30]
+                (#3, 0) -- (#3+\dx, \dy) -- (#3+\dx, #4+\dy) -- (#3, #4) -- cycle;
+
+                % Front Face
+                \filldraw[draw=black!70, line width=0.6pt, line join=round, fill=#6!8]
+                (0, 0) rectangle (#3, #4);
+
+                % Front Face Grid Lines
+                \pgfmathsetmacro{\stepX}{#3 / #7}
+                \pgfmathsetmacro{\stepY}{#4 / #7}
+                \pgfmathsetmacro{\maxIdx}{#7 - 1}
+                \foreach \i in {1,...,\maxIdx} {
+                    \draw[draw=black!20, line width=0.35pt] (\i*\stepX, 0) -- (\i*\stepX, #4);
+                    \draw[draw=black!20, line width=0.35pt] (0, \i*\stepY) -- (#3, \i*\stepY);
+                }
+            \end{scope}
+        }
+
+        % =========================================================================
+        % 1. TOP DUAL-TREND ARROWS (Total span: x = 0 to 11.6)
+        % =========================================================================
+        % Spatial Precision (Decreasing)
+        \draw[trendarr, draw=red!75!black] (0.0, 3.85) -- (11.6, 3.85)
+        node[midway, above=1.5pt, font=\footnotesize\bfseries, text=red!80!black] {
+            $\boldsymbol{\downarrow}$ Spatial Precision (Exact Location / \textit{``Where''}) -- \textsc{Reduced}
+        };
+
+        % Semantic Complexity (Increasing)
+        \draw[trendarr, draw=Green3!85!black] (0.0, 3.25) -- (11.6, 3.25)
+        node[midway, below=1.5pt, font=\footnotesize\bfseries, text=Green3!90!black] {
+            $\boldsymbol{\uparrow}$ Feature Complexity \& Context (Semantic \textit{``What''}) -- \textsc{Gained}
+        };
+
+        % =========================================================================
+        % 2. STAGE 1: SHALLOW LAYERS (Center: x = 1.75)
+        % =========================================================================
+        \drawvolume{0.7}{0.2}{1.8}{1.8}{0.35}{blue}{4}
+
+        % Feature Glyph: Local Edge
+        \begin{scope}[shift={(0.7, 0.2)}]
+            \draw[line width=1.8pt, draw=blue!85!black] (0.3, 0.3) -- (1.1, 1.5);
+            \draw[fill=white, draw=blue!90!black, line width=0.9pt] (0.7, 0.9) circle (1.8pt);
+        \end{scope}
+
+        % Card 1
+        \node[cardstyle=blue, anchor=north] (card1) at (1.75, -0.15) {
+            \textbf{\normalsize\textcolor{blue!90!black}{Shallow Layers}}\\[1.5pt]
+            \textbf{\footnotesize\textcolor{black!75}{$64 \times 64 \times 32$}}\\[3pt]
+            \textbf{\footnotesize\textcolor{red!80!black}{Precise $(x,y)$ Location}}\\[1.5pt]
+            \scriptsize\textcolor{black!65}{Edges, orientations, dots}
+        };
+
+        % Transition 1 -> 2
+        \draw[oparrow] (3.6, 1.1) -- (4.45, 1.1)
+        node[midway, above=1.5pt, font=\scriptsize\bfseries, text=black!75] {Pool/Stride}
+        node[midway, below=1.5pt, font=\tiny\bfseries, text=black!60] {$H,W\downarrow \; C\uparrow$};
+
+        % =========================================================================
+        % 3. STAGE 2: MIDDLE LAYERS (Center: x = 5.8)
+        % =========================================================================
+        \drawvolume{4.9}{0.4}{1.4}{1.4}{0.75}{teal}{3}
+
+        % Feature Glyph: Regional Motifs
+        \begin{scope}[shift={(4.9, 0.4)}]
+            \draw[line width=1.6pt, draw=teal!85!black] (0.22, 0.35) to[out=40, in=140] (1.18, 0.35);
+            \draw[line width=1.3pt, draw=teal!85!black] (0.7, 0.5) -- (0.7, 1.1);
+        \end{scope}
+
+        % Card 2
+        \node[cardstyle=teal, anchor=north] (card2) at (5.8, -0.15) {
+            \textbf{\normalsize\textcolor{teal!90!black}{Middle Layers}}\\[1.5pt]
+            \textbf{\footnotesize\textcolor{black!75}{$32 \times 32 \times 64$}}\\[3pt]
+            \textbf{\footnotesize\textcolor{teal!90!black}{Regional Motifs}}\\[1.5pt]
+            \scriptsize\textcolor{black!65}{Textures, curves, corners}
+        };
+
+        % Transition 2 -> 3
+        \draw[oparrow] (7.65, 1.1) -- (8.5, 1.1)
+        node[midway, above=1.5pt, font=\scriptsize\bfseries, text=black!75] {Pool/Stride}
+        node[midway, below=1.5pt, font=\tiny\bfseries, text=black!60] {$H,W\downarrow \; C\uparrow$};
+
+        % =========================================================================
+        % 4. STAGE 3: DEEP LAYERS (Center: x = 9.85)
+        % =========================================================================
+        \drawvolume{9.1}{0.6}{0.95}{0.95}{1.4}{purple}{2}
+
+        % Feature Glyph: Abstract Semantics
+        \begin{scope}[shift={(9.1, 0.6)}]
+            \draw[line width=1.1pt, draw=purple!85!black, fill=purple!20] (0.475, 0.475) circle (0.28cm);
+            \fill[purple!85!black] (0.38, 0.53) circle (0.8pt);
+            \fill[purple!85!black] (0.57, 0.53) circle (0.8pt);
+            \draw[line width=0.7pt, draw=purple!85!black] (0.41, 0.41) to[out=-35, in=-145] (0.54, 0.41);
+        \end{scope}
+
+        % Card 3
+        \node[cardstyle=purple, anchor=north] (card3) at (9.85, -0.15) {
+            \textbf{\normalsize\textcolor{purple!90!black}{Deep Layers}}\\[1.5pt]
+            \textbf{\footnotesize\textcolor{black!75}{$8 \times 8 \times 256$}}\\[3pt]
+            \textbf{\footnotesize\textcolor{purple!90!black}{Abstract Semantics}}\\[1.5pt]
+            \scriptsize\textcolor{black!65}{Object parts, class features}
+        };
+
+    \end{tikzpicture}
+    \caption{\textbf{Evolution of CNN representations with depth.} As the network becomes deeper, spatial resolution \(H\times W\) decreases while the number of feature maps \(C\) typically increases. Larger receptive fields and progressive downsampling shift the representation from spatially precise, low-level features toward increasingly contextual and higher-level patterns, reducing the importance of exact feature location.}
+    \label{fig:how-cnn-representations-change-with-depth}
+\end{figure}
+
+\begin{takeawaysbox}
+    As a CNN becomes deeper, its spatial resolution typically decreases while the number of feature maps increases. Deeper units have larger receptive fields and therefore represent higher-level patterns over larger portions of the input, while retaining less precise information about their exact spatial location.
+\end{takeawaysbox}

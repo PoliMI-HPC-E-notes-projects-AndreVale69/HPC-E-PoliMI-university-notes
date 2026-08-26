@@ -28,6 +28,7 @@
   - add `How CNN Representations Change with Depth`
   - add `Training Convolutional Neural Networks`
     - add `Backpropagation Through CNNs`
+    - add `Backpropagation Through Max Pooling`
 
 --------------------
 

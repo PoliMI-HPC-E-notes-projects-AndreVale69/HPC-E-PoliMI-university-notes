@@ -1,0 +1,235 @@
+\subsubsection{Backpropagation Through Max Pooling}\label{sec:backpropagation-through-max-pooling}
+
+\textbf{Max Pooling} has \textbf{no trainable parameters}, but gradients still need to pass through it so that earlier convolutional layers can be trained. The rule is simple: \hl{the gradient is routed only to the input location that produced the maximum activation.} For all other inputs in the pooling window, the gradient is zero.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{arrow-right} \textbf{Forward Pass}}
+\end{flushleft}
+Consider a $2\times2$ Max Pooling region:
+\begin{equation*}
+    X=
+    \begin{bmatrix}
+        1 & 3\\
+        2 & 5
+    \end{bmatrix}
+\end{equation*}
+The max pooling output is:
+\begin{equation*}
+    y = \max(X) = \max(1, 3, 2, 5) = 5
+\end{equation*}
+So during the forward pass, the value $5$ is selected. Now the important thing is to \hl{remember the \textbf{location} of the maximum value}, which is at position $(2, 2)$ in this case. This location is crucial because we will route the gradient back to this position during the backward pass.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Derivative of max pooling}}
+\end{flushleft}
+Suppose:
+\begin{equation*}
+    y = \max(X) = \max\left(x_1, x_2, \dots, x_j, \dots, x_n\right)
+\end{equation*}
+If $x_j$ is the unique maximum, then the derivative of $y$ with respect to $x_j$ is:
+\begin{equation*}
+    \frac{\partial y}{\partial x_j} = 1
+\end{equation*}
+While for every other input $x_i$ that is not the maximum, the derivative is:
+\begin{equation*}
+    \frac{\partial y}{\partial x_i} = 0 \quad \text{for } i \neq j
+\end{equation*}
+Therefore:
+\begin{equation*}
+    \frac{\partial y}{\partial x_i} =
+    \begin{cases}
+        1 & \text{if } i = j\\
+        0 & \text{if } i \neq j
+    \end{cases} =
+    \begin{cases}
+        1  & \text{if } x_i \text{ is the selected maximum}\\
+        0  & \text{otherwise}
+    \end{cases}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{arrow-left} \textbf{Backpropagating the upstream gradient}}
+\end{flushleft}
+Suppose the \textbf{loss gradient} (i.e., the gradient of the loss w.r.t. the output of the max pooling layer) arriving from the next layer is:
+\begin{equation*}
+    \delta = \frac{\partial L}{\partial y}
+\end{equation*}
+Using the \textbf{chain rule}, we can compute the \hl{gradient of the loss with respect to each input $x_i$ in the pooling window:}
+\begin{equation*}
+    \frac{\partial L}{\partial x_i} = \frac{\partial L}{\partial y} \cdot \frac{\partial y}{\partial x_i} = \delta \cdot \frac{\partial y}{\partial x_i}
+\end{equation*}
+Thus, the gradient is routed back only to the input that was the \textbf{maximum}, and all other inputs receive a gradient of zero:
+\begin{equation*}
+    \frac{\partial L}{\partial x_i} =
+    \begin{cases}
+        \delta & \text{if } x_i \text{ is the selected maximum}\\
+        0 & \text{otherwise}
+    \end{cases}
+\end{equation*}
+In our example, if $\delta = 2$, then:
+\begin{equation*}
+    \frac{\partial L}{\partial X} =
+    \begin{bmatrix}
+        0 & 0\\
+        0 & 2
+    \end{bmatrix}
+\end{equation*}
+Because the maximum value was at position $(2, 2)$. So \textbf{max pooling} does not split or average the incoming gradient; it simply \hl{sends the entire gradient back to the winning input location}, while all other locations receive zero gradient.
+
+\highspace
+\begin{examplebox}[: Backpropagation Through Max Pooling]
+    Take again:
+    \begin{equation*}
+        X=
+        \begin{bmatrix}
+            1 & 3\\
+            2 & 5
+        \end{bmatrix}
+    \end{equation*}
+    And suppose the gradient arriving from above is:
+    \begin{equation*}
+        \frac{\partial\mathcal L}{\partial y}=7
+    \end{equation*}
+    Because \(5\) was the maximum, the gradient is routed back to that location:
+    \begin{equation*}
+        \frac{\partial\mathcal L}{\partial X}
+        =
+        \begin{bmatrix}
+            0 & 0\\
+            0 & 7
+        \end{bmatrix}
+    \end{equation*}
+    Only the location that contributed the forward output receives the gradient.
+    So the forward and backward passes are:
+    \begin{equation*}
+        \begin{bmatrix}
+            1 & 3\\
+            2 & \boxed{5}
+        \end{bmatrix}
+        \overset{\text{max}}{\longrightarrow}
+        5
+    \end{equation*}
+    And:
+    \begin{equation*}
+        7
+        \overset{\text{backward}}{\longrightarrow}
+        \begin{bmatrix}
+            0 & 0\\
+            0 & \boxed{7}
+        \end{bmatrix}
+    \end{equation*}
+\end{examplebox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why the others get zero gradient?}}
+\end{flushleft}
+Suppose we slightly change one of the non-maximal inputs:
+\begin{equation*}
+    X =
+    \begin{bmatrix}
+        1 & 3\\
+        2 & 5
+    \end{bmatrix}
+    \quad \longrightarrow \quad
+    X'=
+    \begin{bmatrix}
+        1.01 & 3\\
+        2 & 5
+    \end{bmatrix}
+\end{equation*}
+As long as the maximum remains at \(5\), the \textbf{output of the max pooling layer does not change}:
+\begin{equation*}
+    y = \max(X) = 5 \quad \text{and} \quad
+    y' = \max(X') = 5
+\end{equation*}
+Therefore locally, the \hl{output is \textbf{insensitive} to changes in the non-maximal inputs.} This means that the derivative of the output with respect to any non-maximal input is zero:
+\begin{equation*}
+    \frac{\partial y}{\partial x_i} = 0
+\end{equation*}
+By contrast, if we \textbf{change the maximum} slightly:
+\begin{equation*}
+    X'' =
+    \begin{bmatrix}
+        1 & 3\\
+        2 & 5.01
+    \end{bmatrix}
+\end{equation*}
+Then the \textbf{output changes}:
+\begin{equation*}
+    y'' = \max(X'') = 5.01
+\end{equation*}
+This means that the \hl{output is \textbf{sensitive} to changes in the maximal input}, and the derivative of the output with respect to the maximal input is non-zero:
+\begin{equation*}
+    \frac{\partial y}{\partial x_j} = 1
+\end{equation*}
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Max pooling behaves like a switch.}} \hl{Max Pooling stores which input won} during the forward pass. Then \textbf{during backpropagation}, that \textbf{stored position acts like a switch}:
+\begin{equation*}
+    \text{incoming gradient} \to \text{winning input only}
+\end{equation*}
+This is called \definition{Argmax Mask}. For example, taking the previous example:
+\begin{equation*}
+    X=
+    \begin{bmatrix}
+        1 & 3\\
+        2 & 5
+    \end{bmatrix}
+    \quad \longrightarrow \quad
+    \text{Argmax Mask} =
+    \begin{bmatrix}
+        0 & 0\\
+        0 & 1
+    \end{bmatrix}
+\end{equation*}
+Then the backward pass is simply:
+\begin{equation*}
+    \frac{\partial\mathcal L}{\partial X} =
+    \delta M
+\end{equation*}
+\textcolor{Green3}{\faIcon{creative-commons-zero} \textbf{Max pooling has no parameter gradients.}} Unlike convolution, \textbf{Max Pooling has no weights or biases to update}, so there are no parameter gradients to compute:
+\begin{equation*}
+    \theta_{\text{pool}} = \emptyset \quad \implies \quad \frac{\partial\mathcal L}{\partial \theta_{\text{pool}}} = 0
+\end{equation*}
+The only reason we need its derivative is to continue backpropagation toward earlier activations:
+\begin{equation*}
+    \frac{\partial\mathcal L}{\partial X} = \delta M
+\end{equation*}
+In other words, \hl{Max Pooling is a non-linear operation that passes gradients back to the winning input location.} It does not have any trainable parameters, but it is essential for propagating gradients through the network. Otherwise, the earlier convolutional layers would not receive any gradient signal and could not be trained.
+
+\highspace
+\begin{takeawaysbox}
+    For a max-pooling output:
+    \begin{equation*}
+        y=\max_i x_i
+    \end{equation*}
+    The local derivative is:
+    \begin{equation*}
+        \frac{\partial y}{\partial x_i}
+        =
+        \begin{cases}
+            1, & x_i \text{ is the selected maximum},\\
+            0, & \text{otherwise}.
+        \end{cases}
+    \end{equation*}
+    Therefore, if the upstream gradient is:
+    \begin{equation*}
+        \delta=\frac{\partial\mathcal L}{\partial y}
+    \end{equation*}
+    Then:
+    \begin{equation*}
+        \frac{\partial\mathcal L}{\partial x_i}
+        =
+        \begin{cases}
+            \delta, & x_i \text{ is the maximum},\\
+            0, & \text{otherwise}.
+        \end{cases}
+    \end{equation*}
+    \hl{The gradient is only routed through the input pixel that contributed to the output value.}
+
+    \highspace
+    In general, during backpropagation through max pooling, the incoming gradient is routed only to the input activation that produced the maximum during the forward pass. The local derivative is 1 at that position and 0 for every other input in the pooling region.
+\end{takeawaysbox}

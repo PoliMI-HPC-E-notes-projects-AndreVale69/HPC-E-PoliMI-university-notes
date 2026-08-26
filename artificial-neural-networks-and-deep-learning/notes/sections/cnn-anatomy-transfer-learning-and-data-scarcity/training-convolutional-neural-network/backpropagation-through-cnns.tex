@@ -591,6 +591,145 @@ Because for each filter $l$ we have \textbf{one bias} $b_l$, that \hl{same bias 
     \]
 \end{examplebox}
 
+\newpage
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{cnn-weight-sharing-backpropagation}
+    \tikzwidth{\textwidth}
+    \begin{tikzpicture}[
+            >=Stealth,
+            font=\small,
+            % Node styles
+            innode/.style={circle, draw=blue!80!black, fill=blue!12, line width=0.9pt, minimum size=0.62cm, inner sep=0pt, font=\scriptsize\bfseries, text=blue!95!black},
+            actnode/.style={circle, draw=teal!80!black, fill=teal!15, line width=0.9pt, minimum size=0.62cm, inner sep=0pt, font=\scriptsize\bfseries, text=teal!95!black},
+            gradnode/.style={circle, draw=red!80!black, fill=red!12, line width=0.9pt, minimum size=0.62cm, inner sep=0pt, font=\scriptsize\bfseries, text=red!95!black},
+            sumnode/.style={circle, draw=purple!85!black, fill=purple!20, line width=1.1pt, minimum size=0.74cm, inner sep=0pt, font=\small\bfseries, text=purple!95!black},
+            header/.style={font=\small\bfseries, text=blue!90!black, anchor=west},
+            sublabel/.style={font=\footnotesize, text=black!70, anchor=west},
+            tag/.style={font=\footnotesize\bfseries, text=black!75, anchor=east},
+            sidebox/.style={draw=black!25, fill=gray!4, rounded corners=4pt, inner sep=6pt, font=\footnotesize, align=left, text width=4.85cm},
+            multbadge/.style={font=\scriptsize\bfseries, text=purple!90!black, fill=white, draw=purple!35, line width=0.45pt, inner sep=1.8pt, rounded corners=2pt}
+        ]
+
+        % =========================================================================
+        % FORWARD PASS (WEIGHT SHARING)
+        % =========================================================================
+        \begin{scope}[shift={(0, 7.4)}]
+            % Shaded Receptive Field Cones
+            \fill[teal!10, rounded corners=2pt] (0.95, 1.50) -- (0.00, 0.0) -- (1.90, 0.0) -- cycle;
+            \fill[teal!10, rounded corners=2pt] (1.90, 1.50) -- (0.95, 0.0) -- (2.85, 0.0) -- cycle;
+            \fill[teal!10, rounded corners=2pt] (2.85, 1.50) -- (1.90, 0.0) -- (3.80, 0.0) -- cycle;
+
+            % Titles
+            \node[header]   at (-2.5, 3.5) {Forward Pass --- Weight Sharing Across Space};
+            \node[sublabel] at (-2.5, 3.1) {The single kernel parameter $w_1$ participates in multiple output activations};
+
+            % Left Row Tags
+            \node[tag] at (-0.70, 1.50) {Output $\mathbf{a}$:};
+            \node[tag] at (-0.70, 0.00) {Input $\mathbf{x}$:};
+
+            % Activations (Outputs)
+            \node[actnode] (a1) at (0.95, 1.50) {$a_1$};
+            \node[actnode] (a2) at (1.90, 1.50) {$a_2$};
+            \node[actnode] (a3) at (2.85, 1.50) {$a_3$};
+
+            % Inputs
+            \node[innode] (x1) at (0.00, 0.0) {$x_1$};
+            \node[innode] (x2) at (0.95, 0.0) {$x_2$};
+            \node[innode] (x3) at (1.90, 0.0) {$x_3$};
+            \node[innode] (x4) at (2.85, 0.0) {$x_4$};
+            \node[innode] (x5) at (3.80, 0.0) {$x_5$};
+
+            % Forward Connections
+            \draw[->, line width=1.2pt, draw=blue!80!black] (x1) -- (a1)
+            node[pos=0.35, above=1pt, sloped, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1pt, rounded corners=1pt] {$w_1$};
+            \draw[->, line width=0.45pt, draw=black!35] (x2) -- (a1);
+            \draw[->, line width=0.45pt, draw=black!35] (x3) -- (a1);
+
+            \draw[->, line width=1.2pt, draw=blue!80!black] (x2) -- (a2)
+            node[pos=0.35, above=1pt, sloped, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1pt, rounded corners=1pt] {$w_1$};
+            \draw[->, line width=0.45pt, draw=black!35] (x3) -- (a2);
+            \draw[->, line width=0.45pt, draw=black!35] (x4) -- (a2);
+
+            \draw[->, line width=1.2pt, draw=blue!80!black] (x3) -- (a3)
+            node[pos=0.35, above=1pt, sloped, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1pt, rounded corners=1pt] {$w_1$};
+            \draw[->, line width=0.45pt, draw=black!35] (x4) -- (a3);
+            \draw[->, line width=0.45pt, draw=black!35] (x5) -- (a3);
+
+            % Compact Side Box
+            \node[sidebox, anchor=north west] at (4.3, 2.25) {
+                \textbf{Forward Formulation:}\\[2pt]
+                $a_1 = \textcolor{blue!85!black}{\mathbf{w_1}}x_1 + w_2x_2 + w_3x_3$\\[2pt]
+                $a_2 = \textcolor{blue!85!black}{\mathbf{w_1}}x_2 + w_2x_3 + w_3x_4$\\[2pt]
+                $a_3 = \textcolor{blue!85!black}{\mathbf{w_1}}x_3 + w_2x_4 + w_3x_5$\\[4pt]
+                $w_1$ is reused across all windows
+            };
+        \end{scope}
+
+        % =========================================================================
+        % DIVIDER
+        % =========================================================================
+        % \draw[black!20, line width=0.8pt, dashed] (-2.5, 6.4) -- (9.5, 6.4);
+
+        % =========================================================================
+        % BACKWARD PASS (GRADIENT ACCUMULATION)
+        % =========================================================================
+        \begin{scope}[shift={(0, 0)}]
+            % Titles
+            \node[header]   at (-2.5, 5.70) {Backward Pass --- Gradient Accumulation};
+            \node[sublabel] at (-2.5, 5.25) {Upstream loss gradients converge and sum to compute the gradient w.r.t. $w_1$};
+
+            % Left Row Tags
+            \node[tag] at (-0.70, 3.20) {Upstream $\boldsymbol{\delta}$:};
+            \node[tag] at (-0.70, 1.45) {Accumulation:};
+            \node[tag] at (-0.70, 0.05) {Accum. Gradient:};
+
+            % Upstream Gradients
+            \node[gradnode] (d1) at (0.95, 3.20) {$\delta_1$};
+            \node[gradnode] (d2) at (1.90, 3.20) {$\delta_2$};
+            \node[gradnode] (d3) at (2.85, 3.20) {$\delta_3$};
+
+            % Incoming Loss Gradient Arrows
+            \draw[<-, line width=0.9pt, draw=red!75!black] (d1.north) -- (0.95, 4.15)
+            node[above=1pt, font=\scriptsize\bfseries, text=red!80!black] {$\displaystyle\frac{\partial\mathcal{L}}{\partial a_1}$};
+            \draw[<-, line width=0.9pt, draw=red!75!black] (d2.north) -- (1.90, 4.15)
+            node[above=1pt, font=\scriptsize\bfseries, text=red!80!black] {$\displaystyle\frac{\partial\mathcal{L}}{\partial a_2}$};
+            \draw[<-, line width=0.9pt, draw=red!75!black] (d3.north) -- (2.85, 4.15)
+            node[above=1pt, font=\scriptsize\bfseries, text=red!80!black] {$\displaystyle\frac{\partial\mathcal{L}}{\partial a_3}$};
+
+            % Summation / Accumulator Node
+            \node[sumnode] (sum_w1) at (1.90, 1.45) {$\sum$};
+
+            % Backpropagation Flow Arrows with Expanded Spacing
+            \draw[->, line width=1.0pt, draw=purple!80!black] (d1.south) -- (sum_w1.north west)
+            node[pos=0.38, multbadge] {$\times x_1$};
+            \draw[->, line width=1.0pt, draw=purple!80!black] (d2.south) -- (sum_w1.north)
+            node[pos=0.38, multbadge] {$\times x_2$};
+            \draw[->, line width=1.0pt, draw=purple!80!black] (d3.south) -- (sum_w1.north east)
+            node[pos=0.38, multbadge] {$\times x_3$};
+
+            % Accumulated Parameter Gradient Box
+            \node[draw=purple!80!black, fill=purple!8, rounded corners=3pt, font=\small\bfseries, text=purple!95!black, inner sep=4.5pt]
+            (dw1) at (1.90, 0.05) {
+                $\displaystyle\frac{\partial\mathcal{L}}{\partial w_1} = \textcolor{red!80!black}{\delta_1}\textcolor{blue!85!black}{x_1} + \textcolor{red!80!black}{\delta_2}\textcolor{blue!85!black}{x_2} + \textcolor{red!80!black}{\delta_3}\textcolor{blue!85!black}{x_3}$
+            };
+            \draw[->, line width=1.1pt, draw=purple!85!black] (sum_w1) -- (dw1);
+
+            % Side Explanation Box
+            \node[sidebox, anchor=north west] at (4.3, 4.30) {
+                \textbf{Multivariable Chain Rule:}\\[2pt]
+                \scalebox{0.92}{$\displaystyle\frac{\partial\mathcal{L}}{\partial w_1} = \sum_{i=1}^3 \frac{\partial\mathcal{L}}{\partial a_i}\frac{\partial a_i}{\partial w_1} = \sum_{i=1}^3 \textcolor{red!80!black}{\delta_i}\textcolor{blue!85!black}{x_i}$}\\[6pt]
+                \textbf{2D Convolution Rule:}\\[2pt]
+                \scalebox{0.86}{$\displaystyle\frac{\partial\mathcal{L}}{\partial w_l(u,v,k)} = \sum_{r,c} \textcolor{red!80!black}{\delta(r,c,l)}\,\textcolor{blue!85!black}{x(r{+}u, c{+}v, k)}$}
+            };
+        \end{scope}
+
+    \end{tikzpicture}
+    \caption{\textbf{Weight sharing and gradient accumulation in convolutional layers.} A single kernel parameter is reused across multiple spatial locations during the forward pass; consequently, during backpropagation, its gradient accumulates the contributions from all output activations that depend on that shared parameter.}
+    \label{fig:cnn-weight-sharing-backpropagation}
+\end{figure}
+
 \begin{takeawaysbox}
     \hl{CNNs are trained by ordinary gradient-based optimization and backpropagation}. Because a CNN is effectively an MLP with sparse and shared connectivity, the same chain-rule machinery applies.
 

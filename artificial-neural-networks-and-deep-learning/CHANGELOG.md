@@ -26,6 +26,8 @@
     - add `Receptive Field Growth with Depth`
     - add `Effect of Pooling and Stride`
   - add `How CNN Representations Change with Depth`
+  - add `Training Convolutional Neural Networks`
+    - add `Backpropagation Through CNNs`
 
 --------------------
 

@@ -1,0 +1,602 @@
+\subsection{Training Convolutional Neural Networks}\label{sec:training-convolutional-neural-networks}
+
+The Convolutional Neural Networks (CNNs) do \textbf{not require a fundamentally new training algorithm}. Since a CNN can be interpreted as an Multi-Layer Perceptron (MLP) with sparse and shared connections, it can still be \hl{trained by minimizing a loss with gradient-based optimization and computing gradients through backpropagation.}
+
+\longline
+
+\subsubsection{Backpropagation Through CNNs}
+
+\begin{remarkbox}[: Refreshing the concept of training a Neural Network]
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does it mean to ``\emph{train}'' a Neural Network?}} Imagine we have an image of a cat:
+    \begin{equation*}
+        x = \text{image}
+    \end{equation*}
+    And the correct answer is:
+    \begin{equation*}
+        y = \text{cat}
+    \end{equation*}
+    The CNN contains parameters, so lots of numbers that we can change:
+    \begin{equation*}
+        \theta = \{w_1,w_2,\ldots,b_1,b_2,\ldots\}
+    \end{equation*}
+    Initially, these parameters are essentially guesses.
+    We give the image to the network:
+    \begin{equation*}
+        x
+        \xrightarrow{\text{CNN}}
+        \hat y
+    \end{equation*}
+    Now, suppose the network says:
+    \begin{equation*}
+        P(\text{cat})=0.10,
+        \qquad
+        P(\text{dog})=0.90
+    \end{equation*}
+    That's a \textbf{bad prediction}. We therefore calculate a \textbf{loss}:
+    \begin{equation*}
+        \mathcal{L}(\hat y,y)
+    \end{equation*}
+    Think of the loss simply as: ``\emph{How bad was my prediction?}''. Small loss is good prediction; large loss is bad prediction. Training means \textbf{changing the parameters so that this number becomes smaller}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does this scary expression mean?}} We had:
+    \begin{equation*}
+        \theta^{*} = \argmin_{\theta} \mathcal{L}\left(\theta\right)
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $\theta$ are all \textbf{trainable parameters} of the network. For a CNN, this includes things such as convolutional filter weights, convolutional biases, weights and biases of FC (Fully Connected) layers, etc.
+        \item $\mathcal{L}\left(\theta\right)$ is the \textbf{loss} obtained when the network uses parameters $\theta$.
+        \item $\min_{\theta}$ means ``we want to make the loss as small as possible by changing the parameters $\theta$''.
+        \item $\argmin_{\theta}$ is slightly different from $\min$. For example, if $f(x) = (x-3)^2$, then $\min_x f(x) = 0$ but $\argmin_x f(x) = 3$. In other words, $\argmin$ asks ``\emph{which $\theta$ produces the smallest loss?}''.
+    \end{itemize}
+    So the expression means: \hl{find the parameters $\theta^{*}$ that make the network's loss as small as possible.}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{But how do we know how to change the parameters?}} This is where the \textbf{gradient} comes in.
+    Let's forget CNNs completely for a moment.
+    Suppose our entire ``network'' contains one parameter $w$:
+    \begin{equation*}
+        \hat{y} = wx
+    \end{equation*}
+    Suppose:
+    \begin{equation*}
+        x=2,\qquad y=6
+    \end{equation*}
+    Where $x$ is the input and $y$ is the correct answer. Use squared error:
+    \begin{equation*}
+        \mathcal{L} = \left( \hat{y} - y \right)^{2}
+    \end{equation*}
+    If initially $w=1$, then:
+    \begin{equation*}
+        \hat{y}=1\cdot2=2.
+    \end{equation*}
+    So:
+    \begin{equation*}
+        \mathcal{L}=(2-6)^2=16
+    \end{equation*}
+    We want to change $w$ so that the loss decreases.
+    The derivative:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w}
+    \end{equation*}
+    Answers approximately: ``\emph{If we slightly increase $w$, what happens to the loss?}''. We use the derivative because it tells us the \textbf{direction} in which to change $w$ to make the loss smaller. If the derivative is positive, we should decrease $w$. If the derivative is negative, we should increase $w$. The magnitude of the derivative tells us how much to change $w$. That's the \hl{central idea behind the entire training procedure.}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Gradient descent.}} As we anticipated, suppose we calculate the derivative and find:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w} = -16
+    \end{equation*}
+    The negative sign tells us: ``\emph{increasing $w$ would decrease the loss}''. Thus, to make the loss smaller, we should increase $w$. So we move $w$ in the opposite direction of the derivative:
+    \begin{equation*}
+        w \leftarrow w - \eta \frac{\partial\mathcal{L}}{\partial w}
+    \end{equation*}
+    Where $\eta$ is the \textbf{learning rate}. Since the derivative points in the direction of steepest increase, we move in the opposite direction to decrease the loss.
+
+    \highspace
+    For example, if $\eta=0.1$, then:
+    \begin{equation*}
+        w_{\text{new}} = 1 - 0.1(-16) = 2.6
+    \end{equation*}
+    And indeed, if we recalculate the loss with $w=2.6$:
+    \begin{equation*}
+        \hat{y}_{\text{new}} = 2.6 \cdot 2 = 5.2
+    \end{equation*}
+    Which is closer to the correct answer $y=6$. The new loss is:
+    \begin{equation*}
+        \mathcal{L}_{\text{new}} = (5.2-6)^2 = 0.64
+    \end{equation*}
+    Using the method of reductio ad absurdum, we should not find the correct answer by following the direction of the derivative. Indeed, math is on our side:
+    \begin{equation*}
+        w_{\text{wrong}} = 1 + 0.1(-16) = -0.6
+    \end{equation*}
+    And indeed, if we recalculate the loss with $w=-0.6$:
+    \begin{equation*}
+        \hat{y}_{\text{wrong}} = -0.6 \cdot 2 = -1.2
+    \end{equation*}
+    Which is further from the correct answer $y=6$. The new loss confirmed this:
+    \begin{equation*}
+        \mathcal{L}_{\text{wrong}} = (-1.2-6)^2 = 51.84
+    \end{equation*}
+
+    \highspace
+    So gradient descent is basically: \hl{calculate which direction makes the loss increase the fastest, and then move in the opposite direction. The derivative tells us how to do that.}
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{If we have many weights, how do we know how to change each one?}} Our real network doesn't have one $w$. It might have millions of parameters:
+    \begin{equation*}
+        \theta=
+        \{w_1,w_2,w_3,\ldots,w_N\}
+    \end{equation*}
+    We therefore need:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w_1},
+        \quad
+        \frac{\partial\mathcal{L}}{\partial w_2},
+        \quad
+        \ldots,
+        \quad
+        \frac{\partial\mathcal{L}}{\partial w_N}
+    \end{equation*}
+    Collect all of them:
+    \begin{equation*}
+        \nabla_{\theta} \mathcal{L}
+        =
+        \begin{bmatrix}
+            \frac{\partial\mathcal{L}}{\partial w_1}\\[.5em]
+            \frac{\partial\mathcal{L}}{\partial w_2}\\
+            \vdots
+        \end{bmatrix}
+    \end{equation*}
+    That's the \textbf{gradient}. So:
+    \begin{equation*}
+        \theta
+        \leftarrow
+        \theta-\eta\nabla_{\theta}\mathcal{L}
+    \end{equation*}
+    Is just a compact way of saying: ``\hl{update every trainable parameter a little bit in the direction that reduces the loss}''.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we calculate the gradient?}} At first glance, the answer seems naively simple: ``\emph{the gradient is just the derivative of the loss with respect to the parameters}''. And that is true, but we cannot calculate it directly.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{exclamation-triangle}} Imagine a tiny network:
+    \begin{equation*}
+        x \xrightarrow{w_1} h \xrightarrow{w_2} \hat{y} \to \mathcal{L}
+    \end{equation*}
+    With:
+    \begin{equation*}
+        h = w_1 x,
+        \qquad
+        \hat{y} = w_2 h
+        \qquad
+        \mathcal{L} = (\hat{y}-y)^2
+    \end{equation*}
+    We want to train $w_1$, so we need:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w_1}
+    \end{equation*}
+    We could simply substitute everything and calculate the derivative directly:
+    \begin{equation*}
+        \mathcal{L} = (w_2 w_1 x - y)^2
+    \end{equation*}
+    And differentiate directly:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w_1} = 2(w_2 w_1 x - y) w_2 x
+    \end{equation*}
+    No problem. But \emph{\textbf{what if the network is huge?}} What if it has millions of parameters? For gradient descent, we need the derivative with respect to every single parameter:
+    \begin{equation*}
+        \nabla_{\theta} \mathcal{L} =
+        \begin{bmatrix}
+            \frac{\partial\mathcal{L}}{\partial w_1}\\
+            \frac{\partial\mathcal{L}}{\partial w_2}\\
+            \vdots\\
+            \frac{\partial\mathcal{L}}{\partial w_N}
+        \end{bmatrix}
+    \end{equation*}
+    If $N = 10^6$, then we would have to do this substitution and differentiation a million times. That is \textbf{not feasible}.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{check}} The solution is an amazing algorithm called \textbf{backpropagation}. It is a clever application of the chain rule of calculus (\autopageref{box:chain-rule}). For example, consider again:
+    \begin{equation*}
+        w_1 \to h_1 \to h_2 \to h_3 \to \mathcal{L}
+    \end{equation*}
+    By the chain rule:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w_1}
+        =
+        \frac{\partial\mathcal{L}}{\partial h_3} \cdot
+        \frac{\partial h_3}{\partial h_2} \cdot
+        \frac{\partial h_2}{\partial h_1} \cdot
+        \frac{\partial h_1}{\partial w_1}
+    \end{equation*}
+    Now suppose we also need the gradient for a parameter $w_2$ responsible for $h_2$:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w_2}
+        =
+        \frac{\partial\mathcal{L}}{\partial h_3} \cdot
+        \frac{\partial h_3}{\partial h_2} \cdot
+        \frac{\partial h_2}{\partial w_2}
+    \end{equation*}
+    \textbf{Look carefully}. \hl{Part of the calculation is the same:}
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial w_2}
+        =
+        \underbrace{\frac{\partial\mathcal{L}}{\partial h_3} \cdot
+        \frac{\partial h_3}{\partial h_2}}_{\frac{\partial\mathcal{L}}{\partial h_2}} \cdot
+        \frac{\partial h_2}{\partial w_2}
+    \end{equation*}
+    So, why calculate that over and over again? Calculate it \textbf{once}, save it, and reuse it. That's the essence of backpropagation.
+
+    \highspace
+    Therefore, it starts at the end of the network, calculates the derivative of the loss with respect to the last layer:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial h_3}
+    \end{equation*}
+    Then move one step backward and calculate the derivative of the loss with respect to the second-to-last layer:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial h_2}
+        =
+        \underbrace{\frac{\partial\mathcal{L}}{\partial h_3}}_{\text{cached!}} \cdot
+        \frac{\partial h_3}{\partial h_2}
+    \end{equation*}
+    Move backward again and calculate the derivative of the loss with respect to the third-to-last layer:
+    \begin{equation*}
+        \frac{\partial\mathcal{L}}{\partial h_1}
+        =
+        \underbrace{\frac{\partial\mathcal{L}}{\partial h_2}}_{\text{cached!}} \cdot
+        \frac{\partial h_2}{\partial h_1}
+    \end{equation*}
+    And so on, until we reach the first layer.
+
+    \highspace
+    So there are three different concepts that are easy to mix together:
+    \begin{align*}
+        \text{Calculus}         &\rightarrow \text{tells us the derivative of each operation} \\
+        \text{Backpropagation}  &\rightarrow \text{efficiently combines those derivatives} \\
+        \text{Gradient descent} &\rightarrow \text{uses the resulting gradients to update parameters}
+    \end{align*}
+\end{remarkbox}
+
+\newpage
+
+\noindent
+A CNN is a composition of differentiable layers:
+\begin{equation*}
+    \mathbf{x} \to \text{Conv} \to \text{Activation} \to \text{Pooling} \to \cdots \to \hat{\mathbf{y}}
+\end{equation*}
+Given a loss function $\mathcal{L}\left(\hat{\mathbf{y}}, \mathbf{y}\right)$, training aims to find parameters $\theta$ minimizing that loss over the training data:
+\begin{equation*}
+    \theta^{*} = \argmin_{\theta} \mathcal{L}\left(\theta\right)
+\end{equation*}
+Or, when working with a mini-batch\footnote{%
+    A \definition{Mini-Batch} is simply a small \textbf{subset of the training dataset} that we process together before making one parameter update. For example, suppose our training set contains $N = 50'000$ images. Instead of feeding all $50'000$ images through the CNN before updating its weights, we might choose a mini-batch size of $B = 100$ images. We run those 100 images through the network, compute their losses, usually average them, and then backpropagate the average loss to update the weights. Finally, we tale the next 100 images, and repeat the process until we have processed all $50'000$ images.
+} (\autopageref{sec:mini-batch-training}) $B$:
+\begin{equation*}
+    \theta^{*} = \argmin_{\theta} \frac{1}{\left|B\right|} \sum_{i \in B} \mathcal{L}_{i}\left(\theta\right)
+\end{equation*}
+\textcolor{Green3}{\faIcon{brain} \textbf{Gradient descent is the same idea as before.}} Once we can compute the gradient of the loss with respect to the parameters $\nabla_{\theta} \mathcal{L}\left(\theta\right)$, the parameters can be updated through gradient descent or one of its stochastic variants:
+\begin{equation*}
+    \theta \leftarrow \theta - \eta \cdot \nabla_{\theta} \mathcal{L}\left(\theta\right)
+\end{equation*}
+Where $\eta$ is the \textbf{learning rate}, a hyperparameter that controls how much we change the parameters in response to the estimated error each time the model weights are updated.
+
+\highspace
+So, conceptually, there is no special ``\emph{CNN optimizer}''. The same machinery used for Feed-Forward Neural Networks applies to CNNs:
+\begin{equation*}
+    \text{forward pass} \to \text{loss} \to \text{backpropagation} \to \text{parameter update}
+\end{equation*}
+The difference is simply that the \hl{computational graph now contains CNN-specific operations such as convolution and max pooling.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does backpropagation still work for CNNs?}} Backpropagation relies on the \textbf{chain rule}. Suppose the network has two layers:
+\begin{equation*}
+    \mathbf{h}^{(1)}
+    =
+    f^{(1)}(\mathbf x;\theta_1),
+    \qquad
+    \mathbf{h}^{(2)}
+    =
+    f^{(2)}(\mathbf{h}^{(1)};\theta_2)
+\end{equation*}
+And eventually the loss is computed as a function of the last layer:
+\begin{equation*}
+    \mathcal{L}
+    =
+    \mathcal{L}(\mathbf{h}^{(L)})
+\end{equation*}
+Then gradients are propagated backward through the composition:
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial\theta_l}
+    =
+    \frac{\partial\mathcal{L}}{\partial\mathbf{h}^{(L)}} \cdot
+    \frac{\partial\mathbf{h}^{(L)}}{\partial\mathbf{h}^{(L-1)}} \cdot
+    \frac{\partial\mathbf{h}^{(L-1)}}{\partial\mathbf{h}^{(L-2)}}
+    \cdots
+    \frac{\partial\mathbf{h}^{(l)}}{\partial\theta_l}
+\end{equation*}
+In other words, the gradient of the loss with respect to the parameters of layer $l$ is the product of the gradients of all subsequent layers. Therefore, the \textbf{only requirement for backpropagation to work} is that \hl{every layer of the CNN must be differentiable}. If every operation in the forward path has a suitable derivative, the chain rule lets us propagate the loss gradient all the way back to the parameters.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Backpropagation through a convolutional layer}}
+\end{flushleft}
+The convolutional activation is computed as:
+\begin{equation*}
+    a(r,c,l) = \sum_{u,v,k} w(u,v,k) \cdot x(r+u,c+v,k) + b(l)
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $a(r,c,l)$ is the \textbf{activation} at row $r$, column $c$, and channel $l$;
+    \item $w(u,v,k)$ is the \textbf{convolutional filter weight} at row $u$, column $v$, and input channel $k$;
+    \item $x(r+u,c+v,k)$ is the \textbf{input} at the corresponding position;
+    \item $b(l)$ is the \textbf{bias} for channel $l$.
+\end{itemize}
+This tells us how the convolution computes \textbf{one output activation}. It is a \textbf{forward computation} after all, because it takes the input and produces an output.
+
+\highspace
+After the forward pass, we know the loss $\mathcal{L}$ at the end of the network. But \textbf{to train the convolutional filter}, we need to update its weights:
+\begin{equation*}
+    w \leftarrow w - \eta \cdot \frac{\partial\mathcal{L}}{\partial w}
+\end{equation*}
+Therefore, we \hl{need to compute the \textbf{gradient of the loss} with respect to the convolutional filter weights:}
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial w}
+\end{equation*}
+More formally, we want to compute the \textbf{gradient of the loss with respect to every convolutional weight}:
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial w_{l}(u,v,k)}
+\end{equation*}
+In other words, we want to answer the question: ``\emph{\textbf{how would changing this convolutional weight change the final loss?}}''. But the problem is that the convolutional weight does \textbf{not} directly produce the loss. Instead, it produces an activation, which produces another activation, and so on, until eventually the loss is computed:
+\begin{equation*}
+    w \to a^{(1)} \to a^{(2)} \to \cdots \to a^{(L)} \to \mathcal{L}
+\end{equation*}
+So we cannot compute the derivative directly. Instead, we \textbf{use the chain rule}:
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial w}
+    =
+    \frac{\partial\mathcal{L}}{\partial a^{(L)}} \cdot
+    \frac{\partial a^{(L)}}{\partial a^{(L-1)}} \cdots
+    \frac{\partial a^{(2)}}{\partial a^{(1)}} \cdot
+    \frac{\partial a^{(1)}}{\partial w}
+\end{equation*}
+And in Convolutional Neural Networks (CNNs) context, we can write this as:
+\begin{equation*}
+    \frac{\partial\mathcal{L}}{\partial w_{l}(u,v,k)}
+    =
+    \underbrace{\frac{\partial \mathcal{L}}{\partial a(r,c,l)}}_{%
+        \substack{\text{effect of activation}\\\text{on loss}}
+    } \cdot
+    \underbrace{\frac{\partial a(r,c,l)}{\partial w_{l}(u,v,k)}}_{%
+        \substack{\text{effect of weight}\\\text{on activation}}
+    }
+\end{equation*}
+Formally, the \textbf{effect of the activation on the loss} is:
+\begin{equation*}
+    \delta \equiv \frac{\partial\mathcal{L}}{\partial a} \quad \xrightarrow{\text{CNN context}} \quad \delta(r, c, l) = \frac{\partial\mathcal{L}}{\partial a(r, c, l)}
+\end{equation*}
+And the \textbf{derivative of the activation with respect to the convolutional weight} is:
+\begin{equation*}
+    \frac{\partial a(r,c,l)}{\partial w_{l}(u,v,k)} = x(r+u, c+v, k)
+\end{equation*}
+Finally, we can combine these two pieces to compute the \hl{gradient of the loss with respect to the convolutional weight.} But the same filter weight is reused at many spatial positions. Thus its total gradient is the sum of the contributions from \textbf{all positions where that parameter was used}:
+\begin{equation}\label{eq:gradient-of-loss-wrt-conv-weight}
+    \frac{\partial\mathcal{L}}{\partial w_{l}(u,v,k)} = \sum_{r,c} \delta(r, c, l) \cdot x(r+u, c+v, k)
+\end{equation}
+This is the effect of \textbf{weight sharing} during backpropagation.
+\begin{deepeningbox}[: Why is the derivative of the activation with respect to a convolutional weight simply the corresponding input value?]
+    At first glance, this might seem counterintuitive:
+    \begin{equation*}
+        \frac{\partial a(r,c,l)}{\partial w_{l}(u,v,k)} = x(r+u, c+v, k)
+    \end{equation*}
+    So, imagine that, after expanding the summation of the convolution, the activation looks like:
+    \begin{equation*}
+        a = w_{1}x_{1} + w_{2}x_{2} + w_{3}x_{3} + b
+    \end{equation*}
+    Now ask:
+    \begin{equation*}
+        \frac{\partial a}{\partial w_{2}} = ?
+    \end{equation*}
+    When differentiating with respect to $w_2$, everything else is treated as constant:
+    \begin{equation*}
+        \frac{\partial}{\partial w_2}
+        (w_1x_1+w_2x_2+w_3x_3+b)
+    \end{equation*}
+    Term by term:
+    \begin{equation*}
+        \frac{\partial(w_1x_1)}{\partial w_2} = 0
+    \end{equation*}
+    Because that term doesn't contain $w_2$;
+    \begin{equation*}
+        \frac{\partial(w_2x_2)}{\partial w_2} = x_2
+    \end{equation*}
+    Because $x_2$ is constant with respect to $w_2$;
+    And:
+    \begin{equation*}
+        \frac{\partial(w_3x_3)}{\partial w_2}=0
+    \end{equation*}
+    Therefore:
+    \begin{equation*}
+        \frac{\partial a}{\partial w_2}=x_2
+    \end{equation*}
+    That's exactly what the formula says: \hl{the derivative of the activation with respect to a convolutional weight is simply the corresponding input value.}
+\end{deepeningbox}
+
+\highspace
+\begin{examplebox}[: Backpropagation through a 1D convolution]
+    Return to the 1D convolution
+    \begin{equation*}
+        \begin{aligned}
+            a_1 &= w_1x_1+w_2x_2+w_3x_3\\
+            a_2 &= w_1x_2+w_2x_3+w_3x_4\\
+            a_3 &= w_1x_3+w_2x_4+w_3x_5
+        \end{aligned}
+    \end{equation*}
+    Suppose
+    \begin{equation*}
+        \delta_i
+        =
+        \frac{\partial\mathcal L}{\partial a_i}.
+    \end{equation*}
+    Since \(w_1\) appears in all three equations:
+    \begin{equation*}
+        \frac{\partial\mathcal L}{\partial w_1}
+        =
+        \delta_1x_1
+        +
+        \delta_2x_2
+        +
+        \delta_3x_3
+    \end{equation*}
+    Similarly:
+    \begin{equation*}
+        \frac{\partial\mathcal L}{\partial w_2}
+        =
+        \delta_1x_2
+        +
+        \delta_2x_3
+        +
+        \delta_3x_4
+    \end{equation*}
+    And:
+    \begin{equation*}
+        \frac{\partial\mathcal L}{\partial w_3}
+        =
+        \delta_1x_3
+        +
+        \delta_2x_4
+        +
+        \delta_3x_5
+    \end{equation*}
+    So each filter coefficient receives information from every spatial location where it was applied. That is the backpropagation counterpart of weight sharing. In other words, \hl{the gradient of the loss w.r.t. a convolutional weight is the sum of the contributions from all positions where that parameter was used.}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The bias gradient is shared too}}
+\end{flushleft}
+For a moment, forget about CNNs. Consider a simple linear combination of three inputs:
+\[
+    a = w_1x_1+w_2x_2+w_3x_3+b
+\]
+Differentiate with respect to $b$:
+\[
+    \frac{\partial a}{\partial b}
+    =
+    \frac{\partial}{\partial b}
+    (w_1x_1+w_2x_2+w_3x_3+b)
+\]
+All the terms that don't contain $b$ are constants with respect to $b$:
+\[
+    \frac{\partial(w_1x_1)}{\partial b}=0
+\]
+And similarly for the others. The only remaining term is:
+\[
+    \frac{\partial b}{\partial b}=1
+\]
+Therefore:
+\[
+    \frac{\partial a}{\partial b}=1
+\]
+It's just the elementary rule:
+\[
+    \frac{d}{dx}x=1
+\]
+Going back to CNN notation:
+\[
+    \frac{\partial a(r,c,l)}
+    {\partial b_l}=1
+\]
+However, we don't care about the derivative of the activation with respect to the bias. For \textbf{training}, we need the \textbf{derivative of the loss with respect to the bias}:
+\[
+    \frac{\partial\mathcal{L}}{\partial b_l}
+\]
+\hl{Because that's what tells us how to update $b_l$.} For \textbf{one output location}, the \textbf{chain rule} gives:
+\[
+    \frac{\partial\mathcal{L}}{\partial b_l}
+    =
+    \frac{\partial\mathcal{L}}{\partial a(r,c,l)} \cdot
+    \frac{\partial a(r,c,l)}{\partial b_l}
+    =
+    \delta(r,c,l) \cdot 1
+    =
+    \delta(r,c,l)
+\]
+Because for each filter $l$ we have \textbf{one bias} $b_l$, that \hl{same bias is added at \textbf{every spatial position} of the resulting feature map.} Therefore, the total gradient of the loss with respect to the bias is the sum of the contributions from all spatial positions:
+\begin{equation}\label{eq:gradient-of-loss-wrt-conv-bias}
+    \frac{\partial\mathcal{L}}{\partial b_l} = \sum_{r,c} \delta(r,c,l)
+\end{equation}
+
+\begin{examplebox}[: Why is the bias gradient shared?]
+    Suppose, for simplicity, the output feature map is $2\times2$. We have:
+    \begin{align*}
+        a(1,1,l) &= \cdots + b_l\\
+        a(1,2,l) &= \cdots + b_l\\
+        a(2,1,l) &= \cdots + b_l\\
+        a(2,2,l) &= \cdots + b_l
+    \end{align*}
+    Notice the same bias $b_l$ is added to every activation. Therefore $b_l$ influences the loss through four different activations:
+    \begin{align*}
+        b_l &\rightarrow a(1,1,l) \rightarrow \mathcal L\\
+        b_l &\rightarrow a(1,2,l) \rightarrow \mathcal L\\
+        b_l &\rightarrow a(2,1,l) \rightarrow \mathcal L\\
+        b_l &\rightarrow a(2,2,l) \rightarrow \mathcal L
+    \end{align*}
+    So, exactly like with a shared filter weight, all contributions must be added.
+
+    \highspace
+    Now, let's \textbf{compute the gradient of the loss with respect to the bias}. We have:
+    \begin{align*}
+        \frac{\partial\mathcal L}{\partial b_l} &=
+        \frac{\partial\mathcal L}{\partial a(1,1,l)}
+        \frac{\partial a(1,1,l)}{\partial b_l}
+        +
+        \frac{\partial\mathcal L}{\partial a(1,2,l)}
+        \frac{\partial a(1,2,l)}{\partial b_l} + \\
+        &\phantom{=} \,\,\,
+        \frac{\partial\mathcal L}{\partial a(2,1,l)}
+        \frac{\partial a(2,1,l)}{\partial b_l}
+        +
+        \frac{\partial\mathcal L}{\partial a(2,2,l)}
+        \frac{\partial a(2,2,l)}{\partial b_l}
+    \end{align*}
+    But every local bias derivative is \(1\):
+    \[
+        \frac{\partial a(r,c,l)}{\partial b_l}=1
+    \]
+    And every loss derivative is what we're calling \(\delta\):
+    \[
+        \frac{\partial\mathcal L}{\partial a(r,c,l)}
+        =
+        \delta(r,c,l)
+    \]
+    Therefore:
+    \[
+        \frac{\partial\mathcal L}{\partial b_l}
+        =
+        \delta(1,1,l)
+        +
+        \delta(1,2,l)
+        +
+        \delta(2,1,l)
+        +
+        \delta(2,2,l)
+    \]
+    For an arbitrary feature-map size, we write this compactly as:
+    \[
+        \frac{\partial\mathcal L}{\partial b_l}
+        =
+        \sum_{r,c}\delta(r,c,l)
+    \]
+\end{examplebox}
+
+\begin{takeawaysbox}
+    \hl{CNNs are trained by ordinary gradient-based optimization and backpropagation}. Because a CNN is effectively an MLP with sparse and shared connectivity, the same chain-rule machinery applies.
+
+    \highspace
+    Also, \hl{one convolutional filter parameter is used at many spatial positions.} So during backpropagation, \hl{its gradient is obtained by accumulating contributions from every use of that parameter.}
+
+    \highspace
+    In general, CNNs can be trained by gradient descent and backpropagation exactly like feed-forward neural networks, provided each layer is differentiable. Convolutional weight sharing must be accounted for during differentiation: since the same filter parameter is used at many spatial positions, its gradient accumulates contributions from all those positions.
+\end{takeawaysbox}

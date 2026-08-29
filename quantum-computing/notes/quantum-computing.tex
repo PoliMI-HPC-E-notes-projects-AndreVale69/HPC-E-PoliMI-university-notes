@@ -24,14 +24,10 @@
 \usepackage{fontawesome5}           % use for icons
 \usepackage{ragged2e}               % use for \flushleft command
 \usepackage{cite}                   % references
-\usepackage{imakeidx}               % index
+\usepackage[noautomatic]{imakeidx} % index (latexmk runs makeindex when needed)
 \usepackage{fancyhdr}               % extensive facilities, both for constructing headers and footers 
 \setlength{\headheight}{23.1pt}
 \usepackage{wrapfig}                % allows figures or tables to have text wrapped around them
-\makeindex[program=makeindex, columns=1,
-           title=Index, 
-           intoc,
-           options={-s index-style.ist}]
 \usepackage{multicol}               % multi-column itemize
 \usepackage{soul}                   % highlight text (as a highlighter)
 \usepackage{xspace}                 % preserve spacing after custom commands
@@ -44,7 +40,44 @@
 \pgfplotsset{compat=1.18}           % set pgfplots compatibility to 1.18
 \usepackage{quantikz}               % quantum circuit diagrams: https://ctan.mirror.garr.it/mirrors/ctan/graphics/pgf/contrib/quantikz/quantikz.pdf
                                     % it also defines: \bra, \ket, \proj, \braket
-\usetikzlibrary{positioning, arrows.meta, calc, decorations.pathreplacing}
+\usetikzlibrary{
+    external,%
+    positioning,%
+    arrows.meta,%
+    calc,%
+    decorations.pathreplacing%
+}
+
+% -----------------------------------------------------------------------------
+% TikZ Externalization (Caching)
+% -----------------------------------------------------------------------------
+% How it works:
+%   Each `tikzpicture` is compiled once into a standalone PDF in `tikz-cache/`.
+%   Subsequent compilations simply include the pre-rendered PDF rather than
+%   recalculating the entire diagram, drastically speeding up compilation.
+%
+% Requirements:
+%   - The LaTeX compiler must run with `-shell-escape` (configured in VSCode
+%     LaTeX-Workshop settings via `latex-workshop.latex.tools`).
+%   - The target directory (`tikz-cache/`) must exist.
+%
+% How to bypass caching during active development (WIP figures):
+%   - For a SINGLE figure (compile inline without caching):
+%       Place `\tikzset{external/export next=false}` immediately before
+%       `\begin{tikzpicture}`.
+%   - For a whole FILE / BLOCK:
+%       `\tikzset{external/export=false}` at start, `\tikzset{external/export=true}` at end.
+%
+% How to rebuild / invalidate cache:
+%   - Rebuild ALL figures:
+%       1. Delete cache files manually (e.g. `rm -f tikz-cache/*`), OR
+%       2. Temporarily add: `\tikzset{external/force remake=true}`
+%   - Rebuild ONLY ONE specific figure:
+%       Place `\tikzset{external/remake next}` immediately before the target
+%       `\begin{tikzpicture}` environment.
+% -----------------------------------------------------------------------------
+\tikzexternalize[prefix=tikz-cache/, only named]
+\tcbset{shield externalize} % Protect tcolorbox environments from externalization
 
 %%%%%%%%%%%%%%%%%%%%
 % Dark Mode option %
@@ -181,15 +214,56 @@
 % argmin operator
 \DeclareMathOperator*{\argmin}{arg\,min}
 
-% \includeonly{%
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/problem-definition-and-classical-solution,
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/quantum-oracle-construction,
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/circuit-and-algorithm-steps,
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/phase-kickback-intuition,
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/complete-example-for-w101-exam-question,
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/general-mathematical-derivation,
-%     sections/multiple-qubit-gates/bernstein-vazirani-algorithm/complexity-and-importance
-% }
+% Native PGF scaling hooks for cached TikZ figures
+\newcommand{\tikzwidth}[1]{\pgfkeys{/pgf/images/include external/.code={\includegraphics[width=#1]{##1}}}}
+\newcommand{\tikzheight}[1]{\pgfkeys{/pgf/images/include external/.code={\includegraphics[height=#1]{##1}}}}
+\newcommand{\tikzsize}[2]{\pgfkeys{/pgf/images/include external/.code={\resizebox{#1}{#2}{\pgfimage{##1}}}}}
+
+% -----------------------------------------------------------------------------
+% Preamble Precompilation Marker (mylatexformat)
+% -----------------------------------------------------------------------------
+% How it works:
+%   Freezes all loaded packages above this line into a binary `.fmt` format.
+%   When invoked with `-fmt=...`, TeX skips the entire static preamble above
+%   and jumps directly here in ~0.03s.
+% -----------------------------------------------------------------------------
+\csname endofdump\endcsname
+
+\makeatletter
+\global\@fileswtrue
+\makeatother
+
+\tikzifexternalizing{%
+    \renewcommand{\printindex}{}%
+}{%
+    \makeindex[program=makeindex, columns=1,
+               title=Index, 
+               intoc,
+               options={-s index-style.ist}]%
+}
+
+% Toggle this flag to enable/disable the \includeonly scope & fast draft settings.
+\newif\ifuseincludeonly
+% To enable the includeonly behavior (and disable PDF compression for drafting), uncomment the next line:
+% \useincludeonlytrue
+% To explicitly disable, uncomment the next line (default is false):
+% \useincludeonlyfalse
+
+\ifuseincludeonly
+    % Faster drafting: disable PDF stream compression when drafting single sections
+    \pdfcompresslevel=0
+    \pdfobjcompresslevel=0
+
+    \includeonly{
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/problem-definition-and-classical-solution,
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/quantum-oracle-construction,
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/circuit-and-algorithm-steps,
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/phase-kickback-intuition,
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/complete-example-for-w101-exam-question,
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/general-mathematical-derivation,
+        sections/multiple-qubit-gates/bernstein-vazirani-algorithm/complexity-and-importance
+    }
+\fi
 
 \begin{document}
     \newcounter{definition}[section]

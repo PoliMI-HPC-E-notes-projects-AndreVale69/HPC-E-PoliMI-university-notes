@@ -1,0 +1,358 @@
+\subsubsection{LeNet-5 Architecture}\label{sec:lenet-5-architecture}
+
+The main idea of the architecture is (see also \autoref{fig:lenet-5-architecture}, \autopageref{fig:lenet-5-architecture}):
+\begin{align*}
+    \text{Image} &\to \text{Conv} \to \text{Non-linearity} \to \text{AvgPool} \\
+    &\to \text{Conv} \to \text{Non-linearity} \to \text{AvgPool} \\
+    &\to \text{Flatten} \to \text{Multi-Layer Perceptron (MLP)} \to \text{Softmax}
+\end{align*}
+LeNet-5 receives a \textbf{small grayscale image} of a handwritten digit as input. Since it is grayscale, the input initially has only \textbf{one channel}. The first part of the network is the \textbf{feature extractor}:
+\begin{equation*}
+    \text{Image} \to \boxed{%
+        \text{Conv} \to \text{Activation} \to \text{Pooling}
+    }
+    \to
+    \boxed{%
+        \text{Conv} \to \text{Activation} \to \text{Pooling}
+    }
+\end{equation*}
+The second part is the \textbf{classifier}:
+\begin{equation*}
+    \text{Feature Volume} \to \text{Flatten} \to \boxed{\text{Dense layers}} \to \boxed{\text{Softmax}}
+\end{equation*}
+So the idea introduced on \autopageref{sec:dense-layers-and-the-complete-cnn} becomes concrete in the LeNet-5 architecture:
+\begin{equation*}
+    \text{Image} \to \underbrace{\text{Learned Feature Extraction}}_{\text{CNN}} \to \underbrace{\text{Classification}}_{\text{MLP}} \to \text{Digit}
+\end{equation*}
+Where the feature extraction is done by a \textbf{convolutional neural network} (CNN) and the classification is done by a \textbf{multi-layer perceptron} (MLP).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{th} \textbf{Convolutional layers: learn \emph{what} to look for}}
+\end{flushleft}
+The convolutional layers contain \textbf{learnable filters}.
+
+\highspace
+The \emph{first} convolution operates directly on the grayscale pixels. Its filters can learn relatively simple local structures such as edges, strokes and curves.
+
+\highspace
+After several transformations, the \emph{second} convolution works on the \textbf{feature maps produced by the previous layer}, rather than directly on the original image.
+
+\highspace
+Therefore, we can think:
+\begin{equation*}
+    \text{Pixels} \to \text{Simple Local Features} \to \text{More Complex Combinations of Features}
+\end{equation*}
+This connects directly with the idea from \autopageref{sec:cnns-in-action}: \hl{deeper activations represent progressively more abstract information} (e.g., \autopageref{fig:activations-block4_conv3}).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{wave-square} \textbf{Nonlinearities: make the network actually nonlinear}}
+\end{flushleft}
+After convolution, LeNet applies an activation function. As we know, this is crucial because convolution itself is a linear operation. Without nonlinearities, the network would still collapse mathematically into one linear transformation, no matter how many layers we stack. The original LeNet family is associated with \textbf{tanh-like nonlinearities}. So, \hl{convolution extracts features, and activation introduces nonlinearity to the network.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{compress-arrows-alt} \textbf{Average pooling: progressively reduce spatial resolution}}
+\end{flushleft}
+This is an interesting historical difference from many modern CNNs, where \textbf{max pooling} is more common. LeNet-5 uses \textbf{average pooling}, which conceptually computes a local average of the feature map:
+\begin{equation*}
+    \begin{bmatrix}
+        x_1 & x_2 \\
+        x_3 & x_4
+    \end{bmatrix}
+    \to
+    \frac{x_1 + x_2 + x_3 + x_4}{4}
+\end{equation*}
+As max pooling, average pooling \hl{reduces the spatial dimensions while keeping the number of channels constant.} In other words, it does \textbf{spatial downsampling}, which is a form of \textbf{dimensionality reduction}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{layer-group} \textbf{The characteristic CNN shape evolution}}
+\end{flushleft}
+This architecture gives us a concrete example of the \textbf{typical CNN shape evolution} discussed on \autopageref{sec:depth-increases-while-width-decreases}. Indeed, the spatial dimensions of the feature maps decrease while the number of channels increases:
+\begin{align*}
+    1@32\times32 &\to \text{Conv}(5 \times 5, \; 6) \to 6@28\times28 \to \text{AvgPool}(2 \times 2) \to 6@14\times14 \\
+    &\to \text{Conv}(5 \times 5, \; 16) \to 16@10\times10 \to \text{AvgPool}(2 \times 2) \to \boxed{16@5\times5}
+\end{align*}
+The last volume contains \textbf{16 feature maps of size $5\times5$}, which is a total of $16 \cdot 5 \cdot 5 = 400$ activations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Flatten: transition from CNN to MLP}}
+\end{flushleft}
+Now comes the \emph{boundary} between \textbf{feature extraction} and \textbf{classification}. The volume:
+\begin{equation*}
+    5 \times 5 \times 16
+\end{equation*}
+Is flattened into:
+\begin{equation*}
+    \mathbf{z} \in \mathbb{R}^{400}
+\end{equation*}
+This $400$-dimensional vector is a \textbf{learned representation of the input image}. Then LeNet stops behaving spatially like a CNN and starts behaving like a conventional MLP: $400 \to 120 \to 84 \to 10$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{Dense layers: combine the extracted features}}
+\end{flushleft}
+The convolutional part answers something roughly like: ``\emph{which useful visual patterns are present?}''. Now, the dense classifier combines all of those learned features to answer: ``\emph{\textbf{which digit is most compatible with this combination of features?}''}. For example, the CNN might internally represent evidence for curves, vertical strokes, loops, etc. The dense layers learn how combinations of those features correspond to $0$, $1$, $\dots$, $9$.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-bar} \textbf{Softmax: turn the final scores into class probabilities}}
+\end{flushleft}
+There are ten possible digits, so the final dense layer has \textbf{10 outputs}:
+\begin{equation*}
+    z_0, z_1, \dots, z_9
+\end{equation*}
+Softmax converts these scores into probabilities:
+\begin{equation*}
+    P\left(y=i \; \mid \; x\right) = \frac{e^{z_i}}{\sum_{j=0}^{9} e^{z_j}}
+\end{equation*}
+Therefore, the output of the network is a \textbf{probability distribution over the ten classes}, which sums to $1$:
+\begin{equation*}
+    \sum_{i=0}^{9} P\left(y=i \; \mid \; x\right) = 1
+\end{equation*}
+For example, if the network outputs:
+\begin{equation*}
+    \mathbf{p} = \left[0.01, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, \mathbf{0.90}, 0.01\right]
+\end{equation*}
+We can interpret this as: ``\emph{the network is $90\%$ confident that the input image is a $8$.}''.
+
+\begin{takeawaysbox}
+    LeNet-5 combines the main building blocks of a CNN into a complete image classifier:
+    \begin{align*}
+        \text{Image} &\to \text{Conv} \to \text{Non-linearity} \to \text{AvgPool} \\
+        &\to \text{Conv} \to \text{Non-linearity} \to \text{AvgPool} \\
+        &\to \text{Flatten} \to \text{Multi-Layer Perceptron (MLP)} \to \text{Softmax}
+    \end{align*}
+    The \hl{convolutional part learns spatial features}, while the \hl{dense part uses the resulting representation to classify the input digit.}
+\end{takeawaysbox}
+
+\begin{figure}[htbp]
+\centering
+\tikzsetnextfilename{lenet-5-architecture}
+\tikzheight{0.86\textheight}
+\begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    % 3D Volume Edge & Fill Styling
+    boxstyle/.style={line width=0.65pt, draw=black!80, line join=round},
+    arrow/.style={->, line width=1.15pt, draw=black!80},
+    % Typography and Layout Columns
+    layertitle/.style={anchor=west, font=\small\bfseries, text=black!90},
+    layersub/.style={anchor=west, font=\footnotesize, text=black!70, text width=5.8cm},
+    % Dimension Badges (Right Column)
+    pill/.style={
+        draw=black!40,
+        fill=white,
+        rounded corners=3.5pt,
+        line width=0.6pt,
+        font=\footnotesize\bfseries,
+        inner sep=3.5pt,
+        minimum width=2.35cm,
+        minimum height=0.58cm,
+        align=center,
+        anchor=west
+    },
+    % Main Section Header Banners
+    mainbanner/.style={
+        rounded corners=4pt,
+        line width=0.8pt,
+        font=\bfseries\small,
+        align=center,
+        minimum height=0.65cm
+    },
+    % Feature Block Sub-Tags
+    blocktag/.style={
+        rounded corners=3pt,
+        line width=0.6pt,
+        font=\scriptsize\bfseries,
+        inner xsep=6pt,
+        inner ysep=2.5pt,
+        anchor=west
+    }
+]
+
+    % =========================================================================
+    % 3D MACROS
+    % =========================================================================
+    % 3D Cuboid: \drawbox{x}{y}{width}{height}{depth}{front_fill}{top_fill}{side_fill}
+    \newcommand{\drawbox}[8]{
+        \begin{scope}[shift={({#1-#3/2}, {#2-#4/2})}]
+            % Top face
+            \filldraw[boxstyle, fill=#7] 
+                (0, #4) -- ++(#5*0.35, #5*0.25) -- ++(#3, 0) -- (#3, #4) -- cycle;
+            % Right side face
+            \filldraw[boxstyle, fill=#8] 
+                (#3, 0) -- ++(#5*0.35, #5*0.25) -- ++(0, #4) -- (#3, #4) -- cycle;
+            % Front face
+            \filldraw[boxstyle, fill=#6] 
+                (0, 0) rectangle (#3, #4);
+        \end{scope}
+    }
+
+    % 1D Segmented Vector Bar (Flatten Layer)
+    \newcommand{\drawflatten}[2]{
+        \begin{scope}[shift={({#1-0.9}, {#2-0.14})}]
+            \filldraw[boxstyle, fill=orange!20] (0, 0.28) -- ++(0.14, 0.1) -- ++(1.8, 0) -- (1.8, 0.28) -- cycle;
+            \filldraw[boxstyle, fill=orange!45] (1.8, 0) -- ++(0.14, 0.1) -- ++(0, 0.28) -- (1.8, 0.28) -- cycle;
+            \filldraw[boxstyle, fill=orange!30] (0, 0) rectangle (1.8, 0.28);
+            \foreach \gx in {0.225, 0.45, 0.675, 0.9, 1.125, 1.35, 1.575} {
+                \draw[black!55, line width=0.4pt] (\gx, 0) -- (\gx, 0.28) -- ++(0.14, 0.1);
+            }
+        \end{scope}
+    }
+
+    % =========================================================================
+    % 0. INPUT LAYER (y = 16.5)
+    % =========================================================================
+    \drawbox{0}{16.5}{1.3}{1.3}{0.18}{gray!20}{gray!10}{gray!35}
+    \node[layertitle] at (1.35, 16.68) {Input Layer};
+    \node[layersub]   at (1.35, 16.30) {Grayscale Digit Image ($32 \times 32$)};
+    \node[pill] at (7.4, 16.5) {$32 \times 32 \times 1$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 16.5) -- (7.4, 16.5);
+
+    % Arrow: Input Layer -> FEN Banner
+    \draw[arrow] (0, 15.75) -- (0, 15.22);
+
+    % =========================================================================
+    % 1. FEATURE EXTRACTION NETWORK (FEN) (y: 15.15 down to 4.65)
+    % =========================================================================
+    \begin{scope}[on background layer]
+        % Outer FEN Container Box
+        \filldraw[fill=blue!1.5, draw=blue!55, dashed, rounded corners=8pt, line width=0.85pt] 
+            (-1.4, 4.65) rectangle (10.0, 15.15);
+
+        % Highlight Sub-Block 1 (C1 + S2)
+        \filldraw[fill=blue!5, draw=blue!40, rounded corners=6pt, line width=0.65pt] 
+            (-1.25, 9.75) rectangle (9.85, 14.15);
+
+        % Highlight Sub-Block 2 (C3 + S4)
+        \filldraw[fill=purple!4, draw=purple!40, rounded corners=6pt, line width=0.65pt] 
+            (-1.25, 4.85) rectangle (9.85, 9.35);
+    \end{scope}
+
+    % FEN Main Header Banner
+    \node[mainbanner, fill=blue!12, draw=blue!70, text=blue!90!black, minimum width=11.4cm] 
+        at (4.3, 14.80) {1. Feature Extraction Network (FEN)};
+
+    % Arrow: FEN Banner -> Top of C1 (Clean buffer above top face of C1)
+    \draw[arrow] (0, 14.40) -- (0, 13.40);
+
+    % ----------------- FEATURE BLOCK 1: C1 + S2 -----------------
+    \node[blocktag, fill=blue!18, draw=blue!50, text=blue!90!black] 
+        at (1.35, 13.80) {Block 1: Conv $\to$ Tanh $\to$ AvgPool};
+
+    % Layer C1: Conv 1 + Tanh (y = 12.55)
+    \drawbox{0}{12.55}{1.2}{1.2}{0.45}{blue!25}{blue!15}{blue!35}
+    \node[layertitle] at (1.35, 12.75) {C1: Convolution + Tanh};
+    \node[layersub]   at (1.35, 12.35) {6 filters ($5 \times 5$), Valid Pad, Stride $S=1$};
+    \node[pill] at (7.4, 12.55) {$28 \times 28 \times 6$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 12.55) -- (7.4, 12.55);
+
+    % Arrow: C1 -> S2 (Stops cleanly above top face of S2)
+    \draw[arrow] (0, 11.85) -- (0, 11.42);
+
+    % Layer S2: AvgPool 1 (y = 10.75)
+    \drawbox{0}{10.75}{0.9}{0.9}{0.45}{cyan!28}{cyan!16}{cyan!40}
+    \node[layertitle] at (1.35, 10.95) {S2: Average Pooling};
+    \node[layersub]   at (1.35, 10.55) {Window $2 \times 2$, Stride $S=2$};
+    \node[pill] at (7.4, 10.75) {$14 \times 14 \times 6$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 10.75) -- (7.4, 10.75);
+
+    % Arrow: Block 1 -> Block 2 (Stops cleanly above top face of C3)
+    \draw[arrow] (0, 10.20) -- (0, 8.32);
+
+    % ----------------- FEATURE BLOCK 2: C3 + S4 -----------------
+    \node[blocktag, fill=purple!18, draw=purple!50, text=purple!90!black] 
+        at (1.35, 8.90) {Block 2: Conv $\to$ Tanh $\to$ AvgPool};
+
+    % Layer C3: Conv 2 + Tanh (y = 7.55)
+    \drawbox{0}{7.55}{0.8}{0.8}{0.85}{purple!25}{purple!15}{purple!38}
+    \node[layertitle] at (1.35, 7.75) {C3: Convolution + Tanh};
+    \node[layersub]   at (1.35, 7.35) {16 filters ($5 \times 5$), Valid Pad, Stride $S=1$};
+    \node[pill] at (7.4, 7.55) {$10 \times 10 \times 16$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 7.55) -- (7.4, 7.55);
+
+    % Arrow: C3 -> S4 (Stops cleanly above top face of S4)
+    \draw[arrow] (0, 7.05) -- (0, 6.48);
+
+    % Layer S4: AvgPool 2 (y = 5.85)
+    \drawbox{0}{5.85}{0.65}{0.65}{0.85}{cyan!35}{cyan!22}{cyan!48}
+    \node[layertitle] at (1.35, 6.05) {S4: Average Pooling};
+    \node[layersub]   at (1.35, 5.65) {Window $2 \times 2$, Stride $S=2$};
+    \node[pill] at (7.4, 5.85) {$5 \times 5 \times 16$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 5.85) -- (7.4, 5.85);
+
+    % Arrow: S4 -> Classifier Banner
+    \draw[arrow] (0, 5.45) -- (0, 4.40);
+
+    % =========================================================================
+    % 2. CLASSIFIER NETWORK (y: 4.40 down to -3.75)
+    % =========================================================================
+    \begin{scope}[on background layer]
+        % Outer Classifier Container Box
+        \filldraw[fill=red!1.5, draw=red!50, dashed, rounded corners=8pt, line width=0.85pt] 
+            (-1.4, -3.75) rectangle (10.0, 4.40);
+    \end{scope}
+
+    % Classifier Header Banner
+    \node[mainbanner, fill=red!12, draw=red!65, text=red!90!black, minimum width=11.4cm] 
+        at (4.3, 4.00) {2. Classifier Network};
+
+    % Arrow: Classifier Banner -> Flattening Bar
+    \draw[arrow] (0, 3.60) -- (0, 3.10);
+
+    % Layer 5: Flattening (y = 2.75)
+    \drawflatten{0}{2.75}
+    \node[layertitle] at (1.35, 2.95) {Flattening};
+    \node[layersub]   at (1.35, 2.55) {Reshapes $5 \times 5 \times 16 \to 400\text{-D}$ feature vector};
+    \node[pill, draw=orange!75!black, fill=orange!6] at (7.4, 2.75) {$\mathbf{z} \in \mathbb{R}^{400}$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 2.75) -- (7.4, 2.75);
+
+    % Arrow: Flattening -> Dense 1
+    \draw[arrow] (0, 2.50) -- (0, 1.68);
+
+    % Layer 6: Dense 1 (y = 1.35)
+    \drawbox{0}{1.35}{1.6}{0.3}{0.2}{red!22}{red!12}{red!32}
+    \node[layertitle] at (1.35, 1.55) {Dense Layer 1 (FC)};
+    \node[layersub]   at (1.35, 1.15) {120 Hidden Units, ReLU};
+    \node[pill] at (7.4, 1.35) {$\mathbf{h}_1 \in \mathbb{R}^{120}$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, 1.35) -- (7.4, 1.35);
+
+    % Arrow: Dense 1 -> Dense 2
+    \draw[arrow] (0, 1.10) -- (0, 0.28);
+
+    % Layer 7: Dense 2 (y = -0.05)
+    \drawbox{0}{-0.05}{1.3}{0.3}{0.2}{red!28}{red!16}{red!38}
+    \node[layertitle] at (1.35, 0.15) {Dense Layer 2 (FC)};
+    \node[layersub]   at (1.35, -0.25) {84 Hidden Units, ReLU};
+    \node[pill] at (7.4, -0.05) {$\mathbf{h}_2 \in \mathbb{R}^{84}$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, -0.05) -- (7.4, -0.05);
+
+    % Arrow: Dense 2 -> Dense Output
+    \draw[arrow] (0, -0.30) -- (0, -1.12);
+
+    % Layer 8: Dense Output Layer (y = -1.45)
+    \drawbox{0}{-1.45}{0.95}{0.3}{0.2}{purple!24}{purple!14}{purple!34}
+    \node[layertitle] at (1.35, -1.25) {Dense Output Layer (10)};
+    \node[layersub]   at (1.35, -1.65) {10 Unnormalized Class Scores ($z_0, \dots, z_9$)};
+    \node[pill] at (7.4, -1.45) {$\mathbf{z} \in \mathbb{R}^{10}$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, -1.45) -- (7.4, -1.45);
+
+    % Arrow: Dense Output -> Softmax
+    \draw[arrow] (0, -1.70) -- (0, -2.52);
+
+    % Layer 9: Softmax Activation (y = -2.85)
+    \drawbox{0}{-2.85}{0.95}{0.3}{0.2}{teal!25}{teal!15}{teal!35}
+    \node[layertitle] at (1.35, -2.65) {Softmax Activation};
+    \node[layersub]   at (1.35, -3.05) {Class Probabilities: $p_i = \frac{e^{z_i}}{\sum_j e^{z_j}}$};
+    \node[pill, draw=teal!80!black, fill=teal!6] at (7.4, -2.85) {$\mathbf{p} \in [0, 1]^{10}$};
+    \draw[dotted, line width=0.6pt, black!35] (6.9, -2.85) -- (7.4, -2.85);
+
+\end{tikzpicture}
+\caption{\textbf{LeNet-5 architecture.} The network consists of a convolutional feature extractor followed by a fully connected classifier. Two blocks of $5 \times 5$ convolution, nonlinear activation, and $2 \times 2$ average pooling progressively transform the $32 \times 32$ grayscale input into a $5 \times 5 \times 16$ feature volume. This representation is flattened into a $400$-dimensional vector and processed by dense layers, with a final softmax producing probabilities over the $10$ digit classes.}
+\label{fig:lenet-5-architecture}
+\end{figure}

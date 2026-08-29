@@ -1,0 +1,234 @@
+\subsubsection{LeNet-5 Implementation}\label{sec:lenet-5-implementation}
+
+In this section, we will take the architecture we have just described and asks a very practical question: \emph{\textbf{given each layer, what is its output shape and how many trainable parameters does it have?}} This is the main implementation on Keras\footnote{%
+    \definition{Keras} is a high-level deep learning API for building and training neural networks, providing simple abstractions for defining layers, models, and training procedures.
+} of the LeNet-5 architecture:
+\begin{lstlisting}[language=Python, label=lst:lenet-5-implementation]
+from keras.models import Sequential
+from keras.layers import (
+    Dense, Flatten, Conv2D, AveragePooling2D
+)
+
+num_classes = 10
+input_shape = (32, 32, 1)
+
+model = Sequential()
+
+model.add(Conv2D(
+    filters=6,
+    kernel_size=(5, 5),
+    activation='tanh',
+    input_shape=input_shape,
+    padding='valid'
+))
+
+model.add(AveragePooling2D(pool_size=(2, 2)))
+
+model.add(Conv2D(
+    filters=16,
+    kernel_size=(5, 5),
+    activation='tanh',
+    padding='valid'
+))
+
+model.add(AveragePooling2D(pool_size=(2, 2)))
+
+model.add(Flatten())
+
+model.add(Dense(120, activation='relu'))
+model.add(Dense(84, activation='relu'))
+model.add(Dense(num_classes, activation='softmax'))
+\end{lstlisting}
+Let's analyze \textbf{each number}.
+\begin{enumerate}
+    \item \important{Input}. We start from: $32 \times 32 \times 1$. Where $1$ is the number of channels (\textbf{grayscale} image). Thus:
+    \begin{equation*}
+        H = 32, \quad W = 32, \quad C_{\text{in}} = 1
+    \end{equation*}
+    And the code is a tuple:
+    \begin{lstlisting}[language=Python]
+input_shape = (32, 32, 1)
+\end{lstlisting}
+    There are obviously \textbf{no trainable parameters} in the input layer.
+
+
+    \item \important{First convolution: $32 \times 32 \times 1 \to 28 \times 28 \times 6$}. The first layer is declared as:
+    \begin{lstlisting}[language=Python]
+model.add(Conv2D(
+    filters=6,
+    kernel_size=(5, 5),
+    activation='tanh',
+    input_shape=input_shape,
+    padding='valid'
+))
+\end{lstlisting}
+    So we have:
+    \begin{itemize}
+        \item Input channels $C_{\text{in}} = 1$;
+        \item Six filters (\texttt{filters = 6});
+        \item Each filter is spatially $5 \times 5$ (\texttt{kernel\_size = (5, 5)});
+        \item The activation function is \texttt{tanh};
+        \item The stride is $S = 1$ (default);
+        \item The padding is \texttt{valid} (\autopageref{fig:boundary-problem-no-padding}), so no padding is applied $P = 0$.
+    \end{itemize}
+    The \hl{output spatial dimensions} is computed using the \autoref{eq:output-size-convolution-stride-general}\break (\autopageref{eq:output-size-convolution-stride-general}):
+    \begin{equation*}
+        N_{\text{out}} = \left\lfloor \frac{N_{\text{in}} + 2P - K}{S} \right\rfloor + 1 = \frac{32 + 0  - 5}{1} + 1 = 28
+    \end{equation*}
+    Each of the \textbf{6 filters produces one feature map}, so the output shape is:
+    \begin{equation*}
+        32 \times 32 \times 1 \xrightarrow{\texttt{Conv2D}} 28 \times 28 \times 6
+    \end{equation*}
+    Instead, how many \hl{trainable parameters} does this layer have? Using the \autoref{eq:number-of-trainable-parameters-for-n-filters} (\autopageref{eq:number-of-trainable-parameters-for-n-filters}), we have:
+    \begin{align*}
+        \text{\# trainable parameters} &= C_{\text{out}} \left( K_h K_w C_{\text{in}} + 1 \right) \\
+        &= 6 \left( 5 \cdot 5 \cdot 1 + 1 \right) \\
+        &= 6 \left( 25 + 1 \right) \\
+        &= 6 \cdot 26 \\
+        &= 156
+    \end{align*}
+
+
+    \item \important{First average pooling: $28 \times 28 \times 6 \to 14 \times 14 \times 6$}. The first pooling layer is declared as:
+    \begin{lstlisting}[language=Python]
+model.add(AveragePooling2D(pool_size=(2, 2)))
+\end{lstlisting}
+    With a $2 \times 2$ window and the corresponding downsampling:
+    \begin{equation*}
+        28 \times 28 \times 6 \xrightarrow{\texttt{AveragePooling2D}} 14 \times 14 \times 6
+    \end{equation*}
+    Pooling operates \textbf{independently on each channel} (\autopageref{sec:pooling-size-and-stride}), so it does \textbf{not change the depth} (number of channels). Thus, the output has the same number of channels as the input, $C_{\text{out}} = C_{\text{in}} = 6$. The number of \hl{trainable parameters is \textbf{zero}} because pooling layers do not have any learnable parameters.
+
+
+    \item \important{Second convolution: the important one}. Now we have $14 \times 14 \times 6$. The second convolution is:
+    \begin{lstlisting}[language=Python]
+model.add(Conv2D(
+    filters=16,
+    kernel_size=(5, 5),
+    activation='tanh',
+    padding='valid'
+))
+\end{lstlisting}
+    Differently from the first convolution, we do not specify the \texttt{input\_shape} because Keras can infer it from the previous layer. Also, here a \hl{CNN filter spans the complete depth of its input.} The input depth is now $C_{\text{in}} = 6$, so each of the $16$ filters has a shape of $5 \times 5 \times 6$.
+
+    \highspace
+    The \hl{output spatial dimensions} is:
+    \begin{equation*}
+        N_{\text{out}} = \left\lfloor \frac{N_{\text{in}} + 2P - K}{S} \right\rfloor + 1 = \frac{14 + 0 - 5}{1} + 1 = 10
+    \end{equation*}
+    And because there are $16$ filters, the output shape is:
+    \begin{equation*}
+        14 \times 14 \times 6 \xrightarrow{\texttt{Conv2D}} 10 \times 10 \times 16
+    \end{equation*}
+    Every one of those 16 filters sees \textbf{all 6 input channels}.
+
+    \highspace
+    The number of \hl{trainable parameters} is:
+    \begin{align*}
+        \text{\# trainable parameters} &= C_{\text{out}} \left( K_h K_w C_{\text{in}} + 1 \right) \\
+        &= 16 \left( 5 \cdot 5 \cdot 6 + 1 \right) \\
+        &= 16 \left( 150 + 1 \right) \\
+        &= 16 \cdot 151 \\
+        &= 2416
+    \end{align*}
+
+
+    \item \important{Second average pooling}. The second pooling layer is declared as:
+    \begin{lstlisting}[language=Python]
+model.add(AveragePooling2D(pool_size=(2, 2)))
+\end{lstlisting}
+    With a $2 \times 2$ window and the corresponding downsampling:
+    \begin{equation*}
+        10 \times 10 \times 16 \xrightarrow{\texttt{AveragePooling2D}} 5 \times 5 \times 16
+    \end{equation*}
+    Again, the number of channels remains the same, $C_{\text{out}} = C_{\text{in}} = 16$, and the number of \hl{trainable parameters is \textbf{zero}}. At this point, the convolutional feature extractor has finished.
+
+
+    \item \important{Flattening: \emph{where does 400 come from?}} We now have the volume $5 \times 5 \times 16$. Flatten simply rearranges all its activations into one vector:
+    \begin{equation*}
+        5 \cdot 5 \cdot 16 = 400, \quad \mathbf{z} \in \mathbb{R}^{400}
+    \end{equation*}
+    Obviously, the number of \hl{trainable parameters is \textbf{zero}} because flattening does not have any learnable parameters. This is exactly the transition from the CNN feature extractor to the MLP classifier.
+
+
+    \item \important{First dense layer: $400 \to 120$}. The first dense layer is declared as:
+    \begin{lstlisting}[language=Python]
+model.add(Dense(120, activation='relu'))
+\end{lstlisting}
+    Now we are back to ordinary Neural-Network arithmetic. Every one of the $120$ neurons receives all $400$ inputs. So the \textbf{weights} are:
+    \begin{equation*}
+        400 \times 120 = 48'000
+    \end{equation*}
+    And there are $120$ \textbf{biases}, one for each neuron:
+    \begin{equation*}
+        48'000 + 120 = 48'120
+    \end{equation*}
+    Thus:
+    \begin{equation*}
+        \mathbb{R}^{400} \xrightarrow{\texttt{Dense}} \mathbb{R}^{120}
+    \end{equation*}
+    Notice that number of weights is \textbf{much larger} than the number of weights in the convolutional layers ($156$ and $2'416$). The first dense layer alone contains vastly more parameters than both convolutional layers combined.
+
+
+    \item \important{Second dense layer: $120 \to 84$}. The second dense layer is declared as:
+    \begin{lstlisting}[language=Python]
+model.add(Dense(84, activation='relu'))
+\end{lstlisting}
+    Again, every one of the $84$ neurons receives all $120$ inputs. So the \textbf{weights} are:
+    \begin{equation*}
+        120 \times 84 = 10'080
+    \end{equation*}
+    And there are $84$ \textbf{biases}, one for each neuron:
+    \begin{equation*}
+        10'080 + 84 = 10'164
+    \end{equation*}
+    Thus:
+    \begin{equation*}
+        \mathbb{R}^{120} \xrightarrow{\texttt{Dense}} \mathbb{R}^{84}
+    \end{equation*}
+
+
+    \item \important{Output layer: $84 \to 10$}. The output layer is declared as:
+    \begin{lstlisting}[language=Python]
+model.add(Dense(num_classes, activation='softmax'))
+\end{lstlisting}
+    There are 10 output neurons because there are 10 digit classes. Here, the number of parameters is:
+    \begin{equation*}
+        84 \times 10 + 10 = 850
+    \end{equation*}
+    Thus:
+    \begin{equation*}
+        \mathbb{R}^{84} \xrightarrow{\texttt{Dense}} \mathbb{R}^{10}
+    \end{equation*}
+    And the softmax then converts these ten outputs into class probabilities. It adds \textbf{no trainable parameters}.
+\end{enumerate}
+Thus, the \hl{total number of trainable parameters} in the LeNet-5 architecture is:
+\begin{equation*}
+    156 + 2'416 + 48'120 + 10'164 + 850 = 61'706
+\end{equation*}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c c @{}}
+        \toprule
+        \textbf{Layer} & \textbf{Output} & \textbf{Parameters} \\
+        \midrule
+        \texttt{Input} & $32 \times 32 \times 1$ & $0$ \\
+        \texttt{Conv2D} & $28 \times 28 \times 6$ & $156$ \\
+        \texttt{AveragePooling2D} & $14 \times 14 \times 6$ & $0$ \\
+        \texttt{Conv2D} & $10 \times 10 \times 16$ & $2'416$ \\
+        \texttt{AveragePooling2D} & $5 \times 5 \times 16$ & $0$ \\
+        \texttt{Flatten} & $400$ & $0$ \\
+        \texttt{Dense} & $120$ & $48'120$ \\
+        \texttt{Dense} & $84$ & $10'164$ \\
+        \texttt{Dense} & $10$ & $850$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+\textcolor{Green3}{\faIcon{check-circle} \textbf{CNN is parameter efficient.}} Look at where the parameters are:
+\begin{equation*}
+    \underbrace{156 + 2'416}_{\text{convolutions}} = 2'572 \; \lll \; \underbrace{48'120 + 10'164 + 850}_{\text{dense classifier}} = 59'134
+\end{equation*}
+So roughly \hl{96\% of LeNet's parameters are in the dense part.} This is a very important observation: \textbf{the convolutional part of the network is very parameter efficient.} The convolutional layers are able to extract features from the input images with a relatively small number of parameters, thanks to local connectivity and weight sharing, while the dense layers, which are responsible for classification, contain the majority of the parameters. This parameter efficiency is one of the main advantages of convolutional layers for image processing.

@@ -1,0 +1,192 @@
+\subsubsection{Advantages and Limitations of Hand-Crafted Features}\label{sec:advantages-and-limitations-of-hand-crafted-features}
+
+The previous section showed the traditional pipeline:
+\begin{equation*}
+    \text{image} \to \underbrace{\text{hand-crafted features extractor}}_{\text{designed by humans}} \to \underbrace{\text{classifier}}_{\text{learned from data}} \to \text{class}
+\end{equation*}
+Now, we will evaluate this approach. While hand-crafted features can be very effective in the right setting, we will not conclude that they are useless. However, they become \hl{difficult to design and maintain as the visual task becomes more complex.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages of hand-crafted features}}
+\end{flushleft}
+The advantages of hand-crafted features are:
+\begin{enumerate}
+    \item \textcolor{Green3}{\textbf{Exploiting prior and expert knowledge}}. The first advantage is the possibility of using a \textbf{priori knowledge}. An \hl{expert may already know which physical or geometric properties matter for the task.}
+    
+    \highspace
+    In the apple vs orange example, useful quantities may include the \emph{color}, \emph{shape}, and \emph{texture} of the fruit. These are not arbitrary measurements, but rather they are chosen because the expert understands the objects being classified.
+
+    \highspace
+    This priori knowledge can make the \textbf{classification problem much easier}. Instead of asking the classifier to discover everything from raw pixels, the engineer directly provides variables that are already meaningful for the task.
+
+
+    \item \textcolor{Green3}{\textbf{Interpretability}}. Hand-crafted features are usually \textbf{easy to understand}.
+    
+    \highspace
+    Suppose a classifier produces the wrong prediction because it relies heavily on \emph{average color} to distinguish between apples and oranges. The engineer can inspect the feature and ask whether it is reasonable to use this property for the task. This is \hl{much easier than inspecting thousands of internal neural-network activations to understand why the model made a mistake.}
+
+
+    \item \textcolor{Green3}{\textbf{Features can be manually adjusted}}. Because the features are explicit, the engineer can \textbf{modify them directly}.
+    
+    \highspace
+    For example, if the current feature vector is:
+    \begin{equation*}
+        \mathbf{x} = \left[
+            \text{average color},\; \text{average shape},\; \text{average texture}
+        \right]^{T}
+    \end{equation*}
+    But the classifier confuses two types of oranges, the engineer can add a new feature to the vector:
+    \begin{equation*}
+        \mathbf{x} = \left[
+            \text{average color},\; \text{average shape},\; \text{average texture},\; \text{average size}
+        \right]^{T}
+    \end{equation*}
+    Or replace the raw \emph{average color} with a more sophisticated \emph{color histogram} feature. The \textbf{system} can therefore be \textbf{improved through targeted human intervention}, rather than requiring a complete retraining of the model. This gives the designer considerable control over the representation of the data and the classification process.
+
+    
+    \item \textcolor{Green3}{\textbf{Limited training data may be sufficient}}. A good hand-crafted feature \textbf{extractor already embeds knowledge about the problem}. Therefore, the \textbf{classifier} does \textbf{not need to learn everything from the training set}.
+    
+    \highspace
+    Consider the difference between learning from $r \cdot c$ raw pixels values and learning from a compact feature vector of size $d$:
+    \begin{equation*}
+        \mathbf{x} \in \mathbb{R}^{d} \quad \text{with} \quad d \ll r \cdot c
+    \end{equation*}
+    If the features are well chosen, the classes may already be almost separated in feature space. A simple classifier can then learn the final decision boundary from \textbf{relatively few labelled examples}.
+
+    \highspace
+    This is particularly useful when collecting data is expensive, labels require expert annotation, or only a small number of examples exists.
+    
+    \highspace
+    \textcolor{Red2}{\faIcon{exclamation-triangle}} This does \textbf{not} mean that hand-crafted systems never overfit. It means that \hl{carefully chosen prior knowledge can reduce how much must be learned from data.}
+
+
+    \item \textcolor{Green3}{\textbf{Giving more relevance to selected properties}}. The engineer can explicitly decide that \textbf{some features are more important than others}.
+    
+    \highspace
+    For example, if the engineer knows that \emph{color} is more important than \emph{shape} for distinguishing between apples and oranges, they can assign a higher weight to the color feature in the classifier. This \textbf{introduces a deliberate human bias into the system}. That bias can be useful when the expert knowledge is correct.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{times-circle} \textbf{Limitations of hand-crafted features}}
+\end{flushleft}
+The disadvantages explain why this approach becomes problematic for complex image-recognition tasks. The limitations of hand-crafted features are:
+\begin{enumerate}
+    \item \important{High design and programming cost}. A \textbf{hand-crafted feature} is not just an idea. It must be \textbf{implemented as an algorithm}.
+    
+    \highspace
+    For example, computing the \emph{average color} of an image is straightforward, but computing a \emph{color histogram} or a \emph{shape descriptor} may require more sophisticated algorithms. The engineer must also ensure that the feature extractor is efficient and robust to variations in the input data.
+
+    \highspace
+    Therefore, the full pipeline may contain many manually programmed stages, each of which must be carefully designed, implemented, and tested:
+    \begin{align*}
+        \text{image} & \to \text{preprocessing} \\
+        & \to \text{segmentation} \\
+        & \to \text{measurement} \\
+        & \to \text{normalization} \\
+        & \to \text{classification}
+    \end{align*}
+    Each stage can require \textbf{significant engineering effort}, and every stage can \textbf{fail}.
+
+
+    \item \important{Risk of overfitting during feature design}. Overfitting is not limited to trained models. The \textbf{human designer can also overfit the development dataset}.
+    
+    \highspace
+    Suppose the engineer repeatedly inspects the same training images and keeps adding rules that fix specific mistakes: a new feature is added to distinguish between two oranges, a new threshold is set to separate apples from oranges, etc. Eventually, the \hl{feature extractor may work very well on the images used during development, but poorly on new data.}
+    
+    \highspace
+    This is still overfitting, even if the feature extractor itself was not trained through gradient descent. In general, the problem is:
+    \begin{equation*}
+        \text{features tailored too closely to known examples} \implies \text{poor generalization}
+    \end{equation*}
+
+
+    \item \important{Poor portability and generality}. A feature \textbf{extractor designed for one task often cannot be reused directly for another}.
+    
+    \highspace
+    The engineer may have to start from scratch when the task changes. For example, a feature extractor designed to distinguish between apples and oranges may not work well for distinguishing between cats and dogs. A change in the acquisition system (e.g., camera, lighting, or viewpoint) may also break the features. So the system is often tightly coupled to the task, the sensor, the environment, and the object geometry. This makes it difficult to adapt the system to new tasks or conditions (\textbf{poor portability and generality}).
+
+
+    \item \important{Natural images are too complex}. For \textbf{structured industrial objects}, we can often describe \textbf{useful properties explicitly}. But for \textbf{natural images}, the question becomes \textbf{much harder}: \emph{which features should we manually extract to distinguish a car from a motorbike?} We could try to define features such as \emph{number of wheels}, \emph{object width}, \emph{object height}, \emph{presence of windows}, \emph{body shape}. But every proposed feature creates new problems. For example:
+    \begin{itemize}
+        \item \emph{Number of wheels}. A car may show only two visible wheels from the side. A motorbike may show one wheel because the other is occluded.
+        \item \emph{Object width}. A car from the camera may occupy fewer pixels than a nearby motorbike.
+        \item \emph{Shape}. Objects appear differently under changes in viewpoint, lighting, occlusion, and so on.
+        \item \emph{Color}. Cars and motorbikes can have almost any color.
+    \end{itemize}
+    Therefore, a \hl{simple list of measurements is unlikely to capture all the visual variability of natural images.}
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why humans find the task easy.}} An interesting question is: \emph{why do humans find it easy to distinguish between a car and a motorbike, while it is difficult to design a feature extractor that can do the same?} This happens because human visual recognition relies on a very rich hierarchy of learned patterns, rather than a small set of hand-crafted features.
+
+\highspace
+We do not consciously classify a vehicle by checking a small fixed list such as: $\text{wheel count} > 2$, $\text{width} > 1.5 \text{m}$, $\text{height} < 2 \text{m}$, etc. Instead, we recognize many interacting patterns, such as the \emph{shape of the body}, \emph{the presence of a windshield}, \emph{the shape of the headlights}, \emph{the presence of a license plate}, and so on. These \textbf{patterns are difficult to translate into a small set of manually written rules}. That is the central failure of hand-crafted vision for natural images: \hl{the relevant representation exists, but humans often cannot describe it precisely enough to program it.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The deeper problem: the feature extractor is fixed}}
+\end{flushleft}
+In the traditional pipeline we have:
+\begin{equation*}
+    I \xrightarrow{h} \mathbf{x} \xrightarrow{f_{\theta}} t
+\end{equation*}
+The \textbf{hand-crafted feature extractor} $h$ is manually designed and then \textbf{fixed}. Only the classifier $f_{\theta}$ is learned from data. If $h$ discards useful information due to a poor design, the classifier cannot recover it.
+
+\highspace
+For example, suppose the feature extractor keeps only:
+\begin{equation*}
+    \mathbf{x} = \left[
+        \text{average color},\; \text{average shape},\; \text{average texture}
+    \right]^{T}
+\end{equation*}
+If wheel structure is necessary to distinguish cars from motorbikes, but the extractor never represents it, then even a powerful classifier cannot use it.
+
+\highspace
+Formally, the \hl{information discarded by the feature extractor $h$ is \textbf{unavailable} to every later stage.} So the classifier's \textbf{performance is limited by the human-designed representation}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{When hand-crafted features are still appropriate}}
+\end{flushleft}
+Hand-crafted features are not always a bad choice. They remain attractive when:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] The domain is narrow and well understood.
+    \item[\textcolor{Green3}{\faIcon{check}}] The relevant measurements are physically meaningful.
+    \item[\textcolor{Green3}{\faIcon{check}}] Interpretability is important.
+    \item[\textcolor{Green3}{\faIcon{check}}] Little training data is available.
+    \item[\textcolor{Green3}{\faIcon{check}}] The environment is controlled.
+    \item[\textcolor{Green3}{\faIcon{check}}] The input structure does not vary much.
+\end{itemize}
+By contrast, \textbf{data-driven feature learning becomes more attractive}\break when:
+\begin{itemize}
+    \item The images are natural and highly variable.
+    \item It is unclear which measurements are relevant.
+    \item Large labelled datasets are available.
+    \item Portability and generality are important.
+\end{itemize}
+This comparison can be summarized as follows:
+\begin{align*}
+    \text{Hand-crafted features } \to \text{ } & \text{\textcolor{Green3}{\faIcon{check}}} \text{ More human knowledge} \\
+    & \text{\textcolor{Green3}{\faIcon{check}}} \text{ More control} \\
+    & \text{\textcolor{Green3}{\faIcon{check}}} \text{ Less representation learning}
+\end{align*}
+This provides:
+\begin{equation*}
+    \text{interpretability } + \text{ data efficiency}
+\end{equation*}
+But often at the \textbf{cost} of:
+\begin{align*}
+    \text{Hand-crafted features } \to \text{ } & \text{\textcolor{Red2}{\faIcon{times}}} \text{ Engineering effort} \\
+    & \text{\textcolor{Red2}{\faIcon{times}}} \text{ Poor scalability} \\
+    & \text{\textcolor{Red2}{\faIcon{times}}} \text{ Limited generality}
+\end{align*}
+The central trade-off is therefore:
+\begin{equation*}
+    \text{Human control} \quad \text{vs} \quad \text{Automatic adaptability}
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why the next solution is needed.}} The limitation is not necessarily the classifier. We may already use a powerful neural network after the features. The \hl{\textbf{limitation} is that the neural network receives a \textbf{representation chosen in advance by a human}:}
+\begin{equation*}
+    \text{image} \to \underbrace{\text{fixed human-designed features}}_{\text{bottleneck}} \to \text{neural network}
+\end{equation*}
+The natural next question is therefore: \emph{\textbf{instead of manually deciding which features to extract, can the model learn the feature extractor from data?}}

@@ -1,0 +1,607 @@
+\subsection{From Image Filtering to CNNs}\label{sec:from-image-filtering-to-cnns}
+
+Our goal is to understand \textbf{how to train a feature extractor using data}. In this section, we will introduce the basic operation that convolutional neural networks (CNNs) use to process images: \textbf{local filtering}.
+
+\longline
+
+\subsubsection{Correlation as a Local Linear Operation}\label{sec:correlation-as-a-local-linear-operation-cnns}
+
+In this section, we will revisit the concept introduced on \autopageref{sec:correlation-as-a-local-linear-operation}. First of all, we define the \textbf{correlation} operation as a \textbf{local linear operation} that computes a \hl{weighted sum of the neighbouring pixels:}
+\begin{equation*}
+    T\left[I\right]\left(r,c\right) = \sum_{u,v \in U} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation*}
+This formula computes one \hl{output value at spatial location $\left(r,c\right)$} by taking a weighted sum of the neighbouring pixels in the neighbourhood $U$. To understand it clearly, we need to distinguish three different coordinate systems:
+\begin{itemize}
+    \item $\left(r,c\right)$: the \textbf{position} where we are computing one \textbf{output}.
+    \item $\left(u,v\right)$: an \textbf{offset inside the local neighbourhood} $U$.
+    \item $\left(r+u, c+v\right)$: the corresponding \textbf{position in the input image} $I$.
+\end{itemize}
+Let the input grayscale image be:
+\begin{equation*}
+    I \in \mathbb{R}^{H \times W}
+\end{equation*}
+The filtering operation produces another image:
+\begin{equation*}
+    T\left[I\right] \in \mathbb{R}^{H' \times W'}
+\end{equation*}
+For each valid output position $\left(r,c\right)$, correlation examines a small region of the input image around that position and converts that entire region into one scalar output value (see \autoref{fig:correlation-local-linear-operation}, \autopageref{fig:correlation-local-linear-operation}).
+
+\highspace
+The set \hl{$U$ specifies which nearby pixels participate in the computation}, and for this reason it is called the \textbf{local neighbourhood}. For a $3 \times 3$ filter centred on the current pixel, one possible definition is:
+\begin{equation*}
+    U = \left\{-1, 0, 1\right\} \times \left\{-1, 0, 1\right\}
+\end{equation*}
+Explicitly, this means that the local neighbourhood $U$ contains the following offsets:
+\begin{equation*}
+    U = \left\{(-1,-1), (-1,0), (-1,1), (0,-1), (0,0), (0,1), (1,-1), (1,0), (1,1)\right\}
+\end{equation*}
+These are not absolute image coordinates. They are \textbf{relative offsets} from the current pixel $\left(r,c\right)$, which is the centre of the neighbourhood. Therefore, when computing $T\left[I\right]\left(r,c\right)$, the operation uses the pixels:
+\begin{equation*}
+    I\left(r+u, c+v\right), \quad \forall (u,v) \in U
+\end{equation*}
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \tikzsetnextfilename{image-filter-correlation-cross}
+    \tikzwidth{0.94\linewidth}
+    \tdplotsetmaincoords{74}{24}
+
+    \begin{tikzpicture}[
+        tdplot_main_coords,
+        scale=0.80,
+        >=Latex,
+        line cap=round,
+        line join=round,
+        gridline/.style={
+            draw=black!48,
+            line width=0.35pt
+        },
+        connection/.style={
+            draw=black!55,
+            line width=0.5pt
+        },
+        every node/.style={font=\small}
+    ]
+
+    % ============================================================
+    % Parameters
+    % ============================================================
+
+    \def\N{7}
+
+    % Plane positions
+    \def\xinput{0}
+    \def\xfilter{5.2}
+    \def\xoutput{10.8}
+
+    % ============================================================
+    % Input image plane I
+    % ============================================================
+
+    \begin{scope}
+
+        % Cells
+        \foreach \y in {0,...,6}{
+            \foreach \z in {0,...,6}{
+                \pgfmathtruncatemacro{\shade}{
+                    10 + mod(11*\y + 17*\z + 3*\y*\z, 16)
+                }
+                \fill[black!\shade]
+                    (\xinput,\y,\z) --
+                    (\xinput,\y+1,\z) --
+                    (\xinput,\y+1,\z+1) --
+                    (\xinput,\y,\z+1) -- cycle;
+            }
+        }
+
+        % Highlight neighbourhood
+        \fill[red!20, opacity=0.82]
+            (\xinput,2,2) --
+            (\xinput,5,2) --
+            (\xinput,5,5) --
+            (\xinput,2,5) -- cycle;
+
+        % Center cell
+        \fill[red!55]
+            (\xinput,3,3) --
+            (\xinput,4,3) --
+            (\xinput,4,4) --
+            (\xinput,3,4) -- cycle;
+
+        % Grid
+        \foreach \i in {0,...,7}{
+            \draw[gridline] (\xinput,\i,0) -- (\xinput,\i,\N);
+            \draw[gridline] (\xinput,0,\i) -- (\xinput,\N,\i);
+        }
+
+        % Border
+        \draw[black, line width=0.85pt]
+            (\xinput,0,0) --
+            (\xinput,\N,0) --
+            (\xinput,\N,\N) --
+            (\xinput,0,\N) -- cycle;
+
+        % Border of neighbourhood
+        \draw[red!75!black, line width=1.1pt]
+            (\xinput,2,2) --
+            (\xinput,5,2) --
+            (\xinput,5,5) --
+            (\xinput,2,5) -- cycle;
+
+        \coordinate (input-center) at (\xinput,3.5,3.5);
+
+        \fill[red!80!black] (input-center) circle[radius=1.7pt];
+
+        % Labels
+        \node[font=\bfseries, anchor=south]
+            at (\xinput,3.5,8) {Input image};
+
+        \node[font=\large, anchor=north]
+            at (\xinput,3.5,-0.45) {$I$};
+
+        % moved upward and slightly left
+        \node[
+            red!75!black,
+            font=\scriptsize\bfseries,
+            fill=white,
+            inner sep=1pt
+        ]
+            at (\xinput,2.7,5.35)
+            {local neighbourhood $U$};
+
+        % moved right/down to avoid overlap with center point
+        \node[
+            font=\scriptsize,
+            fill=white,
+            inner sep=0.6pt,
+            anchor=west
+        ]
+            at (\xinput,4.15,3.05)
+            {$(r,c)$};
+
+        % Coordinates
+        \node[font=\large, anchor=east]
+            at (\xinput,-0.75,3.5) {$r$};
+
+        \node[font=\large, anchor=south]
+            at (\xinput,3.5,7.1) {$c$};
+
+    \end{scope}
+
+    % ============================================================
+    % Filter plane w
+    % ============================================================
+
+    \begin{scope}
+
+        \def\filtermin{2.15}
+        \def\filtermax{4.85}
+        \def\filterstep{0.9}
+
+        % Background
+        \fill[blue!12, opacity=0.95]
+            (\xfilter,\filtermin,\filtermin) --
+            (\xfilter,\filtermax,\filtermin) --
+            (\xfilter,\filtermax,\filtermax) --
+            (\xfilter,\filtermin,\filtermax) -- cycle;
+
+        % Grid
+        \foreach \i in {0,1,2,3}{
+            \pgfmathsetmacro{\q}{\filtermin + \i*\filterstep}
+            \draw[blue!60!black, line width=0.45pt]
+                (\xfilter,\q,\filtermin) -- (\xfilter,\q,\filtermax);
+            \draw[blue!60!black, line width=0.45pt]
+                (\xfilter,\filtermin,\q) -- (\xfilter,\filtermax,\q);
+        }
+
+        % Border
+        \draw[blue!75!black, line width=1pt]
+            (\xfilter,\filtermin,\filtermin) --
+            (\xfilter,\filtermax,\filtermin) --
+            (\xfilter,\filtermax,\filtermax) --
+            (\xfilter,\filtermin,\filtermax) -- cycle;
+
+        % small points
+        \foreach \y in {2.6,3.5,4.4}{
+            \foreach \z in {2.6,3.5,4.4}{
+                \fill[black!78] (\xfilter,\y,\z) circle[radius=1.2pt];
+            }
+        }
+
+        % Highlight central coefficient
+        \draw[blue!85!black, line width=1.6pt]
+            (\xfilter,3.05,3.05) --
+            (\xfilter,3.95,3.05) --
+            (\xfilter,3.95,3.95) --
+            (\xfilter,3.05,3.95) -- cycle;
+
+        \coordinate (filter-center) at (\xfilter,3.5,3.5);
+
+        \node[font=\bfseries, anchor=south]
+            at (\xfilter,3.5,5.62) {Filter};
+
+        % moved upward
+        \node[
+            % blue!75!black,
+            font=\Large,
+            anchor=north
+        ]
+            at (\xfilter,3.5,1.8)
+            {$\mathbf{w}$};
+
+        % optional small set notation moved a bit down but centered
+        % \node[
+        %     font=\scriptsize,
+        %     fill=white,
+        %     inner sep=0.5pt
+        % ]
+        %     at (\xfilter,3.5,1.)
+        %     {$\{w(u,v)\}_{(u,v)\in U}$};
+
+    \end{scope}
+
+    % ============================================================
+    % Output image plane T[I]
+    % ============================================================
+
+    \begin{scope}
+
+        % Background
+        \fill[green!8]
+            (\xoutput,0,0) --
+            (\xoutput,\N,0) --
+            (\xoutput,\N,\N) --
+            (\xoutput,0,\N) -- cycle;
+
+        % Grid
+        \foreach \i in {0,...,7}{
+            \draw[gridline] (\xoutput,\i,0) -- (\xoutput,\i,\N);
+            \draw[gridline] (\xoutput,0,\i) -- (\xoutput,\N,\i);
+        }
+
+        % Border
+        \draw[black, line width=0.85pt]
+            (\xoutput,0,0) --
+            (\xoutput,\N,0) --
+            (\xoutput,\N,\N) --
+            (\xoutput,0,\N) -- cycle;
+
+        % Active output cell
+        \fill[green!48]
+            (\xoutput,3,3) --
+            (\xoutput,4,3) --
+            (\xoutput,4,4) --
+            (\xoutput,3,4) -- cycle;
+
+        \draw[green!45!black, line width=1.1pt]
+            (\xoutput,3,3) --
+            (\xoutput,4,3) --
+            (\xoutput,4,4) --
+            (\xoutput,3,4) -- cycle;
+
+        \coordinate (output-center) at (\xoutput,3.5,3.5);
+
+        \fill[green!45!black] (output-center) circle[radius=1.8pt];
+
+        \node[font=\bfseries, anchor=south]
+            at (\xoutput,3.5,8) {Output image};
+
+        \node[font=\large, anchor=north]
+            at (\xoutput,3.5,-0.45) {$T[I]$};
+
+        % slight move right to clear the point
+        \node[
+            green!35!black,
+            font=\scriptsize,
+            fill=white,
+            inner sep=0.6pt,
+            anchor=west
+        ]
+            at (\xoutput,4.05,3.5)
+            {$T[I](r,c)$};
+
+    \end{scope}
+
+    % ============================================================
+    % Correspondence lines
+    % ============================================================
+
+    % Four corners
+    \draw[connection] (\xinput,2,2) -- (\xfilter,2.15,2.15);
+    \draw[connection] (\xinput,5,2) -- (\xfilter,4.85,2.15);
+    \draw[connection] (\xinput,5,5) -- (\xfilter,4.85,4.85);
+    \draw[connection] (\xinput,2,5) -- (\xfilter,2.15,4.85);
+
+    % Mid-horizontal lines
+    \draw[connection] (\xinput,2,3.5) -- (\xfilter,2.15,3.5);
+    \draw[connection] (\xinput,5,3.5) -- (\xfilter,4.85,3.5);
+
+    % Centers
+    \draw[connection] (input-center) -- (filter-center);
+    \draw[connection] (filter-center) -- (output-center);
+
+    \end{tikzpicture}
+
+    \caption{
+        Correlation as a local linear operation.
+        The filter $\mathbf{w}$ is applied to the neighbourhood $U$
+        centred at $(r,c)$, producing the corresponding output value
+        $T[I](r,c)$.
+    }
+    \label{fig:correlation-local-linear-operation}
+\end{figure}
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is correlation local?}} The operation is called \textbf{local} because one \hl{output value depends only on a small neighbourhood}, not on the complete image. This locality is well suited to images because nearby pixels are often strongly related:
+\begin{itemize}
+    \item An edge is formed by neighbouring pixels;
+    \item A corner is a local arrangement of edges;
+    \item Texture is characterized by repeated local intensity variations.
+\end{itemize}
+This directly recalls the principle of the previous section: \hl{meaningful visual structures can often be detected by examining small spatial neighbourhoods.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is applied to the neighbourhood?}} Each offset $\left(u,v\right) \in U$ has an associated weight $w\left(u,v\right)$. The complete collection of weights is called the \textbf{filter}:
+\begin{equation*}
+    \mathbf{w} = \left\{w\left(u,v\right) \, : \, \left(u,v\right) \in U\right\}
+\end{equation*}
+For a classic $3 \times 3$ neighbourhood, the filter can be written as a matrix:
+\begin{equation*}
+    \mathbf{w} =
+    \begin{bmatrix}
+        w(-1,-1) & w(-1,0) & w(-1,1) \\
+        w(0,-1) & w(0,0) & w(0,1) \\
+        w(1,-1) & w(1,0) & w(1,1)
+    \end{bmatrix}
+\end{equation*}
+These weights determine \textbf{how much each nearby pixel contributes to the output value}. For example:
+\begin{itemize}
+    \item A large positive weight increases the output when the corresponding pixel is bright;
+    \item A negative weight decreases the output when that pixel is bright;
+    \item A zero weight ignores that position.
+\end{itemize}
+In summary, the \hl{filter $\mathbf{w}$ entirely defines the operation.} Once $U$ and the weights are fixed, the behavior of the filter is fixed.
+
+\highspace
+\begin{examplebox}[Correlation as a Local Linear Operation]
+    Consider the input patch (i.e., the local neighbourhood $U$):
+    \begin{equation*}
+        \begin{pmatrix}
+            2 & 4 & 1 \\
+            3 & 5 & 7 \\
+            0 & 6 & 8
+        \end{pmatrix}
+    \end{equation*}
+    And the filter:
+    \begin{equation*}
+        \mathbf{w} = \begin{pmatrix}
+            0 & 1 & 0 \\
+            1 & -4 & 1 \\
+            0 & 1 & 0
+        \end{pmatrix}
+    \end{equation*}
+    At the corresponding output location, we multiply values element by element and sum:
+    \begin{equation*}
+        T\left[I\right]\left(r,c\right) =
+        0 \cdot 2 +
+        1 \cdot 4 +
+        0 \cdot 1 +
+        1 \cdot 3 +
+        (-4) \cdot 5 +
+        1 \cdot 7 +
+        0 \cdot 0 +
+        1 \cdot 6 +
+        0 \cdot 8
+        = 0
+    \end{equation*}
+    That single number becomes one pixel of the output image $T[I]$ at the same spatial location $(r,c)$. The same operation is then repeated at other spatial locations to produce the complete output image.
+\end{examplebox}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How to apply the filter to the entire image?}} The \hl{filter slides across the input image.} In this way, correlation applies the same filter at every valid position.
+
+\highspace
+Mathematically, at one location $(r,c)$, the output value is computed as:
+\begin{equation*}
+    T\left[I\right]\left(r,c\right) = \sum_{u,v \in U} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation*}
+At the next horizontal position $(r,c+1)$, the output value is computed as:
+\begin{equation*}
+    T\left[I\right]\left(r,c+1\right) = \sum_{u,v \in U} w_{u,v} \cdot I\left(r+u, c+1+v\right)
+\end{equation*}
+The filter weights do not change, only the input patch changes. So the procedure is:
+\begin{enumerate}
+    \item Place the filter over a local image region;
+    \item Multiply corresponding entries;
+    \item Sum the product;
+    \item Store the result in the output;
+    \item Move the filter to the next location.
+\end{enumerate}
+This repeated use of the same weights across the image will later become one of the defining properties of convolutional layers.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why correlation is called a linear operation?}} Correlation is linear with respect to the input image $I$. Formally, let $I_1$ and $I_2$ be two images, and let $\alpha$ and $\beta$ be two scalars $\alpha, \beta \in \mathbb{R}$. Then:
+\begin{equation*}
+    T\left[\alpha I_1 + \beta I_2\right]\left(r,c\right) = \sum_{u,v \in U} w_{u,v} \cdot \left[\alpha I_1\left(r+u, c+v\right) + \beta I_2\left(r+u, c+v\right)\right]
+\end{equation*}
+Distributing the sum gives:
+\begin{equation*}
+    T\left[\alpha I_1 + \beta I_2\right]\left(r,c\right) = \alpha T\left[I_1\right]\left(r,c\right) + \beta T\left[I_2\right]\left(r,c\right)
+\end{equation*}
+Therefore, for all valid output positions $(r,c)$, we have:
+\begin{equation}
+    T\left[\alpha I_1 + \beta I_2\right] = \alpha T\left[I_1\right] + \beta T\left[I_2\right]
+\end{equation}
+Thus, correlation is a linear operation because it satisfies the property of linearity.\footnote{
+    In general, a linear operation is a function $T$ that satisfies the following two properties:
+    \begin{enumerate}
+        \item \textbf{Additivity:} $T\left[I_1 + I_2\right] = T\left[I_1\right] + T\left[I_2\right]$;
+        \item \textbf{Homogeneity:} $T\left[\alpha I\right] = \alpha T\left[I\right]$
+    \end{enumerate}
+} \hl{At every location, the output is simply a linear combination of input values, with the filter weights as coefficients.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Properties of Correlation}}
+\end{flushleft}
+We have the transformation:
+\begin{equation*}
+    T: I \mapsto T[I]
+\end{equation*}
+The operation $T$, called \textbf{correlation}, has \textbf{two independent properties}:
+\begin{enumerate}
+    \item \important{Locality}: \emph{\textbf{which input pixels influence one output pixel?}} For correlation:
+    \begin{equation*}
+        T[I](r,c)
+    \end{equation*}
+    Depends only on the pixels in the local neighbourhood $U$ around $(r,c)$:
+    \begin{equation*}
+        \left\{I(r+u, c+v) : (u,v) \in U\right\}
+    \end{equation*}
+    So locality is about \textbf{the set of input that are used} to compute one output value. If $U$ is $3 \times 3$, then only those $9$ pixels matter. Everything else in the image is ignored. So locality is a property of \textbf{how the operator accesses the input}.
+
+
+    \item \important{Linearity}: \emph{\textbf{once those pixels have been selected, how are they combined?}} Correlation combines them by:
+    \begin{equation*}
+        \sum_{u,v \in U} w_{u,v} \cdot I(r+u, c+v)
+    \end{equation*}
+    Which is simply a weighted sum. Weighted sums satisfy the property of linearity:
+    \begin{equation*}
+        T[\alpha I_1 + \beta I_2] = \alpha T[I_1] + \beta T[I_2]
+    \end{equation*}
+    Therefore the operator is linear. So linearity is a property of \textbf{how the selected pixels are mathematically combined} to produce the output value.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Matrix Representation}}
+\end{flushleft}
+We do not introduce any flattening techniques or algorithm changes here. We simply demonstrate that converting the local image patch and the filter itself into vectors by flattening them allows us to \textbf{express correlation as a simple dot product}. While this notation is not useful for practical implementations now, it will be perfect when we introduce CNNs.
+
+\highspace
+Suppose the local patch $U$ is $3 \times 3$. We change the notation and we write $P_{r,c}$ for the local patch of the input image $I$ centred at $(r,c)$:
+\begin{equation*}
+    P_{r,c} =
+    \begin{pmatrix}
+        p_1 & p_2 & p_3 \\
+        p_4 & p_5 & p_6 \\
+        p_7 & p_8 & p_9
+    \end{pmatrix}
+\end{equation*}
+And the filter is:
+\begin{equation*}
+    W =
+    \begin{pmatrix}
+        w_1 & w_2 & w_3 \\
+        w_4 & w_5 & w_6 \\
+        w_7 & w_8 & w_9
+    \end{pmatrix}
+\end{equation*}
+The correlation result at that position is:
+\begin{equation*}
+    w_1 p_1 + w_2 p_2 + \cdots + w_9 p_9
+\end{equation*}
+Then, we can rewrite the same computation as a dot product of two vectors:
+\begin{equation*}
+    \mathbf{p}_{r,c} = \begin{pmatrix}
+        p_1 \\
+        p_2 \\
+        \vdots \\
+        p_9
+    \end{pmatrix},
+    \quad
+    \mathbf{w} = \begin{pmatrix}
+        w_1 \\
+        w_2 \\
+        \vdots \\
+        w_9
+    \end{pmatrix}
+\end{equation*}
+\begin{equation*}
+    T[I](r,c) = \mathbf{w}^{T} \mathbf{p}_{r,c}
+\end{equation*}
+\textbf{Nothing changes mathematically}. \hl{Thanks to flattening, we have simply expressed the same operation in a different way.} This will be useful when we introduce CNNs because it allows us to express the correlation operation as simple matrix multiplication.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Relationship with a Dense Neuron}}
+\end{flushleft}
+There is an interesting relationship between correlation and a dense neuron.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does a dense neuron actually do?}} Forget images for a moment, and suppose a neuron receives three numbers:
+\begin{equation*}
+    x_1, x_2, x_3 \in \mathbb{R}
+\end{equation*}
+It has three weights:
+\begin{equation*}
+    w_1, w_2, w_3 \in \mathbb{R}
+\end{equation*}
+The neuron computes a weighted sum of its inputs:
+\begin{equation*}
+    z = w_1 x_1 + w_2 x_2 + w_3 x_3 + b
+\end{equation*}
+That's all a dense neuron does before the activation function. It computes a weighted sum.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does correlation do?}} Now look at correlation. Suppose the image patch is:
+\begin{equation*}
+    \begin{pmatrix}
+        1 & 4 \\
+        2 & 3
+    \end{pmatrix}
+\end{equation*}
+And the filter is:
+\begin{equation*}
+    \begin{pmatrix}
+        2 & 1 \\
+        0 & -1
+    \end{pmatrix}
+\end{equation*}
+Correlation computes a weighted sum of the input patch:
+\begin{equation*}
+    2 \cdot 1 + 1 \cdot 4 + 0 \cdot 2 + (-1) \cdot 3 = 3
+\end{equation*}
+Again, correlation is just a weighted sum of its inputs.
+
+\highspace
+Using the same notation as before, we can see an interesting pattern:
+\begin{itemize}
+    \item Dense neuron:
+    \begin{equation*}
+        w_1 x_1 + w_2 x_2 + w_3 x_3 + \dots
+    \end{equation*}
+    \item Correlation:
+    \begin{equation*}
+        w_1 p_1 + w_2 p_2 + w_3 p_3 + \dots
+    \end{equation*}
+\end{itemize}
+The only thing that changes is \textbf{what the input represent}.
+\begin{itemize}
+    \item For a dense neuron, the inputs are generic features $x_i$;
+    \item For correlation, the inputs are pixels from a local image patch $p_i$.
+\end{itemize}
+But the computation itself is identical: \textbf{weighted sum}. Once we introduce CNNs, we will see that this same \hl{computation becomes the core operation of Convolutional Neural Networks (CNNs).}
+
+\newpage
+
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item Correlation computes one output value from a local image neighbourhood.
+        \item The neighbourhood $U$ contains relative spatial offsets.
+        \item The filter is the set of weights:
+        \begin{equation*}
+            \mathbf{w} = \left\{w(u,v) : (u,v) \in U\right\}
+        \end{equation*}
+        \item One output value is a weighted sum of nearby pixels:
+        \begin{equation*}
+            T[I](r,c) = \sum_{u,v \in U} w(u,v) \cdot I(r+u, c+v)
+        \end{equation*}
+        \item The operation is \textbf{local} because it uses only a small patch.
+        \item It is \textbf{linear} because it computes a linear combination of the input values.
+        \item The same filter is applied across spatial positions, producing a complete output image.
+        \item Different filters produce different image transformations or responses to different visual structures.
+    \end{itemize}
+\end{takeawaysbox}

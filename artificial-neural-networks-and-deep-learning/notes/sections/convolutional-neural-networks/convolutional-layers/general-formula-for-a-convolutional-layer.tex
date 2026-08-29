@@ -1,0 +1,120 @@
+\subsubsection{General Formula for a Convolutional Layer}\label{sec:general-formula-for-a-convolutional-layer}
+
+In this section we formalize everything we have seen so far about convolutional layers, and we provide a general equation. The previous sections established two facts about convolutional layers:
+\begin{itemize}
+    \item \textbf{One filter spans all input channels}.
+    \item \textbf{Multiple filters produce multiple output feature maps}.
+\end{itemize}
+The formula simply combines these two ideas.
+
+\highspace
+Mathematically, a \textbf{convolutional layer} can be described with the following equation:
+\begin{equation}\label{eq:convolutional-layer}
+    a\left(r,c,l\right) = \sum_{\substack{u,v \in U \\ k = 1, \dots, C}} w_{l}\left(u,v,k\right) \cdot x\left(r+u,c+v,k\right) + b_{l}
+\end{equation}
+Valid for $l = 1, \dots, N_{F}$.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we need a new formula?}} Earlier, we had essentially a formula for a single filter, which was:
+\begin{equation*}
+    a\left(r,c\right) = \sum_{u,v \in U} w\left(u,v\right) \cdot x\left(r+u,c+v\right) + b
+\end{equation*}
+Which described the output of a single filter applied to a single input channel. Then, on \autopageref{sec:convolution-over-multi-channel-inputs} we extended this formula to \textbf{multiple input channels} (\autopageref{eq:convolution-layer-single-filter}):
+\begin{equation*}
+    a\left(r,c\right) = \sum_{u,v \in U} \sum_{k} w\left(u,v,k\right) \cdot x\left(r+u, c+v, k\right) + b
+\end{equation*}
+Now, we are extending it to \textbf{multiple output feature maps}. The only missing ingredient was the index $l$ to indicate \textbf{which filter we are using}, and thus \textbf{which output feature map we are computing}.
+
+\highspace
+\textcolor{Green3}{\faIcon{search} \textbf{Understanding every symbol.}} Let's examine the formula term by term:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{wave-square}}] \important{The output activation $a(r,c,l)$}. This is the \hl{value computed by the convolutional layer.} It has \textbf{three indices}:
+    \begin{itemize}
+        \item $r$ is the row index of the output feature map.
+        \item $c$ is the column index of the output feature map.
+        \item $l$ is the index that identifies the filter and, equivalently, the output channel (e.g., $l=1$ is the first filter associated with the first feature map, $l=2$ is the second filter associated with the second feature map, and so on).
+    \end{itemize}
+
+
+    \item[\textcolor{Green3}{\faIcon{sign-in-alt}}] \important{The input $x(r+u,c+v,k)$}. This denotes the \hl{input volume.} Notice the three indices:
+    \begin{itemize}
+        \item $(r+u)$ is the row index of the input volume.
+        \item $(c+v)$ is the column index of the input volume.
+        \item $(r+u, c+v)$ selects one pixel inside the local neighbourhood.
+        \item $k$ selects Red, Green, Blue, or, more generally, one of the $C$ input feature maps.
+    \end{itemize}
+
+
+    \item[\textcolor{Green3}{\faIcon{sliders-h}}] \important{The filter weights $w_{l}(u,v,k)$}. These are the \textbf{trainable parameters}. Notice that the filter depends on $u,v$ and $k$, but also on $l$. This means that each filter has its own set of weights, and each filter is applied to all input channels.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why does the filter have index $l$?}} Suppose we have $32$ filters in a convolutional layer. Instead of writing each filter as $w_1, w_2, \dots, w_{32}$, we can write them as $w_l$ with $l=1,\dots,32$. This is a more compact notation.
+
+
+    \item[\textcolor{Green3}{\faIcon{plus-circle}}] \important{The double summation}. The computation is:
+    \begin{equation*}
+        \sum_{u,v \in U} \sum_{k=1}^{C}
+    \end{equation*}
+    These two sums correspond to two different dimensions of the convolution operation:
+    \begin{itemize}
+        \item \hl{Sum over $u,v$} is the usual convolution. It scans the local neighbourhood of the input volume, and it computes a weighted sum of the pixels in that neighbourhood.
+        \item \hl{Sum over $k$} is the contribution from all channels. For an RGB image $k=1,2,3$ corresponds to Red, Green, Blue, but for a hidden layer $k=1,\dots,C$ corresponds to the $C$ input feature maps.
+    \end{itemize}
+
+
+    \item[\textcolor{Green3}{\faIcon{plus}}] \important{Bias}. Finally, we add a bias term $b_l$ \textbf{for each filter}. The same bias is reused everywhere in the corresponding output feature map.
+\end{itemize}
+The equation can be read almost like \textbf{pseudocode}:
+\begin{lstlisting}[mathescape=true,language={}]
+for each filter $l = 1,...,N_F$:
+    for each output row $r$:
+        for each output column $c$:
+
+            $a(r,c,l) = b_l$
+
+            for each input channel $k = 1, \dots ,C$:
+                for each spatial offset $(u,v)$ in $U$:
+
+                    $a(r,c,l)$ += $w_l(u,v,k)$ * $x(r+u,c+v,k)$
+\end{lstlisting}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Number of Trainable Parameters of One Convolutional Layer}}
+\end{flushleft}
+We can compute the exact \hl{number of all the weights of all filters in a convolutional layer, plus all their biases}, with a simple formula. Let's build the formula step by step. First, suppose the input has $C$ channels and each filter has a spatial size:
+\begin{equation*}
+    h_r \times h_c
+\end{equation*}
+Where $h_r$ is the height of the filter and $h_c$ is the width of the filter. Because one filter \textbf{spans all $C$ input channels}, its actual shape is:
+\begin{equation*}
+    h_r \times h_c \times C
+\end{equation*}
+This means that the \textbf{number of weights in one filter} is:
+\begin{equation*}
+    h_r \cdot h_c \cdot C
+\end{equation*}
+Then, that filter has a bias term, so the \textbf{number of trainable parameters in one filter} is:
+\begin{equation*}
+    h_r \cdot h_c \cdot C + b, \quad b = 1
+\end{equation*}
+Now generalize. Suppose the layer contains \hl{$N_F$ different filters.} Each filter has its own weights and its own bias, so:
+\begin{equation*}
+    N_F \cdot \left(h_r \cdot h_c \cdot C + 1\right)
+\end{equation*}
+Expanding the parentheses, we get the final formula for the \textbf{number of trainable parameters in a convolutional layer}:
+\begin{equation}\label{eq:number-of-trainable-parameters-in-a-convolutional-layer}
+    \text{Number of trainable parameters} = N_F \cdot \left(h_r \cdot h_c \cdot C\right) + N_F
+\end{equation}
+\begin{equation*}
+    \# \text{ params} = \# \text{ filters} \times \left(\text{weights per filter} + \text{bias per filter}\right)
+\end{equation*}
+Notice that the bias term is simply $N_F$, because there is \textbf{one bias per filter}: $b \cdot N_F = 1 \cdot N_F = N_F$.
+
+\highspace
+Furthermore, \hl{the spatial size of the input does not appear in the parameter-count formula.} Because the \textbf{same filters are reused at every spatial location}. We do not learn a new $3 \times 3 \times 3$ filter for every pixel in the input image. Instead, we learn a single $3 \times 3 \times 3$ filter, and we apply it to all pixels in the input image.
+
+\highspace
+\begin{takeawaysbox}
+    The general convolution formula extends the single-filter computation by introducing the filter index $l$: for every output location $(r,c)$ and every filter $l$, the convolution sums the contributions from all spatial positions in the kernel and all input channels, then adds one bias $b_{l}$ to produce the activation $a(r,c,l)$. The \textbf{number of trainable parameters} in a convolutional layer is given by $N_F \cdot (h_r \cdot h_c \cdot C + 1)$, where $N_F$ is the number of filters, $h_r$ and $h_c$ are the height and width of the filter, and $C$ is the number of input channels.
+\end{takeawaysbox}

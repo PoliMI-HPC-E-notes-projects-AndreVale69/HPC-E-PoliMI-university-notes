@@ -2,12 +2,71 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.7.0](#v070)
 - [v0.6.0](#v060)
 - [v0.5.0](#v050)
 - [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.7.0
+
+- add `Convolutional Neural Networks (CNNs)`
+  - add `From Hand-Crafted to Data-Driven Features`
+    - add `The Feature-Extraction Perspective`
+    - add `Hand-Crafted Features for Image Classification`
+    - add `Advantages and Limitations of Hand-Crafted Features`
+    - add `Data-Driven Feature Learning`
+  - add `From Image Filtering to CNNs`
+    - add `Correlation as a Local Linear Operation`add
+    - add `Examples of Linear Image Filters`
+  - add `The Typical CNN Architecture`
+  - add `Convolutional Layers`
+    - add `Convolution over Multi-Channel Inputs`
+    - add `Multiple Filters and Output Feature Maps`
+    - add `General Formula for a Convolutional Layer`
+    - add `Convolutional-Layer Hyperparameters`
+  - add `CNN Arithmetic and Parameter Counting`
+    - add `One Input Channel and One Filter`
+    - add `Multiple Filters`
+    - add `Multiple Input Channels`
+    - add `Counting Convolutional Parameters`
+    - add `CNN-Arithmetic Recap`
+  - add `Important Details of Convolution`
+    - add `Correlation vs. Mathematical Convolution`
+    - add `CNN Convolution vs. RGB Image Filtering`
+    - add `Padding`
+    - add `Stride`
+    - add `General Output-Size Formula`
+  - add `Activation Functions`
+    - add `Why CNNs Need Nonlinearities`
+    - add `ReLU and Leaky ReLU`
+    - add `Hyperbolic Tangent and Other Activations`
+  - add `Pooling Layers`
+    - add `Max Pooling`
+    - add `Pooling Size and Stride`
+  - add `Dense Layers and the Complete CNN`
+    - add `Flattening and Dense Layers`
+    - add `Following Shapes Through a CNN`
+    - add `Feature Extraction Network and Classifier`
+  - add `CNNs in Action`
+  - add `LeNet-5: The First Famous CNN`
+    - add `Historical Motivation`
+    - add `LeNet-5 Architecture`
+    - add `LeNet-5 Implementation`
+    - add `LeNet-5 Performance`
+    - add `CNN vs Direct MLP Parameter Count`
+  - add `Latent Representations Learned by CNNs`
+    - add `The CNN Latent Representation`
+    - add `Visualizing CNN Features with t-SNE`
+    - add `One-Nearest-Neighbour Classification`
+- improve `lstlisting` code styling:
+  - add rounded card-style container with custom border and background
+  - add dedicated syntax highlighting for classes, libraries/modules, strings, and numbers
+  - optimize inner padding, line height, and line-number gutter spacing
 
 --------------------
 

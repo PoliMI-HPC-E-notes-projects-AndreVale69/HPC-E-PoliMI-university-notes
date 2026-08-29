@@ -1,0 +1,258 @@
+\subsection{Dense Layers and the Complete CNN}\label{sec:dense-layers-and-the-complete-cnn}
+
+Up to this point, everything we have discussed belongs to the part of the CNN that processes \textbf{volumes}:
+\begin{equation*}
+    \text{Convolution} \to \text{Activation} \to \text{Pooling} \to \dots
+\end{equation*}
+Eventually, however, we want to perform \textbf{classification}. The convolutional part extracts features, and a traditional fully connected neural network uses those features for classification. However, the fully connected part of the network is \textbf{not convolutional} and does not process feature volumes. Instead, it processes \textbf{vectors}. Therefore, we need to transform the final feature volume into a vector before feeding it into the fully connected layers. This operation is called \textbf{flattening}.
+
+\longline
+
+\subsubsection{Flattening and Dense Layers}\label{sec:flattening-and-dense-layers}
+
+Suppose that after several convolution and pooling operations we obtain a volume:
+\begin{equation*}
+    X \in \mathbb{R}^{H \times W \times C}
+\end{equation*}
+For example, a final convolution volume of $16 \times 16 \times 24$. This is still a 3-dimensional volume: for each of the 24 feature maps, we have a $16 \times 16$ spatial grid. But a traditional dense layer expects a \textbf{vector} as its input. Therefore, we need \textbf{flattening} (\autopageref{sec:feeding-images-to-neural-networks}).
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Flattening}} simply rearranges all the activations of the volume into one long vector:
+\begin{equation*}
+    H \times W \times C \xrightarrow{\text{Flatten}} HWC
+\end{equation*}
+So we could conceptually imagine:
+\begin{equation*}
+    \begin{bmatrix}
+        \text{feature map 1} \\
+        \text{feature map 2} \\
+        \vdots \\
+        \text{feature map C}
+    \end{bmatrix}
+    \to
+    \begin{bmatrix}
+        x_1 \\
+        x_2 \\
+        \vdots \\
+        x_{HWC}
+    \end{bmatrix}
+\end{equation*}
+\textbf{Nothing is learned during flattening}. It simply changes the organization of the activations so that they can be fed to a dense layer.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``\emph{the spatial dimension is lost}'' mean?}}
+\end{flushleft}
+Before flattening, an activation has an explicit position: $x(r, c, k)$. We know that $r$ and $c$ are the row and column of the activation in the feature map, and $k$ is the index of the feature map. \textbf{After flattening}, everything is represented as:
+\begin{equation*}
+    \mathbf{x} = \left[ x_{1}, x_{2}, \ldots, x_{HWC} \right]^{T}
+\end{equation*}
+The values themselves have \textbf{not disappeared}. What disappears is the explicit \textbf{2D spatial structure} of the representation.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{Then come the Dense Layers}}
+\end{flushleft}
+Once we have the vector, we can use the same dense layers we already know from Feed-Forward Neural Networks:
+\begin{equation*}
+    \mathbf{a} = W\mathbf{x} + \mathbf{b}
+\end{equation*}
+Followed, where appropriate, by activation functions.
+
+\highspace
+The key \textbf{difference} from convolution is connectivity. In a \textbf{dense layer}, \hl{every output neuron is connected to \textbf{every input activation}.} That's precisely why it is called \emph{dense} or \emph{fully connected}. For example:
+\begin{equation*}
+    6144 \to 512 \to 128 \to 10
+\end{equation*}
+Where they could represent:
+\begin{equation*}
+    \underbrace{6144}_{\text{flattened CNN features}} \to \underbrace{512 \to 128}_{\text{dense hidden layers}} \to \underbrace{10}_{\text{class scores}}
+\end{equation*}
+The final fully connected layer has as many outputs as there are classes and provides a score for each class.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why not flatten the original image immediately?}}
+\end{flushleft}
+This brings us back to the entire motivation for CNNs. If we did:
+\begin{equation*}
+    \text{Image} \to \text{Flatten} \to \text{Multi-Layer Perceptron}
+\end{equation*}
+We would essentially return to a traditional fully connected neural network operating directly on pixels. Instead, we want to \hl{use the convolutional part of the network to extract features from the image first.} The \hl{dense layers then use those features for classification} (see the architecture on \autopageref{fig:typical-cnn-architecture}).
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{cnn-flatten-dense}
+    \begin{tikzpicture}[
+        >=Latex,
+        % Styles
+        vecnode/.style={draw=black!80, fill=cyan!18, inner sep=0pt, minimum width=0.85cm, minimum height=0.55cm, font=\small},
+        neu/.style={circle, draw=black!85, fill=purple!18, line width=0.8pt, inner sep=0pt, minimum size=0.48cm},
+        outneu/.style={circle, draw=teal!85!black, fill=teal!18, line width=0.8pt, inner sep=0pt, minimum size=0.48cm},
+        lbl/.style={font=\small, align=center},
+        annot/.style={font=\footnotesize, text=black!80, align=center},
+        divider/.style={dashed, black!35, line width=0.7pt}
+    ]
+
+        % =========================================================================
+        % SECTION 1: FEATURE VOLUME (TOP)
+        % =========================================================================
+        \node[font=\bfseries\normalsize, text=blue!85!black] at (1.1, 0) {1. Feature Extraction (Convolution \& Pooling)};
+        
+        % Centered Volume Box (3D Isometric Stack: 3 slices of 3x3 grid)
+        \begin{scope}[shift={(-2.8, -2.05)}]
+            % Channel 3 (Back)
+            \draw[fill=blue!10, draw=blue!50, line width=0.6pt] 
+                (0.8,0.8) -- ++(2.4,0) -- ++(0.8,0.8) -- ++(-2.4,0) -- cycle;
+            % Channel 2 (Middle)
+            \draw[fill=blue!16, draw=blue!65, line width=0.6pt] 
+                (0.4,0.4) -- ++(2.4,0) -- ++(0.8,0.8) -- ++(-2.4,0) -- cycle;
+            % Channel 1 (Front)
+            \draw[fill=blue!24, draw=blue!85, line width=0.9pt] 
+                (0,0) -- ++(2.4,0) -- ++(0.8,0.8) -- ++(-2.4,0) -- cycle;
+            
+            % Full 3x3 Grid lines on Front Slice
+            \draw[blue!60, line width=0.45pt] (0.8,0) -- ++(0.8,0.8);
+            \draw[blue!60, line width=0.45pt] (1.6,0) -- ++(0.8,0.8);
+            \draw[blue!60, line width=0.45pt] (0.2667,0.2667) -- ++(2.4,0);
+            \draw[blue!60, line width=0.45pt] (0.5333,0.5333) -- ++(2.4,0);
+
+            % Centered Highlighted Cell: Row 2, Col 2 on Front Grid
+            \draw[fill=orange!80, draw=orange!90!black, line width=0.8pt] 
+                (1.0667, 0.2667) -- ++(0.8,0) -- ++(0.2667,0.2667) -- ++(-0.8,0) -- cycle;
+                
+            % Spatial Dimension Annotations
+            \node[annot, anchor=north] at (1.2, -0.1) {$W = 16$};
+            \node[annot, anchor=east] at (-0.05, 0.4) {$H = 16$};
+            \draw[<->, black!70, line width=0.5pt] (2.5,-0.05) -- (3.25,0.7) 
+                node[pos=0.6, below right=-2pt, font=\scriptsize] {$C = 24$};
+        \end{scope}
+
+        % Volume Description on Right
+        \node[lbl, anchor=west] at (1.4, -1.45) {
+            \textbf{Final Feature Volume} $X$\\[2pt]
+            $16 \times 16 \times 24$\\[3pt]
+            {\color{orange!90!black}\bfseries Explicit coordinate $x(r,c,k)$}\\[2pt]
+            \textit{\footnotesize (Preserves 2D spatial arrangement)}
+        };
+
+        % =========================================================================
+        % TRANSITION 1: FLATTENING
+        % =========================================================================
+        \draw[->, line width=1.3pt, black!75] (1.1, -2.65) -- (1.1, -3.65) 
+            node[midway, right=6pt, font=\small\bfseries] {Flatten}
+            node[midway, left=6pt, font=\footnotesize\color{red!80!black}, align=right] {Spatial structure lost\\(0 parameters)};
+
+        % --- Divider between Step 1 and Step 2 ---
+        \draw[divider] (-4.0, -3.90) -- (6.5, -3.90);
+
+        % =========================================================================
+        % SECTION 2: FLATTENED VECTOR (MIDDLE)
+        % =========================================================================
+        \node[font=\bfseries\normalsize, text=cyan!75!black] at (1.1, -4.30) {2. Flattened Feature Vector};
+        
+        % Horizontal Feature Vector Cells
+        \begin{scope}[shift={(-2.35, -5.05)}]
+            \node[vecnode, fill=orange!50, draw=orange!90!black] (v1) at (0, 0) {$x_1$};
+            \node[vecnode] (v2) at (0.85, 0) {$x_2$};
+            \node[vecnode] (v3) at (1.7, 0) {$x_3$};
+            \node[font=\small] at (2.4, 0) {$\cdots$};
+            \node[vecnode] (vi) at (3.1, 0) {$x_i$};
+            \node[font=\small] at (3.8, 0) {$\cdots$};
+            \node[vecnode, minimum width=1.4cm] (vn) at (4.95, 0) {$x_{6144}$};
+
+            % Vector Dimension Brace (Bottom)
+            \draw[decorate, decoration={brace, amplitude=5pt, mirror}, line width=0.8pt, black!75] 
+                (-0.45, -0.38) -- (5.68, -0.38) 
+                node[midway, below=7pt, font=\small] {$\mathbf{x} \in \mathbb{R}^{6144} \quad (HWC = 16 \times 16 \times 24 = 6144)$};
+        \end{scope}
+
+        % =========================================================================
+        % TRANSITION 2: DENSE INPUT
+        % =========================================================================
+        \draw[->, line width=1.3pt, black!75] (1.1, -6.45) -- (1.1, -7.45) 
+            node[midway, right=6pt, font=\footnotesize\color{purple!85!black}, align=left] {All-to-all connectivity\\$\mathbf{a}_1 = \sigma(W_1 \mathbf{x} + \mathbf{b}_1)$};
+
+        % --- Divider between Step 2 and Step 3 ---
+        \draw[divider] (-4.0, -7.70) -- (6.5, -7.70);
+
+        % =========================================================================
+        % SECTION 3: DENSE / FULLY CONNECTED LAYERS (BOTTOM)
+        % =========================================================================
+        \node[font=\bfseries\normalsize, text=purple!85!black] at (1.1, -8.10) {3. Classification (Dense / Fully Connected Layers)};
+
+        \begin{scope}[shift={(-2.8, -10.40)}]
+            % Coordinates for Dense 1 (512 units) - Span: 3.4 cm
+            \coordinate (h1_1) at (0,  1.70);
+            \coordinate (h1_2) at (0,  1.15);
+            \coordinate (h1_3) at (0,  0.60);
+            \coordinate (h1_4) at (0, -0.60);
+            \coordinate (h1_5) at (0, -1.15);
+            \coordinate (h1_6) at (0, -1.70);
+
+            % Coordinates for Dense 2 (128 units) - Span: 2.3 cm
+            \coordinate (h2_1) at (2.8,  1.15);
+            \coordinate (h2_2) at (2.8,  0.60);
+            \coordinate (h2_3) at (2.8, -0.60);
+            \coordinate (h2_4) at (2.8, -1.15);
+
+            % Coordinates for Output Layer (10 classes) - Span: 1.5 cm
+            \coordinate (out_1) at (5.6,  0.75);
+            \coordinate (out_2) at (5.6, -0.75);
+
+            % 1. DRAW EDGES FIRST (Underneath neurons)
+            % Edges H1 -> H2
+            \foreach \i in {1, 2, 3, 4, 5, 6} {
+                \foreach \j in {1, 2, 3, 4} {
+                    \draw[purple!35, line width=0.45pt] (h1_\i) -- (h2_\j);
+                }
+            }
+            % Edges H2 -> Output
+            \foreach \i in {1, 2, 3, 4} {
+                \foreach \j in {1, 2} {
+                    \draw[teal!40, line width=0.45pt] (h2_\i) -- (out_\j);
+                }
+            }
+
+            % 2. DRAW NEURONS & CENTERED ELLIPSES
+            % Dense 1 (6 neurons with balanced central gap)
+            \node[neu] at (h1_1) {};
+            \node[neu] at (h1_2) {};
+            \node[neu] at (h1_3) {};
+            \node[font=\large, text=black!85] at (0, 0.05) {$\vdots$};
+            \node[neu] at (h1_4) {};
+            \node[neu] at (h1_5) {};
+            \node[neu] at (h1_6) {};
+
+            % Dense 2 (4 neurons with balanced central gap)
+            \node[neu] at (h2_1) {};
+            \node[neu] at (h2_2) {};
+            \node[font=\large, text=black!85] at (2.8, 0.05) {$\vdots$};
+            \node[neu] at (h2_3) {};
+            \node[neu] at (h2_4) {};
+
+            % Output (2 neurons with balanced central gap)
+            \node[outneu] (o1) at (out_1) {};
+            \node[font=\large, text=teal!85!black] at (5.6, 0.05) {$\vdots$};
+            \node[outneu] (o2) at (out_2) {};
+
+            % 3. LAYER ANNOTATIONS
+            \node[annot, anchor=north] at (0, -2.10) {\textbf{Dense 1}\\[1pt]$512$ units};
+            \node[annot, anchor=north] at (2.8, -2.10) {\textbf{Dense 2}\\[1pt]$128$ units};
+            \node[annot, anchor=north] at (5.6, -2.10) {\textbf{Output}\\[1pt]$10$ classes};
+
+            % 4. OUTPUT SCORE LABELS
+            \node[anchor=west, font=\small] at (o1.east) {\hspace{3pt}Score 1};
+            \node[anchor=west, font=\large] at (5.95, 0.05) {$\vdots$};
+            \node[anchor=west, font=\small] at (o2.east) {\hspace{3pt}Score 10};
+        \end{scope}
+
+    \end{tikzpicture}
+    \caption{Progression from 3D convolutional feature extraction ($16 \times 16 \times 24$) to dense classification. Flattening converts the spatial volume into a 1D feature vector of $6144$ elements, which is sequentially processed by dense layers ($512 \to 128 \to 10$) using all-to-all connectivity.}
+    \label{fig:cnn-flatten-dense}
+\end{figure}
+
+\highspace
+\begin{takeawaysbox}
+    \textbf{Flattening is the bridge between feature extraction and classification}. The convolutional part produces a feature volume $H \times W \times C$; flattening rearranges it into an $HWC$-dimensional vector, losing its explicit spatial organization but not its activation values. This vector can then be processed by traditional dense/fully connected layers, where every output neuron is connected to every input activation.
+\end{takeawaysbox}

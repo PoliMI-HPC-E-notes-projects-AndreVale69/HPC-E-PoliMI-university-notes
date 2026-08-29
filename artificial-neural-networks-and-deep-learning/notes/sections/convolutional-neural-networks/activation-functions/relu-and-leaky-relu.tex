@@ -1,0 +1,61 @@
+\subsubsection{ReLU and Leaky ReLU}\label{sec:relu-and-leaky-relu-cnn}
+
+This section is about \textbf{which nonlinear activation to use after convolution}. We will focus on ReLU first, then introduce Leaky ReLU as a small modification that avoids one of ReLU's main failure modes.
+
+\highspace
+The standard ReLU activation function is (\autopageref{sec:relu-and-variants}):
+\begin{equation*}
+    \mathrm{ReLU}(x) = \max(0, x) \quad \equiv \quad \mathrm{ReLU}(x) = \begin{cases}
+        x & x \geq 0 \\
+        0 & x < 0
+    \end{cases}
+\end{equation*}
+So ReLU simply keeps positive activations unchanged and clips negative ones to zero. Thus, we can use ReLU as a thresholding operation on the feature maps.
+
+\highspace
+For example:
+\begin{equation*}
+    [-2, 3, -1, 5] \xrightarrow{\mathrm{ReLU}} [0, 3, 0, 5]
+\end{equation*}
+As we said, ReLU is applied \textbf{independently to every activation value}. If a convolutional layer produces:
+\begin{equation*}
+    A \in \mathbb{R}^{H \times W \times C}
+\end{equation*}
+Then ReLU will produce:
+\begin{equation*}
+    A'(r,c,k) = \mathrm{ReLU}(A(r,c,k))
+\end{equation*}
+It does not mix channels, it does not slide like a convolution, and it does not aggregate neighboring values. It \textbf{just transforms each scalar separately}.
+
+\highspace
+Because of this, the tensor shape does not change after ReLU:
+\begin{equation*}
+    A' \in \mathbb{R}^{H \times W \times C}
+\end{equation*}
+\hl{Only the values are changed.}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Dying Neuron Problem.}} The main drawback of ReLU is that it can produce \textbf{dead neurons}. We already explained this issue on \autopageref{sec:relu-and-variants}. In short, if a unit (i.e., a neuron) enters a regime where its pre-activation is always negative (i.e., the convolutional filter is producing negative values for that unit), then ReLU always outputs zero:
+\begin{equation*}
+    x < 0 \implies \mathrm{ReLU}(x) = 0
+\end{equation*}
+And on the negative side, the gradient is also zero:
+\begin{equation*}
+    x < 0 \implies \frac{d}{dx} \mathrm{ReLU}(x) = 0
+\end{equation*}
+So no useful gradient flows backward through that unit, and the \textbf{neuron may remain permanently inactive}. In simple terms, dying ReLU units can become inactive for essentially all inputs and stop learning.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Leaky ReLU.}} Leaky ReLU addresses this by \hl{replacing the flat zero region on the negative side with a small nonzero slope:}
+\begin{equation*}
+    \mathrm{LeakyReLU}(x) = \begin{cases}
+        x & x \geq 0 \\
+        \alpha x & x < 0
+    \end{cases}
+\end{equation*}
+Where $\alpha$ is usually a small positive constant, e.g., $\alpha = 0.01$. A tiny negative slope means the \hl{activation is not completely dead on the negative side, which helps preserve gradient flow.}
+
+\highspace
+\begin{takeawaysbox}
+    ReLU applies $x \mapsto \max(0, x)$ independently to every activation, preserving the feature-map shape while introducing nonlinearity. Its main drawback is the dying-neuron problem, because negative activations have zero slope. Leaky ReLU mitigates this by using a small nonzero negative slope, typically $\alpha = 0.01$, so negative activations and gradients are not completely suppressed.
+\end{takeawaysbox}

@@ -773,3 +773,196 @@ Now let's analyze the statements individually:
         \end{equation*}
         And therefore different layers can indeed end up with different effective step sizes. Again, this statement says ``\emph{can}'', not that the optimizer necessarily assigns exactly one explicit learning rate to each layer.
 \end{itemize}
+
+\newpage
+
+\noindent
+\exercise[1] Which statements about backpropagation through time are correct? Select all and only those.
+\begin{itemize}
+    \item It cannot suffer from vanishing gradients.
+    \item Long unfolded sequences can behave like very deep computational graphs.
+    \item It is irrelevant to recurrent neural networks.
+    \item It can propagate error signals from later outputs to earlier recurrent states.
+    \item It requires the hidden state to be manually labelled at every step.
+    \item It applies the same chain-rule principle used in ordinary backpropagation.
+    \item It unfolds the recurrent computation over time.
+    \item It trains weights that are shared across time steps.
+\end{itemize}
+\solution Before analyzing the statements individually, let's understand the intuition behind backpropagation through time (BPTT).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What problem is BPTT trying to solve?}} A \emph{vanilla} Recurrent Neural Network (RNN) has a hidden state $h_t$ that is updated at each time step $t$ based on the previous hidden state $h_{t-1}$ and the current input $x_t$:
+\begin{equation*}
+    h_t = f\left(
+        W_{x}x_t + W_{h}h_{t-1} + b
+    \right)
+\end{equation*}
+Which means that the hidden state at time $t$ depends on all previous inputs and hidden states. That's what gives an RNN its \textbf{temporal memory}.\footnote{
+    Recurrent Neural Networks (RNNs) were developed because ordinary Feed-Forward Networks cannot handle sequential data. For instance, to predict the next word in a sentence, we must consider the preceding words. A Feed-Forward Network has no recurrent state/memory connecting successive inputs, so it cannot remember previous words. RNNs solve this by maintaining a hidden state that is updated at each time step, allowing the network to retain information from earlier inputs.
+} But now suppose at time $t = 4$ the network makes a bad prediction and produces a loss $E_{4}$. That prediction didn't depend only on $x_4$. Through the recurrent states, it may depend on: $x_4$, $x_3$, $x_2$, and $x_1$. So the error at $t = 4$ potentially needs to influence computations that happened at earlier time steps.
+
+\highspace
+\textcolor{Green3}{\faIcon{check} \textbf{First we unroll the RNN.}} The actual RNN conceptually has a recurrent loop (i.e., $h_t$ depends on $h_{t-1}$). For training, we represent that recurrence across a finite sequence as:
+\begin{equation*}
+    h_0 \to h_1 \to h_2 \to h_3 \to h_4
+\end{equation*}
+With the corresponding inputs:
+\begin{equation*}
+    \underbrace{h_0}_{x_0} \to \underbrace{h_1}_{x_1} \to \underbrace{h_2}_{x_2} \to \underbrace{h_3}_{x_3} \to \underbrace{h_4}_{x_4}
+\end{equation*}
+This is called \textbf{unrolling}/\textbf{unfolding the RNN through time}. Unrolling creates copies of the RNN cell for the different time steps, turning the recurrent computation into a DAG on which ordinary backpropagation can operate. But there's an extremely important detail: \hl{these aren't independent Neural-Network layers with independent weights.} The RNN uses the \textbf{same parameters at every time step}. For example:
+\begin{align*}
+    h_1 &= f\left(
+        W_{x}x_1 + W_{h}h_{0} + b
+    \right) \\
+    h_2 &= f\left(
+        W_{x}x_2 + W_{h}h_{1} + b
+    \right) \\
+    h_3 &= f\left(
+        W_{x}x_3 + W_{h}h_{2} + b
+    \right) \\
+    h_4 &= f\left(
+        W_{x}x_4 + W_{h}h_{3} + b
+    \right)
+\end{align*}
+Notice that the same $W_x$, $W_h$, and $b$ are used at every time step. That's \textbf{weight sharing through time}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Then we do ordinary backpropagation on this unrolled graph.}} Here there is the central idea of Backpropagation Through Time (BPTT): \hl{ordinary backpropagation applied to the RNN unrolled through time.} Suppose an error occurs at a later time:
+\begin{equation*}
+    h_1 \to h_2 \to h_3 \to h_4 \to E_4
+\end{equation*}
+During backpropagation, information flows backward:
+\begin{equation*}
+    E_4 \to h_4 \to h_3 \to h_2 \to h_1
+\end{equation*}
+Therefore an error occurring \textbf{later in the sequence} can affect gradients associated with \textbf{earlier recurrent states}. Mathematically, this is just the \textbf{chain rule}, exactly like ordinary backpropagation:
+\begin{equation*}
+    \frac{\partial E_t}{\partial h_k} = \frac{\partial E_t}{\partial h_t} \cdot \frac{\partial h_t}{\partial h_{t-1}} \cdot \frac{\partial h_{t-1}}{\partial h_{t-2}} \cdots \frac{\partial h_{k+1}}{\partial h_k}
+\end{equation*}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why do long sequences cause problems?}} Suppose we unroll an RNN for a long sequence of length $T$, say $T = 100$ time steps. Computationally, we've created something that behaves somewhat like a network that's \textbf{100 layer deep in time}:
+\begin{equation*}
+    h_1 \to h_2 \to h_3 \to \cdots \to h_{100}
+\end{equation*}
+And during Backpropagation Through Time (BPTT) we're repeatedly multiplying gradients through the chain rule:
+\begin{equation*}
+    \frac{\partial E_t}{\partial h_k} = \frac{\partial E_t}{\partial h_t} \cdot \prod_{i=k+1}^{t} \frac{\partial h_i}{\partial h_{i-1}}
+\end{equation*}
+If those factors repeatedly have magnitude below 1:
+\begin{equation*}
+    0.5 \cdot 0.5 \cdot 0.5 \cdots \approx 0
+\end{equation*}
+The \textbf{gradient vanishes}. And similarly, if those factors repeatedly have magnitude above 1:
+\begin{equation*}
+    2 \cdot 2 \cdot 2 \cdots \approx \infty
+\end{equation*}
+The \textbf{gradient explodes}. That's why vanilla RNNs trained with BPTT have the famous \textbf{vanishing/exploding gradient problem}, especially over long sequences.
+\begin{gather*}
+    \text{RNN has recurrence over time} \\
+    \downarrow \\
+    \text{Unroll it across the sequence} \\
+    \downarrow \\
+    \text{Same weights are reused at every time step} \\
+    \downarrow \\
+    \text{Apply ordinary chain-rule backpropagation} \\
+    \downarrow \\
+    \text{Errors can flow from later to earlier states} \\
+    \downarrow \\
+    \text{Long chains can cause vanishing/exploding gradients}
+\end{gather*}
+Now let's analyze the statements individually:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{\emph{It cannot suffer from vanishing gradients.}}}
+
+        This is \textbf{false}. Actually, BPTT \textbf{can very much suffer from vanishing gradients}. When we unfold an RNN:
+        \begin{equation*}
+            h_1 \to h_2 \to h_3 \to \cdots \to h_{T}
+        \end{equation*}
+        And propagate the gradient backward, the chain rule repeatedly multiplies derivatives:
+        \begin{equation*}
+            \frac{\partial E_t}{\partial h_k} = \frac{\partial E_t}{\partial h_t} \cdot \frac{\partial h_t}{\partial h_{t-1}} \cdot \frac{\partial h_{t-1}}{\partial h_{t-2}} \cdots \frac{\partial h_{k+1}}{\partial h_k}
+        \end{equation*}
+        For a long sequence, if these factors tend to have magnitude below 1, repeated multiplication makes the gradient approach zero.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{Long unfolded sequences can behave like very deep computational graphs.}}}
+
+        This is \textbf{true}. Suppose the RNN processes 100 time steps. When unfolded:
+        \begin{equation*}
+            h_1 \to h_2 \to h_3 \to \cdots \to h_{100}
+        \end{equation*}
+        We now have a computational chain with 100 recurrent applications. It's not 100 independent layers with different weights, the parameters are shared, but from the perspective of \textbf{gradient propagation}, the computational graph is extremely deep.
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{\emph{It is irrelevant to recurrent neural networks.}}}
+
+        This is \textbf{false}. BPTT is specifically the standard backpropagation formulation for recurrent networks. We start with an RNN:
+        \begin{equation*}
+            h_t = f\left(
+                W_{x}x_t + W_{h}h_{t-1} + b
+            \right)
+        \end{equation*}
+        Unfold it:
+        \begin{equation*}
+            h_1 \to h_2 \to h_3 \to \cdots \to h_{T}
+        \end{equation*}
+        And then apply backpropagation through this temporal computational graph.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{It can propagate error signals from later outputs to earlier recurrent states.}}}
+
+        This is \textbf{true}. It is one of the fundamental reasons BPTT exists. Imagine:
+        \begin{equation*}
+            h_1 \to h_2 \to h_3 \to h_4 \to y_4
+        \end{equation*}
+        And the prediction $y_4$ generates a loss $E_4$. During backpropagation, gradients travel backward through the dependencies:
+        \begin{equation*}
+            E_4 \to h_4 \to h_3 \to h_2 \to h_1
+        \end{equation*}
+        So an error at a \textbf{later time} can generate gradients associated with computations at \textbf{earlier time steps}. That's exactly what ``\emph{backpropagation through time}'' means.
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{\emph{It requires the hidden state to be manually labelled at every step.}}}
+
+        This is \textbf{false}. The hidden state $h_t$ is an \textbf{internal representation computed by the RNN}. They arise from the computation itself, not from any external labels. Depending on the task, we may have targets associated with outputs, but that is completely different from manually labelling every hidden state.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{It applies the same chain-rule principle used in ordinary backpropagation.}}}
+
+        This is \textbf{true}. BPTT is \textbf{not a fundamentally different mathematical algorithm} from ordinary backpropagation.
+        \begin{enumerate}
+            \item Unfold the recurrent computation through time.
+            \item Obtain a computational graph that is a DAG (Directed Acyclic\break Graph).
+            \item Apply the \textbf{chain rule backward through that graph}.
+        \end{enumerate}
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{It unfolds the recurrent computation over time.}}}
+
+        This is \textbf{true}. The recurrent representation looks conceptually like a loop: $h_t \circlearrowleft$. Because the next computation depends on the previous hidden state. For BPTT, we represent those successive applications explicitly:
+        \begin{equation*}
+            h_1 \to h_2 \to h_3 \to h_4
+        \end{equation*}
+        This is called \textbf{unfolding} or \textbf{unrolling} the RNN \textbf{through time}.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{It trains weights that are shared across time steps.}}}
+
+        This is \textbf{true}. When we draw:
+        \begin{equation*}
+            h_1 \to h_2 \to h_3 \to h_4
+        \end{equation*}
+        It might look as though we have four different neural-network layers. But we don't have:
+        \begin{equation*}
+            W_h^{(1)}, W_h^{(2)}, W_h^{(3)}, W_h^{(4)}
+        \end{equation*}
+        Instead, the \textbf{same recurrent parameters} are reused at every time step:
+        \begin{align*}
+            h_1 &= f\left(
+                W_{x}x_1 + W_{h}h_{0} + b
+            \right) \\
+            h_2 &= f\left(
+                W_{x}x_2 + W_{h}h_{1} + b
+            \right) \\
+            h_3 &= f\left(
+                W_{x}x_3 + W_{h}h_{2} + b
+            \right) \\
+            h_4 &= f\left(
+                W_{x}x_4 + W_{h}h_{3} + b
+            \right)
+        \end{align*}
+        So the same weights $W_x$, $W_h$, and $b$ are shared across time steps. BPTT therefore computes gradient contributions coming from the different time steps for these \textbf{shared parameters}.
+\end{itemize}

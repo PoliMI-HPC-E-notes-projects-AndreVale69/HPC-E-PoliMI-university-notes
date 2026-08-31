@@ -429,3 +429,246 @@ So, the outputs for the input pairs $(0,0)$, $(0,1)$, $(1,0)$, $(1,1)$ are:
 \begin{equation*}
     0, 1, 1, 1
 \end{equation*}
+
+\newpage
+
+\noindent
+\exercise[1.5] Choose the coherent output-layer and loss design choice. For each task, select ``Coherent'' or ``Not Coherent''.
+\begin{itemize}
+    \item A reconstruction loss when the target is to reproduce an input vector.
+    \item Softmax over all labels for multi-label classification where several labels may be true at once.
+    \item Single sigmoid output with binary cross-entropy for binary classification.
+    \item Softmax output with categorical cross-entropy for mutually exclusive\break multi-class classification.
+    \item Independent sigmoid outputs with binary cross-entropy for multi-label classification.
+    \item Linear output with squared-error loss for scalar regression.
+    \item One scalar regression output with binary cross-entropy for an unrestricted real-valued target.
+\end{itemize}
+\solution This exercise is basically checking whether the \textbf{output activation and the loss function match the task}. The easiest way to solve this is to ask ourselves: ``\emph{what kind of output must the network represent?}''. Then choose an activation whose output range/structure matches that target, and a loss that makes sense for that output.
+\begin{itemize}
+    \item \emph{A reconstruction loss when the target is to reproduce an input vector.}\index{Reconstruction Loss}
+
+        First of all, the terminology ``\emph{reconstruction loss}'' sounds like a special loss function, but it is \textbf{usually not one specific mathematical loss}. It simply means that the \textbf{loss measures how well the model reconstructs its input}. The goal is something like:
+        \begin{equation*}
+            x \to \hat{x}
+        \end{equation*}
+        And we want something like:
+        \begin{equation*}
+            \hat{x} \approx x
+        \end{equation*}
+        That is exactly what happens in an autoencoder/reconstruction task. Compare the reconstructed vector with the original input vector using a reconstruction loss (e.g., mean squared error). This is a \important{coherent} design choice.
+
+    \item \emph{Softmax over all labels for multi-label classification where several labels may be true at once.}
+
+        Softmax (\autopageref{def:softmax-activation-function}) takes a \textbf{vector} of real-valued scores (called logits) and \textbf{converts them into a probability distribution}. Mathematically:
+        \begin{equation*}
+            \sum_{k=1}^{K} p_k = 1, \quad p_k \in [0, 1]
+        \end{equation*}
+        That creates \textbf{competition between classes}. For example $\left[0.7, 0.2, 0.1\right]$ means the model is distributing one unit of probability among mutually exclusive alternatives. But in \textbf{multi-label classification}, several labels can be true simultaneously. For example, an image may contain a dog, a person, and a grass. Those \textbf{labels should not compete for a total probability of 1}. Therefore, using softmax for multi-label classification is \important{not coherent}.
+
+    \item \emph{Single sigmoid output with binary cross-entropy for binary classification.}
+
+        A neural network doing classification has roughly this structure:
+        \begin{equation*}
+            \text{input} \to \text{hidden layers} \to \text{output layer}
+        \end{equation*}
+        Suppose the task is ``\emph{given an email, decide whether it is \textbf{spam or not spam}}''. That's \textbf{binary classification} because there are two possible classes: \emph{spam} or \emph{not spam}. Now the network needs some way to \textbf{express its answer}. That's what the \textbf{output layer} is for.
+
+        Instead of directly outputting the word ``\emph{spam}'', we can have \textbf{one output neuron} producing a number:
+        \begin{equation*}
+            \text{email} \to \text{Neural Network} \to \underbrace{\hat{y} \in [0, 1]}_{\text{e.g., } 0.87}
+        \end{equation*}
+        We decide that this number means something like:
+        \begin{equation*}
+            \hat{y} = 0.87 = \text{high confidence/probability for class 1 (spam)}
+        \end{equation*}
+        This is the ``\emph{single output}'' part. But an ordinary neuron initially computes an unrestricted number:
+        \begin{equation*}
+            z = w^{T} x + b \in \mathbb{R}
+        \end{equation*}
+        Which could be anything, e.g., $5.3$, $-17$, $0.4$, etc. We want the final output between $0$ and $1$, so we put a \textbf{sigmoid activation function} on that output neuron (\autopageref{sec:sigmoid-activation-function}):
+        \begin{equation*}
+            \hat{y} = \sigma(z) = \frac{1}{1 + e^{-z}} \in (0, 1)
+        \end{equation*}
+        So ``\emph{single sigmoid output}'' means simply that the network has \textbf{one output neuron}, and that neuron uses \textbf{sigmoid as its activation function}.
+
+        We're now at:
+        \begin{equation*}
+            \text{email} \to \text{Neural Network} \to z \to \text{sigmoid} \to \hat{y} \in (0, 1)
+        \end{equation*}
+        There is one final problem: \textbf{how do we train it?} Suppose the training example tells us the email really is spam: $y = 1$. And the network predicts $\hat{y} = 0.87$. We need a loss function that says how bad the prediction $\hat{y}$ is compared with the correct answer $y$.
+
+        For this particular binary setup (i.e., one output neuron with sigmoid activation), a suitable loss function is \definition{Binary Cross-Entropy} (\autopageref{eq:bce-loss}). It is defined as:
+        \begin{equation*}
+            \mathcal{L}_{\text{BCE}} = - \left[y \cdot \log(\hat{y}) + (1 - y) \cdot \log(1 - \hat{y})\right]
+        \end{equation*}
+        But let's focus on what it \textbf{does}.
+
+        \begin{center}
+            \begin{tabular}{@{} c c c @{}}
+                \toprule
+                \textbf{Model prediction $\hat{y}$} & \textbf{Interpretation} & \textbf{BCE} \\
+                \midrule
+                $0.99$ & Very confidently correct & $\approx 0.01$ \\
+                $0.9$  & Correct & $\approx 0.11$ \\
+                $0.5$  & Unsure & $\approx 0.69$ \\
+                $0.1$  & Wrong & $\approx 2.30$ \\
+                $0.01$ & Very confidently wrong & $\approx 4.61$ \\
+                \bottomrule
+            \end{tabular}
+        \end{center}
+
+        So BCE has a desirable property: \hl{it penalizes the model more when it is confidently wrong, and less when it is confidently correct.} This is exactly what we want for a binary classification task. Therefore, ``\emph{single sigmoid output with binary cross-entropy for binary classification}'' is a \important{coherent} design choice.
+
+    \item \emph{Softmax output with categorical cross-entropy for mutually exclusive multi-class classification.}
+
+        Suppose we want to classify an image as:
+        \begin{equation*}
+            \left\{\text{cat}, \text{dog}, \text{horse}\right\}
+        \end{equation*}
+        Unlike binary classification, we now have \textbf{3 possible classes}. And the question says \textbf{mutually exclusive}, which means that each image can belong to \textbf{exactly one class}. So instead of the single output neuron we used before, it's natural to have \textbf{one output for each class}: (output neuron 1) \emph{cat}, (output neuron 2) \emph{dog}, (output neuron 3) \emph{horse}. Before the final activation, the network might produce arbitrary scores:
+        \begin{equation*}
+            z = \left[z_{\text{cat}}, z_{\text{dog}}, z_{\text{horse}}\right] \in \mathbb{R}^{3} \xrightarrow{\text{for example}}
+            \begin{bmatrix}
+                1.2 \\
+                3.7 \\
+                0.4
+            \end{bmatrix}
+        \end{equation*}
+        These are usually called \textbf{logits}.
+
+        Now, we'd like to transform those arbitrary scores into something we can interpret as a probability distribution over the classes. That's exactly what the \textbf{softmax activation function} does (\autopageref{def:softmax-activation-function}):
+        \begin{equation*}
+            \text{softmax}(z_i) = \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}, \quad i = 1, 2, \ldots, K
+        \end{equation*}
+        Where $K$ is the number of classes. For our example:
+        \begin{equation*}
+            \text{softmax}\left(
+                \begin{bmatrix}
+                    1.2 \\
+                    3.7 \\
+                    0.4
+            \end{bmatrix}\right) \approx
+            \begin{bmatrix}
+                0.08 \\
+                0.90 \\
+                0.02
+            \end{bmatrix}
+        \end{equation*}
+        So the network is now saying: ``\emph{I think it's a dog with 90\% probability, a cat with 8\% probability, and a horse with 2\% probability}''. And crucially, the probabilities sum to 1, which is \textbf{exactly what we want for mutually exclusive classes}.
+
+        Finally, we need a loss function to train the network. For multi-class classification with mutually exclusive classes, the standard choice is \definition{Categorical Cross-Entropy} (\autopageref{eq:cce-loss}). It is defined as:
+        \begin{equation*}
+            \mathcal{L}_{\text{CCE}} = - \sum_{i=1}^{K} y_i \cdot \log(\hat{y}_i)
+        \end{equation*}
+        Because only one entry of $y$ is 1 (the correct class) and everything else disappears, this simplifies to:
+        \begin{equation*}
+            \mathcal{L}_{\text{CCE}} = - \log(\hat{y}_{\text{correct class}})
+        \end{equation*}
+        This loss function penalizes the model based on how much probability it assigns to the correct class. If the model assigns a high probability to the correct class, the loss is low; if it assigns a low probability, the loss is high.
+
+        In our example, if the correct class is \emph{dog}, then:
+        \begin{equation*}
+            \mathcal{L}_{\text{CCE}} = - \log(0.90) \approx 0.105
+        \end{equation*}
+        Which is a low loss, indicating a good prediction. If the correct class were \emph{cat}, then:
+        \begin{equation*}
+            \mathcal{L}_{\text{CCE}} = - \log(0.08) \approx 2.525
+        \end{equation*}
+        Which is a high loss, indicating a poor prediction. Therefore, ``\emph{Softmax output with categorical cross-entropy for mutually exclusive multi-class classification}'' is a \important{coherent} design choice.
+
+    \item \emph{Independent sigmoid outputs with binary cross-entropy for multi-label classification.}
+
+        Suppose we classify the contents of an image using these labels:
+        \begin{equation*}
+            \left\{\text{dog}, \text{person}, \text{car}\right\}
+        \end{equation*}
+        In the previous \textbf{mutually exclusive multi-class} problem, exactly one answer could be correct. But here, \textbf{several labels can be correct simultaneously}. For example, an image could contain both a dog and a person:
+        \begin{equation*}
+            y = \left[1, 1, 0\right] \quad \text{(dog and person are present, car is not)}
+        \end{equation*}
+        This is \textbf{multi-label classification}.
+
+        The softmax activation function makes sense if the classes compete with each other, because the output probabilities must sum to 1:
+        \begin{equation*}
+            \sum_{k=1}^{K} p_k = 1
+        \end{equation*}
+        But that's exactly what we \textbf{don't want} in multi-label classification. An image could very confidently contain both a dog and a person. In fact, if the model predicts:
+        \begin{equation*}
+            \hat{y} = \left[0.9, 0.8, 0.1\right]
+        \end{equation*}
+        That means the model is 90\% confident there's a dog, 80\% confident there's a person, and 10\% confident there's a car. It is perfectly fine because these are \textbf{not competing alternatives}. So \hl{no softmax} is needed.
+
+        Instead, we give \textbf{each label its own output neuron} and its own sigmoid activation function. For example:
+        \begin{equation*}
+            \hat{y}_{\text{dog}} = \sigma(z_{\text{dog}}), \quad \hat{y}_{\text{person}} = \sigma(z_{\text{person}}), \quad \hat{y}_{\text{car}} = \sigma(z_{\text{car}})
+        \end{equation*}
+        The network might produce:
+        \begin{equation*}
+            \hat{y} = \left[\hat{y}_{\text{dog}}, \hat{y}_{\text{person}}, \hat{y}_{\text{car}}\right] = \left[0.95, 0.98, 0.03\right]
+        \end{equation*}
+        And we interpret these as independent probabilities for each label. Each sigmoid only cares about its own logit:
+        \begin{equation*}
+            \hat{y}_k = \sigma(z_k) = \frac{1}{1 + e^{-z_k}}, \quad k = 1, 2, \ldots, K
+        \end{equation*}
+        That's what ``\emph{independent sigmoid outputs}'' means.
+
+        Finally, we need a loss function. We just said that Binary Cross-Entropy (BCE) makes sense when we have a binary question (\emph{is this label present or not?}). Well, \textbf{each label in a multi-label problem is a binary classification problem}. So we can apply BCE to \textbf{each output independently}. The architecture is essentially: several binary classifiers, one for each label.
+
+        Thus, ``\emph{Independent sigmoid outputs with binary cross-entropy for multi-label classification}'' is a \important{coherent} design choice.
+
+    \item \emph{Linear output with squared-error loss for scalar regression.}
+
+        \textbf{Regression} means predicting a \textbf{continuous numerical value}, rather than a class. For example, given information about a house (size, rooms, location, age, etc.), we want to predict its price.
+
+        With ``\emph{\textbf{scalar regression}}'', it means we are simply \textbf{predicting one number} $y \in \mathbb{R}$ (e.g., the price of a house), rather than a vector of several numbers.
+
+        The simplest way to do this is to have a \textbf{linear output neuron}. This wording can be confusing, but it does \textbf{not} mean the entire neural network is linear. It simply means that the \hl{final output neuron does not have a non-linear activation function applied to it.} Instead, it outputs a linear combination of its inputs:
+        \begin{equation*}
+            \hat{y} = w^{T} x + b \in \mathbb{R}
+        \end{equation*}
+        This is exactly what we want for regression: the output can be any real number. In contrast with, for example, a sigmoid output, which is restricted to the range $(0, 1)$. If we're predicting an unrestricted temperature, sigmoid would be a strange choice because we'd artificially restrict the prediction to $0 < \hat{y} < 1$. So for an \textbf{unrestricted real-valued regression target}, a linear output is a natural choice.
+
+        As always, we need a loss function to train the network. Suppose the true temperature is:
+        \begin{equation*}
+            y = 20\degree \text{C}
+        \end{equation*}
+        And the network predicts:
+        \begin{equation*}
+            \hat{y} = 18\degree \text{C}
+        \end{equation*}
+        We need a loss function that measures how far is our numerical prediction $\hat{y}$ from the correct numerical value $y$. The basic squared error loss is a natural choice (\autopageref{box:mse}):
+        \begin{equation*}
+            \mathcal{L} = \left(y - \hat{y}\right)^2
+        \end{equation*}
+        For our example:
+        \begin{equation*}
+            \mathcal{L} = \left(20 - 18\right)^2 = 4
+        \end{equation*}
+        If instead the network predicted $\hat{y} = 10\degree \text{C}$, the loss would be:
+        \begin{equation*}
+            \mathcal{L} = \left(20 - 10\right)^2 = 100
+        \end{equation*}
+        So closer numerical predictions result in smaller loss values, and large errors are penalized more strongly because they're squared.
+
+        Across many samples, averaging these squared errors gives the familiar \definition{Mean Squared Error (MSE)} loss:
+        \begin{equation*}
+            \mathcal{L}_{\text{MSE}} = \frac{1}{N} \sum_{i=1}^{N} \left(y_i - \hat{y}_i\right)^2
+        \end{equation*}
+        Again, suppose we're predicting temperature:
+        \begin{equation*}
+            \text{sensor data} \to \text{neural network} \to \hat{y} \in \mathbb{R} \quad (\text{predicted temperature})
+        \end{equation*}
+        The task is scalar regression (predict one continuous number). We use a linear output neuron (allows unrestricted real-valued predictions) and during training we compare the prediction $\hat{y}$ with the true temperature $y$ using squared-error loss (measures numerical prediction error). Therefore:
+        \begin{equation*}
+            \text{Scalar regression} \to \text{Linear output} \to \text{Squared-error loss / MSE}
+        \end{equation*}
+        Is a \important{coherent} design choice.
+
+    \item \emph{One scalar regression output with binary cross-entropy for an unrestricted real-valued target.}
+
+        The first part of the statement ``\emph{one scalar regression output}'' means the network has one output neuron producing one number: $\hat{y} \in \mathbb{R}$. And because this is regression, that number represents a \textbf{continuous quantity}, not a class. And ``\emph{unrestricted real-valued target}'' makes this even more explicit: the true value $y$ can be any real number, not just 0 or 1.
+
+        Here, the problem is the loss function. Binary Cross-Entropy (BCE) wants the prediction to approach the \textbf{binary target}. For example, if the target $y \in \left\{0, 1\right\}$ is $y = 1$, then BCE will penalize the model based on how close $\hat{y}$ is to 1 (i.e., $\hat{y} \to 1$, then $\mathcal{L}_{\text{BCE}} \to 0$). But if the target is unrestricted, say $y = 3.14$, then BCE doesn't make sense because it expects a binary target. The model will be confused: it will try to push $\hat{y}$ toward 0 or 1, but the true value is something else entirely.
+
+        A \textbf{better choice} for an unrestricted real-valued target is to use a\break \textbf{squared-error loss (MSE)} which directly asks: \emph{how far is our prediction $\hat{y}$ from the correct real value $y$?} So, ``\emph{One scalar regression output with binary cross-entropy for an unrestricted real-valued target}'' is \important{not coherent}.
+\end{itemize}

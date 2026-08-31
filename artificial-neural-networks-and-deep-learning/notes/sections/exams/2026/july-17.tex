@@ -672,3 +672,104 @@ So, the outputs for the input pairs $(0,0)$, $(0,1)$, $(1,0)$, $(1,1)$ are:
 
         A \textbf{better choice} for an unrestricted real-valued target is to use a\break \textbf{squared-error loss (MSE)} which directly asks: \emph{how far is our prediction $\hat{y}$ from the correct real value $y$?} So, ``\emph{One scalar regression output with binary cross-entropy for an unrestricted real-valued target}'' is \important{not coherent}.
 \end{itemize}
+
+\newpage
+
+\noindent
+\exercise[1.5] Which statements about momentum or adaptive learning-rate methods are correct? Select all that apply and only those.
+\begin{itemize}
+    \item They replace the dataset with hand-written rules.
+    \item Momentum can accumulate update directions across iterations.
+    \item They may interact with learning-rate selection.
+    \item They are optimization choices, not definitions of supervised learning.
+    \item They guarantee the global optimum for every neural network.
+    \item They can make gradient descent variants more effective in practice.
+    \item They remove the need for a training objective.
+    \item Adaptive methods can change effective step sizes across layers.
+\end{itemize}
+\solution Before analyzing the statements individually, let's establish the \textbf{basic idea}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Where are we in the neural-network pipeline?}} During training, we have a loss $E(w)$ and backpropagation computes gradients such as:
+\begin{equation*}
+    \nabla E(w) = \frac{\partial E}{\partial w}
+\end{equation*}
+Then \textbf{gradient descent} use those gradients to change the weights:
+\begin{equation*}
+    w_{k+1} = w_k - \eta \cdot \nabla E(w_k)
+\end{equation*}
+Where $\eta$ is the \textbf{learning rate}. So conceptually we are in the \textbf{optimization step} of training:
+\begin{equation*}
+    \text{Forward pass} \to \text{Loss} \to \text{Backpropagation} \to \boxed{\text{Optimizer}} \to \text{Update weights}
+\end{equation*}
+\textcolor{Green3}{\faIcon{book} \textbf{What is momentum?}} Ordinary gradient descent essentially looks at the \textbf{current} gradient and move accordingly (i.e., the steepest descent direction). But if the loss surface is \textbf{bumpy} (i.e., has many local minima or oscillations), then the current gradient may not be a good indicator of the overall direction to move. Momentum is a technique that \textbf{accumulates past gradients} to smooth out the update direction. In other words, it carries information from \textbf{previous updates}. Mathematically, momentum can be expressed adding a velocity term $v$ called \emph{inertia}:
+\begin{equation*}
+    v_{t} = \alpha \cdot v_{t-1} - \eta \cdot \nabla E(w_t)
+\end{equation*}
+Followed by the weight update:
+\begin{equation*}
+    w_{t+1} = w_t + v_t
+\end{equation*}
+The crucial term $\alpha \cdot v_{t-1}$ means that the new movement partially depends on the \textbf{previous movement}. Imagine gradient descent repeatedly wants to move in roughly the same direction, let's say rightwards. Momentum builds up movement in that persistent direction. That's the \textbf{intuition} behind momentum: the \hl{optimization develops some \emph{inertia} instead of completely forgetting its previous direction at every iteration.}
+
+\highspace
+\textcolor{Green3}{\faIcon{brain} \textbf{Adaptive learning rates.}} Now consider another problem. With ordinary gradient descent, we have one learning rate $\eta$. But \hl{different parameters/layers may behave very differently}, because gradient magnitudes vary across layers, and early layers can receive vanishing gradients (i.e., very small gradients, see vanishing gradient problem on \autopageref{def:vanishing-gradient-problem}). So ideally we \textbf{should use separate adaptive learning rates for each parameter}. Methods such as AdaGrad, RMSProp, and Adam modify the effective step size based on gradient history.
+
+\highspace
+So the big-picture distinction is:
+\begin{itemize}
+    \item \textbf{Momentum}: uses previous update/gradient information to build \emph{inertia}.
+    \item \textbf{Adaptive methods}: adapt effective step sizes using gradient history.
+\end{itemize}
+And Adam (Adaptive Moment Estimation) combines ideas from both momentum and adaptive learning rates.
+
+\highspace
+Now let's analyze the statements individually:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{\emph{They replace the dataset with hand-written rules.}}}
+
+        This is \textbf{false}. The reason it's false is simply that momentum/adaptive methods are \textbf{optimization methods}. They affect parameter updates. They don't replace the training data with manually programmed rules. In other words, \hl{data remain data, and the optimizer changes how parameters are updated.}
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{Momentum can accumulate update directions across iterations.}}}
+
+        This is \textbf{true}. As explained above, momentum accumulates information from previous gradients to smooth out the update direction. The velocity term $v_t$ depends on the previous velocity $v_{t-1}$, which means that the optimizer retains some memory of past updates. This allows it to build up speed in consistent directions and dampen oscillations in noisy gradients.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{They may interact with learning-rate selection.}}}
+
+        This is \textbf{true}. Adaptive methods explicitly affect the \textbf{effective step size}, while momentum itself also contains the learning rate $\eta$ in its update equation. So these optimization choices interact with learning-rate behavior/selection.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{They are optimization choices, not definitions of supervised\break learning.}}}
+
+        This is obviously \textbf{true}. Supervised learning is a paradigm where the learning signal/target comes from labeled data. Whereas momentum and adaptive methods are \textbf{optimization techniques}, so how optimization updates parameters.
+
+        \newpage
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{\emph{They guarantee the global optimum for every neural network.}}}
+
+        This is \textbf{false}. Neural-Network loss landscapes are generally non-convex, and these methods do \textbf{not} provide a universal guarantee that training reaches the global minimum. The word ``\emph{guarantee}'' is especially suspicious in this context. While momentum and adaptive methods \textbf{can help optimization converge faster or escape shallow local minima}, they do not guarantee finding the global optimum.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{They can make gradient descent variants more effective in practice.}}}
+
+        This is \textbf{true}. In practice, momentum and adaptive methods often improve convergence speed and stability of training. Also, notice the cautious wording again: ``\emph{can make ... more effective}'', not ``\emph{always make ... more effective}''. So momentum and adaptive learning-rate methods exist precisely as practical improvements/modifications of basic gradient-based optimization.
+
+    \item[\textcolor{Red2}{\faIcon{times}}] \textcolor{Red2}{\textbf{\emph{They remove the need for a training objective.}}}
+
+        This is \textbf{false}. The objective is the function we're trying to optimize, typically the loss function $\mathcal{L}(w)$. The optimization goal is to minimize that loss:
+        \begin{equation*}
+            w^{*} = \argmin_{w} \mathcal{L}(w)
+        \end{equation*}
+        Momentum or Adam changes \textbf{how we search for good} $w$. It doesn't eliminate $\mathcal{L}$. In fact, without an objective, there would be no gradient $\nabla_{w} \mathcal{L}$ for the optimizer to use.
+
+    \item[\textcolor{Green3}{\faIcon{check}}] \textcolor{Green3}{\textbf{\emph{Adaptive methods can change effective step sizes across layers.}}}
+
+        This is \textbf{true}. Think about ordinary gradient descent:
+        \begin{equation*}
+            \Delta w = - \eta g
+        \end{equation*}
+
+        Where $g = \nabla E(w)$ is the gradient, and $\eta$ is the global learning rate. Adaptive methods modify the \textbf{effective size of the update} based on gradient history. Consequently, parameters belonging to different layers can receive differently scaled updates. So:
+        \begin{equation*}
+            \text{different gradient histories} \implies \text{different effective step sizes}
+        \end{equation*}
+        And therefore different layers can indeed end up with different effective step sizes. Again, this statement says ``\emph{can}'', not that the optimizer necessarily assigns exactly one explicit learning rate to each layer.
+\end{itemize}

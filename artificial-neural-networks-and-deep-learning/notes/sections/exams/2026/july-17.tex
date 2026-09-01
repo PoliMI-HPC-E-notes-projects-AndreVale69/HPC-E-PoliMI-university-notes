@@ -445,9 +445,9 @@ So, the outputs for the input pairs $(0,0)$, $(0,1)$, $(1,0)$, $(1,1)$ are:
 \end{itemize}
 \solution This exercise is basically checking whether the \textbf{output activation and the loss function match the task}. The easiest way to solve this is to ask ourselves: ``\emph{what kind of output must the network represent?}''. Then choose an activation whose output range/structure matches that target, and a loss that makes sense for that output.
 \begin{itemize}
-    \item \emph{A reconstruction loss when the target is to reproduce an input vector.}\index{Reconstruction Loss}
+    \item \emph{A reconstruction loss when the target is to reproduce an input vector.}\phantomsection\label{def:reconstruction-loss}
 
-        First of all, the terminology ``\emph{reconstruction loss}'' sounds like a special loss function, but it is \textbf{usually not one specific mathematical loss}. It simply means that the \textbf{loss measures how well the model reconstructs its input}. The goal is something like:
+        First of all, the terminology ``\emph{\definition{Reconstruction Loss}}'' sounds like a special loss function, but it is \textbf{usually not one specific mathematical loss}. It simply means that the \textbf{loss measures how well the model reconstructs its input}. The goal is something like:
         \begin{equation*}
             x \to \hat{x}
         \end{equation*}
@@ -965,4 +965,168 @@ Now let's analyze the statements individually:
             \right)
         \end{align*}
         So the same weights $W_x$, $W_h$, and $b$ are shared across time steps. BPTT therefore computes gradient contributions coming from the different time steps for these \textbf{shared parameters}.
+\end{itemize}
+
+\newpage
+
+\noindent
+\exercise[1] For each of the following statements about neural autoencoders, state if they are true or false.
+\begin{itemize}[label=\textbf{T/F.}, leftmargin=2cm]
+    \item The encoder maps from hidden representation to reconstruction.
+    \item Given a sample, its autoencoder's hidden representation can be used as features for another model.
+    \item A reconstruction error can be used as a signal for anomaly detection.
+    \item A denoising autoencoder receives a corrupted input and learns to recover a clean version.
+    \item A sparsity penalty encourages all hidden units to be strongly active for every input.
+\end{itemize}
+\solution Let's do a quick theory recap before analyzing the statements individually.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is an Autoencoder?}} We encountered this concept briefly earlier when discussing \emph{reconstruction loss} (\autopageref{def:reconstruction-loss}). A neural autoencoder is trained to approximately \textbf{reproduce its input at its output}:
+\begin{equation*}
+    x \to \text{Autoencoder} \to \hat{x}
+\end{equation*}
+With the goal:
+\begin{equation*}
+    \hat{x} \approx x
+\end{equation*}
+But if all we're doing is copying $x$ to $\hat{x}$, why use a neural network at all? The interesting part is what happens \textbf{inside} (\autopageref{fig:autoencoder}):
+\begin{equation*}
+    x \xrightarrow{\text{Encoder}} h \xrightarrow{\text{Decoder}} \hat{x}
+\end{equation*}
+Where $x$ is the original input, $h$ is the \textbf{hidden/latent representation} (or \emph{latent code}), and $\hat{x}$ is the reconstructed input. For example, imagine $x$ is a large vector $x \in \mathbb{R}^{1000}$. The encoder might compress it into a smaller hidden representation $h \in \mathbb{R}^{50}$. Then the decoder tries to reconstruct the original $1000$ values:
+\begin{equation*}
+    \mathbb{R}^{1000} \xrightarrow{\text{encoder}} \mathbb{R}^{50} \xrightarrow{\text{decoder}} \mathbb{R}^{1000}
+\end{equation*}
+And because the network must reconstruct $x$ from this constrained representation, $h$ should capture useful structure in the input.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How is an Autoencoder trained?}} We compare the input $x$ with the reconstruction $\hat{x}$ using the \textbf{reconstruction loss} we discussed earlier (\autopageref{def:reconstruction-loss}):
+\begin{equation*}
+    \mathcal{L}_{\text{rec}}\left(x, \hat{x}\right)
+\end{equation*}
+For example, depending on the data, it might be squared error:
+\begin{equation*}
+    \mathcal{L}_{\text{rec}}\left(x, \hat{x}\right) = \left\|x - \hat{x}\right\|^2
+\end{equation*}
+Training tries to make $\hat{x}$ as close to $x$ as possible: $\hat{x} \approx x$. Notice that we \textbf{don't need any semantic class labels} for this. The input itself supplies what must be reconstructed, and that's why we present autoencoders in the chapter on \textbf{unsupervised representation learning}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is $h$ useful?}} We aren't necessarily interested in the reconstructed output itself. We hope that the hidden representation $h$:
+\begin{equation*}
+    h = \text{Encoder}(x)
+\end{equation*}
+Becomes a useful representation of the input $x$. For example:
+\begin{equation*}
+    x \in \mathbb{R}^{1000} \to h \in \mathbb{R}^{50}
+\end{equation*}
+This means that the $50$-dimensional representation $h$ captures the most important information from the original $1000$-dimensional input $x$. Those $50$ numbers can potentially capture important patterns in the original $1000$-dimensional sample. Then we could take $h$ and give it to another machine-learning model as features. This is \textbf{feature extraction} or \textbf{representation learning}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Three variants of Autoencoders.}} There are many variants of autoencoders, but three common ones are (\autopageref{sec:applications-of-autoencoders}):
+\begin{itemize}
+    \item \definition{Denoising Autoencoder (DAE)}. Instead of giving the network clean $x$ and asking for $x$, deliberately corrupt the input with noise:
+        \begin{equation*}
+            x \to \text{add noise} \to \tilde{x}
+        \end{equation*}
+        Then train the network to reconstruct the original clean input $x$ from the noisy version $\tilde{x}$:
+        \begin{equation*}
+            \tilde{x} \xrightarrow{\text{Autoencoder}} \hat{x} \approx x
+        \end{equation*}
+        This helps the network learn to ignore noise and focus on the underlying structure of the data.
+
+    \item \definition{Anomaly Detection Autoencoder (ADA)}. Suppose we train an autoencoder only on \textbf{normal machine behavior}. It becomes good at reconstructing normal samples:
+        \begin{equation*}
+            x_{\text{normal}} \to \hat{x}_{\text{normal}}
+        \end{equation*}
+        With:
+        \begin{equation*}
+            \left\|x_{\text{normal}} - \hat{x}_{\text{normal}}\right\|^2 \approx 0
+        \end{equation*}
+        Now give it something very unusual that differs substantially from its training distribution. It may reconstruct it poorly:
+        \begin{equation*}
+            x_{\text{anomaly}} \to \hat{x}_{\text{anomaly}}
+        \end{equation*}
+        With:
+        \begin{equation*}
+            \left\|x_{\text{anomaly}} - \hat{x}_{\text{anomaly}}\right\|^2 \gg 0
+        \end{equation*}
+        Therefore the \textbf{reconstruction error itself can become an anomaly signal}.
+
+    \item \definition{Sparse Autoencoder (SAE)}. We add a constraint encouraging only a \textbf{small subset of hidden units to be active} for a particular input. Conceptually, instead of:
+        \begin{equation*}
+            h = \left[
+                0.8, 0.7, 0.9, 0.6, 0.8, 0.9, \dots
+            \right]
+        \end{equation*}
+        We might encourage something more like:
+        \begin{equation*}
+            h = \left[
+                0, 0, 0.8, 0, 0, 0.6, 0, 0, \dots
+            \right]
+        \end{equation*}
+        This is done by adding a \textbf{sparsity penalty} to the loss function, which encourages most hidden units to be near zero for any given input. This can help the autoencoder learn more distinct features and avoid trivial solutions.
+\end{itemize}
+Now we can analyze the statements individually:
+\begin{itemize}
+    \item[\textcolor{Red2}{\textbf{F.}}] \textcolor{Red2}{\textbf{\emph{The encoder maps from hidden representation to reconstruction.}}}
+
+        This is clearly \textbf{false}. An autoencoder has:
+        \begin{equation*}
+            x \xrightarrow{\text{Encoder}} h \xrightarrow{\text{Decoder}} \hat{x}
+        \end{equation*}
+        Where $x$ is the input, $h$ is the hidden representation, and $\hat{x}$ is the reconstruction. The encoder maps from the input $x$ to the hidden representation $h$, not from $h$ to $\hat{x}$. The \textbf{decoder} is responsible for mapping from $h$ to $\hat{x}$.
+
+    \item[\textcolor{Green3}{\textbf{T.}}] \textcolor{Green3}{\textbf{\emph{Given a sample, its autoencoder's hidden representation can be used as features for another model.}}}
+
+        This is \textbf{true}. And this is one of the main reasons autoencoders are interesting. The hidden representation $h$ is something the autoencoder has \textbf{learned from the data}. Suppose $x \in \mathbb{R}^{1000}$ and the encoder produces $h \in \mathbb{R}^{50}$. After training, we could discard the decoder and use $h$ as a \textbf{feature vector} for another machine-learning model:
+        \begin{equation*}
+            x \xrightarrow{\text{trained encoder}} h \xrightarrow{\text{another model}} y
+        \end{equation*}
+
+    \item[\textcolor{Green3}{\textbf{T.}}] \textcolor{Green3}{\textbf{\emph{A reconstruction error can be used as a signal for anomaly detection.}}}
+
+        This is \textbf{true}. Imagine training an autoencoder on \textbf{normal examples}. It learns to reconstruct normal patterns well:
+        \begin{equation*}
+            x_{\text{normal}} \to \hat{x}_{\text{normal}} \approx x_{\text{normal}}
+        \end{equation*}
+        Therefore:
+        \begin{equation*}
+            \mathcal{L}_{\text{rec}}\left(x, \hat{x}\right) \text{ is small for normal } x
+        \end{equation*}
+        Now give it an unusual sample that differs from what it learned. It may reconstruct that sample poorly:
+        \begin{equation*}
+            \hat{x}_{\text{anomaly}} \not\approx x_{\text{anomaly}}
+        \end{equation*}
+        Therefore:
+        \begin{equation*}
+            \mathcal{L}_{\text{rec}}\left(x, \hat{x}\right) \text{ is large for anomalous } x
+        \end{equation*}
+        So the reconstruction error itself can serve as an anomaly signal.
+
+    \item[\textcolor{Green3}{\textbf{T.}}] \textcolor{Green3}{\textbf{\emph{A denoising autoencoder receives a corrupted input and learns to recover a clean version.}}}
+
+        This is \textbf{true}. It is the definition of a \textbf{denoising autoencoder}. We start with clean data $x$, we deliberately corrupt it $x \to \tilde{x}$, and then give the corrupted version to the network:
+        \begin{equation*}
+            \tilde{x} \xrightarrow{\text{Encoder}} h \xrightarrow{\text{Decoder}} \hat{x}
+        \end{equation*}
+        But the desired reconstruction is the \textbf{original clean} $x$, so the loss function compares $\hat{x}$ to $x$:
+        \begin{equation*}
+            \mathcal{L}_{\text{rec}}\left(x, \hat{x}\right)
+        \end{equation*}
+
+    \item[\textcolor{Red2}{\textbf{F.}}]  \textcolor{Red2}{\textbf{\emph{A sparsity penalty encourages all hidden units to be strongly active for every input.}}}
+
+        This is \textbf{false} because it's the \textbf{opposite of sparsity}. If every hidden unit were strongly active:
+        \begin{equation*}
+            h = \left[
+                0.8, 0.7, 0.9, 0.6, 0.8, 0.9, \dots
+            \right]
+        \end{equation*}
+        That's a \textbf{dense activation}. Sparsity instead encourages something like:
+        \begin{equation*}
+            h = \left[
+                0, 0, 0.8, 0, 0, 0.6, 0, 0, \dots
+            \right]
+        \end{equation*}
+        Only a relative small subset of units should be strongly active. So sparsity penalty encourages many hidden activations to be inactive/small, not make every hidden unit strongly active.
 \end{itemize}

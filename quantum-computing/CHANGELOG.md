@@ -52,6 +52,8 @@
     - add `Complete Example for w = 101 (Exam Question)`
     - add `General Mathematical Derivation`
     - add `Complexity and Importance`
+  - add `Simon's Algorithm`
+    - add `Problem Definition and Classical Solution`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

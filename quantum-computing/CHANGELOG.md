@@ -55,6 +55,7 @@
   - add `Simon's Algorithm`
     - add `Problem Definition and Classical Solution`
     - add `Quantum Circuit and State Evolution`
+    - add `Why Simon's Algorithm Works`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

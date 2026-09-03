@@ -54,6 +54,7 @@
     - add `Complexity and Importance`
   - add `Simon's Algorithm`
     - add `Problem Definition and Classical Solution`
+    - add `Quantum Circuit and State Evolution`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

@@ -1,0 +1,441 @@
+\subsubsection{Quantum Circuit and State Evolution}\label{sec:simons-algorithm-quantum-circuit-and-state-evolution}
+
+Now that the problem is clear, we can look at what \textbf{one execution of Simon's quantum circuit} actually does. The main conceptual difference from Bernstein-Vazirani is important from the beginning: one Simon run does \textbf{not} return $a$. Instead, one run will eventually give us a bitstring $y$ containing \textbf{partial information about} $a$.
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}[
+            slice all,
+            slice titles={\ket{\psi_{\col}}},
+            column sep=1cm,
+        ]
+        \lstick{$\ket{0}^{\otimes n}$}\slice{\ket{\psi_{0}}}    & \gate{H^{\otimes n}}          & \gate[2][2.3cm]{U_f}\gateinput{\ket{x}}\gateoutput{\ket{x}} & \gate{H^{\otimes n}} & \meter{} \\
+        \lstick{$\ket{0}^{\otimes n}$}                          & \centerbundle[n]              & \gateinput{\ket{y}}\gateoutput{\ket{y \oplus f(x)}} & \qw                  & \qw
+    \end{quantikz}
+    \caption{Quantum circuit for Simon's algorithm.}
+    \label{fig:simons-algorithm-quantum-circuit}
+\end{figure}
+
+% Step 1 — Initial state
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{power-off} \textbf{Step 1: Initial state}}
+\end{flushleft}
+Simon uses \textbf{two registers}, each containing $n$ qubits:
+\begin{equation*}
+    \ket{\psi_0} = \ket{0}^{\otimes n} \otimes \ket{0}^{\otimes n}
+\end{equation*}
+So there are $2n$ qubits in total. It is useful to give the registers different jobs:
+\begin{equation*}
+    \underbrace{\ket{0}^{\otimes n}}_{\text{input register}} \otimes \underbrace{\ket{0}^{\otimes n}}_{\text{output register}}
+\end{equation*}
+For example, if $n=3$, the initial state is:
+\begin{equation*}
+    \ket{\psi_0} = \underbrace{\ket{000}}_{\text{input}} \otimes \underbrace{\ket{000}}_{\text{output}}
+\end{equation*}
+
+% Step 2 — Hadamards / create superposition
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{random} \textbf{Step 2: Hadamards on the first register}}
+\end{flushleft}
+We apply $H^{\otimes n}$ only to the \textbf{first} register.
+We move from a definite computational basis input into the \textbf{Hadamard basis}, expressed as a \textbf{superposition over all computational strings}.
+We already know that (from \autopageref{sec:bernstein-vazirani-first-hadamard-layer}) that:
+\begin{equation*}
+    H^{\otimes n} \ket{0}^{\otimes n} = \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x}
+\end{equation*}
+Therefore, after the Hadamards, the state of the system is:
+\begin{equation*}
+    \ket{\psi_1} = \underbrace{\frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x}}_{\text{input register}} \otimes \underbrace{\ket{0}^{\otimes n}}_{\text{output register}}
+\end{equation*}
+The first register is now an equal superposition of \textbf{every possible input}. For example, for $n = 2$:
+\begin{align*}
+    \ket{\psi_1} &= \frac{1}{\sqrt{2^2}} \sum_{x \in \{0,1\}^2} \ket{x} \otimes \ket{00} \\
+    &= \frac{1}{2} (\ket{00} + \ket{01} + \ket{10} + \ket{11}) \otimes \ket{00}
+\end{align*}
+So far, nothing about $f$ or $a$ has entered the computation. The first register is in a superposition of all possible inputs, and the second register is still in the initial state $\ket{0}^{\otimes n}$.
+
+% Step 3 — Simon's oracle
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{box} \textbf{Step 3: Apply Simon's oracle}}
+\end{flushleft}
+Classically, we think of a function as:
+\begin{equation*}
+    x \to f(x)
+\end{equation*}
+So we might initially want a quantum oracle that does:
+\begin{equation*}
+    \ket{x} \to \ket{f(x)}
+\end{equation*}
+The \textbf{problem} is that a quantum gate must be \textbf{unitary}, and therefore \textbf{reversible}. But a general function $f$ may not be reversible. Simon is actually a perfect example because $f$ is \textbf{2-to-1}:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+Meaning that two different inputs $x$ and $x \oplus a$ map to the same output. For example, we could have:
+\begin{equation*}
+    f(00) = 10, \quad f(01) = 11
+\end{equation*}
+If our quantum transformation were:
+\begin{equation*}
+    \ket{00} \to \ket{10}, \quad \ket{01} \to \ket{10}
+\end{equation*}
+We've \textbf{lost the information} about whether the input was $00$ or $01$. We couldn't reverse the operation. So this cannot be a unitary quantum gate.
+
+\highspace
+\textcolor{Green3}{\faIcon{check} \textbf{The standard quantum oracle.}} \hl{To make an arbitrary classical function reversible}, we keep $x$ and introduce a second register:
+\begin{equation*}
+    U_f\ket{x}\ket{y}
+    =
+    \ket{x}\ket{y\oplus f(x)}
+\end{equation*}
+This is the oracle defined on \autopageref{ex:quantum-oracle-uf}. The \textbf{first register is unchanged}:
+\begin{equation*}
+    \ket{x}\rightarrow\ket{x}
+\end{equation*}
+The \textbf{second register is modified}:
+\begin{equation*}
+    \ket{y}\rightarrow\ket{y\oplus f(x)}
+\end{equation*}
+So conceptually:
+\begin{equation*}
+    (x,y)
+    \longrightarrow
+    (x,y\oplus f(x))
+\end{equation*}
+This transformation is reversible because XOR is its own inverse (i.e., $y \oplus f(x) \oplus f(x) = y$).
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why do we initialize the second register to $\ket{0}^{\otimes n}$?}} Here's an interesting trick. If we initialize the second register to $y = 0^n$, then the oracle does:
+\begin{equation*}
+    U_f \ket{x} \ket{0^{n}} = \ket{x} \ket{0^{n} \oplus f(x)}
+\end{equation*}
+And since by definition of XOR:
+\begin{equation*}
+    0^{n} \oplus f(x) = f(x)
+\end{equation*}
+We can see that the second register is now in the state $\ket{f(x)}$:
+\begin{equation*}
+    U_f \ket{x} \ket{0^{n}} = \ket{x} \ket{f(x)}
+\end{equation*}
+So initializing the second register to zero \hl{makes the oracle behave as if it simply computes $f(x)$ into that register}:
+\begin{equation*}
+    \ket{x} \ket{0} \to \ket{x} \ket{f(x)}
+\end{equation*}
+While still preserving $x$, and therefore preserving reversibility.
+
+\highspace
+\begin{examplebox}[: Applying the oracle to a specific input]
+    Suppose $x=10$ and $f(10) = 01$. Apply the oracle to the state $\ket{10}\ket{00}$:
+    \begin{align*}
+        U_f \ket{10}\ket{00} &= \ket{10}\ket{00 \oplus f(10)} \\
+        &= \ket{10}\ket{00 \oplus 01} \\
+        &= \ket{10}\ket{01}
+    \end{align*}
+    The first register is unchanged, and the second register now contains $f(10) = 01$. And since XOR is its own inverse, we can reverse the operation:
+    \begin{align*}
+        U_f \ket{10}\ket{01} &= \ket{10}\ket{01 \oplus f(10)} \\
+        &= \ket{10}\ket{01 \oplus 01} \\
+        &= \ket{10}\ket{00}
+    \end{align*}
+    So the oracle is unitary and reversible, and it is a valid quantum gate.
+\end{examplebox}
+
+\highspace
+\textcolor{Green3}{\faIcon{link} \textbf{Connect this to Simon's superposition.}} Before the oracle, Simon has the state:
+\begin{equation*}
+    \ket{\psi_1} = \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x} \otimes \ket{0}^{\otimes n}
+\end{equation*}
+The important thing is that the oracle is linear. Therefore it acts on \textbf{every term of the superposition independently}. If we apply the oracle to $\ket{\psi_1}$, we get:
+\begin{align*}
+    \ket{\psi_2} &= U_f \ket{\psi_1} \\[.3em]
+    &= U_f \left( \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x} \otimes \ket{0}^{\otimes n} \right) \\[.3em]
+    &\downarrow \left(a +b\right) c = ac + bc \\[.3em]
+    &= \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} U_f \left( \ket{x} \otimes \ket{0}^{\otimes n} \right) \\[.3em]
+    &= \underbrace{\frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x}}_{\text{input register}} \otimes \underbrace{\ket{f(x)}}_{\text{output register}}
+\end{align*}
+So the oracle leaves the \textbf{first register unchanged}, and the \hl{second register now contains $f(x)$} for every possible input $x$ in superposition:
+\begin{equation*}
+    U_f : \underbrace{\ket{x}}_{\text{untouched}} \otimes \underbrace{\ket{0}}_{\text{workspace}} \to \underbrace{\ket{x}}_{\text{untouched}} \otimes \underbrace{\ket{f(x)}}_{\text{output}}
+\end{equation*}
+
+% Step 4 — Final Hadamards / interference
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{wave-square} \textbf{Step 4: Final Hadamards}}
+\end{flushleft}
+After the oracle, the state of the system is:
+\begin{equation*}
+    \ket{\psi_2} = \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x} \otimes \ket{f(x)}
+\end{equation*}
+And therefore, the quantum state now contains the desired structure:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+For example, if $n=2$ and $a=01$, then the oracle has created the state:
+\begin{equation*}
+    \ket{\psi_2} = \frac{1}{2} \left(\ket{00}\ket{f(00)} + \ket{01}\ket{f(01)} + \ket{10}\ket{f(10)} + \ket{11}\ket{f(11)}\right)
+\end{equation*}
+So $a$ is encoded in the fact that certain terms are paired. But there is an important problem: \textbf{we cannot simply measure this state and expect to obtain $a$}. If we measured the first register now, we'd just obtain some $x$ (e.g., $x=00$, or $x=01$, or $x=10$, or $x=11$). One random $x$ tells us essentially nothing about $a$.
+
+\highspace
+Therefore, the idea is: \emph{can we transform the state so that \textbf{wrong answers cancel out} and only outcomes containing information about $a$ remain measurable?} That's exactly what \textbf{interference} gives us. The final Hadamards cause the amplitudes associated with the pair $x$ and $x \oplus a$ to meet at the same possible output $y$. Then there are two possibilities:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] If their amplitudes have \textbf{opposite signs}:
+        \begin{equation*}
+            + A + (-A) = 0
+        \end{equation*}
+        They \textbf{destructively interfere} and the probability of measuring that $y$ is zero.
+
+    \item[\textcolor{Green2}{\faIcon{check}}] If they have the \textbf{same sign}:
+        \begin{equation*}
+            + A + (+A) = 2A
+        \end{equation*}
+        They \textbf{constructively interfere} and the probability of measuring that $y$ is increased.
+\end{itemize}
+For each input $x$:
+\begin{align*}
+    \ket{\psi_3} &= H^{\otimes n} \ket{\psi_2} \\[.3em]
+    &= H^{\otimes n} \left( \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x} \otimes \ket{f(x)} \right) \\[.3em]
+    &\downarrow \left(a +b\right) c = ac + bc \\[.3em]
+    &= \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} H^{\otimes n} \ket{x} \otimes \ket{f(x)} \\[.3em]
+    &= \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \left( \frac{1}{\sqrt{2^n}} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y} \otimes \ket{f(x)} \right) \\[.3em]
+    &= \frac{1}{2^n} \sum_{x \in \{0,1\}^n} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y} \otimes \ket{f(x)}
+\end{align*}
+Notice that \textbf{each $x$ now contributes an amplitude to every possible $y$}. That's what allows interference. For a particular $y$, their contributions look like $(-1)^{x \cdot y}$, and $(-1)^{(x \oplus a) \cdot y}$. Depending on $y$, these two amplitudes either have the same sign (constructive interference) or opposite signs (destructive interference). And this inference removes exactly the $y$'s that do not satisfy:
+\begin{equation*}
+    a \cdot y = 0 \mod 2
+\end{equation*}
+We will see this in more detail in the next section.
+
+\begin{remarkbox}[: Explain $H\ket{x} = \frac{1}{\sqrt{2}} \sum_{y\in\{0,1\}} (-1)^{xy}\ket{y}$]
+    We know that the Hadamard gate is defined as:
+    \begin{equation*}
+        H = \frac{1}{\sqrt{2}}
+        \begin{bmatrix}
+            1 & 1 \\
+            1 & -1
+        \end{bmatrix}
+    \end{equation*}
+    And we can see that it acts on the computational basis states as:
+    \begin{align*}
+        H\ket{0} &= \frac{1}{\sqrt{2}}\left(\ket{0} + \ket{1}\right) \\
+        H\ket{1} &= \frac{1}{\sqrt{2}}\left(\ket{0} - \ket{1}\right)
+    \end{align*}
+    We can combine both equations into one formula. Let $x \in \{0,1\}$, then:
+    \begin{equation*}
+        H\ket{x} = \frac{1}{\sqrt{2}} \sum_{y\in\{0,1\}} (-1)^{xy}\ket{y}
+    \end{equation*}
+    Let's verify it:
+    \begin{itemize}
+        \item If $x=0$, then $(-1)^{0\cdot y} = (-1)^0 = 1, \; \forall y \in \{0,1\}$, and we get:
+            \begin{equation*}
+                H\ket{0} = \frac{1}{\sqrt{2}} \sum_{y\in\{0,1\}} 1 \cdot \ket{y} = \frac{1}{\sqrt{2}} (\ket{0} + \ket{1})
+            \end{equation*}
+        \item If $x=1$, then $(-1)^{1\cdot y} = (-1)^y$, and we get:
+            \begin{equation*}
+                H\ket{1} = \frac{1}{\sqrt{2}} \sum_{y\in\{0,1\}} (-1)^y \cdot \ket{y} = \frac{1}{\sqrt{2}} (\ket{0} - \ket{1})
+            \end{equation*}
+    \end{itemize}
+    \textcolor{Green3}{\faIcon{book} \textbf{Now take two qubits.}} Suppose $x \in \{0,1\}^2$, then we can write $x = x_1 x_2$ with $x_1, x_2 \in \{0,1\}$. Then:
+    \begin{equation*}
+        \ket{x} = \ket{x_1 x_2} = \ket{x_1} \otimes \ket{x_2}
+    \end{equation*}
+    Applying a Hadamard to both qubits means
+    \begin{equation*}
+        H^{\otimes2}\ket{x_1x_2}
+        =
+        H\ket{x_1}\otimes H\ket{x_2}
+    \end{equation*}
+    Use the one-qubit formula on each:
+    \begin{equation*}
+        H\ket{x_1}
+        =
+        \frac{1}{\sqrt{2}}
+        \sum_{y_1}
+        (-1)^{x_1y_1}\ket{y_1}, \quad
+        H\ket{x_2}
+        =
+        \frac{1}{\sqrt{2}}
+        \sum_{y_2}
+        (-1)^{x_2y_2}\ket{y_2}
+    \end{equation*}
+    Tensor them:
+    \begin{equation*}
+        H^{\otimes2}\ket{x_1x_2}
+        =
+        \left(
+            \frac{1}{\sqrt{2}}
+            \sum_{y_1}
+            (-1)^{x_1y_1}\ket{y_1}
+        \right)
+        \otimes
+        \left(
+            \frac{1}{\sqrt{2}}
+            \sum_{y_2}
+            (-1)^{x_2y_2}\ket{y_2}
+        \right)
+    \end{equation*}
+    Multiply the normalization factors:
+    \begin{equation*}
+        \frac{1}{\sqrt{2}} \cdot \frac{1}{\sqrt{2}}
+        =
+        \frac{1}{2}
+    \end{equation*}
+    Therefore
+    \begin{equation*}
+        H^{\otimes2}\ket{x_1x_2}
+        =
+        \frac{1}{2}
+        \sum_{y_1,y_2}
+        (-1)^{x_1y_1}
+        (-1)^{x_2y_2}
+        \ket{y_1y_2}
+    \end{equation*}
+    Now use
+    \begin{equation*}
+        (-1)^a(-1)^b=(-1)^{a+b}
+    \end{equation*}
+    So
+    \begin{equation*}
+        H^{\otimes2}\ket{x_1x_2}
+        =
+        \frac{1}{2}
+        \sum_{y_1,y_2}
+        (-1)^{x_1y_1+x_2y_2}
+        \ket{y_1y_2}
+    \end{equation*}
+    But the exponent can be written as a \textbf{dot product}:
+    \begin{align*}
+        x \cdot y
+        &=
+        x_1y_1+x_2y_2 \\
+        &= \sum_{i=1}^{2} x_i y_i
+    \end{align*}
+    Therefore
+    \begin{equation*}
+        H^{\otimes2}\ket{x_1x_2}
+        =
+        \frac{1}{2}
+        \sum_{y_1,y_2}
+        (-1)^{x \cdot y}
+        \ket{y_1y_2}
+        =
+        \frac{1}{2}
+        \sum_{y \in \{0,1\}^2}
+        (-1)^{x \cdot y}
+        \ket{y}
+    \end{equation*}
+    \textcolor{Green3}{\faIcon{book} \textbf{Now take $n$ qubits.}} Suppose $x \in \{0,1\}^n$, then we can write:
+    \begin{equation*}
+        x = x_1 \cdot x_2 \cdots x_n
+    \end{equation*}
+    Then:
+    \begin{equation*}
+        \ket{x} = \ket{x_1 x_2 \cdots x_n} = \ket{x_1} \otimes \ket{x_2} \otimes \cdots \otimes \ket{x_n}
+    \end{equation*}
+    Applying Hadamard to every qubit means:
+    \begin{equation*}
+        H^{\otimes n}\ket{x} = H\ket{x_1} \otimes H\ket{x_2} \otimes \cdots \otimes H\ket{x_n}
+    \end{equation*}
+    Each qubit contributes:
+    \begin{equation*}
+        \frac{1}{\sqrt{2}} \sum_{y_i = 0}^{1} (-1)^{x_i y_i} \ket{y_i}
+    \end{equation*}
+    Therefore all $n$ normalization factors multiply to:
+    \begin{equation*}
+        \frac{1}{\sqrt{2}} \cdot \frac{1}{\sqrt{2}} \cdots \frac{1}{\sqrt{2}} = \frac{1}{\sqrt{2^n}}
+    \end{equation*}
+    And the signs multiply:
+    \begin{align*}
+        \left(-1\right)^{x_1y_1} \cdot \left(-1\right)^{x_2y_2} \cdots \left(-1\right)^{x_ny_n} &= \left(-1\right)^{x_1y_1 + x_2y_2 + \cdots + x_ny_n} \\[.3em]
+        &= \left(-1\right)^{\sum_{i=1}^{n} x_i y_i} \\[.3em]
+        &= \left(-1\right)^{x \cdot y}
+    \end{align*}
+    Remember that \textbf{in Simon we work modulo $2$}, so the sum in the exponent is modulo $2$ as well:
+    \begin{equation*}
+        x \cdot y = \left(\sum_{i=1}^{n} x_i y_i\right) \bmod 2
+    \end{equation*}
+    Which is equivalent to writing:
+    \begin{equation*}
+        x\cdot y
+        =
+        x_1y_1\oplus x_2y_2\oplus\cdots\oplus x_ny_n
+    \end{equation*}
+    For example, if $n=2$:
+    \begin{equation*}
+        x=11,\qquad y=11
+    \end{equation*}
+    Ordinary dot product:
+    \begin{equation*}
+        1\cdot1+1\cdot1=2
+    \end{equation*}
+    But modulo $2$:
+    \begin{equation*}
+        2\bmod2=0
+    \end{equation*}
+    Equivalently:
+    \begin{equation*}
+        1\oplus1=0
+    \end{equation*}
+    Therefore in the Hadamard formula:
+    \begin{equation*}
+        (-1)^{x\cdot y}
+        =
+        (-1)^0
+        =
+        +1
+    \end{equation*}
+    Therefore we can write:
+    \begin{equation*}
+        H^{\otimes n}\ket{x} = \frac{1}{\sqrt{2^n}} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y}
+    \end{equation*}
+\end{remarkbox}
+
+% Step 5 — Measurement
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{ruler} \textbf{Step 5: Measurement}}
+\end{flushleft}
+We are interested in measuring the \textbf{first register} because it contains information about $a$. The measurement returns some:
+\begin{equation*}
+    y \in \left\{0,1\right\}^n
+\end{equation*}
+That $y$ is guaranteed to satisfy:
+\begin{equation*}
+    a \cdot y = 0 \mod 2
+\end{equation*}
+This is \textbf{very different from Bernstein-Vazirani}. In BV, one run of the circuit returned $a$ directly. In Simon, one run of the circuit returns a $y$ that is \textbf{orthogonal to $a$} (i.e., $a \cdot y = 0$). So $y$ is \textbf{not the hidden string}. It's a \textbf{constraint} on the hidden string.
+
+\highspace
+For example, suppose $n=3$ and we measure $y=101$. Then we know that:
+\begin{equation*}
+    a \cdot y = 0 \quad \Rightarrow \quad a_1 \cdot (1) \oplus a_2 \cdot (0) \oplus a_3 \cdot (1) = 0
+\end{equation*}
+This is equivalent to:
+\begin{equation*}
+    a_1 \oplus a_3 = 0
+\end{equation*}
+That's one piece of information about $a$. If we run Simon again, we will get a different $y$ (e.g., $y=011$), which gives us another constraint:
+\begin{equation*}
+    a_2 \oplus a_3 = 0
+\end{equation*}
+After enough runs, we will have enough constraints to solve for $a$. The ``\emph{Recovering the Hidden Period $a$}'' section will explain how many runs are needed and how to solve for $a$ using the collected constraints.
+
+\highspace
+\begin{takeawaysbox}
+    The equation chain for Simon's algorithm is:
+    \begin{align*}
+        \ket{\psi_{0}} &= \ket{0}^{\otimes n} \otimes \ket{0}^{\otimes n} \\[.3em]
+        &\xrightarrow{H^{\otimes n} \otimes I^{\otimes n}} \\[.3em]
+        \ket{\psi_{1}} &= \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x} \otimes \ket{0}^{\otimes n} \\[.3em]
+        &\xrightarrow{U_f} \\[.3em]
+        \ket{\psi_{2}} &= \frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x} \otimes \ket{f(x)} \\[.3em]
+        &\xrightarrow{H^{\otimes n} \otimes I^{\otimes n}} \\[.3em]
+        \ket{\psi_{3}} &= \frac{1}{2^n} \sum_{x \in \{0,1\}^n} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y} \otimes \ket{f(x)}
+    \end{align*}
+    And the result of measuring the first register is a $y$ that satisfies:
+    \begin{equation*}
+        y: \; a \cdot y = 0 \mod 2
+    \end{equation*}
+\end{takeawaysbox}

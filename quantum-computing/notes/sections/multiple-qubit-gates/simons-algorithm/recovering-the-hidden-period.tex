@@ -1,0 +1,296 @@
+\subsubsection{Recovering the Hidden Period}\label{sec:recovering-the-hidden-period}
+
+The previous section established that after the final Hadamards and measurement of the \textbf{first register}, we don't obtain $a$. Instead, we obtain some random bitstring $y$ satisfying:
+\begin{equation*}
+    a \cdot y = 0 \pmod 2
+\end{equation*}
+The question is now: \emph{if the circuit doesn't give us $a$, how can we actually recover $a$?} The answer is: \textbf{run the circuit multiple times and turn the measurements into a system of linear equations}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{One execution gives one constraint, not $a$}}
+\end{flushleft}
+Suppose the first register has $n=3$ qubits. Immediately before measurement, several valid $y$'s may still be in superposition:
+\begin{equation*}
+    \ket{\psi} = \cdots \ket{000} + \cdots \ket{011} + \cdots \ket{101} + \cdots \ket{110} + \cdots
+\end{equation*}
+Where all surviving $y$'s satisfy $a \cdot y = 0 \pmod 2$. But \hl{when we measure}, the superposition \hl{collapses to \textbf{one} of them.} Let's say we measure $y = 110$. We don't get a list of all valid $y$'s, we get only that single classical bitstring. And that one bitstring gives us exactly the relationship:
+\begin{equation*}
+    a \cdot 110 = 0 \pmod 2
+\end{equation*}
+Expanding:
+\begin{equation*}
+    a_1 \cdot 1 \oplus a_2 \cdot 1 \oplus a_3 \cdot 0 = 0 \pmod 2
+\end{equation*}
+Because $a_3 \cdot 0 = 0$, we can simplify to:
+\begin{equation*}
+    a_1 \oplus a_2 = 0 \pmod 2
+\end{equation*}
+That's \textbf{one equation}.
+
+\highspace
+The important point is that the $n$ measured bits $y_1 \dots y_n$ (e.g., $110$) do \textbf{not} individually tell us $n$ different things about $a$. They're all coefficients of \textbf{one dot-product equation}:
+\begin{equation*}
+    a_1 \cdot y_1 \oplus a_2 \cdot y_2 \oplus \cdots \oplus a_n \cdot y_n = 0 \pmod 2
+\end{equation*}
+For example, measuring $y = 110$ does \textbf{not} mean that $a_1 = 0$, $a_2 = 0$, and $a_3 = 0$. Instead, $110$ means ``\emph{whatever the secret $a$ is, we know that it is orthogonal to $110$ modulo 2}''. In other words, $a$ must satisfy the equation $a_1 \oplus a_2 = 0 \pmod 2$.
+
+\highspace
+\textcolor{Green3}{\faIcon{history} \textbf{So we execute the circuit again.}} Since only one run gives us one equation, we need to run the circuit multiple times. \hl{Every execution starts again and produces another random valid $y$.}
+
+\highspace
+For example, perhaps:
+\begin{equation*}
+    y^{(1)} = 110
+\end{equation*}
+And on another execution:
+\begin{equation*}
+    y^{(2)} = 011
+\end{equation*}
+Then we obtain two equations:
+\begin{equation*}
+    a \cdot 110 = 0 \pmod 2, \quad a \cdot 011 = 0 \pmod 2
+\end{equation*}
+Expanding:
+\begin{equation*}
+    a_1 \oplus a_2 = 0 \pmod 2, \quad a_2 \oplus a_3 = 0 \pmod 2
+\end{equation*}
+Remember that $a_1$, $a_2$, and $a_3$ are bits, so each can only be $0$ or $1$. Let's check every possibility:
+\begin{center}
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        $a_1$ & $a_2$ & $a_1 \oplus a_2$ \\
+        \midrule
+        0 & 0 & 0 \\
+        0 & 1 & 1 \\
+        1 & 0 & 1 \\
+        1 & 1 & 0 \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+So XOR produces $0$ exactly when the two bits are equal. Therefore, the first equation $a_1 \oplus a_2 = 0$ is true if and only if $a_1 = a_2$. Similarly, the second equation $a_2 \oplus a_3 = 0$ is true if and only if $a_2 = a_3$. Combining these two equations, we have:
+\begin{equation*}
+    a_1 = a_2 = a_3
+\end{equation*}
+Since they're bits, there are only two ways all three can be equal:
+\begin{itemize}
+    \item $a_1 = a_2 = a_3 = 0$, which means $a = 000$. But Simon's promise tells us that $a \neq 0$, so this is the \textbf{trivial case} that we discard.
+    \item $a_1 = a_2 = a_3 = 1$, which means $a = 111$. This is the \textbf{non-trivial case} that we accept as the solution.
+\end{itemize}
+We've recovered the hidden period $a$ by running the circuit multiple times (in this case, twice).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Writing everything as a matrix}}
+\end{flushleft}
+Instead of writing many equations individually, we collect our measured $y$'s as rows of a matrix.
+
+\highspace
+Suppose we measured:
+\begin{equation*}
+    y^{(1)}, y^{(2)}, \dots, y^{(k)}
+\end{equation*}
+We construct the matrix $Y$ by stacking them as rows:
+\begin{equation*}
+    Y =
+    \begin{bmatrix}
+        y^{(1)} \\
+        y^{(2)} \\
+        \vdots \\
+        y^{(k)}
+    \end{bmatrix}
+\end{equation*}
+Where each $y^{(i)}$ is a row vector of length $n$. The equations $a \cdot y^{(i)} = 0$ can then all be written together as a single matrix equation:
+\begin{equation}
+    Y a = 0 \pmod 2
+\end{equation}
+For our previous example, if we measured $y^{(1)} = 110$ and $y^{(2)} = 011$, then:
+\begin{equation*}
+    Y =
+    \begin{bmatrix}
+        1 & 1 & 0 \\
+        0 & 1 & 1
+    \end{bmatrix},
+    \quad
+    a =
+    \begin{bmatrix}
+        a_1 \\
+        a_2 \\
+        a_3
+    \end{bmatrix}
+\end{equation*}
+And the matrix equation $Y a = 0$ is equivalent to the two equations we derived earlier:
+\begin{equation*}
+    \begin{bmatrix}
+        1 & 1 & 0 \\
+        0 & 1 & 1
+    \end{bmatrix}
+    \begin{bmatrix}
+        a_1 \\
+        a_2 \\
+        a_3
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+        0 \\
+        0
+    \end{bmatrix}
+    \pmod 2
+\end{equation*}
+Which gives us the same two equations:
+\begin{equation*}
+    \begin{cases}
+        a_1 \oplus a_2 = 0 \\
+        a_2 \oplus a_3 = 0
+    \end{cases}
+\end{equation*}
+So the matrix equation $Y a = 0$ is just a \textbf{compact notation} for all the constraints collected from the quantum circuit measurements.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why do the equations need to be linearly independent?}}
+\end{flushleft}
+The linear independence of the equations is crucial because the circuit returns \textbf{random} valid $y$'s.
+
+\highspace
+Imagine we run it 3 times and obtain: $110$, $110$, and $110$ again. We technically have three measurements, but all three tell us exactly the same thing: $a_1 \oplus a_2 = 0$. We haven't gained three pieces of information, we've only gained \textbf{one}.
+
+\highspace
+There are other subtle situations. Suppose two actual executions gave:
+\begin{equation*}
+    y^{(1)} = 110, \quad y^{(2)} = 011
+\end{equation*}
+They give the constraints:
+\begin{equation*}
+    a \cdot 110 = 0, \quad a \cdot 011 = 0
+\end{equation*}
+Now suppose we \textbf{really execute the quantum circuit a third time}, and the measurement happens to give $y^{(3)} = 101$. At first glance, $101$ looks new. But notice:
+\begin{equation*}
+    110 \oplus 011 = 101
+\end{equation*}
+So the third vector is a linear combination of the first two. So \textbf{before even considering the third equation}, the first two equations already mathematically imply the third.
+
+\highspace
+That's why we're interested not simply in the \textbf{number of measurements}, but in the number of \hl{linearly independent measured $y$'s.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How many independent equations do we need?}} There are $n$ unknown bits:
+\begin{equation*}
+    a_1, a_2, \dots, a_n
+\end{equation*}
+At first we might think we need $n$ independent equations. But there's something special here. Every equation is homogeneous (i.e., the right-hand side is $0$):
+\begin{equation*}
+    a \cdot y^{(i)} = 0
+\end{equation*}
+Therefore, the trivial solution $a = 0^{n}$ is \textbf{always} a solution. But Simon explicitly promises that:
+\begin{equation*}
+    a \neq 0^{n}
+\end{equation*}
+What we actually want is enough constraints so that the solution space becomes \textbf{one-dimensional}, which means that there are only two solutions: the trivial $a = 0^{n}$ and the \hl{non-trivial $a$ that we want: $\left\{0^{n}, a\right\}$.} For a nonzero $n$-bit $a$, we therefore generally want \hl{$n-1$ linearly independent constraints.}
+
+\highspace
+We start with $n$ freely selectable bits, but every \textbf{independent} equation removes one free choice. After $n-1$ independent equations, only one free choice remains:
+\begin{equation*}
+    n - (n-1) = 1
+\end{equation*}
+That one free choice is exactly the difference between the trivial solution $0^{n}$ and the non-trivial solution $a$:
+\begin{equation*}
+    2^{n} \xrightarrow{\text{1 constraint}} 2^{n-1} \xrightarrow{\text{2 constraints}} 2^{n-2} \xrightarrow{\text{3 constraints}} \cdots \xrightarrow{\text{$n-1$ constraints}} 2^{1} = 2
+\end{equation*}
+And these two solutions are exactly the trivial $0^{n}$ and the non-trivial $a$ that we want.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How do we actually solve $Ya = 0$?}} With ordinary \textbf{Gaussian elimination}, except that every operation is done modulo 2. So the quantum computer runs Simon's circuit repeatedly and measures the first register:
+\begin{equation*}
+    y^{(1)}, y^{(2)}, \dots, y^{(k)}
+\end{equation*}
+Each $y^{(i)}$ measurement guarantees:
+\begin{equation*}
+    a \cdot y^{(i)} = 0 \pmod 2
+\end{equation*}
+Then send/store those ordinary classical bitstrings on a \textbf{normal classical computer} that builds the matrix $Y$ and solves the linear system $Ya = 0 \pmod 2$ using Gaussian elimination.
+
+\highspace
+Once we have enough independent $y$'s, the solutions reduce to exactly two possibilities: the trivial $0^{n}$ and the non-trivial $a$. We discard the trivial solution (Simon's promise guarantees that $a \neq 0^{n}$) and accept the non-trivial solution as the hidden period $a$.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tachometer-alt} \textbf{Complexity of Simon's algorithm}}
+\end{flushleft}
+For \textbf{Gaussian elimination} on Simon's system, the standard complexity is $O(n^3)$ classical operations, assuming we're solving an $n \times n$-scale system.
+
+\highspace
+\emph{Why?} Roughly, Gaussian elimination has three nested dimensions of work:
+\begin{equation*}
+    \underbrace{n}_{\text{pivot columns}}
+    \times
+    \underbrace{n}_{\text{rows}}
+    \times
+    \underbrace{n}_{\text{entries per row}}
+    =
+    O(n^3)
+\end{equation*}
+In Simon, we have about $O(n)$ measured $y$'s, each containing $n$ bits, so $Y$ is roughly an $n\times n$ binary matrix. The operations are particularly simple because we're over modulo 2: row addition is just XOR. So for the whole Simon algorithm, distinguish:
+\begin{itemize}
+    \item \textbf{Quantum oracle queries}: $O(n)$. We need $n-1$ linearly independent constraints to identify the one-dimensional solution space. Since the measured $y$'s are random, more than $n-1$ executions may be necessary due to repeated or linearly dependent measurements. Nevertheless, $O(n)$ executions are sufficient with high probability.
+    \item \textbf{Classical post-processing}: $O(n^3)$ using standard Gaussian elimination. Because we need to solve the linear system $Ya = 0$ using Gaussian elimination.
+\end{itemize}
+However, the $O(n^3)$ classical post-processing does not eliminate Simon's exponential advantage, since Gaussian elimination still requires only polynomial time. Simon's algorithm uses $O(n)$ quantum oracle queries, followed by $O(n^3)$ classical post-processing, whereas the best randomized classical approach requires $O(2^{n/2})$ oracle queries.
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item A single execution of Simon's circuit does \textbf{not} directly
+            reveal the hidden period $a$. Instead, measuring the first register
+            produces a random bitstring $y$ satisfying
+            \begin{equation*}
+                a \cdot y = 0 \pmod 2
+            \end{equation*}
+
+        \item Each measured $y$ provides \textbf{one linear constraint} on
+            the unknown bits of $a$:
+            \begin{equation*}
+                a_1y_1 \oplus a_2y_2 \oplus \cdots \oplus a_ny_n = 0
+            \end{equation*}
+
+        \item Repeating the quantum circuit produces several constraints,
+            which can be collected as the binary linear system
+            \begin{equation*}
+                Ya = 0 \pmod 2
+            \end{equation*}
+
+        \item What matters is not simply the number of measurements, but
+            their \textbf{linear independence}. Repeated or linearly dependent
+            $y$'s provide no new information.
+
+        \item For an $n$-bit hidden period, $n-1$ linearly independent
+            constraints reduce the solution space to
+            \begin{equation*}
+                \{0^n,a\}
+            \end{equation*}
+            Simon's promise $a\neq0^n$ then uniquely identifies the hidden
+            period.
+
+        \item The system $Ya=0$ is solved classically using
+            \textbf{Gaussian elimination over $\mathrm{GF}(2)$}, where row
+            addition corresponds to XOR.
+
+        \item Because the measurements are random, exactly $n-1$ circuit
+            executions are not guaranteed to be sufficient. However,
+            $O(n)$ executions are sufficient with high probability.
+
+        \item Simon's algorithm is therefore naturally divided into two
+            stages:
+            \begin{equation*}
+                \underbrace{\text{quantum circuit}}_{\text{generate constraints}}
+                \quad+\quad
+                \underbrace{\text{classical Gaussian elimination}}_{\text{recover }a}
+            \end{equation*}
+
+        \item Its quantum query complexity is $O(n)$, while standard
+            Gaussian elimination requires $O(n^3)$ classical operations.
+            Both are polynomial, whereas the best randomized classical
+            collision-finding approach requires $O(2^{n/2})$ oracle queries.
+    \end{itemize}
+\end{takeawaysbox}

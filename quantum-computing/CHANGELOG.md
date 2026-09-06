@@ -60,6 +60,7 @@
     - add `Examples`
     - add `The Linear-Algebra Interpretation`
     - add `Why Simon's Algorithm Is Important`
+    - add `Simon as a Fourier / Period-Finding Algorithm`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

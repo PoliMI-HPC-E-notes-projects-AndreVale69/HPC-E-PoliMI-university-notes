@@ -59,6 +59,7 @@
     - add `Recovering the Hidden Period`
     - add `Examples`
     - add `The Linear-Algebra Interpretation`
+    - add `Why Simon's Algorithm Is Important`
 - add `Limits of Quantum Information`
   - add `Quantum Teleportation`
     - add `Problem Definition and Required Resources`

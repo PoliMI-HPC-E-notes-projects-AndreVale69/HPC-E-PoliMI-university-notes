@@ -1,0 +1,182 @@
+\subsubsection{Why Simon's Algorithm Is Important}\label{sec:why-simons-algorithm-is-important}
+
+The central reason is the enormous difference in \textbf{query complexity} between the classical and quantum approaches. Recall the problem statement:
+\begin{equation*}
+    f : \left\{ 0, 1 \right\}^n \to \left\{ 0, 1 \right\}^n
+\end{equation*}
+With the Simon's promise:
+\begin{equation*}
+    f(x) = f(y) \iff x = y \quad \text{or} \quad y = x \oplus a
+\end{equation*}
+Where $a \neq 0^n$ is a secret bitstring. Our \hl{goal is to discover the hidden period $a$.}
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{hourglass-half}}] \textbf{Classical randomized: $O\left(2^{n/2}\right)$} (\autopageref{sec:randomized-classical-solution-simons}). We already saw that classically we essentially need to find a \textbf{collision}:
+        \begin{equation*}
+            f(x_1) = f(x_2), \quad x_1 \neq x_2
+        \end{equation*}
+        Once we find one:
+        \begin{equation*}
+            a = x_1 \oplus x_2
+        \end{equation*}
+        But until we encounter such a collision, evaluating $f(x)$ doesn't directly reveal the hidden pairing. Using the \textbf{birthday-paradox} argument, a \textbf{randomized classical algorithm need} approximately:
+        \begin{equation*}
+            O\left(2^{n/2}\right)
+        \end{equation*}
+        \textbf{Oracle queries} to obtain a collision with substantial probability.
+
+        For intuition, imagine $n=100$:
+        \begin{equation*}
+            2^{n/2} = 2^{50} \approx 1.1 \times 10^{15}
+        \end{equation*}
+        Simon's algorithm, on the other hand, requires \textbf{only} $100$ queries to the oracle. That's an enormous asymptotic separation.
+
+    \item[\textcolor{Green3}{\faIcon{tachometer-alt}}] \textbf{Quantum: $O(n)$}. The quantum algorithm approaches the problem completely differently. It does \textbf{not} search for a collision. Instead, each execution gives us a random $y$ satisfying:
+        \begin{equation*}
+            a \cdot y = 0 \pmod 2
+        \end{equation*}
+        \begin{align*}
+            \text{run } 1 &\to y^{(1)} \to a \cdot y^{(1)} = 0 \pmod 2 \\
+            \text{run } 2 &\to y^{(2)} \to a \cdot y^{(2)} = 0 \pmod 2 \\
+            &\vdots \\
+            \text{run } n &\to y^{(n)} \to a \cdot y^{(n)} = 0 \pmod 2
+        \end{align*}
+        After collecting enough independent constraints, we solve the resulting linear system classically. Thus the quantum oracle-query is \textbf{linear}:
+        \begin{equation*}
+            O(n)
+        \end{equation*}
+        Compared to the classical randomized approach, this is an \textbf{exponential query-complexity separation}. And the word \emph{query} matters. As we discussed before, we shouldn't casually claim that every implementation of Simon has total runtime $O(n)$. Query complexity asks specifically: \emph{\textbf{how many times do we need to call the black-box function/oracle?}} In other words, the quantum algorithm is exponentially more efficient in terms of oracle queries than any classical randomized algorithm.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Simon is a hidden-structure problem}}
+\end{flushleft}
+The quantum computer is \textbf{not trying to learn the table of $f$}:
+\begin{equation*}
+    x \mapsto f(x)
+\end{equation*}
+We don't care whether, for example, $f(000) = 101$ or $f(000) = 011$. We care about a \textbf{global relationship shared by all inputs}:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+That's the hidden structure. Think of $f$ as an enormous table with $2^n$ rows. Classically, we're evaluating individual entries and hoping eventually to notice two equal outputs. Simon instead extracts information about the \textbf{global symmetry of the entire function}:
+\begin{equation*}
+    x \leftrightarrow x \oplus a
+\end{equation*}
+This is why calling $a$ a \textbf{hidden period} makes sense: $x \to x \oplus a$ leaves the function unchanged.
+
+\highspace
+For an \textbf{ordinary periodic function}, $T$ is a period if:
+\begin{equation*}
+    f(x + T) = f(x) \quad \forall x
+\end{equation*}
+For example:
+\begin{equation*}
+    \sin(x + 2\pi) = \sin(x) \quad \forall x
+\end{equation*}
+So $2\pi$ is a period. And we can think of $T$ as a \textbf{shift that leaves the function unchanged}:
+\begin{equation*}
+    x \xrightarrow{+T} x + T \quad \text{but} \quad f(x) \to f(x + T) = f(x)
+\end{equation*}
+Thus Simon has the same idea, but the domain is bitstrings:
+\begin{equation*}
+    x \in \left\{0,1\right\}^n
+\end{equation*}
+And the relevant operation is XOR (the promise):
+\begin{equation*}
+    f(x \oplus a) = f(x), \quad \forall x, \quad a \neq 0^n
+\end{equation*}
+\begin{center}
+    \begin{tabular}{@{} c | c @{}}
+        \toprule
+        Ordinary periodicity & Simon periodicity \\
+        \midrule
+        $f(x + T) = f(x)$ & $f(x \oplus a) = f(x)$ \\
+        shift by $T$ & XOR-shift by $a$ \\
+        $T = $period & $a = $ hidden period \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Connection with Bernstein-Vazirani}}
+\end{flushleft}
+Both algorithms have a hidden bitstring:
+\begin{equation*}
+    \text{Bernstein-Vazirani: } w \qquad \text{Simon: } a
+\end{equation*}
+But they reveal it in very different ways. In Bernstein-Vazirani:
+\begin{equation*}
+    f_w (x) = w \cdot x \pmod 2
+\end{equation*}
+After one quantum query and the final Hadamards, we obtain \ket{w}. So measurement gives $w$ \textbf{directly}. Simon does not do that. Instead, one execution gives a $y$ satisfying:
+\begin{equation*}
+    a \cdot y = 0 \pmod 2
+\end{equation*}
+So Simon gives \textbf{information about} $a$, rather than $a$ itself. This is an important conceptual progression:
+\begin{equation*}
+    \text{Deutsch} \to \text{BV} \to \text{Simon}
+\end{equation*}
+The quantum algorithms we're seeing are becoming increasingly sophisticated in \textbf{what measurement reveals}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why interference is essential}}
+\end{flushleft}
+In Simon, after the oracle, we have a superposition of all $x$:
+\begin{equation*}
+    \frac{1}{\sqrt{2^n}} \sum_{x \in \left\{0,1\right\}^n} \ket{x}\ket{f(x)}
+\end{equation*}
+At this point, the hidden period is encoded in the state because:
+\begin{equation*}
+    x \text{ and } x \oplus a
+\end{equation*}
+Are correlated with the same output:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+But if we simply measure $x$, we get essentially a random input. So the information is \textbf{present}, but not yet in a directly useful measurement distribution. That's what the final $H^{\otimes n}$ is for.
+
+\highspace
+Recall our derivation. For the paired inputs $x$ and $x \oplus a$, the amplitudes for a candidate measurements $y$ combine as:
+\begin{equation*}
+    (-1)^{x \cdot y} + (-1)^{(x \oplus a) \cdot y} = (-1)^{x \cdot y} \left(1 + (-1)^{a \cdot y}\right)
+\end{equation*}
+Now:
+\begin{itemize}
+    \item If $a \cdot y = 0$, then
+        \begin{equation*}
+            1 + (-1)^{a \cdot y} = 2
+        \end{equation*}
+        So the amplitudes \textbf{reinforce} (constructive interference).
+
+    \item If $a \cdot y = 1$, then
+        \begin{equation*}
+            1 + (-1)^{a \cdot y} = 0
+        \end{equation*}
+        So the amplitudes \textbf{cancel} (destructive interference).
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why the final Hadamards reveal global structure.}} The oracle acts coherently across all $x$'s (due to the first Hadamards). Then, it establishes the hidden correlation:
+\begin{equation*}
+    x \leftrightarrow x \oplus a
+\end{equation*}
+The \textbf{final Hadamards cause those different computational paths to overlap}. And when paths overlap, amplitudes add or cancel. As a consequence, instead of learning something like:
+\begin{equation*}
+    f(101) = 011
+\end{equation*}
+The measurement tells us something about the entire function:
+\begin{equation*}
+    a \cdot y = 0 \pmod 2
+\end{equation*}
+That equation is true because of the global periodic structure:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+Across the whole domain.
+
+\highspace
+That's a \textbf{recurring quantum-algorithm pattern} we've already seen in\break Deutsch and Bernstein-Vazirani: \hl{superposition allows the oracle to encode a global pattern, while interference converts that pattern into measurable amplitudes.} Thus, Simon does not use quantum mechanics to evaluate $f(x)$ faster; it uses interference to reveal a hidden global symmetry of $f$.
+
+\highspace
+This is why Simon is such an important algorithm. It demonstrates that, for a suitably structured oracle problem, a \hl{quantum computer can extract \textbf{global structure} with only $O(n)$ queries} where a randomized classical algorithm needs $O(2^{n/2})$ queries.

@@ -1,0 +1,491 @@
+\section{Exams}
+
+\subsection{2024}
+
+\subsubsection{June 20}
+
+\eexercise[Simon's Algorithm][9]
+\begin{enumerate}
+    \item State the problem that is solved by the Simon's algorithm. Briefly describe the algorithm, draw its quantum circuit and state its speedup compared to a classical algorithm.
+
+    \item Consider a function $f(\{0,1\}^2) \to \{0,1\}^2$ such that $f(00)=f(10), f(01)=f(11)$. Use the Simon's algorithm to compute its period.
+\end{enumerate}
+Motivate your answer by showing all stages of the computation.
+
+\highspace
+\esolution[Problem solved by Simon's algorithm] We are given a black-box function:
+\begin{equation*}
+    f: \{0,1\}^n \to \{0,1\}^n
+\end{equation*}
+With the promise that there exists a hidden non-zero string:
+\begin{equation*}
+    a \in \left\{0,1\right\}^n, \quad a \neq 0^n
+\end{equation*}
+Such that:
+\begin{equation*}
+    f(x) = f(y) \iff x = y \quad \text{or} \quad x = y \oplus a
+\end{equation*}
+Equivalently:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+For every $x \in \{0,1\}^n$. The objective is to determine the hidden period $a$. Because $a \neq 0$, every output has exactly two corresponding inputs: $x$ and $x \oplus a$. So the domain is divided into cosets/pairs:
+\begin{equation*}
+    \left\{x, x \oplus a\right\}
+\end{equation*}
+\textbf{Classical vs quantum complexity.} Classically, we need to find two different inputs $x_1$, $x_2$, producing the same output:
+\begin{equation*}
+    f(x_1) = f(x_2)
+\end{equation*}
+Then:
+\begin{equation*}
+    a = x_1 \oplus x_2
+\end{equation*}
+Because this is essentially a collision-search problem, the randomized classical query complexity is:
+\begin{equation*}
+    O\left(2^{n/2}\right)
+\end{equation*}
+Simon's quantum algorithm requires only:
+\begin{equation*}
+    O\left(n\right)
+\end{equation*}
+Oracle calls, because each execution gives one linear constraint on $a$. Therefore Simon gives an \textbf{exponential speedup} over classical algorithms.
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}[
+            slice all,
+            slice titles={\ket{\psi_{\col}}},
+            column sep=1cm,
+        ]
+        \lstick{$\ket{0}^{\otimes n}$}\slice{\ket{\psi_{0}}}    & \gate{H^{\otimes n}}          & \gate[2][2.3cm]{U_f}\gateinput{\ket{x}}\gateoutput{\ket{x}} & \gate{H^{\otimes n}} & \meter{} \\
+        \lstick{$\ket{0}^{\otimes n}$}                          & \centerbundle[n]              & \gateinput{\ket{y}}\gateoutput{\ket{y \oplus f(x)}} & \qw                  & \qw
+    \end{quantikz}
+    \caption*{Simon circuit.}
+\end{figure}
+
+\noindent
+The state evolution in the general case is as follows:
+\begin{itemize}
+    \item \textbf{Initial state}:
+        \begin{equation*}
+            \ket{\psi_{0}} = \ket{0}^{\otimes n} \ket{0}^{\otimes n}
+        \end{equation*}
+
+    \item \textbf{First Hadamards}:
+        \begin{equation*}
+            \ket{\psi_{1}} = H^{\otimes n} \ket{\psi_{0}} = \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \ket{x} \ket{0}^{\otimes n}
+        \end{equation*}
+
+    \item \textbf{Oracle}:
+        \begin{align*}
+            \ket{\psi_{2}} &= U_f \ket{\psi_{1}} \\[.3em]
+            &= U_f \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \ket{x} \ket{0}^{\otimes n} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} U_f \ket{x} \ket{0}^{\otimes n} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \ket{x} \ket{f(x)}
+        \end{align*}
+
+    \item \textbf{Second Hadamards}:
+        \begin{align*}
+            \ket{\psi_{3}} &= H^{\otimes n} \ket{\psi_{2}} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} H^{\otimes n} \ket{x} \ket{f(x)} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \left(
+                \frac{1}{\sqrt{2^{n}}} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y}
+            \right) \ket{f(x)} \\[.3em]
+            &= \frac{1}{2^{n}} \sum_{x \in \{0,1\}^n} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y} \ket{f(x)}
+        \end{align*}
+
+    \item \textbf{Measurement}. Group together $x$ and $x \oplus a$. Since:
+        \begin{equation*}
+            f(x) = f(x \oplus a)
+        \end{equation*}
+        Their combined amplitude contains:
+        \begin{equation*}
+            (-1)^{x \cdot y} + (-1)^{(x \oplus a) \cdot y}
+        \end{equation*}
+        Using the property:
+        \begin{equation*}
+            (x \oplus a) \cdot y = x \cdot y \oplus a \cdot y
+        \end{equation*}
+        Rewriting the amplitude:
+        \begin{align*}
+            (-1)^{x \cdot y} + (-1)^{(x \oplus a) \cdot y} &= (-1)^{x \cdot y} + (-1)^{x \cdot y \oplus a \cdot y} \\
+            &= (-1)^{x \cdot y} + (-1)^{x \cdot y} (-1)^{a \cdot y} \\
+            &= (-1)^{x \cdot y} \left(1 + (-1)^{a \cdot y}\right)
+        \end{align*}
+        Therefore, if $a \cdot y = 1$, the amplitude is zero (destructive interference):
+        \begin{equation*}
+            1 + (-1)^{a \cdot y} = 1 + (-1) = 0
+        \end{equation*}
+        If $a \cdot y = 0$, the amplitude is non-zero (constructive interference):
+        \begin{equation*}
+            1 + (-1)^{a \cdot y} = 1 + 1 = 2
+        \end{equation*}
+        Hence measurements can only return $y$ such that:
+        \begin{equation*}
+            a \cdot y = 0 \pmod 2
+        \end{equation*}
+        We repeat the algorithm until we have $n-1$ independent equations, then solve the over $GF(2)$ to recover $a$.
+\end{itemize}
+
+\begin{remarkbox}[: Why do we want destructive interference?]
+    Before the final Hadamards, the first register contains information about \textbf{all possible inputs} $x$. The problem is that if we simply measured it, we would essentially obtain a random $x$, which tells us almost nothing about the hidden period $a$.
+
+    \highspace
+    The purpose of the final $H^{\otimes n}$ is therefore \textbf{not just to create another superposition}. It makes the different computational paths interfere so that the hidden structure of $f$ becomes observable.
+
+    \highspace
+    For every pair:
+    \begin{equation*}
+        x,\qquad x\oplus a,
+    \end{equation*}
+    Simon's promise tells us:
+    \begin{equation*}
+        f(x)=f(x\oplus a)
+    \end{equation*}
+    Because they correspond to the \textbf{same output state}, their amplitudes can interfere.
+
+    \highspace
+    For a candidate measurement $y$, the two contributions are:
+    \begin{equation*}
+        (-1)^{x\cdot y}
+        +
+        (-1)^{(x\oplus a)\cdot y}
+        =
+        (-1)^{x\cdot y}
+        \left(1+(-1)^{a\cdot y}\right)
+    \end{equation*}
+    Now there are two cases:
+    \begin{center}
+        \begin{tabular}{@{} c | c | c @{}}
+            \toprule
+            $a\cdot y$ & \text{Interference} & \text{Result}\\
+            \midrule
+            $0$ & \text{constructive} & \text{amplitude survives}\\
+            $1$ & \text{destructive} & $\text{amplitude}=0$\\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    So destructive interference acts as a filter:
+    \begin{equation*}
+        a\cdot y=1
+        \quad\Longrightarrow\quad
+        P(y)=0
+    \end{equation*}
+    And therefore measurement can only give:
+    \begin{equation*}
+        a \cdot y = 0
+    \end{equation*}
+    That is the deep reason we care about destructive interference: \textbf{it removes outcomes that do not contain the constraint we need}.
+
+    \highspace
+    In general, one of the most important patterns to remember is: \hl{superposition alone does not give a quantum advantage. Interference is what makes the useful answers more likely and the useless answers less likely or impossible.} Simon is an especially clear example because the unwanted outcomes are \textbf{completely cancelled}.
+
+    \highspace
+    For example, if:
+    \begin{equation*}
+        a = 10 \quad \Rightarrow \quad a \cdot y = y_1
+    \end{equation*}
+    The four possible $y$'s start conceptually as:
+    \begin{equation*}
+        y = 00, 01, 10, 11
+    \end{equation*}
+    Interference eliminates the two with $y_1=1$, leaving only:
+    \begin{equation*}
+        y = 00, 01, \cancel{10}, \cancel{11}
+    \end{equation*}
+    And both of these remaining $y$'s satisfy the constraint:
+    \begin{equation*}
+        a \cdot y = 0
+    \end{equation*}
+    So the quantum computer is \textbf{not directly revealing} $a$. It uses destructive interference to prevent us from observing strings inconsistent with $a$. Repeating the experiment gives enough surviving constraints to reconstruct $a$. In other words, \hl{destructive interference removes measurement outcomes inconsistent with the hidden period.}
+\end{remarkbox}
+
+\noindent
+\esolution*[Specific exam function] We have:
+\begin{equation*}
+    f: \{0,1\}^2 \to \{0,1\}^2
+\end{equation*}
+And:
+\begin{equation*}
+    f(00) = f(10), \quad f(01) = f(11)
+\end{equation*}
+We want to determine the hidden period $a$. Before doing any quantum computation, we can already see what it must be. Since Simon's promise tells us:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+We also know that any value XORed with 00 returns the same value:
+\begin{center}
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        $x$ & $y$ & $x \oplus y$ \\
+        \midrule
+        $0$ & $0$ & $0$ \\
+        $0$ & $1$ & $1$ \\
+        $1$ & $0$ & $1$ \\
+        $1$ & $1$ & $0$ \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+Thus, the only way to satisfy:
+\begin{equation*}
+    f(00) = f(10)
+\end{equation*}
+Is if:
+\begin{equation*}
+    00 \oplus a = 10 \quad \Rightarrow \quad a = 10
+\end{equation*}
+We are confident that this is the correct answer, so let's try the other pair:
+\begin{equation*}
+    f(01) = f(11)
+\end{equation*}
+We can see that:
+\begin{equation*}
+    01 \oplus a = 11 \quad \Rightarrow \quad 01 \oplus 10 = 11
+\end{equation*}
+\begin{equation*}
+    11 \oplus a = 01 \quad \Rightarrow \quad 11 \oplus 10 = 01
+\end{equation*}
+Thus, both pairs are \textbf{consistent} with $a = 10$. Now let's see if the quantum algorithm gives the same answer.
+\begin{enumerate}[label={\textbf{Step \arabic*.}}, leftmargin=2cm]
+    \item \textbf{Initial state}. Since $n=2$, there are four qubits total:
+        \begin{equation*}
+            \ket{\psi_0} = \ket{00} \ket{00}
+        \end{equation*}
+
+    \item \textbf{First Hadamards}. Apply $H^{\otimes 2}$ to the first register:
+        \begin{align*}
+            \ket{\psi_1} &= H^{\otimes 2} \ket{\psi_0} \\[.3em]
+            &= H^{\otimes 2} \ket{00} \ket{00} \\[.3em]
+            &= \left(H \ket{0} \otimes H \ket{0}\right) \otimes \ket{00} \\[.3em]
+            &= \left(
+                \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \otimes
+                \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right)
+            \right) \otimes \ket{00} \\[.3em]
+            &= \frac{1}{2} \left(
+                \ket{00} + \ket{01} + \ket{10} + \ket{11}
+            \right) \otimes \ket{00}
+        \end{align*}
+        We omit the identity on the second register for brevity:
+        \begin{equation}
+            \left(H^{\otimes 2} \otimes I^{\otimes 2}\right) \ket{\psi_0}
+        \end{equation}
+
+    \item \textbf{Oracle}. The oracle leaves unchanged the first register and applies $y \oplus f(x)$ to the second register. Since the second register is initialized to $\ket{00}$, it will simply be replaced by $f(x)$:
+        \begin{align*}
+            \ket{\psi_2} &= U_f \ket{\psi_1} \\[.3em]
+            &= U_f \frac{1}{2} \left(
+                \ket{00} + \ket{01} + \ket{10} + \ket{11}
+            \right) \otimes \ket{00}
+        \end{align*}
+        Now we apply the oracle to each term. The first register remains unchanged, while the second register is replaced by $f(x)$. We follow the oracle's definition:
+        \begin{equation*}
+            U_f \ket{x} \ket{y} = \ket{x} \ket{y \oplus f(x)}
+        \end{equation*}
+        \begin{align*}
+            \ket{\psi_2} &= U_f \frac{1}{2} \left(
+                \ket{00} + \ket{01} + \ket{10} + \ket{11}
+            \right) \otimes \ket{00} \\[.3em]
+            &= \frac{1}{2} \left(
+                \ket{00} \ket{f(00)} +
+                \ket{01} \ket{f(01)} +
+                \ket{10} \ket{f(10)} +
+                \ket{11} \ket{f(11)}
+            \right) \\[.3em]
+            &\downarrow \text{ Since } f(00) = f(10) \text{ and } f(01) = f(11) \\[.3em]
+            &= \frac{1}{2} (
+                \ket{00} \ket{f(00)} +
+                \ket{01} \ket{f(01)} +
+                \ket{10} \underbrace{\cancel{\ket{f(10)}}}_{\ket{f(00)}} +
+                \ket{11} \underbrace{\cancel{\ket{f(11)}}}_{\ket{f(01)}}
+            ) \\[.3em]
+            &= \frac{1}{2} (
+                \ket{00} \ket{f(00)} +
+                \ket{01} \ket{f(01)} +
+                \ket{10} \ket{f(00)} +
+                \ket{11} \ket{f(01)}
+            ) \\[.3em]
+            &\downarrow \text{ Group terms with the same output } f(x) \\[.3em]
+            &= \frac{1}{2} \left[
+                \left(\ket{00} + \ket{10}\right) \ket{f(00)} +
+                \left(\ket{01} + \ket{11}\right) \ket{f(01)}
+            \right]
+        \end{align*}
+
+    \item \textbf{Apply the second $H^{\otimes 2}$}. We apply $H^{\otimes 2}$ to the first register:
+        \begin{align*}
+            \ket{\psi_3} &= \left(H^{\otimes 2} \otimes I^{\otimes 2}\right) \ket{\psi_2} \\[.3em]
+            &= \frac{1}{2} \left[
+                H^{\otimes 2} \left(\ket{00} + \ket{10}\right) \ket{f(00)} +
+                H^{\otimes 2} \left(\ket{01} + \ket{11}\right) \ket{f(01)}
+            \right]
+        \end{align*}
+        Now we compute each term separately:
+        \begin{itemize}
+            \item From the theory, we know that:
+                \begin{equation*}
+                    H\ket{0} = \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right), \qquad H\ket{1} = \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right)
+                \end{equation*}
+
+            \item Therefore, the combination $\ket{00}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{00} &= H\ket{0} \otimes H\ket{0} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} + \ket{01} + \ket{10} + \ket{11}\right)
+                \end{align*}
+
+            \item The combination $\ket{10}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{10} &= H\ket{1} \otimes H\ket{0} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} + \ket{01} - \ket{10} - \ket{11}\right)
+                \end{align*}
+
+            \item The combination $\ket{01}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{01} &= H\ket{0} \otimes H\ket{1} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} - \ket{01} + \ket{10} - \ket{11}\right)
+                \end{align*}
+
+            \item Finally, the combination $\ket{11}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{11} &= H\ket{1} \otimes H\ket{1} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} - \ket{01} - \ket{10} + \ket{11}\right)
+                \end{align*}
+        \end{itemize}
+        Before substituting these results back into the expression for $\ket{\psi_3}$, we can simplify the two terms:
+        \begin{itemize}
+            \item The first term $\ket{f(00)}$:
+                \begin{align*}
+                    H^{\otimes 2} \left(\ket{00} + \ket{10}\right)
+                    &=
+                    \frac{1}{2} \left(\ket{00} + \ket{01} + \ket{10} + \ket{11}\right)
+                    +\\[.3em]
+                    &\quad\; \frac{1}{2} \left(\ket{00} + \ket{01} - \ket{10} - \ket{11}\right) \\[.3em]
+                    &=
+                    \frac{1}{2} \left(
+                        2\ket{00} + 2\ket{01}
+                    \right) \\[.3em]
+                    &=
+                    \ket{00} + \ket{01}
+                \end{align*}
+                Where the terms $\ket{10}$ and $\ket{11}$ cancel out due to destructive interference.
+
+            \item The second term $\ket{f(01)}$:
+                \begin{align*}
+                    H^{\otimes 2} \left(\ket{01} + \ket{11}\right)
+                    &=
+                    \frac{1}{2} \left(\ket{00} - \ket{01} + \ket{10} - \ket{11}\right)
+                    +\\[.3em]
+                    &\quad\; \frac{1}{2} \left(\ket{00} - \ket{01} - \ket{10} + \ket{11}\right) \\[.3em]
+                    &=
+                    \frac{1}{2} \left(
+                        2\ket{00} - 2\ket{01}
+                    \right) \\[.3em]
+                    &=
+                    \ket{00} - \ket{01}
+                \end{align*}
+                Where the terms $\ket{10}$ and $\ket{11}$ cancel out due to destructive interference.
+        \end{itemize}
+        Now we can substitute these results back into the expression:
+        \begin{align*}
+            \ket{\psi_3} &= \frac{1}{2} \left[
+                \left(\ket{00} + \ket{01}\right) \ket{f(00)} +
+                \left(\ket{00} - \ket{01}\right) \ket{f(01)}
+            \right] \\[.3em]
+            &= \frac{1}{2} \left[
+                \ket{00} \ket{f(00)} + \ket{01} \ket{f(00)} +
+                \ket{00} \ket{f(01)} - \ket{01} \ket{f(01)}
+            \right] \\[.3em]
+            &= \frac{1}{2} \left[
+                \ket{00} \left(\ket{f(00)} + \ket{f(01)}\right) +
+                \ket{01} \left(\ket{f(00)} - \ket{f(01)}\right)
+            \right]
+        \end{align*}
+
+    \item \textbf{Measurement}. We measure the first register. First of all, we can see that it contains only \ket{00} and \ket{01}, so immediately:
+        \begin{equation*}
+            P(10) = P(11) = 0
+        \end{equation*}
+        Thus, the only possible outcomes are:
+        \begin{equation*}
+            y = 00, 01
+        \end{equation*}
+        Now the problem is that the ``amplitude'' of \ket{00} is not just a scalar, but a superposition of the second register:
+        \begin{equation*}
+            \ket{00} \left(\ket{f(00)} + \ket{f(01)}\right)
+        \end{equation*}
+        And similarly for \ket{01}:
+        \begin{equation*}
+            \ket{01} \left(\ket{f(00)} - \ket{f(01)}\right)
+        \end{equation*}
+        However, we try to take the squared norm of that second-register vector:
+        \begin{equation*}
+            P(00) = \left\|\frac{1}{2} \left(\ket{f(00)} + \ket{f(01)}\right)\right\|^2
+        \end{equation*}
+        Since the Simon's promise tells us:
+        \begin{equation*}
+            f(00) = f(10), \quad f(01) = f(11)
+        \end{equation*}
+        Then: $f(00) \neq f(01)$, so they are distinct computational-basis states. Using the orthonormality of the computational basis, we have:
+        \begin{align*}
+            P(00) &= \left\|\frac{1}{2} \left(\ket{f(00)} + \ket{f(01)}\right)\right\|^2 \\[.3em]
+            &= \frac{1}{4} \left\|\ket{f(00)} + \ket{f(01)}\right\|^2 \\[.3em]
+            &= \frac{1}{4} \left(
+                \braket{f(00)}{f(00)} + \braket{f(00)}{f(01)} + \right. \\[.3em]
+                &\quad\;\;\;\;\; \left.
+                \braket{f(01)}{f(00)} + \braket{f(01)}{f(01)}
+            \right) \\[.3em]
+            &= \frac{1}{4} \left(
+                1 + 0 + 0 + 1
+            \right) \\[.3em]
+            &= \frac{1}{2}
+        \end{align*}
+        Similarly:
+        \begin{align*}
+            P(01) &= \frac{1}{4} \left(
+                \braket{f(00)}{f(00)} - \braket{f(00)}{f(01)} - \right. \\[.3em]
+                &\quad\;\;\;\;\; \left.
+                \braket{f(01)}{f(00)} + \braket{f(01)}{f(01)}
+            \right) \\[.3em]
+            &= \frac{1}{4} \left(
+                1 - 0 - 0 + 1
+            \right) \\[.3em]
+            &= \frac{1}{2}
+        \end{align*}
+        Therefore, the measurement of the first register gives:
+        \begin{equation*}
+            P(00) = P(01) = \frac{1}{2}, \quad P(10) = P(11) = 0
+        \end{equation*}
+        So the only possible outcomes are:
+        \begin{equation*}
+            y = 00, 01
+        \end{equation*}
+        Let's try both of them:
+        \begin{itemize}
+            \item If $y = 00$, then the constraint is:
+                \begin{equation*}
+                    a \cdot y = 0 \quad \Rightarrow \quad a_1 \cdot 0 + a_2 \cdot 0 = 0
+                \end{equation*}
+                Which is always satisfied, so it gives no information about $a$.
+            \item If $y = 01$, then the constraint is:
+                \begin{equation*}
+                    a \cdot y = 0 \quad \Rightarrow \quad a_1 \cdot 0 + a_2 \cdot 1 = 0
+                \end{equation*}
+                Which implies $a_2 = 0$, giving us information about $a$.
+        \end{itemize}
+        So the possible values of the hidden period $a$ are:
+        \begin{equation*}
+            a = 00, 10
+        \end{equation*}
+        But since Simon's promise tells us that $a \neq 00$, the $a_1$ term must be $1$, so we conclude:
+        \begin{equation*}
+            a = 10
+        \end{equation*}
+\end{enumerate}
+We have therefore recovered the hidden period $a=10$ using Simon's algorithm. \hl{For $n=2$, only $n-1=1$ linearly independent equation is required to determine the nonzero hidden period.} In this execution, the measurement $y=01$ provides exactly this equation. In general, however, more than $n-1$ circuit executions may be necessary because some measured vectors may be zero or linearly dependent.

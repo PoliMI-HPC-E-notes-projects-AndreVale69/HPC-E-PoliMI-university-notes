@@ -68,6 +68,19 @@
     - add `Alice's Operations and Mathematical Derivation`
     - add `Measurement Outcomes and Bob's Corrections`
     - add `Why Teleportation Works`
+- add `QUBO Formulation`
+  - add `QUBO Formulations`
+    - add `Max-Cut`
+    - add `Maximum Independent Set`
+    - add `Minimum Vertex Cover`
+    - add `Maximum Clique`
+    - add `Number Partitioning`
+    - add `2-SAT`
+    - add `Set Packing`
+    - add `Constraint Satisfaction Problems (CSPs)`
+- add `Exams`
+  - add `2024`
+    - add `June 20`
 
 ---------------------
 

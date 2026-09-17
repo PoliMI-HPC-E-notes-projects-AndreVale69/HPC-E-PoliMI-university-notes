@@ -113,6 +113,7 @@ When modifying a course directory, use its established scope:
 | `quantum-computing` | `quantum-computing` |
 | `quantum-physics` | `quantum-physics` |
 | `software-engineering-for-hpc` | `sweng4hpc` |
+| `systems-and-methods-for-big-and-unstructured-data` | `smbud` |
 
 *For repo-level or multi-course changes, omit the scope (e.g., `docs: update contributing guide`).*
 

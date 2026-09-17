@@ -176,6 +176,16 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
             <li><a href="https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/SE4HPC_project_part2">Project 2B</a></li>
         </ul></td>
     </tr>
+    <tr>
+        <td align="center">❌</td>
+        <td>2026/2027</td>
+        <td>Systems and Methods for Big and Unstructured Data</td>
+        <td><a href="https://onlineservices.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=24836&aa=2026&lang=IT&jaf_currentWFID=main" target="_blank">Brambilla Marco</a></td>
+        <td><ul>
+            <li><a href="systems-and-methods-for-big-and-unstructured-data">Course Details</a></li>
+            <li><a href="systems-and-methods-for-big-and-unstructured-data/notes/systems-and-methods-for-big-and-unstructured-data.pdf">PDF v0.1.0</a></li>
+        </ul></td>
+    </tr>
 </table>
 
 <details><summary></summary>

@@ -36,6 +36,7 @@ Choose the scope from the top-level course directory containing the staged chang
 | `quantum-computing` | `quantum-computing` |
 | `quantum-physics` | `quantum-physics` |
 | `software-engineering-for-hpc` | `sweng4hpc` |
+| `systems-and-methods-for-big-and-unstructured-data` | `smbud` |
 
 For a new course directory or a scope not covered above, inspect recent Conventional Commit subjects affecting that directory and use the most recently established unambiguous scope. If history provides no convention, use the directory name and report that choice. For repository-wide files, omit the scope unless recent history establishes a clear repository-level scope.
 

@@ -28,6 +28,7 @@ Choose the scope from the top-level course directory containing the staged chang
 | `artificial-neural-networks-and-deep-learning` | `ann-and-dl` |
 | `calcolo-numerico` | `calcolo-numerico` |
 | `computing-infrastructures` | `computing-infrastructures` |
+| `distributed-systems` | `distributed-systems` |
 | `foundations-of-operations-research` | `foundations-of-or` |
 | `network-computing` | `network-computing` |
 | `numerical-linear-algebra` | `numerical-linear-algebra` |

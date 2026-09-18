@@ -9,3 +9,6 @@
 ### v0.1.0
 
 - add `CHANGELOG.md` and `README.md`
+- add `Introduction`
+  - add `Why Distributed Systems?`
+    - add `Motivation: Why Distributed Systems?`

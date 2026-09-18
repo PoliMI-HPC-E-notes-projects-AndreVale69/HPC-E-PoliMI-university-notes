@@ -1,0 +1,218 @@
+\subsubsection{Why Distributed Systems Are Special}\label{subsubsec:introduction--why-distributed-systems--why-distributed-systems-are-special}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Distributed vs. Centralized Systems}}
+\end{flushleft}
+Start from the simplest possible centralized program: an \textbf{application running on a single machine}. Its components share the same machine, operating system, memory hierarchy, and physical environment.If one part of the program invokes another function, conceptually we have:
+\begin{equation*}
+    A \xrightarrow{\text{function call}} B
+\end{equation*}
+And both $A$ and $B$ are local (i.e., on the same machine).
+
+\highspace
+Now \textbf{distribute} those components $A$ and $B$ with a network between them:
+\begin{equation*}
+    A \xrightarrow{\text{network}} B
+\end{equation*}
+That apparently small change is \hl{enormously significant}. A local interaction may involve something like a function call, while a distributed interaction requires:
+\begin{enumerate}
+    \item Serialization of data into a message
+    \item Communication over a network
+    \item Network transmission, which may be delayed or lost
+    \item Reception of the message by $B$
+    \item Deserialization of the message into data
+    \item Processing of the data by $B$
+\end{enumerate}
+And every one of those steps introduces additional uncertainty and potential failure. This is why \hl{a distributed system is not simply a centralized program running on several machines.} The network becomes part of the computation.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Why building distributed systems is harder}}
+\end{flushleft}
+As we saw in the previous comparison, distributed systems are more complex than centralized systems. Not only is \textbf{building them harder}, but \textbf{building them \underline{correctly} is much harder}.
+
+\highspace
+In general, it is often relatively easy to make a distributed application work when everything behaves normally. For example:
+\begin{equation*}
+    A \to B, \quad B \to A
+\end{equation*}
+Request arrives, reply arrives, everything is fine. The \textbf{difficulty} appears when reality interferes. Suppose $A$ sends a request to $B$:
+\begin{equation*}
+    \texttt{transfer(100 \euro)}
+\end{equation*}
+$B$ receives the request and performs the operation. Then $B$ sends a reply back to $A$, but it is lost in the network. \emph{What should $A$ do?}
+\begin{itemize}
+    \item If it sends the request again, perhaps the transfer happens \textbf{twice}.
+    \item If it does not retry, perhaps the first request had actually been lost and the transfer happens \textbf{zero times}.
+\end{itemize}
+So even something that sounds trivial, like ``\emph{retry when there is an error}'', may not be trivial at all. The \hl{problem is that different machines have only \textbf{partial knowledge} of what happened.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{The Eight Fallacies of Distributed Computing}}
+\end{flushleft}
+The \definition{Eight Fallacies of Distributed Computing}, associated with Peter Deutsch, are \hl{assumptions that programmers are tempted to make when first designing distributed software}:
+\begin{equation*}
+    \boxed{
+        \begin{array}{ll}
+            1.&\text{The network is reliable}\\[.3em]
+            2.&\text{Latency is zero}\\[.3em]
+            3.&\text{Bandwidth is infinite}\\[.3em]
+            4.&\text{The network is secure}\\[.3em]
+            5.&\text{Topology doesn't change}\\[.3em]
+            6.&\text{There is one administrator}\\[.3em]
+            7.&\text{Transport cost is zero}\\[.3em]
+            8.&\text{The network is homogeneous}
+        \end{array}
+    }
+\end{equation*}
+They are called ``\emph{fallacies}'' because \textbf{none of these assumptions is generally safe}. Let's analyze each of them in turn:
+\begin{enumerate}
+    \item \important{The network is reliable}. A common mental model is:
+        \begin{equation*}
+            A \xrightarrow{\text{message}} B
+        \end{equation*}
+        Therefore $B$ receives the message. But in reality, this is not necessarily true. Packets can be lost, corrupted, delayed, duplicated, or delivered after a connection failure. So the actual model is closer to:
+        \begin{equation*}
+            A \xrightarrow[\text{maybe}]{\text{network}} B
+        \end{equation*}
+        This means \hl{distributed software often needs mechanisms such as acknowledgments, retries, duplicate detection, or replication}. However, the important principle is:
+        \begin{equation*}
+            \text{sending} \neq \text{receiving}
+        \end{equation*}
+
+    \item \important{Latency is zero}. A local memory access or function call is extremely fast compared with network communication. If $A$ communicates with $B$:
+        \begin{equation*}
+            A \xrightarrow[\Delta t]{}
+        \end{equation*}
+        Where $\Delta t$ is the time it takes for the message to travel from $A$ to $B$, which is $\Delta t > 0$, and it may vary substantially.
+
+        \hl{A remote operation can therefore never safely be treated exactly like an ordinary local operation.} For example, imagine writing:
+    \begin{lstlisting}
+for each item:
+    remoteServer.get(item)
+\end{lstlisting}
+        If every operation requires a network round-trip, latency accumulates:
+        \begin{equation*}
+            T \approx n \cdot RTT
+        \end{equation*}
+        Where $T$ is the total time, $n$ is the number of items, and $RTT$ is the round-trip time (i.e., the time it takes for a message to go from $A$ to $B$ and back). So architecture and algorithms must take communication latency seriously.
+
+    \item \important{Bandwidth is infinite}. \hl{A network can move only a finite amount of data per unit time:}
+        \begin{equation*}
+            \text{bandwidth} < \infty
+        \end{equation*}
+        If many machines exchange large amounts of information, the network itself may become the bottleneck.
+
+        Imagine $1000$ machines constantly sending gigabytes of state to each other. Even if every CPU is mostly idle, the system can still perform badly because the \textbf{network capacity is a resource}. This is one reason distributed algorithms often try to reduce communication.
+
+    \item \important{The network is secure}. \hl{Once communication crosses a network, additional attack surfaces appear.} Data may potentially be intercepted, modified, or an attacker may impersonate another component.
+
+        So communication may require authentication, encryption, integrity protection, authorization. This fallacy connects directly with the security challenge that will appear later in the notes.
+
+    \item \important{Topology doesn't change}. Suppose our system contains: $A$, $B$, $C$, and $D$ connected in a line. It is easy to design an algorithm assuming that this arrangement will remain stable. But \textbf{distributed systems change}. A node can \textbf{fail}:
+        \begin{equation*}
+            A-B-\cancel C-D
+        \end{equation*}
+        A new node can join:
+        \begin{equation*}
+            A-B-C-D-E
+        \end{equation*}
+        A mobile device can move, a router can disappear, or a service can migrate. Therefore the \hl{set of nodes and connections is dynamic.} This becomes especially obvious in the mobile and ad-hoc systems we saw in the previous section (\autopageref{def:ad-hoc}).
+
+    \item \important{There is one administrator}. On our own computer, one administrative authority can generally configure the whole system. Instead, large distributed systems may cross organizations, departments, companies, cloud providers, countries. \hl{There may be no single administrator who controls everything.} Different domains may have different policies, security rules, configurations, software versions. So distributed systems often have to \textbf{operate across administrative boundaries}.
+
+    \item \important{Transport cost is zero}. \hl{Communication has a cost.} That cost can include:
+        \begin{equation*}
+            \text{time} + \text{bandwidth} + \text{CPU} + \text{energy} + \text{possibly money}
+        \end{equation*}
+        Consider two implementations.
+        \begin{itemize}
+            \item \textbf{Version A}. Send $1000$ remote messages:
+                \begin{equation*}
+                    1000 \times \text{network operation}
+                \end{equation*}
+            \item \textbf{Version B}. Aggregate the information and send one message:
+                \begin{equation*}
+                    1 \times \text{network operation}
+                \end{equation*}
+        \end{itemize}
+        Even if they compute logically the \textbf{same result}, their \textbf{performance} can be \textbf{dramatically different}. So \hl{communication is not free}. This idea will appear repeatedly throughout distributed systems.
+
+    \item \important{The network is homogeneous}. \hl{A distributed system may combine machines with completely different characteristics}: x86 server, ARM phone, IoT sensor, cloud VM, using different hardware, operating systems, network technologies, data representations, programming languages. Therefore \hl{distributed systems are inherently heterogeneous}.
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What the Eight Fallacies of Distributed Computing mean for us?}} We should not memorize them merely as 8 sentences. They are really \textbf{8 warnings} against pretending that:
+\begin{equation*}
+    \text{remote} \equiv \text{local}
+\end{equation*}
+A remote component differs fundamentally from a local one because the \textbf{network lies between us and it}. So a good distributed-system design starts from almost the opposite attitude: \textbf{assume that the network is unreliable, slow, and costly.} And then \hl{builds guarantees \textbf{on top of that unreliable and changing environment}.}
+
+\highspace
+\begin{takeawaysbox}[: Why Distributed Systems Are Special]
+    A distributed system is fundamentally different from a centralized one
+    because components communicate through a \textbf{network}:
+    \begin{equation*}
+        \boxed{
+            \text{local interaction}
+            \neq
+            \text{remote interaction}
+        }
+    \end{equation*}
+    A network introduces delay, limited capacity, failures, changing topology,
+    security concerns, and heterogeneity. Consequently, distributed systems
+    are:
+    \begin{center}
+        \textbf{more complex to design, harder to build, and much harder to
+        build correctly.}
+    \end{center}
+    \important{The Eight Fallacies of Distributed Computing} summarize the
+    assumptions that must \textbf{not} be made when designing a distributed
+    system:
+    \begin{enumerate}
+
+        \item The network is reliable.
+
+        \item Latency is zero.
+
+        \item Bandwidth is infinite.
+
+        \item The network is secure.
+
+        \item Topology does not change.
+
+        \item There is one administrator.
+
+        \item Transport cost is zero.
+
+        \item The network is homogeneous.
+
+    \end{enumerate}
+    They can be interpreted as four broad warnings:
+    \begin{itemize}
+
+        \item \important{Communication is uncertain}.
+            Sending a message does not imply that it is received, and delays may
+            be unpredictable.
+
+        \item \important{Communication is not free}.
+            Remote operations have latency, consume bandwidth, and require
+            additional processing and resources.
+
+        \item \important{The environment changes}.
+            Nodes, links, locations, administrators, and network topology may
+            change over time.
+
+        \item \important{Distributed systems are heterogeneous}.
+            Components may use different hardware, operating systems, networks,
+            protocols, and software environments.
+
+    \end{itemize}
+    Therefore, a fundamental distributed-systems principle is:
+    \begin{equation*}
+        \boxed{
+            \text{do not design a remote interaction as if it were local}
+        }
+    \end{equation*}
+    Correct distributed software must explicitly deal with communication,
+    concurrency, uncertainty, and failures instead of assuming them away.
+\end{takeawaysbox}

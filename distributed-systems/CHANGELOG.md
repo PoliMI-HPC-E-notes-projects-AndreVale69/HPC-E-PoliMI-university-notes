@@ -12,3 +12,4 @@
 - add `Introduction`
   - add `Why Distributed Systems?`
     - add `Motivation: Why Distributed Systems?`
+    - add `Why Distribute a System?`

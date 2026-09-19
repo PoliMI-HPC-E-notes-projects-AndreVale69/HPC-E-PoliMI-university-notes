@@ -1,4 +1,4 @@
-# (2024/2025) and (2025/2026) Quantum Physics
+# (2024/2025), (2025/2026) and (2026/2027) Quantum Physics
 The notes are taken from the books required for the course: 
 
 - A. Berera and L.D. Debbio. _Quantum Mechanics_. Cambridge University Press, 2021.
@@ -52,4 +52,4 @@ According to the [official course syllabus](https://www11.ceda.polimi.it/schedai
   - Two level systems: qubits.
   - Entanglement.
   - Einstein-Podolsky-Rosen gedanken experiment.
-  - Bell’s inequality.
+  - Bell's inequality.

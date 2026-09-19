@@ -155,7 +155,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025<br>2025/2026</td>
+        <td>2024/2025<br>2025/2026<br>2026/2027</td>
         <td>Quantum Physics</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=67166" target="_blank">Finazzi Marco</a></td>
         <td><ul>

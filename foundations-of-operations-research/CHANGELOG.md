@@ -9,12 +9,21 @@ Each version follows the Conventional Commits structure. For more information on
 
 <h2>Table of Contents</h2>
 
+- [v0.6.0](#v060)
 - [v0.5.1](#v051)
 - [v0.4.1](#v041)
 - [v0.3.1](#v031)
 - [v0.2.1](#v021)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.6.0
+
+- completely refactor the notes
+- add `Introduction`
+  - add `What is Operations Research?`
 
 --------------------
 

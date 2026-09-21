@@ -24,6 +24,7 @@ Each version follows the Conventional Commits structure. For more information on
 - completely refactor the notes
 - add `Introduction`
   - add `What is Operations Research?`
+  - add `Decision-Making Problems`
 
 --------------------
 

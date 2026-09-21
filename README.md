@@ -90,7 +90,7 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
-        <td>2024/2025<br>2025/2026</td>
+        <td>2024/2025<br>2025/2026<br>2026/2027</td>
         <td>Foundations of Operations Research</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=685067" target="_blank">Braz Pascoal Marta Margarida</a></td>
         <td><ul>

@@ -1,0 +1,79 @@
+\subsubsection{Linear Classifier as Template Matching}\label{sec:linear-classifier-as-template-matching}
+
+In the previous section, we introduced the concept of image templates and their application in image classification. In this section, we will explore how a linear classifier can be interpreted as a template matching system. This interpretation provides a more intuitive understanding of how linear classifiers work and why they are limited in their ability to effectively classify images.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Main Idea.}} After training, each class has learned \textbf{one template}:
+\begin{equation*}
+    T_i = W\left[i,:\right]
+\end{equation*}
+To classify an image $I$, the classifier compares it with \textbf{every learned template}. Mathematically, this can be expressed as:
+\begin{equation*}
+    s_i = W\left[i,:\right]^T x + b_i
+\end{equation*}
+After reshaping $W\left[i,:\right]$ into an image, this operation becomes the \textbf{correlation} between the input image and the template of class $i$. In other words, a linear classifier can be interpreted as a \textbf{template matching system}, because it \hl{computes the correlation between the input image and each class template.}
+
+\highspace
+\textcolor{Green3}{\faIcon{tools}} In general, the whole prediction can be summarized as:
+\begin{enumerate}
+    \item Take an input image $I$.
+    \item Compare it with template $T_1$ to compute score $s_1$.
+    \item Compare it with template $T_2$ to compute score $s_2$.
+    \item Repeat for all templates $T_L$ to compute scores $s_L$.
+    \item Select the largest score $s_i$ to determine the predicted class.
+\end{enumerate}
+Every class \textbf{independently} computes $W\left[i,:\right]^T x + b_i$, and the \textbf{classifier} simply \textbf{selects the largest score}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this called template matching?}} Recall the correlation operation (\autopageref{eq:correlation}):
+\begin{equation*}
+    \left(I \otimes w\right)\left(r,c\right) = \left(I \star w\right)\left(r,c\right) = \sum_{u=-L}^{L} \sum_{v=-L}^{L} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation*}
+Now, in our case, nothing changes mathematically. The only difference is that the template is \textbf{learned automatically} during training. Instead of designing edge detectors or circle detectors by hand, \hl{gradient descent learns templates for each class} (e.g., dog, car, horse, plane) \hl{directly from the data}. This is why neural networks are often referred to as \textbf{learnable template matching systems}. So, in the correlation operation, the template $w$ is now learned from data rather than being manually designed.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Advantages of this interpretation}}
+\end{flushleft}
+There are several reasons why this viewpoint is useful:
+\begin{enumerate}
+    \item It \hl{explains what the classifier computes.} Instead of thinking ``\emph{a neural network performs matrix multiplication}'', we can think ``\emph{the classifier compares the input image against learned templates}''. This is much easier to visualize.
+    \item We can \hl{visualize the parameters.} Because $W\left[i,:\right]$ has exactly the same size as the input image, we can reshape it and inspect what the model learned. This gives an intuitive understanding of important colors, important object parts, and dataset biases. Few machine learning models allow such direct visualization.
+    \item It \hl{explains mistakes.} Suppose an airplane template contains lots of blue pixels. Then a blue sky automatically increases the airplane score. If another class also contains blue backgrounds, confusion becomes understandable. The templates therefore help explain why certain classification errors occur.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why doesn't this work for deep networks?}}
+\end{flushleft}
+The most important observation is that the template interpretation \textbf{does not disappear} in deep neural networks. Instead, it \textbf{changes}.
+
+\highspace
+In a linear classifier, the template is correlated with the input image (pixels), and we can visualize it. However, in a deep neural network, after the first layer, the input is no longer pixels; instead, it is a feature map. Each layer learns templates over these \textbf{feature maps} rather than raw images.
+
+\highspace
+\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is this a problem?}} A feature map is simply a collection of learned numerical features. For example, instead of RGB values, one channel may respond to vertical edges, another to curved textures, and another to animal fur. The next layer learns templates over these responses. Consequently, its \textbf{weights no longer resemble photographs}; they become \hl{high-dimensional feature detectors that humans cannot easily interpret.} Therefore, the template matching interpretation still holds, but the \hl{templates are correlated with the outputs of previous layers, which are \textbf{hardly interpretable} as images.}
+
+\highspace
+In summary, the \textbf{template matching does not disappear} in deep networks; it simply operates on increasingly abstract representations, making it difficult to visualize or interpret. The only difference is \textbf{what it is matching}:
+\begin{itemize}
+    \item In a linear classifier, the template matches pixels.
+    \item In a hidden layer, the template matches learned features.
+    \item In a CNN layer, the template matches local feature maps.
+    \item In a deep CNN, the template matches high-level semantic features.
+\end{itemize}
+So the mathematical operation never changes; only the representation being compared becomes increasingly abstract.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{question-circle} \textbf{Why is the linear classifier too simple?}}
+\end{flushleft}
+The linear classifier is limited for two main reasons:
+\begin{enumerate}
+    \item The \hl{model is too simple.} Each class has \textbf{only one template}, which cannot capture all the variations in pose, viewpoint, scale, color, and deformation that real objects exhibit.
+    \item The \hl{dataset is limited.} Even if the model were better, \textbf{small datasets produce noisy templates}. For example, if many cars in the dataset are red, the classifier will incorrectly associate red with cars due to the training statistics.
+\end{enumerate}
+
+\highspace
+In summary, although linear classifiers are not competitive today, their mathematical operation appears everywhere. For example, the final classification layer of almost every CNN is still $Wx + b$. Thus, understanding template matching helps understand multilayer perceptrons, convolutional neural networks, and transformers, because they all eventually compute linear combinations followed by nonlinearities.

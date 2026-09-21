@@ -1,0 +1,71 @@
+\subsection{Why Image Classification is Difficult}\label{sec:why-image-classification-is-difficult}
+
+\subsubsection{Dimensionality}\label{sec:dimensionality}
+
+This section introduces the \textbf{first fundamental reason} why image classification is hard. Until now we have seen that an image can simply be flattened into a vector and fed into a linear classifier:
+\begin{equation*}
+    \mathbf{x} \in \mathbb{R}^{d}, \quad \mathbf{s} = W\mathbf{x} + b
+\end{equation*}
+So a natural question arises: \emph{\textbf{if this works mathematically, why don't we just use larger neural networks?}} In other words, \emph{why don't we just use a larger linear classifier with more parameters to learn the mapping from images to labels?} The answer is \textbf{dimensionality}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Images are huge vectors}}
+\end{flushleft}
+Recall that every RGB image can be represented as a vector. For the CIFAR-10 dataset, each image is $32 \times 32$ pixels with 3 color channels, which means that each image is a vector of size $d = 32 \cdot 32 \cdot 3 = 3072$.
+
+\highspace
+The dimensionality $3072$ may not sound enormous. Indeed, for modern machine learning, this is relatively small. However, the \hl{real issue is not only the number of dimensions, but also the way they are represented.} \textbf{Every single pixel is an independent input feature}. This does not mean pixels are physically independent, but the \textbf{model treats them as unrelated variables}. So the model assigns a completely separate parameter to every pixel, without assuming any relationship between them.
+
+\highspace
+In other words, treating each image as ordinary vectors wastes the spatial structure of the image. The model does not know that pixels that are close to each other are more likely to be related than pixels that are far apart. This is a fundamental limitation of linear classifiers and fully connected neural networks: they do not exploit the spatial structure of images.
+
+\highspace
+Therefore, the problem is not that $3072$ dimensions are inherently too many. Rather, \textbf{representing an image as a flat vector ignores its spatial organization}, and this \hl{becomes increasingly problematic as image resolution grows.}
+
+\highspace
+However, today's normal photographs are much larger than $32 \times 32$ pixels. For example, a $1024 \times 1024$ pixel image has $d = 1024 \cdot 1024 \cdot 3 = 3,145,728$ dimensions. So real images easily contain millions of input values.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why high dimensionality is a problem}}
+\end{flushleft}
+Imagine classifying handwritten digits. Suppose each image had only: $10 \times 10 = 100$ pixels. Already, every image is a point in a \textbf{100-dimensional space}. Now imagine CIFAR: $3072$ dimensions. Each image is one point in a \textbf{3072-dimensional space} $\mathbb{R}^{3072}$. That space is unimaginably large. The issue is \textbf{not computational geometry}, but rather the \textbf{learning}.
+
+\highspace
+Machine learning works by discovering patterns from examples. Suppose we only had $2$ input variables (e.g., dog and cat). We could visualize all examples on a plane. Nearby examples often belong to the same class. This is the basis of machine learning: \textbf{similar inputs have similar outputs}.
+
+\highspace
+Now imagine $3072$ variables. The training data becomes incredibly sparse. Almost every possible input configuration has \textbf{never been observed}. This is one aspect of the \textbf{curse of dimensionality}: \hl{as dimensionality grows, the amount of data needed to adequately cover the input space grows explosively.} Even simple grid-based intuition breaks down because the number of possible regions increases exponentially with the number of dimensions. Thus:
+\begin{equation*}
+    \emph{high-dimensional space} \, \to \, \emph{few observed examples} \, \to \, \emph{difficult to generalize}
+\end{equation*}
+
+\highspace
+\begin{examplebox}[: The curse of dimensionality]
+    For example, suppose we want to ``cover'' the space with training samples.
+    \begin{itemize}
+        \item \textbf{One dimension}: we have a line segment of length $1$. To cover it with training samples spaced $0.1$ apart, we need $10$ samples.
+        \item \textbf{Two dimensions}: we have a square of area $1$. To cover it with training samples spaced $0.1$ apart, we need $100$ samples, because we need $10$ samples along each axis, $10 \cdot 10 = 100$.
+        \item \textbf{Three dimensions}: we have a cube of volume $1$. To cover it with training samples spaced $0.1$ apart, we need $1000$ samples, because we need $10$ samples along each axis, $10 \cdot 10 \cdot 10 = 1000$.
+        \item $d$ \textbf{dimensions}: we have a hypercube of volume $1$. To cover it with training samples spaced $0.1$ apart, we need $10^d$ samples, because we need $10$ samples along each axis, $10^d$.
+    \end{itemize}
+    Suppose our dataset contains $50,000$ images. In a 3072-dimensional space, those images are \textbf{extremely far apart}. There are huge regions of the space where the model has never seen any example. So when a new image arrives, the model is forced to \textbf{guess}.
+\end{examplebox}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The parameter explosion problem.}} The growing dimensionality of images also leads to a \textbf{parameter explosion problem}. Since a linear classifier is too simple, we might want to use a deeper neural network with a hidden layer. However, the number of parameters grows rapidly with the number of input dimensions. For example, a single hidden layer with $1536$ neurons would require $3072 \cdot 1536 = 4,718,592$ weights, plus $1536$ biases, $4,718,592 + 1,536 = 4,720,128$ parameters total. This is a \textbf{huge number of parameters to learn from a limited dataset}, leading to \textbf{overfitting and poor generalization}.
+
+\highspace
+Imagine having 5 million parameters but only $50,000$ training images. The network could simply memorize the training set.
+
+\newpage
+
+\noindent
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The real problem is not only the number of parameters!}} Even if we had infinite GPU power, \hl{high dimensionality would still be challenging.} This is because \hl{images occupy an enormous input space.} Changing just one pixel creates a different point. Changing two pixels creates another point. Changing ten pixels creates yet another point. The number of possible images grows astronomically. Most of those images are never observed during training. Therefore, the \textbf{classifier must infer the correct label from only a tiny fraction of all possibilities}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why CNNs will solve this}}
+\end{flushleft}
+The problem is that a fully connected network assumes that \textbf{every pixel is equally important and independent}. But images have much richer structure: nearby pixels are correlated, edges repeat, corners repeat, textures repeat, objects appear everywhere. Instead of learning millions of unrelated weights, \hl{CNNs reuse the same small filters across the entire image}, dramatically reducing the number of parameters while exploiting spatial locality. This is exactly why CNNs become the natural architecture for images. We will see this in the next sections.

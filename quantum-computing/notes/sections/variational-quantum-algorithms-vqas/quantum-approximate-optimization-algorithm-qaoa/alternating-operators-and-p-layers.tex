@@ -1,0 +1,57 @@
+\subsubsection{Alternating Operators and \texorpdfstring{$p$}{p} Layers}\label{sec:alternating-operators-and-p-layers}
+
+Until now, we have seen the two main operators of QAOA independently:
+\begin{itemize}
+    \item The \textbf{Cost Operator}:
+    \begin{equation*}
+        U_C(\gamma) = e^{-i \gamma H_C}
+    \end{equation*}
+    \item The \textbf{Mixer Operator}:
+    \begin{equation*}
+        U_M(\beta) = e^{-i \beta H_M}
+    \end{equation*}
+\end{itemize}
+The natural question now is: \emph{\textbf{how are these operators actually used together to build QAOA?}} And the answer is very simple: they are \textbf{applied alternately, layer after layer}. This alternating structure is exactly what gives the algorithm its name: \emph{Quantum Approximate Optimization Algorithm}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{One QAOA layer.}} Let's recall the QAOA circuit from \autoref{fig:qaoa-ansatz} (\autopageref{fig:qaoa-ansatz}). One \textbf{QAOA layer} is simply the application of the cost operator followed by the mixer operator, as shown in \autoref{fig:qaoa-ansatz}:
+\begin{equation*}
+    U_C\left(\gamma_i\right) = e^{-i \gamma_i H_C} \quad \text{and} \quad U_M\left(\beta_i\right) = e^{-i \beta_i H_M}
+\end{equation*}
+Mathematically, a single QAOA layer can be expressed as:
+\begin{equation}\label{eq:qaoa-layer}
+    U(\gamma_i, \beta_i) = U_M(\beta_i) U_C(\gamma_i) = e^{-i \beta_i H_M} \cdot e^{-i \gamma_i H_C}
+\end{equation}
+The ansatz for a single layer of QAOA with two qubits is shown in the following circuit diagram:
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{\ket{0}} & \gate{H} & \gate{U_C(\gamma_1)}\gategroup[2,steps=1,style={inner sep=2pt}]{$U_C(\gamma_i)$}  & \gate{U_M(\beta_1)}\gategroup[2,steps=1,style={inner sep=2pt}]{$U_M(\beta_i)$}    & \meter{} & \rstick{\dots} \\
+        \lstick{\ket{0}} & \gate{H} & \gate{U_C(\gamma_2)}                                                              & \gate{U_M(\beta_2)}                                                               & \meter{} & \rstick{\dots}
+    \end{quantikz}
+    \caption{QAOA ansatz with one layer ($p=1$) for two qubits ($n=2$).}
+\end{figure}
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why this order?}} Initially, the algorithm prepares $\ket{+}^{\otimes n}$, which is an equal superposition of all possible solutions.\footnote{%
+    Actually, the algorithm prepares the state $\ket{0}^{\otimes n}$ and then applies a Hadamard gate to each qubit to create the superposition.%
+} At this point, every solution has the same probability, we have maximum exploration of the solution space, and no preference for good or bad solutions. Suppose we applied the mixer first; the state $\ket{+}^{\otimes n}$ is actually an eigenstate of the mixer Hamiltonian $H_M$, and thus:
+\begin{equation*}
+    U_M\left(\beta\right) \ket{+}^{\otimes n} = e^{-i \psi} \ket{+}^{\otimes n}
+\end{equation*}
+Where $e^{-i \psi}$ is only a \textbf{global phase}, which has \textbf{no physical effect}. So the first mixer would essentially do \textbf{nothing useful}.
+
+\highspace
+Instead, we first apply the cost operator, which \textbf{modifies the amplitudes of the states based on their cost}. This is the first step in guiding the algorithm towards better solutions. Then, we apply the mixer operator, which \textbf{mixes the amplitudes of the states}, allowing for exploration of new solutions while still favoring those with lower costs.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{The complete QAOA layer.}} We can \textbf{extend} the single layer \autoref{eq:qaoa-layer} to $p$ layers, where each layer has its own parameters $\gamma_i$ and $\beta_i$. The complete QAOA circuit with $p$ layers can be expressed as:
+\begin{equation}
+    \ket{\psi(\vec{\gamma}, \vec{\beta})} = U_M\left(\beta_p\right) U_C\left(\gamma_p\right) \cdots U_M\left(\beta_1\right) U_C\left(\gamma_1\right) \ket{+}^{\otimes n}
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\vec{\gamma} = \left(\gamma_1, \gamma_2, \ldots, \gamma_p\right)$ are the \textbf{parameters} for the \textbf{cost operators}.
+    \item $\vec{\beta} =  \left(\beta_1, \beta_2, \ldots, \beta_p\right)$ are the \textbf{parameters} for the \textbf{mixer operators}.
+    \item Parameter $p$ is the \textbf{depth} of the QAOA circuit, which controls the number of alternating layers of cost and mixer operators. It is defined as the number of Cost-Mixer pairs in the circuit.
+\end{itemize}

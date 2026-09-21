@@ -1,0 +1,141 @@
+\subsubsection{Correlation as a Local Linear Operation}\label{sec:correlation-as-a-local-linear-operation}
+
+In the previous section we defined a \textbf{spatial filter} as a completely generic function $T_{U}$. It could compute the maximum, the average, the median, or any arbitrary function of the neighbouring pixels. Now we introduce an important restriction: \textbf{\emph{what if the spatial filter is linear?}} This leads to the operation called \textbf{correlation}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why Linear?}}
+\end{flushleft}
+The first obvious question is: \emph{why do we care about linear operations?} The reason is that linear operations have several \textbf{advantages}:
+\begin{itemize}
+    \item Mathematically simple (i.e., easy to analyze);
+    \item Computationally efficient (i.e., easy to implement);
+    \item Differentiable (i.e., important for optimization and learning);
+    \item Can approximate many useful image processing operations (e.g., edge detection, blurring, sharpening, etc.).
+\end{itemize}
+Instead of applying an arbitrary function, we compute \textbf{a weighted sum of the neighbouring pixels}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{The Linear Filter.}} Suppose the neighbourhood $U$ is a square of size $k \times k$:
+\begin{equation*}
+    U = \begin{matrix}
+        a & b & c \\
+        d & e & f \\
+        g & h & i
+    \end{matrix}
+\end{equation*}
+Instead of applying an arbitrary function, we assign a weight to every position:
+\begin{equation*}
+    \begin{matrix}
+        w_{a} & w_{b} & w_{c} \\
+        w_{d} & w_{e} & w_{f} \\
+        w_{g} & w_{h} & w_{i}
+    \end{matrix}
+    \xrightarrow{\text{for example}}
+    \begin{matrix}
+        1 & 0 & -1 \\
+        2 & 0 & -2 \\
+        1 & 0 & -1
+    \end{matrix}
+\end{equation*}
+The output of the linear filter is then computed as a weighted sum of the neighbouring pixels:
+\begin{equation*}
+    1 \cdot a + 0 \cdot b + (-1) \cdot c + 2 \cdot d + 0 \cdot e + (-2) \cdot f + 1 \cdot g + 0 \cdot h + (-1) \cdot i
+\end{equation*}
+Every pixel contributes, but \textbf{not equally}.
+
+\highspace
+In general, the output of a linear filter is computed as:
+\begin{equation}\label{eq:linear-filter}
+    T\left(I\right)\left(r,c\right) = \sum_{u,v \in U} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $I\left(r+u,c+v\right)$ is the neighbouring pixel at position $\left(r+u,c+v\right)$.
+    \item $w_{u,v}$ is the \textbf{weight} associated with that neighbouring pixel. Every neighbour has its own weight.
+    \item $\displaystyle\sum_{u,v \in U}$ For every neighbour, we compute multiply the pixel value by its weight. So the output pixels is a \textbf{weighted sum} of the neighbouring pixels.
+\end{itemize}
+So the \textbf{entire operation is completely determined by the weights}, because the weights determine how much each neighbouring pixel contributes to the output.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How is a linear filter represented?}} In general, the \textbf{collection of weights} is called \definition{Filter} or \definition{Kernel}: $\left\{w_{u,v} : (u,v) \in U\right\}$\footnote{%
+    The term \emph{kernel} is used in the context of machine learning, while the term \emph{filter} is used in the context of image processing. In this course, we will use the two terms interchangeably.
+} \footnote{%
+    The notation $w_{u,v}$ is the same as $w\left(u,v\right)$, they are equivalent.
+}. Each filter is a small matrix of weights, which is applied to the neighbourhood of each pixel in the image. For example, for a $3 \times 3$ neighbourhood, the filter is a $3 \times 3$ matrix of weights:
+\begin{equation*}
+    \mathbf{w} = \begin{matrix}
+        w_{-1,-1} & w_{-1,0} & w_{-1,1} \\
+        w_{0,-1} & w_{0,0} & w_{0,1} \\
+        w_{1,-1} & w_{1,0} & w_{1,1}
+    \end{matrix}
+\end{equation*}
+This matrix is called the \textbf{filter kernel} or simply the \textbf{kernel}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Image Processing calls this operation \emph{correlation}}}
+\end{flushleft}
+The operation defined in \autoref{eq:linear-filter} is how any local linear transformation can be written. It is the \textbf{general form of a local linear operator}. However, in the context of image processing, this operation is called \definition{Correaltion}. Instead of writing $T\left(I\right)$, we write $I \otimes w$ (or sometimes $I \star w$, depending on the notation). Its definition is:
+\begin{equation}\label{eq:correlation}
+    \left(I \otimes w\right)\left(r,c\right) = \left(I \star w\right)\left(r,c\right) = \sum_{u=-L}^{L} \sum_{v=-L}^{L} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation}
+Where \hl{$L$} is the \textbf{radius of the neighbourhood} (how far from the center pixel we consider), which is half the size of the neighbourhood. For example, for a $3 \times 3$ neighbourhood, $L = 1$; for a $5 \times 5$ neighbourhood, $L = 2$; and so on. Usually, the neighbourhood is square, so $L$ is the same in both dimensions and can be computed as:
+\begin{equation}
+    k = 2L + 1 \Rightarrow L = \frac{k-1}{2}
+\end{equation}
+Where $k$ is the size of the neighbourhood, and obviously $k$ must be an odd number. The reason is that we want a \textbf{center pixel} in the neighbourhood, which is the pixel we are currently processing. If $k$ was even, there would be no center pixel.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Element-wise multiplication, not matrix multiplication!}} The operation defined in \autoref{eq:correlation} is not matrix multiplication. It is an \textbf{element-wise multiplication} of the filter and the neighbourhood, followed by a sum of all the elements. In other words, we \hl{multiply each pixel in the neighbourhood by its corresponding weight in the filter}, and then sum all the weighted pixels to get the output pixel.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Pseudocode}}
+\end{flushleft}
+The \autoref{eq:linear-filter} tells us how to compute \textbf{one output pixel} $G\left(r,c\right)$. The pseudocode simply repeats this computation for \textbf{every pixel of the image}. Suppose:
+\begin{itemize}
+    \item Input image $I$ has $R$ rows and $C$ columns;
+    \item Filter $w$ has size $K \times K$ (where $K$ is odd);
+    \item We ignore border handling for now (i.e., we only compute the output for pixels that have a full neighbourhood).
+\end{itemize}
+\begin{lstlisting}[language=Python, caption={Pseudocode for correlation.}, label={lst:correlation-pseudocode}]
+# Input: I (image), w (filter)
+R, C = I.shape
+K = w.shape[0]  # assuming square filter
+L = (K - 1) // 2  # radius of the neighbourhood
+
+# Output: G (filtered image)
+G = np.zeros((R, C))  # initialize output image
+
+# iterate over rows from L to R - L
+for r in range(L, R - L):
+
+    # iterate over columns from L to C - L
+    for c in range(L, C - L):
+
+        # initialize accumulator for the weighted sum
+        acc = 0
+    
+        # compute the weighted sum of the neighbourhood
+        for u in range(-L, L + 1):
+            for v in range(-L, L + 1):
+                acc += w[u + L, v + L] * I[r + u, c + v]
+    
+        # store the result in the output image
+        G[r, c] = acc
+\end{lstlisting}
+\noindent
+For every output pixel $G\left(r,c\right)$, the algorithm performs:
+\begin{enumerate}
+    \item Extract the neighbourhood of size $K \times K$ around the pixel $I\left(r,c\right)$;
+    \item Multiply each pixel in the neighbourhood by its corresponding weight in the filter $w$;
+    \item Sum all the weighted pixels to get the output pixel $G\left(r,c\right)$;
+    \item Store the result in the output image $G$;
+    \item Move the kernel to the next pixel and repeat until all pixels have been processed.
+\end{enumerate}
+If we suppose the \textbf{input image} has $R \times C$ pixels, and the \textbf{filter} has size $K \times K$, then for \textbf{each} of the $R \cdot C$ output pixels, we perform roughly $K^{2}$ multiplications and additions. Therefore the total \textbf{computational complexity} of the correlation operation is:
+\begin{equation}\label{eq:correlation-complexity}
+    O\left(R \cdot C \cdot K^{2}\right)
+\end{equation}
+For example, a small image of size $512 \times 512$ pixels, and a small filter of size $3 \times 3$, would require roughly $512 \cdot 512 \cdot 9 \approx 2.36$ million multiplications and additions. This is why correlation is computationally intensive, and also why GPUs are so effective at accelerating CNNs (we will see what CNNs are in future), since the same local computation is repeated independently at every image location.

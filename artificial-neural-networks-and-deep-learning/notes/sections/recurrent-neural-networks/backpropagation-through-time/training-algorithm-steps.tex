@@ -1,0 +1,73 @@
+\subsubsection{Training Algorithm Steps}
+
+The training algorithm for Backpropagation Through Time (BPTT) can be summarized in the following steps:
+\begin{enumerate}
+    \item \important{Forward Pass (Unroll for $U$ Time Steps)}. Unroll the RNN across time:
+    \begin{equation*}
+        \begin{array}{rcl}
+            x_1 \rightarrow & \left[\text{cell}\right] & \rightarrow h_1 \\[.3em]
+            x_2 \rightarrow & \left[\text{cell}\right] & \rightarrow h_2 \\[.3em]
+            \vdots & & \vdots \\[.3em]
+            x_U \rightarrow & \left[\text{cell}\right] & \rightarrow h
+        \end{array}
+    \end{equation*}
+    Compute at each time step $t$:
+    \begin{enumerate}
+        \item The new \textbf{hidden state} $h_t$ using the current input $x_t$ and the previous hidden state $h_{t-1}$:
+        \begin{equation*}
+            h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1}\right)
+        \end{equation*}
+        \item The \textbf{output} $y_t$ based on the hidden state $h_t$:
+        \begin{equation*}
+            y_t = g\left(U \cdot h_t\right)
+        \end{equation*}
+        Where $g$ is the output activation function, and $U$ is the output weight matrix that maps hidden states to outputs.
+        \item The \textbf{loss} $E_t$ at each time step using the predicted output $y_t$ and the true target $\hat{y}_t$:
+        \begin{equation*}
+            E_t = \text{loss}\left(y_t, \hat{y}_t\right)
+        \end{equation*}
+    \end{enumerate}
+    The total loss over the sequence is computed as:
+    \begin{equation*}
+        E = \sum_{t=1}^{U} E_t
+    \end{equation*}
+
+
+    \item \important{Backward Pass (Backprop Through Time)}. Backpropagate errors through the \textbf{unrolled network}, from $t = U$ down to $t = 1$, that mathematically is expressed as follows:
+    \begin{equation*}
+        \frac{\partial E}{\partial \theta} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial \theta}
+    \end{equation*}
+    Where $\theta$ represents the shared weights: $W_x$, $W_h$, and $U$. At each timestep $t$ compute:
+    \begin{enumerate}
+        \item The \textbf{gradient of the loss with respect to the hidden state} $h_t$:
+        \begin{equation*}
+            \frac{\partial E}{\partial h_t} = \frac{\partial E_t}{\partial y_t} \cdot \frac{\partial y_t}{\partial h_t} + \frac{\partial E}{\partial h_{t+1}} \cdot \frac{\partial h_{t+1}}{\partial h_t}
+        \end{equation*}
+        Depends on both $E_t$ and the gradient from the next time step $h_{t+1}$. In other words, errors are propagated backward through time.
+        \item The \textbf{gradients with respect to the weights}:
+        \begin{equation*}
+            \frac{\partial E}{\partial W_x}, \quad \frac{\partial E}{\partial W_h}, \quad \frac{\partial E}{\partial U}
+        \end{equation*}
+    \end{enumerate}
+
+
+    \item \important{Accumulate/Average Gradients Across Time}. Because weights are \textbf{shared across time}, each timestep contributes to their gradient. Accumulate these gradients:
+    \begin{equation*}
+        \frac{\partial E}{\partial W_x} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial W_x}, \quad \frac{\partial E}{\partial W_h} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial W_h}, \quad \frac{\partial E}{\partial U} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial U}
+    \end{equation*}
+    
+
+    \item \important{Update Shared Weights}. Use the accumulated gradients to update the weights using an optimization algorithm (e.g., Stochastic Gradient Descent, Adam):
+    \begin{equation*}
+        \begin{array}{rcl}
+            W_h & \leftarrow & W_h - \eta \, \dfrac{\partial E}{\partial W_h} \\[1.2em]
+            W_x & \leftarrow & W_x - \eta \, \dfrac{\partial E}{\partial W_x} \\[1.2em]
+            U & \leftarrow & U - \eta \, \dfrac{\partial E}{\partial U}
+        \end{array}
+    \end{equation*}
+    Where $\eta$ is the learning rate (\autopageref{sec:learning-rate-scheduling}). These updated weights will be used for the next training iteration.
+
+    
+    \item \important{Repeat for Multiple Epochs}. Repeat the above steps for multiple epochs over the training dataset until convergence or until a stopping criterion is met (e.g., validation loss stops improving).
+\end{enumerate}
+The BPTT training algorithm \textbf{unrolls the RNN} in time, performs a \textbf{forward and backward pass} across all unrolled steps, \textbf{accumulates gradients} for shared weights, and \textbf{updates them using gradient descent}.

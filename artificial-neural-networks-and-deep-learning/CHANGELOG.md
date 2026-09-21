@@ -2,9 +2,222 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.7.0](#v070)
+- [v0.6.0](#v060)
+- [v0.5.0](#v050)
+- [v0.4.0](#v040)
 - [v0.3.0](#v030)
 - [v0.2.0](#v020)
 - [v0.1.0](#v010)
+
+--------------------
+
+### v0.7.0
+
+- add `Convolutional Neural Networks (CNNs)`
+  - add `From Hand-Crafted to Data-Driven Features`
+    - add `The Feature-Extraction Perspective`
+    - add `Hand-Crafted Features for Image Classification`
+    - add `Advantages and Limitations of Hand-Crafted Features`
+    - add `Data-Driven Feature Learning`
+  - add `From Image Filtering to CNNs`
+    - add `Correlation as a Local Linear Operation`add
+    - add `Examples of Linear Image Filters`
+  - add `The Typical CNN Architecture`
+  - add `Convolutional Layers`
+    - add `Convolution over Multi-Channel Inputs`
+    - add `Multiple Filters and Output Feature Maps`
+    - add `General Formula for a Convolutional Layer`
+    - add `Convolutional-Layer Hyperparameters`
+  - add `CNN Arithmetic and Parameter Counting`
+    - add `One Input Channel and One Filter`
+    - add `Multiple Filters`
+    - add `Multiple Input Channels`
+    - add `Counting Convolutional Parameters`
+    - add `CNN-Arithmetic Recap`
+  - add `Important Details of Convolution`
+    - add `Correlation vs. Mathematical Convolution`
+    - add `CNN Convolution vs. RGB Image Filtering`
+    - add `Padding`
+    - add `Stride`
+    - add `General Output-Size Formula`
+  - add `Activation Functions`
+    - add `Why CNNs Need Nonlinearities`
+    - add `ReLU and Leaky ReLU`
+    - add `Hyperbolic Tangent and Other Activations`
+  - add `Pooling Layers`
+    - add `Max Pooling`
+    - add `Pooling Size and Stride`
+  - add `Dense Layers and the Complete CNN`
+    - add `Flattening and Dense Layers`
+    - add `Following Shapes Through a CNN`
+    - add `Feature Extraction Network and Classifier`
+  - add `CNNs in Action`
+  - add `LeNet-5: The First Famous CNN`
+    - add `Historical Motivation`
+    - add `LeNet-5 Architecture`
+    - add `LeNet-5 Implementation`
+    - add `LeNet-5 Performance`
+    - add `CNN vs Direct MLP Parameter Count`
+  - add `Latent Representations Learned by CNNs`
+    - add `The CNN Latent Representation`
+    - add `Visualizing CNN Features with t-SNE`
+    - add `One-Nearest-Neighbour Classification`
+- improve `lstlisting` code styling:
+  - add rounded card-style container with custom border and background
+  - add dedicated syntax highlighting for classes, libraries/modules, strings, and numbers
+  - optimize inner padding, line height, and line-number gutter spacing
+
+--------------------
+
+### v0.6.0
+
+- add `Image Classification`
+  - add `Computer Vision and Digital Images`
+    - add `What is Computer Vision?`
+    - add `Examples of Visual Recognition Tasks`
+    - add `Digital Images as Arrays`
+    - add `RGB Images and Videos`
+  - add `Local Spatial Transformations and Correlation`
+    - add `Local Neighbourhoods`
+    - add `Spatial Filters`
+    - add `Correlation as a Local Linear Operation`
+    - add `Correlation as Template Matching`
+    - add `Correlation on RGB Images`
+  - add `Image Classification with Linear Classifiers`
+    - add `The Image Classification Problem`
+    - add `Feeding Images to Neural Networks`
+    - add `One-layer Neural Network for Images`
+    - add `Training the Linear Classifier`
+  - add `Interpreting Linear Classifiers on Images`
+    - add `Geometric Interpretation`
+    - add `Image-based Interpretation`
+    - add `Linear Classifier as Template Matching`
+  - add `Why Image Classification is Difficult`
+    - add `Dimensionality`
+    - add `Label Ambiguity`
+    - add `Transformations`
+    - add `Inter-Class Variability`
+    - add `Perceptual Similarity vs Pixel Similarity`
+  - add `Nearest Neighbour Classifiers for Images`
+    - add `Pixel-wise Distances`
+    - add `k-NN for Images`
+    - add `Why Pixel Distance is Not Perceptual Distance`
+    - add `CIFAR-10 and t-SNE Interpretation`
+
+--------------------
+
+### v0.5.0
+
+- add `Unsupervised Learning: Word Embedding`
+  - add `Introduction`
+    - add `Recall Machine Learning Paradigms`
+    - add `Neural Autoencoders`
+    - add `Applications of Autoencoders`
+  - add `Motivation for Word Embeddings`
+    - add `The Limits of Traditional Word Representations`
+    - add `Word Similarity Ignorance`
+    - add `What is a Word Embedding?`
+    - add `Distributed Representations`
+  - add `Language Modeling`
+    - add `The Language Modeling Problem`
+    - add `N-gram Language Models`
+    - add `The Curse of Dimensionality in N-gram Models`
+  - add `Neural Language Models`
+    - add `Bengio et al. (2003)`
+    - add `Architecture of the Neural Language Model`
+    - add `Training the Neural Language Model`
+    - add `Results and Impact`
+  - add `Word2Vec`
+    - add `From Neural Language Models to Word2Vec`
+    - add `Word2Vec Architectures`
+    - add `Continuous Bag-of-Words (CBOW)`
+    - add `CBOW Training and Weight Updates`
+    - add `Word2Vec Facts`
+  - add `Semantic Regularities in Embedding Spaces`
+    - add `Semantic Relationships`
+    - add `Linear Structure of Embedding Spaces`
+  - add `Applications of Word Embeddings`
+    - add `Information Retrieval`
+    - add `Document Classification and Similarity`
+    - add `Sentiment Analysis`
+  - add `GloVe: Global Vectors for Word Representation`
+    - add `Motivation behind GloVe`
+    - add `Global Co-occurrence Statistics`
+    - add `GloVe Training Objective`
+    - add `Comparison with Word2Vec`
+
+--------------------
+
+### v0.4.0
+
+- add `Recurrent Neural Networks (RNNs)`
+  - add `Sequence Modeling`
+  - add `Memoryless Models`
+    - add `Autoregressive (AR) Models`
+    - add `Feed-Forward Extensions: TDNNs`
+  - add `Models with Memory`
+    - add `Hidden State Dynamics and Outputs`
+    - add `Linear Dynamical Systems (LDS) and Kalman Filter`
+    - add `Hidden Markov Models (HMMs)`
+    - add `Comparison to Deterministic Recurrent Systems`
+  - add `Definition`
+    - add `What is a RNN?`
+    - add `Nonlinear Update Equations with Weights`
+    - add `Universal Computation Capability (Hava Siegelmann)`
+  - add `Backpropagation Through Time (BPTT)`
+    - add `RNN unrolling over U time steps`
+    - add `Shared weights across time`
+    - add `Training Algorithm Steps`
+    - add `Vanishing and Exploding Gradients Limitation`
+    - add `Dealing with Gradient Problems`
+  - add `Long Short-Term Memory (LSTM) Networks`
+    - add `Architecture`
+    - add `Gates`
+    - add `Lightweight Alternative: Gated Recurrent Unit (GRU)`
+    - add `Networks`
+    - add `Multi-layer LSTM`
+    - add `Bidirectional LSTM (BiLSTM) Networks`
+    - add `Practical Tips: Initialization & Conditioning`
+  - add `Sequential Data Problems`
+  - add `Sequence-to-Sequence Learning`
+    - add `Probabilistic Formulation`
+    - add `Conditional Language Models`
+    - add `Encoder–Decoder Framework`
+    - add `Training Sequence-to-Sequence Models`
+    - add `Special Tokens & Dataset Batch Preparation`
+    - add `Decoding: Greedy Search and Beam Search`
+- correct typo in `Learning Rate Scheduling` section ([69c4273](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/69c4273dfdf6dcf63bcd670b3cad502dc46f3c73))
+- update empirical risk definition and add mini-batch gradient descent pseudocode ([70d8eab](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/70d8eab915b9679731ec93a0f40d796d982b56d1))
+- improve `Batch Normalization` section wording and formatting (clarify internal covariate shift, update icon, batch mean/variance details, equation formatting) ([0c1104c](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/0c1104cf7ef0444bc9c181aab48eff51e28d1c41))
+- correct gradient computation formula in `Weight Initialization` section (clarify multiplication dot in gradient expression) ([d99f629](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/d99f6297057df3590b9830eabba4b14d37c1b27f))
+- correct wording and grammar in `ReLU` variants explanation (clarity and grammar improvements) ([b2d6175](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/b2d6175c7a474984b77bf598ee4ac5223cd9de14))
+- correct typos and improve formatting in `Activation Function Saturation` section (typo fixes, replace thin space with centered dot, add page reference, include TODO) ([39d440f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/39d440ff01539a17783f4113120fbf46a398e356))
+- clarify and improve `Weight Decay (L2 Regularization)` documentation (explicit multiplication symbols, Ockham's Razor relation, formatting/notation consistency) ([0bd3e82](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/0bd3e82e14511ce5c9befa6056d95e1b0baee32a))
+- add detailed pseudocode for `Hyperparameter Tuning` methods (grid search, random search, Bayesian optimization) and fix typo in `Gaussian Process` description ([997734f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/997734f3f2534d9f3204449ea2b730de16eb1c45))
+- add pseudocode for `Nested Cross-Validation` and refine generalization error description (clarify nested CV bias and update computational cost formula) ([196ff6d](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/196ff6d7f4bc89a123aff07609051db4e9c0b36a))
+- add pseudocode for `K-Fold Cross-Validation` and clarify K-dependent bias/variance/computational trade-offs ([e4c0308](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/e4c030828b508eba1b9eba8dffae43fc1eb98822))
+- add pseudocode for `Leave-One-Out Cross-Validation (LOOCV)` algorithm ([5762e77](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5762e771ad109d07f2780918987eab3daf76b81c))
+- add definition and clarification of `Data Leakage` (causes and implications) ([cda558f](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/cda558fca14c0a9a3ee58e9e4abf3216850f732c))
+- enhance `Model Complexity` and `Universal Approximation Theorem` explanations (training/expected error, inductive hypothesis, bias-variance trade-off) ([32b271a](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/32b271a938a25f4ac2dcf3aba82ded07477c2323))
+- fix mathematical notation and improve `Perceptron Learning Algorithm` section ([28e2ae5](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/28e2ae5aeb7a9d51199d410b6486cb40736ff5f9))
+- add `Biological neuron diagram` and update `Historical Context` ([460a8a7](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/460a8a773fec9896cfea6c0a35e8cd88edfe4124))
+- add `Imagenet 2012 breakthrough details` and related citation ([9b71614](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/9b716149a2b07ace05e0fca9ed7c9ba798835dae))
+- add `Deepening box` on `tanh` convergence advantages ([3e83700](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3e83700449fd6fc7602743f994a10c80fdb8b230))
+- fix capitalization in `Modern Pattern Recognition (Pre-DL)` section ([3a3031e](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3a3031e46c33ee1c40f1dd73f9cab8aaa9f55f5a))
+- fix capitalization in `Garbage in $\to$ garbage out` phrase ([5c50130](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5c501307d4c0f84d3ac1620906ca49518c15d024))
+- refine and rephrase `Historical Context` (AI/NN split and deep learning placement in AI history) ([02705a5](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/02705a5ee140df16d2bdf823e784857a01a0050d), [5ab3703](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/5ab37034013eef618a0f830f23346452b40f1265), [4be070a](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/4be070a307efabf95dee24acf747b38020389d52))
+- improve `Sigmoid` description (saturation regions and derivative behavior) ([507eafd](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/507eafda571fc96f21ee8f5fe4e1a31063cef1e9), [c8d5878](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/c8d5878197edc282b937b8b9969280756f85dcd2))
+- improve clarity in `Multi-Class Classification` section ([dd2ea95](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/dd2ea9557389774c906ce34b39c8a66975b2314b))
+- improve clarity in `Error Minimization and Loss Function` section ([8cdd7be](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/8cdd7be86ae3cf56803dc97184b5882f1bbf7f72))
+- clarify the distinction between `Loss Function` and aggregated `Error Function` in `Error Minimization and Loss Function` ([7d7a8ee](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/7d7a8ee44311f3c7f9aa21a289f7f42fb32fde6f))
+- correct equation references and improve `Gradient Descent Basics` explanation ([bdc2758](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/bdc275859c079350d5172b6697b56e51eb6a5adc))
+- correct `Universal Approximation Theorem` formulation and related explanation ([726dd36](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/726dd36a5a0e286934532ce75aa0914a4ac3486a))
+- fix layout by adjusting document `headheight` ([abb36b6](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/abb36b6ca761f4d87ea8de2d11ccd07b336a9452))
+- emphasize penalty term in `Weight Decay (L2 Regularization)` definition ([3c43ecc](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/3c43eccf5ea2a6b3a812ffea7dec29a914fb2a1e))
+- fix `dropout` activation formula and enhance related documentation ([ecc3e68](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/ecc3e684715511b9cb424a63170e4e1b82e609b1))
+- correct neuron activation scaling description during testing ([debd01e](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/debd01ecbee5fd63ea4790f41156c13ced382571))
+- correct weight scaling rule description and equations ([435d9ee](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/commit/435d9eecd547135a42af454f9c4e133e23bd5459))
 
 --------------------
 

@@ -1,0 +1,71 @@
+\subsubsection{Training the Linear Classifier}\label{sec:training-linear-classifier}
+
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Learning Problem.}} Up to now we have assumed that the weight matrix $W$ and bias vector $\mathbf{b}$ of our linear classifier are given, but now we discuss how they are obtained from data. Suppose we have a training dataset:
+\begin{equation*}
+    TR = \left\{\left(\mathbf{x}_{1}, y_{1}\right), \left(\mathbf{x}_{2}, y_{2}\right), \ldots, \left(\mathbf{x}_{N}, y_{N}\right)\right\}
+\end{equation*}
+Where $\mathbf{x}_{i}$ is an image (already flattened into a vector) and $y_{i}$ is its correct class. Our linear classifier is:
+\begin{equation*}
+    \mathbf{s} = W \mathbf{x} + \mathbf{b}
+\end{equation*}
+Where $\mathbf{s}$ is the vector of scores for each class, $\mathbf{x}$ is the input image, and $W$ and $\mathbf{b}$ are the unknown parameters we want to learn. Thus, training means \textbf{finding the values} of $W$ and $\mathbf{b}$ that \textbf{make the classifier correctly recognize the training images}.
+
+\highspace
+Initially, weights and biases are \textbf{randomly initialized}, but during training they are gradually updated until the correct class tends to receive the highest score.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we know whether the current weights are good or not?}}
+\end{flushleft}
+To measure the quality of a classifier, we need a \textbf{loss function} (\autopageref{def:loss-function}). The loss measures \textbf{our unhappiness} with the scores assigned to the training images. Intuitively, correct predictions should have low loss, while incorrect predictions should have high loss. The goal of training is to \textbf{minimize the loss} by adjusting the weights and biases.
+
+\highspace
+Formally, the \hl{training goal} is to minimize the \textbf{total loss over the entire training set}:
+\begin{equation}
+    \left(W,b\right) = \argmin_{W,b} \sum_{\left(\mathbf{x}_{i}, y_{i}\right) \in TR} \mathcal{L}\left( W, b; \, \mathbf{x}_{i}, y_{i} \right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item $\mathcal{L}\left( W, b; \, \mathbf{x}_{i}, y_{i} \right)$ is the \textbf{loss} produced by \textbf{one image}. For example, if we use the \textbf{Sum of Squared Errors (SSE) loss} (\autopageref{eq:sse-loss-function}), it is:
+    \begin{equation*}
+        \mathcal{L}\left( W, b; \, \mathbf{x}_{i}, y_{i} \right) = \sum_{j=1}^{C} \left[ t_{ij} - s_{ij} \right]^{2}
+    \end{equation*}
+    However, in general the loss functions used for training linear classifiers are different from the SSE loss. Usually, they are binary cross-entropy loss for binary classification, or categorical cross-entropy loss for multi-class classification, or hinge loss for support vector machines. For \hl{image classification}, the standard choice is \textbf{categorical cross-entropy} (\autopageref{def:categorical-cross-entropy}).
+
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Softmax and Categorical Cross-Entropy.}} Using the \textbf{categorical cross-entropy loss}, we first apply the \textbf{softmax function} to the scores $\mathbf{s}$ to obtain a probability distribution over the classes, and then compute the cross-entropy loss between this predicted distribution and the true distribution (which is a one-hot vector indicating the correct class).
+
+    Therefore, for \textbf{prediction}, softmax is \hl{unnecessary} (\autopageref{sec:softmax-ignored}), but for \textbf{cross-entropy loss}, softmax is \hl{required} because the loss operates on probabilities.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How is the loss minimized?}} The loss is minimized using \textbf{gradient descent} (\autopageref{def:gradient-descent}, or one of its variants). The gradients of the loss with respect to the weights and biases are computed, and then the weights and biases are updated in the direction that reduces the loss. This process is repeated iteratively over many epochs until convergence.
+
+
+    \item $\displaystyle\sum_{i} \mathcal{L}_{i}$ is the \textbf{sum over the dataset}, because we want the classifier to work well \textbf{on all training images}, not just a few. If one image is classified poorly, its large loss increases the total loss.
+
+
+    \item $\displaystyle\argmin_{W,b}$ finds the \textbf{values} of $W$ and $b$ that make the total loss \textbf{as small as possible}. The $\min$ operator returns the minimum loss value, while $\argmin$ returns the parameters that achieve that minimum.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Watch Out for Overfitting: use Regularization}}
+\end{flushleft}
+We cannot simply minimize the loss on the training set, because this may lead to \textbf{overfitting}. To prevent overfitting, we can add a \hl{\textbf{regularization term} to the loss function}, which \hl{penalizes large weights} and encourages simpler models. Obviously, the regularization cannot be too strong, otherwise the model will underfit.
+
+\highspace
+Therefore, instead of minimizing only the loss:
+\begin{equation*}
+    \sum_{i} \mathcal{L}_{i}
+\end{equation*}
+We minimize the \textbf{regularized loss}:
+\begin{equation*}
+    \sum_{i} \mathcal{L}_{i} + \lambda \mathcal{R}\left(W, b\right)
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\mathcal{R}\left(W, b\right)$ is the \textbf{regularization term}, which is a function of the weights and biases. For example, the L2 regularization (sum of squares of weights) is a common choice (\autopageref{sec:weight-decay-l2-regularization}).
+    \item $\lambda$ is the \textbf{regularization strength}, which controls the trade-off between fitting the training data and keeping the model simple. A larger $\lambda$ means more regularization (simpler model), while a smaller $\lambda$ means less regularization (more complex model). This is a hyperparameter that needs to be tuned. It tells us \textbf{how important} the penalty is (i.e., how much we care about keeping the weights small).
+\end{itemize}
+Thus, the final training objective is to minimize the regularized loss:
+\begin{equation}
+    \left(W,b\right) = \argmin_{W,b} \sum_{\left(\mathbf{x}_{i}, y_{i}\right) \in TR} \mathcal{L}\left( W, b; \, \mathbf{x}_{i}, y_{i} \right) + \lambda \mathcal{R}\left(W, b\right)
+\end{equation}

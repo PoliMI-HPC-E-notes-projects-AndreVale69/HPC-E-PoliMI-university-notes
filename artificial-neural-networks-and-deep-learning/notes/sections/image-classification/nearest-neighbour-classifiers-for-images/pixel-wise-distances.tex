@@ -1,0 +1,62 @@
+\subsection{Nearest Neighbour Classifiers for Images}\label{sec:nearest-neighbour-classifiers-for-images}
+
+After spending the previous section understanding \textbf{why image classification is difficult}, now we introduce what is probably the \textbf{simplest possible classifier}.
+
+\highspace
+The idea is almost simple: ``\emph{If we have already seen a similar image, we will give the new image the same label}''. No training, no weights, no neural network. Just compare images and copy the label of the most similar one. Before doing that, however, we immediately face a fundamental question: \emph{\textbf{what does ``similar'' mean for two images?}}
+
+\longline
+
+\subsubsection{Pixel-wise Distances}\label{sec:pixel-wise-distances}
+
+Suppose we have two images:
+\begin{equation*}
+    I_1, I_2 \in \mathbb{R}^{R \times C \times 3}
+\end{equation*}
+Since we already know how to flatten an image, we can represent them as vectors:
+\begin{equation*}
+    x_1, x_2 \in \mathbb{R}^{d}, \quad d = R \cdot C \cdot 3
+\end{equation*}
+Now the problem becomes much simpler. Instead of comparing \textbf{images}, we compare \textbf{vectors}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Measuring the distance between two vectors}}
+\end{flushleft}
+The most natural idea is to \textbf{compare every corresponding pixel}. If corresponding pixels differ only slightly, the images should be close. If many pixels differ, the images should be far apart. This is why these distances are called \definition{Pixel-Wise Distances}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Euclidean $\ell_2$ distance.}} One of the most common pixel-wise distances is the \textbf{Euclidean distance}. For two flattened images:
+\begin{equation*}
+    d\left(x_1, x_2\right) = \left\| x_1 - x_2 \right\|_2
+\end{equation*}
+Expanding the norm:
+\begin{equation*}
+    d\left(x_1, x_2\right) = \sqrt{\sum_{i=1}^{d} \left(x_1^{(i)} - x_2^{(i)}\right)^2}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $x_1^{(i)}$ is the $i$-th pixel of the first image.
+    \item $x_2^{(i)}$ is the $i$-th pixel of the second image.
+    \item $x_1^{(i)} - x_2^{(i)}$ is the difference between the two pixels. Subtract corresponding pixels and if a pixel is identical, its contribution is zero. If the pixels are very different, the contribution is large.
+    \item $\left(x_1^{(i)} - x_2^{(i)}\right)^2$ is the squared difference. Squaring ensures that the contribution is always positive and emphasizes larger differences.
+    \item $\sum_{i=1}^{d} \dots$ is the sum of all squared differences. Sum over all pixels to get a single number that represents the overall difference between the two images.
+    \item $\sqrt{\dots}$ is the square root. This restores the units of the original pixel values and gives the final Euclidean distance.
+\end{itemize}
+Geometrically, the Euclidean distance is simply \textbf{the straight-line distance between two points in this 3072-dimensional space} (for CIFAR-10).
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Manhattan $\ell_1$ distance.}} Another very common distance is the \definition{Manhattan distance} (also called $\ell_1$ distance):
+\begin{equation*}
+    d\left(x_1, x_2\right) = \left\| x_1 - x_2 \right\|_1 = \sum_{i=1}^{d} \left| x_1^{(i)} - x_2^{(i)} \right|
+\end{equation*}
+Here, instead of squaring the differences, we simply take the absolute value.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this idea attractive?}} Imagine we already have $10,000$ labeled training images. Given a new image, we can compute the distance to all $10,000$ training images and find the closest one. That sounds extremely reasonable. \hl{No optimization, gradient descent, or learning. Only distance computations.}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{But there is a hidden assumption.}} This whole approach assumes that \textbf{if two images have similar pixels, they should represent similar objects}. Mathematically, it assumes small pixel-wise distances imply small semantic distances. At first glance, this seems perfectly reasonable. Unfortunately, \hl{everything we have learned in previous sections tells us that this assumption is often false.} For example, a dog shifted by just a few pixels can have a surprisingly large Euclidean distance from the original image, while a completely different object with a similar background or color distribution might end up being closer in pixel space.
+
+\highspace
+We conclude the previous section with a simple but important observation: \textbf{perceptual similarity is not pixel similarity}. Now, the nearest-neighbour method is built entirely on \textbf{pixel similarity}. So before even seeing the complete algorithm, we should already suspect something: \textbf{this classifier will fail whenever pixel similarity does not correspond to semantic similarity}. That is exactly the limitation of nearest-neighbour classifiers for images.

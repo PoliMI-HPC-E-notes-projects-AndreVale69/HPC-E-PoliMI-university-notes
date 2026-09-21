@@ -9,6 +9,13 @@ You can view/download the PDF [here](notes/artificial-neural-networks-and-deep-l
 
 For any issue, [use the appropriate section](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/HPC-E-PoliMI-university-notes/issues).
 
+## Correlated Projects
+
+During the Artificial Neural Networks and Deep Learning for HPC course, me and my other three colleagues Alberto Ondei, [Abdullah Javed](https://it.linkedin.com/in/javedabdullah), [Filippo Barbari](https://www.hpc.cineca.it/staff/barbari-filippo/) created two projects:
+
+1. [Time Series Classification](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-1). Deep Neural Netowrk (TCN + BiLSTM with Attention) model on multivariate time-series classification.
+2. [Image Classification](https://github.com/PoliMI-HPC-E-notes-projects-AndreVale69/AN2DL-Challenge-2). Histopathology image classification to predict molecular subtypes. Includes datasets, EDA and preprocessing notebooks, patch extraction, baseline models, and training utilities for quick experiments and reproducible evaluation.
+
 ## Course Syllabus
 
 According to the [official course syllabus](https://www11.ceda.polimi.it/schedaincarico/schedaincarico/controller/scheda_pubblica/SchedaPublic.do?&evn_default=evento&c_classe=863895&__pj0=0&__pj1=8923b74f46a75e8fa2d66989cb859069):

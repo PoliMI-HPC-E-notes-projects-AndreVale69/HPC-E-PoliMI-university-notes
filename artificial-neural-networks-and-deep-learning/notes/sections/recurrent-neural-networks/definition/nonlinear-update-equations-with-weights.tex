@@ -1,0 +1,116 @@
+\subsubsection{Nonlinear Update Equations with Weights}
+
+As we have anticipated in \eqref{eq:rnn-update} on \autopageref{def:rnn} of the definition, RNNs use \textbf{learned weight matrices} to transform the input and hidden states before applying a nonlinear activation function. The general form of the update equation is:
+\begin{equation*}
+    h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+But what does the equation really mean? There are two ``sources'' of information for the new hidden state $h_t$:
+\begin{enumerate}
+    \item \textbf{Current input} $\to$ via $W_x$:
+    \begin{equation*}
+        W_x \cdot x_t
+    \end{equation*}
+    This says ``\textbf{\emph{what does the new observation $x_t$ mean?}}''. It captures the information from the current input at time $t$. It is similar to weights in a normal feedforward neural network, transforming the input into a feature representation.
+
+
+    \item \textbf{Previous hidden state} $\to$ via $W_h$:
+    \begin{equation*}
+        W_h \cdot h_{t-1}
+    \end{equation*}
+    This is the \textbf{memory contribution} and carries information from all past time steps (via $h_{t-1}$). It answers the question ``\textbf{\emph{what do we remember from the past?}}''.
+
+
+    \item \textbf{Add bias and apply nonlinearity}:
+    \begin{equation*}
+        f\left(\cdot\right) = \tanh, \, \text{ReLU}, \, \text{sigmoid}, \, \ldots
+    \end{equation*}
+    This introduces \textbf{nonlinearity}, making the system much more expressive than a linear dynamical system. The bias $b$ allows shifting the activation function, enabling the model to learn more complex patterns.
+\end{enumerate}
+An alternative notation that is often used in packages such as \texttt{PyTorch} and \texttt{TensorFlow} is:
+\begin{equation*}
+    h_t = \sigma\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+Where $\sigma$ is a generic nonlinear activation function (e.g., $\tanh$, ReLU, sigmoid, etc.).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this equation is \emph{nonlinear} and why it matters?}}
+\end{flushleft}
+If the activations were removed:
+\begin{equation*}
+    h_t = W_x \cdot x_t + W_h \cdot h_{t-1}
+\end{equation*}
+We get a \textbf{Linear Dynamical System} (LDS), that is equivalent to Kalman filtering, and cannot learn complex temporal patterns. Also, memory decays or explodes geometrically over time, making it hard to capture long-term dependencies. Instead, adding the nonlinearity:
+\begin{equation*}
+    h_t = \tanh\left(\cdot\right)
+\end{equation*}
+Turns the system into a \textbf{universal nonlinear function approximator} for sequences.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What do the weight matrices $W_x$ and $W_h$ represent?}}
+\end{flushleft}
+As we have anticipated on page \hqpageref{q:rnn-weights-meaning}, the RNN update equation contains two distinct weight matrices.
+
+\highspace
+\textbf{Every time step uses the same matrices $W_x$ and $W_h$} to process the input and hidden state. This parameter sharing allows the RNN to generalize across time steps, learning temporal patterns that are invariant to position in the sequence.
+\begin{itemize}
+    \item \important{$W_x$: Input $\xrightarrow{\text{to}}$ Hidden weights}. ``\textbf{\emph{How should the network interpret the current input $x_t$?}}''. The role of this matrix is to \textbf{map} the \textbf{incoming signal} $x_t$ into the \textbf{hidden state space}.
+    \begin{itemize}
+        \item It \textbf{extracts} features from the \emph{current} time step.
+        \item It \textbf{determines} what part of the current input is important.
+        \item It \textbf{transforms} $x_t$ into a form that can be combined with memory.
+    \end{itemize}
+    \textbf{If the input is a word embedding, sensor reading, pixel row, etc., $W_x$ learns how to process it}. For example, if $x_t$ is a word embedding like ``pizza'', $W_x \cdot x_t$ might activate ``food topic'' neurons in the hidden state.
+
+    Mathematically, $W_x$ has shape:
+    \begin{equation*}
+        W_x \in \mathbb{R}^{H \times D}
+    \end{equation*}
+    Where $D$ is the input dimension and $H$ is the hidden state dimension.
+
+
+    \item \important{$W_h$: Hidden $\xrightarrow{\text{to}}$ Hidden weights}. ``\textbf{\emph{How should the network update its memory based on the past?}}''. This matrix controls how the \textbf{previous hidden state} affects the \textbf{next one}.
+    \begin{itemize}
+        \item It tells the RNN \textbf{what to remember}, \textbf{what to forget}, and \textbf{how}.
+        \item It controls \textbf{how much} of \textbf{past information flows into the\break present}.
+        \item It defines \textbf{how memory evolves over time}.
+    \end{itemize}
+    This is the \textbf{core} of recurrence: \textbf{the hidden state feeds back into itself through $W_h$}, allowing the network to build a temporal context. For example, if earlier in the sequence we saw ``not'', and now we see ``bad'', $W_h \cdot h_{t-1}$ helps interpret the meaning based on the negation remembered earlier.
+
+    Mathematically, $W_h$ has shape:
+    \begin{equation*}
+        W_h \in \mathbb{R}^{H \times H}
+    \end{equation*}
+    Since it maps the hidden state back into itself. The $H$ terms correspond to the number of hidden units.
+\end{itemize}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why two separate weight matrices?}}
+\end{flushleft}
+Because the RNN must combine \textbf{two types of information} at each time step:
+\begin{itemize}
+    \item \textbf{New information} (from $x_t$).
+    \item \textbf{Past information} (from $h_{t-1}$).
+\end{itemize}
+They play different roles:
+\begin{itemize}
+    \item $W_x$ \textbf{processes the current input}, extracting relevant features: ``\emph{how to read the current input}''.
+    \item $W_h$ \textbf{manages the memory}, determining how past states influence the present: ``\emph{how to transform the past memory}''.
+\end{itemize}
+Together they form:
+\begin{equation*}
+    h_t = \text{memory update}\left(
+        \underbrace{\text{input processing}\left(x_t\right)}_{\text{via } W_x},
+        \,
+        \underbrace{\text{memory transformation}\left(h_{t-1}\right)}_{\text{via } W_h}
+    \right)
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Where do $W_x$ and $W_h$ come from?}}
+\end{flushleft}
+As we will see in the upcoming section on \textbf{Backpropagation Through Time (BPTT)}, these matrices are \textbf{initialized randomly} and then \textbf{learned from data} through gradient descent. During training, the RNN adjusts $W_x$ and $W_h$ to minimize the loss function, effectively learning how to interpret inputs and manage memory for the specific task at hand (e.g., language modeling, time series prediction, etc.). Over time, they converge to values that allow the RNN to capture complex temporal dependencies in the data.

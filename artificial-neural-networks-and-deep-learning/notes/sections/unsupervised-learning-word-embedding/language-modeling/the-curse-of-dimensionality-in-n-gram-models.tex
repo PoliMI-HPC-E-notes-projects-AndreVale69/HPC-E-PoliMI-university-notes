@@ -1,0 +1,81 @@
+\subsubsection{The Curse of Dimensionality in N-gram Models}\label{sec:the-curse-of-dimensionality-in-n-gram-models}
+
+At first sight, N-gram language models seem like an elegant solution to the language modeling problem. Yes, the zero-probability problem is a problem, but it can be solved with smoothing techniques. However, N-gram models suffer from a more fundamental problem: the \textbf{curse of dimensionality}.
+
+\highspace
+We started with the impossible task of estimating:
+\begin{equation*}
+    P\left(w_i \, | \, w_{1}, \dots, w_{i-1}\right)
+\end{equation*}
+And simplified it to:
+\begin{equation*}
+    P\left(w_i \, | \, w_{i-N+1}, \dots, w_{i-1}\right)
+\end{equation*}
+By considering only the last $N-1$ words as context. Unfortunately, this simplification introduces a new and fundamental problem: \hl{the number of possible contexts grows exponentially with the context size.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{bomb} \textbf{Vocabulary Explosion}}
+\end{flushleft}
+Suppose we have a vocabulary containing:
+\begin{equation*}
+    \left|V\right| = 100,000
+\end{equation*}
+Unique words. This is actually a realistic number for a moderately large corpus (i.e., a large collection of text). Now, consider a \textbf{10-gram model}, which looks at the previous 9 words as context:
+\begin{equation*}
+    P\left(w_i \, | \, w_{i-9}, w_{i-8}, w_{i-7}, w_{i-6}, w_{i-5}, w_{i-4}, w_{i-3}, w_{i-2}, w_{i-1}\right)
+\end{equation*}
+Each position can contain any of the $100,000$ words. Therefore, the number of possible contexts is:
+\begin{equation*}
+    \left|V\right|^{N-1} = 100,000^9
+\end{equation*}
+And if we inlcude the target word, we have:
+\begin{equation*}
+    \left|V\right|^N = 100,000^{10}
+\end{equation*}
+Thus, the model lives in a 10D hypercube where each dimension has $100,000$ slots. Explicitly, the number of parameters we need to estimate is:
+\begin{equation*}
+    \left|V\right|^N = 100,000^{10} = \left(10^{5}\right)^{10} = 10^{50}
+\end{equation*}
+This number is astronomically larger than the number of books ever written, the number of webpages ever created, or even the number of sentences we could realistically collect. That's the \textbf{curse of dimensionality}: the number of parameters grows exponentially with the context size, making it impossible to estimate them all from a finite corpus.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Consequences of the Curse of Dimensionality}}
+\end{flushleft}
+\begin{itemize}
+    \item \important{Sparse Statistics}. Since the number of \hl{parameters is so large} ($10^{50}$ possible combinations), our corpus \hl{only covers a tiny fraction of them.} This means that \hl{most of the parameters will be zero}, leading to sparse statistics.
+    
+    For example ``\emph{the cat sleeps on the sofa}'' may appear. But ``\emph{the cat sleeps under the sofa}'' may never appear. And ``\emph{the cat sleeps beside the sofa}'' may never appear. So when we estimate:
+    \begin{equation*}
+        P\left(\text{beside} \, | \,\text{the cat sleeps}\right)
+    \end{equation*}
+    We will get zero, simply because we have never seen that exact combination of words in our corpus.
+
+    This is what ``\emph{sparse statistics}'' means. It refers to the fact that \hl{only a tiny fraction of all possible N-grams are observed in the training corpus.} As a consequence, many valid N-grams have count zero, leading to the \textbf{zero-probability problem} (\autopageref{def:the-zero-probability-problem}), where unseen events are assigned probability zero even though they may occur in reality.
+    
+    
+    \item \important{Probability Mass Vanishes}. This is not a new problem. It's just another way of saying the same thing. Let's imagine we distribute 1 euro among $10^{50}$ people. Everybody gets essentially nothing. Similarly:
+    \begin{equation*}
+        \sum P\left(\text{all contexts}\right) = 1
+    \end{equation*}
+    But we must distribute this probability over an enormous number of possible N-grams. Most probabilities become $0$ or nearly zero, which is called \textbf{probability mass vanishing}.
+    
+    
+    \item \important{Huge Data Requirements}. We may think: ``\emph{If we just collect more data, we can estimate all these parameters.}'' But if the space contains $10^{50}$ possible combinations, how much text would we need? An absurd amount. Even billions of sentences are nowhere near enough. Therefore, \hl{N-gram models require unrealistic amounts of data.}
+    
+    
+    \item \important{What Happens in Practice?} Researchers realized that N-gram models are not practical for large $N$. They typically use \hl{small values of $N$} (like 2 or 3) to keep the number of \hl{parameters manageable}. However, this leads to a \hl{loss of context and poorer performance}. To mitigate this, they developed smoothing techniques to assign non-zero probabilities to unseen N-grams, but this is just a band-aid solution that doesn't address the fundamental issue of dimensionality.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why are Neural Language Models motivated by this?}}
+\end{flushleft}
+At this point we face a dilemma:
+\begin{itemize}
+    \item Large $n$, which captures more context but suffers from the curse of dimensionality.
+    \item Small $n$, which is manageable but loses context and performs worse.
+\end{itemize}
+Researchers therefore began searching for a new idea. Instead of memorizing counts for every possible N-gram, could we \textbf{learn a continuous representation of words} that allows the model to generalize across similar contexts? This question led directly to the work of \textbf{Bengio et al. (2003)} and the \textbf{first Neural Network Language Model}, which introduced the concept of learned word embeddings.

@@ -1,4 +1,4 @@
-# (2024/2025) Foundations of Operations Research
+# (2024/2025) and (2025/2026) Foundations of Operations Research
 
 These notes are an unofficial resource and shouldn't replace the course material or any other book on _advanced methods for scientific computing_. It is not made for commercial purposes. I've made the following notes to help me improve my knowledge and maybe it can be helpful for everyone.
 

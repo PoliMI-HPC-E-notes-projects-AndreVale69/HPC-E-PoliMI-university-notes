@@ -1,0 +1,256 @@
+\subsubsection{Lightweight Alternative: Gated Recurrent Unit (GRU)}
+
+\definition{Gated Recurrent Unit (GRU)} were proposed by Cho et al. (2014) as a \textbf{simplified, faster, and lighter} recurrent architecture that retains much of the power of LSTMs but with fewer parameters and a simpler design.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why GRU?}} \\
+\end{flushleft}
+Long Short-Term Memory (LSTM) networks are powerful but can be computationally intensive due to their complex architecture involving multiple gates and memory cells:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Computationally heavy}, because of multiple matrix multiplications per time step.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Contain 3 gates $+$ memory cell}, leading to more parameters to train.
+    \item[\textcolor{Red2}{\faIcon{times}}] \textbf{Have many parameters (4 matrix multiplications per time step)}, which can lead to overfitting on smaller datasets.
+\end{itemize}
+GRUs address these issues by simplifying the architecture while still effectively capturing long-term dependencies in sequential data. Its goal is to:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Reduce computational complexity} by using fewer gates and parameters.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Maintain performance} comparable to LSTMs on many tasks.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Facilitate faster training} and inference times.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Simplify implementation} and tuning due to fewer hyperparameters.
+\end{itemize}
+They do this by merging some gates and eliminating the explicit memory cell found in LSTMs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{GRU Architecture}}
+\end{flushleft}
+GRUs \textbf{do not have a separate cell state} $C_t$ like LSTMs. Instead, they only maintain a \textbf{hidden state} $h_t$, which merges: short-term memory and long-term memory. GRUs use \textbf{two gates} to control the flow of information:
+\begin{enumerate}
+    \item \important{Update Gate $z_t$}. Controls \textbf{how much of the past is kept} and \textbf{how much of the new information is added}.
+    \begin{equation}
+        \begin{bmatrix}
+            i_t \\
+            f_t
+        \end{bmatrix}
+        \quad \xrightarrow{\text{GRU}} \quad
+        z_t = \sigma(W_z \cdot [h_{t-1}, x_t] + b_z)
+    \end{equation}
+    It \textbf{replaces both the input and forget gates} of the LSTM.
+    \begin{itemize}
+        \item $z_t = 1$: use \textbf{only} \underline{new} information, forget everything from the past (like forget gate closed, $0$, and input gate open, $1$).
+        \item $z_t = 0$: keep \textbf{only} \underline{past} information, ignore new input (like forget gate open, $1$, and input gate closed, $0$).
+        \item $0 < z_t < 1$: balance between past and new information.
+    \end{itemize}
+
+
+    \item \important{Reset Gate $r_t$}. Controls \textbf{how much of the previous hidden state to consider when creating new candidate} information. This is similar to the input gate in LSTMs, but it directly influences the candidate hidden state. Similarly, it is computed as:
+    \begin{equation}
+        r_t = \sigma(W_r \cdot [h_{t-1}, x_t] + b_r)
+    \end{equation}
+    \begin{itemize}
+        \item $r_t$ close to 0: ignore past hidden state, focus on new input.
+        \item $r_t$ close to 1: consider past hidden state fully, influence of $h_{t-1}$ is strong.
+    \end{itemize}
+\end{enumerate}
+The number of gates is reduced from 3 in LSTMs to 2 in GRUs, \textbf{simplifying dramatically the architecture}. Also, \hl{GRUs do not have a separate memory cell}; instead, they \textbf{maintain a single hidden state that combines both short-term and long-term memory} ($h_t$). This further reduces the number of parameters and computations required.
+
+\highspace
+The \textbf{final hidden state} $h_t$ in a GRU is computed as:
+\begin{equation}
+    h_t = \left(1 - z_t\right) \odot h_{t-1} + z_t \odot \tilde{h}_t
+\end{equation}
+It interpolates between the previous hidden state, $h_{t-1}$, and the candidate hidden state, $\tilde{h}_t$, weighted by the update gate, $z_t$. Thus, the \textbf{update gate} decides how much past information to retain and how much new information to incorporate. Notably, it \textbf{is the only gate that directly influences the final hidden state}. Instead, the \textbf{reset gate} $r_t$ \textbf{operates when computing the candidate hidden state} $\tilde{h}_t$:
+\begin{equation}
+    \tilde{h}_t = \tanh(W_h \cdot [r_t \odot h_{t-1}, x_t] + b_h)
+\end{equation}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l p{11em} p{11em} @{}}
+        \toprule
+        \textbf{Feature} & \textbf{LSTM} & \textbf{GRU} \\
+        \midrule
+        Gates & 3 (input, forget, output) & 2 (update, reset) \\[.5em]
+        Memory Cell & Yes ($C_t$) & No (only hidden state $h_t$) \\[.5em]
+        Hidden State & Separate from cell state & Combines short-term and long-term memory \\[.5em]
+        Complexity & Higher & Lower \\[.5em]
+        Parameters & More (4 matrix multiplications per time step) & Fewer (3 matrix multiplications per time step) \\[.5em]
+        Training Speed & Slower & Faster \\[.5em]
+        Performance & Strong on long sequences & Usually comparable to an LSTM, sometimes better on smaller datasets \\
+        \bottomrule
+    \end{tabular}
+    \caption{Comparison between LSTM and GRU architectures.}
+\end{table}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Final thoughts: Is GRU always better than LSTM?}}
+\end{flushleft}
+In short, \textbf{no}, GRU is not the best RNN. In some scenarios, LSTMs may outperform GRUs. They \textbf{do not have the same expressive power} of LSTMs.
+\begin{itemize}
+    \item \important{LSTMs Separate Long-Term and Short-Term Memory}. LSTM has two dedicated components (\textbf{cell state} $C_t$ and \textbf{hidden state} $h_t$) to manage long-term and short-term dependencies separately. Instead, GRU merges them into a single vector. The separation in LSTMs allows to:
+    \begin{itemize}
+        \item Preserve long-term memory in $C_t$ \textbf{without exposing it}.
+        \item Use $h_t$ for short-term, noisy, rapidly-changing representations.
+        \item Control what gets exposed to the next layer (via the output gate).
+    \end{itemize}
+    This separation is \textbf{very powerful}, especially for tasks requiring deep context management, such as language modeling or machine translation.
+
+
+    \item \important{LSTMs Have More Control (More Degrees of Freedom)}. LSTM has \textbf{three gates} (forget $f_t$, input $i_t$, output $o_t$), while GRU has \textbf{two} (update $z_t$, reset $r_t$). This gives LSTMs: more expressiveness, finer control of memory flow, and the ability to decouple ``writing to memory'' from ``exposing memory''. In some tasks, this extra structure provides: better accuracy, more stable long-term learning, and better handling of irregular or sparse signals. In summary, \textbf{with LSTM we can do a more nuanced manipulation of information}.
+
+
+    \item \important{LSTMs Work Better on Very Long Sequences}. Empirically, on tasks requiring \textbf{very long-term dependencies} (hundreds or thousands of time steps), \textbf{LSTMs typically outperform GRUs}. Some examples:
+    \begin{itemize}
+        \item Long text generation.
+        \item Speech sequences longer than several seconds.
+        \item Language models (pre-Transformer era).
+        \item Medical time series with sparse temporal relations.
+        \item Irregular biomechanical signals.
+    \end{itemize}
+    Because the cell state in an LSTM is specifically designed for long-term memory, LSTMs \textbf{tend to retain information better}. 
+    
+    \textbf{GRUs can forget too aggressively} because the update gate merges the input and forget gates. This coupling makes GRUs less flexible in controlling what to remember for long periods.
+    
+
+    \item \important{GRUs Can Underperform When Selective Visibility Matters}. LSTMs have an \textbf{output gate}:
+    \begin{equation*}
+        h_t = o_t \odot \tanh(C_t)
+    \end{equation*}
+    GRUs \textbf{do not}. This means \textbf{GRUs cannot selectively hide memory and it is critical in tasks where certain features need to stay internal and not be exposed to the next layer}.
+\end{itemize}
+
+\begin{figure}[!htp]
+    \centering
+    \tikzsetnextfilename{gru}
+    \begin{tikzpicture}[
+        >=LaTeX, % Use default LaTeX arrows
+        % Styles 
+        cell/.style={ % RNN cell
+            rectangle, 
+            rounded corners=5mm, 
+            draw,
+            very thick,
+            minimum height=4cm,
+            minimum width=6cm
+        }, 
+        cellc/.style={ % RNN cells in a chain
+            cell,
+            on chain,
+            join
+        },
+        input/.style={ % Input or output node
+            circle,
+            minimum width=2.25em,
+            draw,
+            fill=gray!10,
+            thick
+        },
+        hidden/.style={ % Hidden state
+        },
+        func/.style={ % Functions
+            rectangle,
+            draw,
+            inner sep=2pt,
+            minimum height=0.4cm
+        },
+        op/.style={ % Operators
+            circle,
+            draw,
+            inner sep=-0.5pt,
+            minimum height=0.4cm,
+        },
+        pointwise/.style={ % Pointwise operations and functions
+            fill=gray!50,
+        },
+        arrow/.style={
+            -latex,
+            very thick
+        },
+        arrowc1/.style={ % Arrows with rounded corners
+            arrow,
+            rounded corners=.25cm
+        },
+        arrowc2/.style={ % Arrows with big rounded corners
+            arrow,
+            rounded corners=.5cm
+        },
+        backprop/.style={ % Backpropagation arrows
+            arrow,
+            dashed,
+            gray
+        }
+    ]
+    
+        % GRU cell
+        \node [cell] at (0,0){};
+
+        % Internal functions and operators
+        \node [func] (sigr) at (-0.75,-0.75) {$\sigma$};
+        \node [func] (sigz) at (0,-0.75) {$\sigma$};
+        \node [func] (tanh) at (2,-0.75) {$\tanh$};
+        \node [func, pointwise] (minus) at (0,0.5) {$1-$};
+        \node [op, pointwise] (mulr) at (-1.5,0) {$\times$};
+        \node [op, pointwise] (mulz) at (0,1.5) {$\times$};
+        \node [op, pointwise] (add) at (2,1.5) {$+$};
+        \node [op, pointwise] (mulh) at (2,0) {$\times$};
+
+        % Inputs, outputs and hidden states
+        \node[hidden] (ht-1) at (-4,1.5) {$\mathbf{h}_{t-1}$};
+        \node[input] (x) at (-2.5,-3) {$\mathbf{x}_{t}$};
+        \node[hidden] (ht) at (4,1.5) {$\mathbf{h}_t$};
+        \node[input] (y) at (2.5,3) {$\text{out } \mathbf{h}_t$};
+
+        % Arrows from input and previous hidden states h_{t-1}
+        \draw [arrowc1] (ht-1) -- (mulz) -- (add) -- (ht);
+        \draw [arrowc1, -] (x) |- (-2.25, -1.4) ++(sigr);
+        \draw [arrowc1, -] (x) |- (-2.25, -1.75) ++(sigr);
+        \draw [arrowc1, -] (x -| sigz) ++(-1, 1.6) -| (sigz);
+        \draw [arrowc1, -] (x -| sigr) ++(-1.5, 1.6) -| (sigr);
+        \draw [arrowc1, -] (ht-1.east) -| (mulr);
+        \draw [arrowc1, -] (ht-1) -| (-2.5,0) ++(x);
+        \draw [arrowc1, -] (x) ++(0,3) |- (-1,-1.4) ++(tanh);
+        \draw [arrowc2, -] (x -| tanh) ++(-4.25, 1.25) -| (tanh);
+
+        % Arrows for operation flow within LSTM gates
+        \draw [arrowc1, -] (mulr) -- ++(0,-1.3);
+        \draw [arrowc1, -] (mulr) ++(0,-1.55) |- (0,-1.75) ++(tanh);
+        \draw [arrowc1] (sigr) |-  node[midway, shift={(-2pt,4pt)}] {$\mathbf{r}_t$} (mulr.east);
+        \draw [arrowc2] (sigz) |- (mulh);
+        \draw [arrowc2] (tanh) -- node[midway, shift={(12pt,1.5pt)}] {$\tilde{\mathbf{h}}_t$} (mulh);
+        \draw [arrowc2] (minus) -- (mulz);
+        \draw [arrowc2] (sigz) -- node[midway, left] {$\mathbf{z}_t$} (minus);
+        \draw [arrowc2] (mulh) -- (add);
+
+        % Arrows to output and current hidden states h_t
+        \draw [arrowc1] (add) coordinate[auto] -|(y);
+    \end{tikzpicture}
+    \captionsetup{singlelinecheck=false}
+    \caption[]{
+        \textbf{Gated Recurrent Unit (GRU) cell.}\cite{nntikz}
+        At time step $t$, the GRU receives the current input $x_t$ and the previous hidden state $h_{t-1}$, and computes the new hidden state $h_t$, which serves both as output and as recurrent input to the next time step.
+
+        \highspace
+        The \textbf{reset gate} $r_t = \sigma(W_r [h_{t-1}, x_t] + b_r)$ controls how much of the previous hidden state contributes to the candidate activation. When $r_t$ is close to $0$, past information is ignored; when it is close to $1$, past information is fully considered.
+
+        \highspace
+        The \textbf{candidate hidden state} is computed as
+        \begin{equation*}
+        \tilde{h}_t = \tanh\!\big(W_h [r_t \odot h_{t-1}, x_t] + b_h\big),
+        \end{equation*}
+        where the reset gate filters the past before combining it with the current input.
+
+        \highspace
+        The \textbf{update gate} $z_t = \sigma(W_z [h_{t-1}, x_t] + b_z)$ determines how much of the previous hidden state is retained and how much of the candidate is incorporated. The $1-$ term is a smart way to control at the same time the contribution of the past and the new candidate: $z=1$ drops the past ($1-z=0$) and fully incorporates the new candidate ($z=1$), while $z=0$ retains the past ($1-z=1$) and ignores the new candidate ($z=0$). The final hidden state is computed as
+        \begin{equation*}
+        h_t = (1 - z_t)\odot h_{t-1} + z_t \odot \tilde{h}_t,
+        \end{equation*}
+        which can be interpreted as a \textbf{learned interpolation} between past and new information.
+
+        \highspace
+        Unlike LSTMs, GRUs \textbf{do not maintain a separate cell state} $C_t$. Instead, the hidden state $h_t$ directly combines both short-term and long-term information, resulting in a \textbf{simpler and more computationally efficient architecture}.
+    }
+    \label{fig:gru}
+\end{figure}

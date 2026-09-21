@@ -1,0 +1,128 @@
+\subsubsection{One-Nearest-Neighbour Classification}\label{sec:one-nearest-neighbour-classification}
+
+In this section, we will make a very small change to the image-retrieval pipeline we have built in the previous section. \hl{Instead of only retrieving the closest image, use its label as the prediction for the query image.} We will implement a \textbf{1-NN classification in the latent space} by extracting the query feature vector, extracting all training-set feature vectors, computing distances, sorting them, and taking the label associated with the nearest training image.
+\begin{lstlisting}[language=Python]
+# feed the test image to the FEN
+image_features = fen.predict(test_image)
+
+# feed the entire training set to the FEN
+features = fen.predict(
+    X_train_val,
+    batch_size=512,
+    verbose=0
+)
+
+# compute L1-like distances
+distances = np.mean(
+    np.abs(features - image_features),
+    axis=-1
+)
+
+# sort by increasing distance
+sortedDistances = distances.argsort()
+
+# reorder images and labels
+ordered_images = X_train_val[sortedDistances]
+ordered_labels = y_train_val[sortedDistances]
+
+# closest sample is ordered_images[0]
+\end{lstlisting}
+Let's see step by step how this works:
+\begin{enumerate}
+    \item \textbf{Extract the query feature vector}:
+    \begin{lstlisting}[language=Python]
+# feed the test image to the FEN
+image_features = fen.predict(test_image)
+\end{lstlisting}
+    Given a query image $I_q$:
+    \begin{equation*}
+        \mathbf{z}_q = \text{FEN}(I_q)
+    \end{equation*}
+    The original CNN classifier is not needed here. We only use the \textbf{Feature Extraction Network (FEN)}.
+    
+    
+    \item \textbf{Extract the training representations}:
+    \begin{lstlisting}[language=Python]
+# feed the entire training set to the FEN
+features = fen.predict(
+    X_train_val,
+    batch_size=512,
+    verbose=0
+)
+\end{lstlisting}
+    For each training image $I_i$:
+    \begin{equation*}
+        \mathbf{z}_i = \text{FEN}(I_i)
+    \end{equation*}
+    So training set becomes a labelled feature database:
+    \begin{equation*}
+        \mathcal{D} = \left\{
+            \left(
+                \mathbf{z}_i , y_i
+            \right)
+        \right\}_{i=1}^{N}
+    \end{equation*}
+    In the code snippet above, we use a batch size of 512 to speed up the feature extraction process. The batch indicates how many images are processed in parallel by the FEN.
+
+
+    \item \textbf{Compute the distance to every training feature}:
+    \begin{lstlisting}[language=Python]
+# compute L1-like distances
+distances = np.mean(
+    np.abs(features - image_features),
+    axis=-1
+)
+\end{lstlisting}
+    We compute the distance between the query feature vector and every training feature vector. In this case, we use a \textbf{L1-like distance}:
+    \begin{equation*}
+        d(\mathbf{z}_i, \mathbf{z}_q) = \frac{1}{D} \sum_{j=1}^{D} \left| z_{i,j} - z_{q,j} \right|
+    \end{equation*}
+    Where $D$ is the dimension of the latent space. The result is a vector of distances:
+    \begin{equation*}
+        \mathbf{d} = [d(\mathbf{z}_q, \mathbf{z}_1), d(\mathbf{z}_q, \mathbf{z}_2), ..., d(\mathbf{z}_q, \mathbf{z}_N)]
+    \end{equation*}
+    Then all distances are sorted from smallest to largest:
+    \begin{lstlisting}[language=Python]
+# sort by increasing distance
+sortedDistances = distances.argsort()
+\end{lstlisting}
+
+
+    \item \textbf{Reorder the training images and labels}:
+    \begin{lstlisting}[language=Python]
+# reorder images and labels
+ordered_images = X_train_val[sortedDistances]
+ordered_labels = y_train_val[sortedDistances]
+\end{lstlisting}
+    The training images and labels are reordered according to the sorted distances. The closest training image is now the first element of the ordered list:
+    \begin{equation*}
+        I_{closest} = \texttt{ordered\_images}[0]
+    \end{equation*}
+    \begin{equation*}
+        y_{closest} = \texttt{ordered\_labels}[0]
+    \end{equation*}
+
+
+    \item \textbf{Copy the label of the closest sample}. Once the nearest representation has been found $\mathbf{z}_{i^*}$, where:
+    \begin{equation*}
+        i^* = \argmin_{i} d\left(\mathbf{z}_q, \mathbf{z}_i\right)
+    \end{equation*}
+    The predicted label is simply the label of the closest training image:
+    \begin{equation*}
+        \hat{y}_q = y_{i^*}
+    \end{equation*}
+    So the classifier is simply a \textbf{1-NN classifier in the latent space}:
+    \begin{equation*}
+        \hat{y}_q = y_{\argmin_{i} d\left(\mathbf{z}_q, \mathbf{z}_i\right)}
+    \end{equation*}
+\end{enumerate}
+In contrast to the image-retrieval pipeline, we do not need to display the retrieved images. We only need to return the label of the closest training image:
+\begin{equation*}
+    \text{query} \to \text{nearest latent vector} \to \text{take its label}
+\end{equation*}
+In summary, \hl{the CNN is valuable not only as a classifier, but also as a learned feature extractor whose latent space can support retrieval and even a simple nearest-neighbour classifier.}
+
+\highspace
+\begin{takeawaysbox}
+    \textbf{1-NN in latent space replaces the CNN's original classifier with a nearest-neighbour rule.} The FEN is retained to produce meaningful feature vectors; the query is classified with the label of the training image whose latent representation is closest.
+\end{takeawaysbox}

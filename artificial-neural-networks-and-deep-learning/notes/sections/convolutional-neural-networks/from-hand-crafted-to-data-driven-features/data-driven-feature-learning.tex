@@ -1,0 +1,218 @@
+\subsubsection{Data-Driven Feature Learning}\label{sec:data-driven-feature-learning}
+
+In the traditional approach, a human explicitly decides which measurements should represent an image:
+\begin{equation*}
+    \text{image} \to \underbrace{\text{hand-crafted feature extractor}}_{\text{designed by humans}} \to \underbrace{\text{classifier}}_{\text{learned from data}} \to \text{class}
+\end{equation*}
+For natural images, however, these manually chosen \textbf{measurements are often insufficient}. The alternative is to define a \textbf{parameterized feature extractor}:
+\begin{equation*}
+    \mathbf{x} = h_{\phi}(I)
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $I$ is the \textbf{input} image.
+    \item $h_{\phi}$ is the \textbf{feature-extraction function}, parameterized by $\phi$.
+    \item $\phi$ represents its \textbf{trainable parameters}.
+    \item $\mathbf{x}$ is the learned \textbf{feature vector}.
+\end{itemize}
+The \textbf{classifier} is another parameterized function $f_{\theta}$:
+\begin{equation*}
+    \hat{\mathbf{y}} = f_{\theta}\left(\mathbf{x}\right)
+\end{equation*}
+Where $\theta$ contains the \textbf{classifier parameters}. The complete model is therefore:
+\begin{equation*}
+    \hat{\mathbf{y}} = f_{\theta}\left(h_{\phi}(I)\right)
+\end{equation*}
+Now both $\phi$ (i.e., the parameters of the \emph{feature extractor}) and $\theta$ (i.e., the parameters of the \emph{classifier}) are learned from data.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``\emph{learning the features}'' mean?}}
+\end{flushleft}
+It does \textbf{not} mean that the model \textbf{produces a list of human-readable measurements} such as: \emph{wheel count}, \emph{average height}, \emph{perimeter}, \emph{number of windows}, etc. Instead, the \hl{model learns numerical transformations that produce internal activations useful for classification.}
+
+\highspace
+The learned feature vector may look like:
+\begin{equation*}
+    \mathbf{x} = \left[0.81, \; -0.24, \; 1.37, \; 0.05, \; \dots \right]^{T}
+\end{equation*}
+Individual components may not have an obvious semantic label. \textbf{What matters} is that, \hl{taken together, they make the classes easier to distinguish.}
+
+\highspace
+For example, images of cars may map to one region of the learned feature space, while motorbikes map to another:
+\begin{equation*}
+    h_{\phi}\left(I_{\text{car}}\right) \approx \text{ car region}, \quad h_{\phi}\left(I_{\text{motorbike}}\right) \approx \text{ motorbike region}
+\end{equation*}
+The \textbf{representation} is therefore \textbf{optimized for the task} rather than chosen according to what humans find immediately interpretable.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{bullseye} \textbf{The role of the training objective}}
+\end{flushleft}
+Suppose the training set is:
+\begin{equation*}
+    \mathcal{D} = \left\{\left(I_{n}, \; t_{n}\right)\right\}^{N}_{n=1}
+\end{equation*}
+Where $I_{n}$ is the $n$-th \textbf{image} and $t_{n}$ is its corresponding \textbf{class label}. The model produces:\footnote{%
+    The equation means that the feature extractor $h_{\phi}$ first transforms the input image $I_{n}$ into a feature vector, which is then passed to the classifier $f_{\theta}$ to produce the predicted class probabilities $\hat{\mathbf{y}}_{n}$.
+}
+\begin{equation*}
+    \hat{\mathbf{y}}_{n} = f_{\theta}\left(h_{\phi}\left(I_{n}\right)\right)
+\end{equation*}
+A loss function measures the classification error:\footnote{%
+    The loss function $\mathcal{L}$ quantifies the difference between the predicted class probabilities $\hat{\mathbf{y}}_{n}$ and the true class label $t_{n}$.
+}
+\begin{equation*}
+    \mathcal{L}\left(
+        f_{\theta}\left(h_{\phi}\left(I_{n}\right)\right), \; t_{n}
+    \right)
+\end{equation*}
+Remember that the \hl{loss function is a measure of how well the model's predictions match the true labels.} The \textbf{goal of training is to minimize this loss}:\footnote{%
+    Across all training examples (from $n=1$ to $N$), we want to find the parameters $\phi$ and $\theta$ that minimize the total classification error.
+}
+\begin{equation*}
+    \displaystyle\min_{\phi,\theta}\sum_{n=1}^{N} \mathcal{L}\left(
+        f_{\theta}\left(h_{\phi}\left(I_{n}\right)\right), \; t_{n}
+    \right)
+\end{equation*}
+The crucial point is that the optimization updates both: the \textbf{feature extractor parameters} $\phi$ and the \textbf{classifier parameters} $\theta$. So the classification error influences not only the classifier, but also the feature extractor.
+
+\highspace
+\begin{deepeningbox}[: How does the classification error influence the feature extractor?]
+    Let's \textbf{imagine the feature extractor is fixed}. So we have this pipeline:
+    \begin{equation*}
+        \text{Image} \to \underbrace{\text{Feature Extractor}}_{\text{fixed}} \to \text{Classifier} \to \text{Prediction}
+    \end{equation*}
+    Suppose the feature extractor outputs only two numbers: the \emph{average brightness} and the \emph{average color}. So every image is represented as $x = \left(\emph{brightness}, \emph{color}\right)$.
+
+    \highspace
+    Now suppose we want to distinguish between \emph{cars} and \emph{motorbikes}. Immediately we have a problem: cars and motorbikes can easily have the same average brightness and color. Let's say:
+    \begin{center}
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            \textbf{Image} & \textbf{Brightness} & \textbf{Color} \\
+            \midrule
+            Car & 0.63 & \text{blue} \\
+            Motorbike & 0.64 & \text{blue} \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    These two feature vectors are almost identical.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Can the classifier fix this?}} Obviously not. The classifier only sees the feature vector $\left(\emph{brightness}, \emph{color}\right)$, for example $\left(0.63, \text{blue}\right)$. It never sees \emph{wheels}, \emph{windows}, or \emph{doors}, because those were discarded by the feature extractor.
+
+    So no matter how powerful the classifier becomes, it \textbf{cannot invent information that no longer exists}.
+
+    \highspace
+    \textcolor{Red2}{\faIcon{book} \textbf{Therefore the error must say...}} Come back to the classification error. Suppose the network predicts a \emph{car} as a \emph{motorbike}. The loss function will produce a large error. If \textbf{only the classifier changes}, it is trying to solve a bad input representation to a good output, which may even be \textbf{impossible}.
+
+    \highspace
+    Instead, the loss says ``\emph{maybe the representation itself is bad}''. So it \textbf{modifies the classifier but also the feature extractor}. Thus, the error signal is \textbf{backpropagated} through the classifier to the feature extractor because if the loss increases, the only way to reduce it is to ask ``\emph{which quantities influenced this prediction?}'' The prediction depended on classifier weights and feature vector values. Then we ask ``\emph{where did the feature vector come from?}'' It came from the feature extractor. \hl{The error naturally propagates backwards because every quantity depends on the previous one.}
+
+    \highspace
+    Finally, the classification error influences the feature extractor because a high loss indicates that the current representation is not sufficiently useful for the classifier. Therefore, during training, \hl{both the feature extractor and the classifier are updated so that the feature extractor produces a better representation of the input and the classifier makes better use of that representation.}
+\end{deepeningbox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How the feature extractor receives a learning signal}}
+\end{flushleft}
+The classifier $f_{\theta}$ sits after the feature extractor $h_{\phi}$:
+\begin{equation*}
+    I \xrightarrow{h_{\phi}} \mathbf{x} \xrightarrow{f_{\theta}} \hat{\mathbf{y}}
+\end{equation*}
+Suppose the \textbf{classifier makes a wrong prediction}. Then, the loss gradient is propagated backward through the classifier and then into the feature extractor:
+\begin{equation*}
+    \text{loss} \to \text{classifier parameters} \to \text{feature-extractor parameters}
+\end{equation*}
+Through \textbf{backpropagation}, the \textbf{feature extractor is adjusted} so that future representations are more useful for the final task. Conceptually:
+\begin{equation*}
+    \text{bad classification} \implies \text{change classifier } + \text{ change extracted features}
+\end{equation*}
+This is fundamentally \textbf{different from the hand-crafted pipeline}, where the feature extractor remains fixed during training.
+
+\highspace
+This joint optimization (i.e., learning both the feature extractor and the classifier) is called \definition{End-to-End Learning}. The word \emph{end-to-end} means that the \hl{system is trained from raw input (the image) all the way to the final output (the class label).} For image classification, the pipeline is:
+\begin{equation*}
+    \text{pixels} \to \text{learned features} \to \text{class probabilities}
+\end{equation*}
+Which is optimized as one connected model. There is \hl{no separate stage where a human first produces a fixed vector and then trains a classifier} (as in the hand-crafted approach). Instead, the \textbf{entire transformation is learned for the task at hand}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Don't humans make any decisions?}} Data-driven feature learning does \textbf{not mean that humans make no design choices}! Humans still choose the architecture, the number and type of layers, the loss function, the training procedure, optimization hyperparameters, the dataset and labels, and so on. However, \textbf{what changes is that humans no longer explicitly define each visual feature}. Instead of programming the feature extractor, we \hl{define a trainable architecture and let the data determine its parameters.}
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Thanks to end-to-end learning, \emph{task-dependent features} are possible.}} A learned feature extractor is optimized for a particular objective. Suppose two networks receive the same images but are trained for different tasks:
+\begin{itemize}
+    \item Network A: classify vehicle type (car, motorbike, truck, etc.)
+    \item Network B: predict vehicle color (red, blue, green, etc.)
+\end{itemize}
+They may learn different representations. For vehicle type, shape and parts may be especially useful. For color prediction, chromatic information becomes more important. So learned features are usually \textbf{task-dependent}:
+\begin{equation*}
+    \text{training objective} \implies \text{representation features}
+\end{equation*}
+This is one reason end-to-end learning is so powerful: the \textbf{representation is adapted directly to the desired output}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Is a data-driven approach perfect?}}
+\end{flushleft}
+First of all, the feature extract can be interpreted as a transformation between spaces:
+\begin{equation*}
+    h_{\phi}: \mathcal{I} \to \mathbb{R}^{d}
+\end{equation*}
+Where $\mathcal{I}$ is the space of all possible images and $\mathbb{R}^{d}$ is the $d$-dimensional feature space. Raw image space is often \textbf{difficult for classification} because images of the same class may look very different at the pixel level (as discussed larger in previous sections). The learned transformation $h_{\phi}$ aims to reorganize them so that:
+\begin{equation*}
+    \text{same-class images} \to \text{similar representations}
+\end{equation*}
+And:
+\begin{equation*}
+    \text{different-class images} \to \text{separable representations}
+\end{equation*}
+The classifier then operates on this new feature space. A \textbf{major goal of the feature extractor} is therefore \textbf{make the classification problem easier}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle}} Now, can we define data-driven feature learning as a perfect solution? Unfortunately, \textbf{no}. Data-driven features \textbf{solve many limitations} of hand-crafted systems, but they \textbf{also change the requirements}. Hand-crafted features could exploit expert knowledge and work with limited data. Instead, a learned feature extractor usually \textbf{needs enough examples to discover useful regularities}. So the transition is approximately:
+\begin{equation*}
+    \text{more manual engineering} \xrightarrow{\text{data-driven}} \text{more learning from data}
+\end{equation*}
+Deep learning reduces the need to manually specify visual rules, but often requires:
+\begin{itemize}
+    \item[\textcolor{Red2}{\faIcon{exclamation}}] More training data.
+    \item[\textcolor{Red2}{\faIcon{exclamation}}] More computation.
+    \item[\textcolor{Red2}{\faIcon{exclamation}}] More trainable parameters.
+    \item[\textcolor{Red2}{\faIcon{exclamation}}] More careful optimization.
+\end{itemize}
+However, the \textbf{benefits of learning features from data} often outweigh these costs, especially for complex tasks like image classification.
+
+\highspace
+Now, if our \hl{goal is to learn the feature extractor from images} (i.e., to learn the transformation $h_{\phi}$), the next question is: \textbf{\emph{what type of trainable operation should we use to process images?}} A standard dense network could receive flattened pixels, but it would ignore the local spatial structure of images and require many parameters. Instead, \textbf{CNNs provide a more appropriate feature-extraction architecture} using local filters, shared parameters, multiple feature maps, hierarchical processing. In the next sections, we will explore how CNNs are designed to learn features from images in a data-driven way.
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item Data-driven feature learning makes the feature extractor trainable.
+        \item The image is transformed through a learned feature extractor into a feature vector:
+        \begin{equation*}
+            \mathbf{x} = h_{\phi}(I)
+        \end{equation*}
+        \item The classifier uses this feature vector to produce class probabilities:
+        \begin{equation*}
+            \hat{\mathbf{y}} = f_{\theta}\left(\mathbf{x}\right)
+        \end{equation*}
+        \item Training optimizes both sets of parameters $\phi$ and $\theta$ to minimize the classification loss:
+        \begin{equation*}
+            \displaystyle\min_{\phi,\theta}\sum_{n=1}^{N} \mathcal{L}\left(
+                f_{\theta}\left(h_{\phi}\left(I_{n}\right)\right), \; t_{n}
+            \right)
+        \end{equation*}
+        \item Classification errors are backpropagated through the classifier into the feature extractor.
+        \item End-to-end learning means training the complete mapping:
+        \begin{equation*}
+            \text{raw image} \to \text{prediction}
+        \end{equation*}
+        \item Learned features need not be human-readable; they need to be useful for the task.
+        \item CNNs are the architecture used to learn features from images in a data-driven way.
+    \end{itemize}
+\end{takeawaysbox}

@@ -1,0 +1,53 @@
+\subsubsection{CNN Convolution vs. RGB Image Filtering}\label{sec:cnn-convolution-vs-rgb-image-filtering}
+
+In this section, we clarify the distinction that is easy to miss because ``\emph{convolution on an RGB image}'' can mean two different operations depending on whether we are doing classical image filtering or using a CNN.
+
+\highspace
+The main distinction is simple:
+\begin{center}
+    Traditional RGB filtering keeps channels separate
+\end{center}
+Whereas:
+\begin{center}
+    CNN convolution mixes the input channels together to produce a single output channel
+\end{center}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Traditional Filtering of an RGB Image}}
+\end{flushleft}
+Recall that an RGB image consists of three channels:
+\begin{equation*}
+    I \in \mathbb{R}^{H \times W \times 3}
+\end{equation*}
+Which we can think of as $R$, $G$, and $B$ channels. In the case of traditional filtering, convolution $\circledast$ is performed \textbf{separately on each color channel}. For example:
+\begin{equation*}
+    R' = R \circledast w_R, \quad G' = G \circledast w_G, \quad B' = B \circledast w_B
+\end{equation*}
+The crucial point is that we \textbf{do not sum} these three channels together. Instead, we keep them separate and produce a new RGB image:
+\begin{equation*}
+    I' = \begin{bmatrix} R' \\ G' \\ B' \end{bmatrix} \in \mathbb{R}^{H' \times W' \times 3}
+\end{equation*}
+This makes sense for operations such as applying a blur to a color image (\autopageref{sec:examples-of-linear-image-filters}): we may want to blur the red, green, and blue planes while still obtaining an RGB image.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{A CNN does something different}}
+\end{flushleft}
+Now consider \textbf{one CNN filter} applied to the same RGB image (\autopageref{fig:lena-conv1}). We already know that a CNN filter spans the complete input depth. For an RGB input and a $3 \times 3$ spatial kernel, one filter has shape $3 \times 3 \times 3$. We can conceptually split that filter into three slices: $w_R$, $w_G$, and $w_B$. At a particular spatial position $(r,c)$, the CNN first computes a contribution from each channel: $s_R$, $s_G$, and $s_B$. But here comes the important difference:
+\begin{equation*}
+    a(r,c) = s_R + s_G + s_B + b
+\end{equation*}
+The channel-wise contributions are \textbf{summed}. So:
+\begin{equation*}
+    R, G, B \xrightarrow{\text{one CNN filter}} \text{one feature map}
+\end{equation*}
+Not three feature maps. Formally:
+\begin{equation*}
+    a(r,c) = \sum_{k=1}^{3} \sum_{u,v \in U} w(u,v,k) \cdot I(r+u, c+v, k) + b
+\end{equation*}
+The value $a(r,c)$ depends simultaneously on values from $R$, $G$, and $B$ channels. Consequently, after the convolution we should \textbf{not} think of the resulting map as a red, green, or blue image. Instead, it is a learned \textbf{feature map}.
+
+\begin{takeawaysbox}
+    Traditional RGB image filtering may convolve the $R$, $G$, and $B$ channels separately, preserving the three-channel structure. In a standard CNN convolution, instead, each filter spans all $C_{\text{in}}$ input channels: the channel-wise responses are summed at every spatial location, so one filter produces one 2D feature map. Thus, CNN convolution mixes information across channels, whether those channels are RGB components or feature maps from a previous layer.
+\end{takeawaysbox}

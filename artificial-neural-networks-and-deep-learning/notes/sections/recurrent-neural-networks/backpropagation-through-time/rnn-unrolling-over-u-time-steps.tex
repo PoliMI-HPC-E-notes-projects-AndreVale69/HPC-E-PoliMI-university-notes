@@ -1,0 +1,318 @@
+\subsubsection{RNN unrolling over \texorpdfstring{$U$}{U} time steps}
+
+Imagine a normal Feed-Forward Neural Network (FNN):
+\begin{equation*}
+    x \rightarrow \text{[Layer 1]} \rightarrow \text{[Layer 2]} \rightarrow \ldots \rightarrow \text{[Layer N]} \rightarrow y
+\end{equation*}
+Each layer transforms the signal and passes it forward to the next layer. This is \textbf{deep in space} because we have multiple layers stacked vertically (one on top of the other).
+
+\highspace
+Now, instead of stacking layers in space (vertically), we stack the \emph{same} layer \textbf{in time} (horizontally):
+\begin{equation*}
+    \underbrace{\text{RNN cell}}_{t=1} \rightarrow \underbrace{\text{RNN cell}}_{t=2} \rightarrow \ldots \rightarrow \underbrace{\text{RNN cell}}_{t=U}
+\end{equation*}
+That's all unrolling is. \textbf{Each cell is the same network}. It just receives \textbf{different inputs} ($x_1$, $x_2$, $\ldots$, $x_U$) at each time step and the \textbf{previous hidden state} instead of the previous layer's output. So, an RNN is basically \textbf{a small neural network copied over and over along the time axis}, all copies share the same weights and each copy processes one timestep.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What is an RNN cell?}} A \textbf{cell} is the \emph{tiny neural network} that computes:
+\begin{equation*}
+    h_t = f\left(W_x \cdot x_t + W_h \cdot h_{t-1} + b\right)
+\end{equation*}
+This little network contains:
+\begin{itemize}
+    \item The weight matrix $W_x$ that processes the \textbf{current input} $x_t$;
+    \item The weight matrix $W_h$ that processes the \textbf{previous hidden state} $h_{t-1}$;
+    \item The bias vector $b$;
+    \item The activation function $f$ (e.g., $\tanh$ or ReLU).
+\end{itemize}
+This is the \textbf{entire RNN}. A cell is a function:
+\begin{equation*}
+    \left(x_t, \, h_{t-1}\right) \mapsto h_t
+\end{equation*}
+That's it. See \autoref{fig:single-rnn-cell}, \autopageref{fig:single-rnn-cell} for a visual representation of the RNN cell.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What does it mean that ``all cells are the same''?}} It means:
+\begin{itemize}
+    \item They use the \textbf{same weight matrices}, the same $W_x$, $W_h$, and $b$, for every time step.
+    \item They are the \textbf{same function} applied repeatedly over time. The RNN does not create new parameters at each time step; it \textbf{reuses the same ones}.
+\end{itemize}
+In code, an RNN is just a \textbf{for loop} that applies the same function (the RNN cell) to each input in the sequence, passing along the hidden state:
+\begin{lstlisting}[language=Python]
+h = h0  # initial hidden state
+for t in range(U):
+    # same RNN_cell function at each time step
+    h = RNN_cell(x[t], h)\end{lstlisting}
+There is only \textbf{one copy} of $W_x$ and $W_h$ in memory, shared across all time steps. But the loop executes \textbf{multiple times}, so it \emph{looks like} the function is repeated many times. In previous diagrams, we drew \textbf{multiple copies of the cell} to illustrate the unrolling over time, but in reality, it's \textbf{just the same cell being applied repeatedly}.
+
+\begin{figure}[!htp]
+\centering
+\tikzsetnextfilename{rnn-computation-graph-forward-backward}
+\tikzwidth{\textwidth}
+\begin{tikzpicture}[
+    >=Stealth,
+    every node/.style={font=\small},
+    vec/.style={
+        draw,
+        rounded corners,
+        fill=blue!10,
+        minimum width=1.4cm,
+        minimum height=0.8cm,
+        align=center
+    },
+    block/.style={
+        draw,
+        rounded corners,
+        fill=orange!15,
+        minimum width=2.2cm,
+        minimum height=1cm,
+        align=center
+    },
+    sum/.style={
+        draw,
+        circle,
+        fill=green!10,
+        minimum size=0.8cm,
+        inner sep=0pt
+    },
+    note/.style={
+        font=\footnotesize\itshape,
+        align=center
+    }
+]
+
+% Inputs
+\node[vec] (xt) at (0, 1.6) {$x_t$};
+\node[vec] (htm1) at (0, -1.6) {$h_{t-1}$};
+
+% Linear transforms
+\node[block] (wx) at (3, 1.6) {$W_x x_t$};
+\node[block] (wh) at (3, -1.6) {$W_h h_{t-1}$};
+
+% Sum node
+\node[sum] (sum) at (6, 0) {$+$};
+
+% Bias
+\node[vec] (b) at (6, -2.8) {$b$};
+
+% Activation
+\node[block] (act) at (8.7, 0) {$f(\cdot)$};
+
+% Output
+\node[vec] (ht) at (11.3, 0) {$h_t$};
+
+% Arrows
+\draw[->, thick] (xt) -- (wx);
+\draw[->, thick] (htm1) -- (wh);
+\draw[->, thick] (wx) -- (sum);
+\draw[->, thick] (wh) -- (sum);
+\draw[->, thick] (b) -- (sum);
+\draw[->, thick] (sum) -- node[above] {$a_t$} (act);
+\draw[->, thick] (act) -- (ht);
+
+% Labels
+\node[note] at (3, 2.65) {input contribution};
+\node[note] at (3, -2.65) {recurrent contribution};
+\node[note] at (6, -3.8) {bias term};
+\node[note] at (8.7, 1.0) {nonlinearity};
+
+% Formula
+\node[align=center] at (5.8, -5.2) {
+$\displaystyle
+a_t = W_x x_t + W_h h_{t-1} + b
+\qquad
+h_t = f(a_t)
+$};
+
+\end{tikzpicture}
+\caption{\textbf{Zoom-in of a single RNN cell}. The cell combines the current input $x_t$ and the previous hidden state $h_{t-1}$ through two linear transformations, adds the bias $b$, and applies a nonlinearity $f(\cdot)$ to produce the new hidden state $h_t$.}
+\label{fig:single-rnn-cell}
+\end{figure}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What does ``unroll'' mean?}}
+\end{flushleft}
+It means we create \textbf{U copies} of the RNN cell, one per time step:
+\begin{equation*}
+    \begin{array}{rcl}
+        x_{t-3} \rightarrow & \underbrace{\text{RNN cell}}_{t-3} & \rightarrow h_{t-3} \\[1.4em]
+        x_{t-2} \rightarrow & \underbrace{\text{RNN cell}}_{t-2} & \rightarrow h_{t-2} \\[1.4em]
+        x_{t-1} \rightarrow & \underbrace{\text{RNN cell}}_{t-1} & \rightarrow h_{t-1} \\[1.4em]
+        x_{t}   \rightarrow & \underbrace{\text{RNN cell}}_{t}   & \rightarrow h_{t}
+    \end{array}
+\end{equation*}
+Each cell processes its own input and previous hidden state, producing its own output hidden state. But \textbf{all cells share the same weights}. Unrolling is just a way to visualize how the RNN processes sequences over time. This means:
+\begin{itemize}
+    \item In forward propagation $\to$ every timestep uses the same weights to compute its hidden state.
+    \item In backpropagation $\to$ gradients from all time steps accumulate to update the \emph{same} weights.
+    \item In update rules $\to$ we average (or sum) gradients from all time steps to adjust the shared weights.
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why unroll an RNN?}} Unrolling helps us understand how the RNN processes sequences step-by-step. But, more importantly, unrolling is essential for \textbf{training} the RNN using \emph{Backpropagation Through Time (BPTT)}. BPTT requires a DAG (Directed Acyclic Graph) structure to compute gradients, explicit connections between operations, and a clear path for gradients to flow backward through time. The RNN loop must be turned into a \textbf{long chain} before we can apply backpropagation. See \autoref{fig:rnn-unrolling}, \autopageref{fig:rnn-unrolling}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Mathematical view of unrolling}}
+\end{flushleft}
+For $U$ time steps, the loss function $E$ depends on the outputs at each time step:
+\begin{equation*}
+    E = \sum_{t=1}^{U} E_t
+\end{equation*}
+Where $E_t$ is the \textbf{loss at time step} $t$. Each output $h_t$ depends on the weights $W_x$, $W_h$, and $b$ shared across all time steps. During backpropagation, we compute the gradients of the loss with respect to the weights:
+\begin{equation*}
+    \frac{\partial E}{\partial W_x} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial W_x}, \quad
+    \frac{\partial E}{\partial W_h} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial W_h}, \quad
+    \frac{\partial E}{\partial b} = \sum_{t=1}^{U} \frac{\partial E_t}{\partial b}
+\end{equation*}
+This means that the \textbf{total gradient for each weight matrix is the sum of the gradients from each time step}. This accumulation is crucial for updating the shared weights during training. Each term depends not just on timestep $t$ but via the recurrence on all previous timesteps:
+\begin{equation*}
+    h_{t-1}, \, h_{t-2}, \, \ldots, \, h_0
+\end{equation*}
+This is why we need to unroll the RNN: to explicitly see how each time step's output depends on all previous time steps, allowing us to compute gradients correctly through time. Also, this is what makes RNN training \textbf{deep in time} (many time steps) rather than deep in space (many layers).
+
+\highspace
+In summary, when training:
+\begin{enumerate}
+    \item \textbf{Choose U}, the number of past steps to backpropagate (full sequence or truncated).
+    \item \textbf{Create U replicas} of the RNN cell in computation graph.
+    \item \textbf{Forward pass}, compute:
+    \begin{equation*}
+        h_{t-U}, \, h_{t-U+1}, \, \ldots, \, h_{t}
+    \end{equation*}
+    With shared weights.
+    \item \textbf{Backward pass}, compute gradients from $t$ down to $t-U$:
+    \begin{equation*}
+        \frac{\partial E}{\partial W_x}, \quad \frac{\partial E}{\partial W_h}, \quad \frac{\partial E}{\partial b}
+    \end{equation*}
+    \item \textbf{Combine all gradients} for shared weights $W_x$, $W_h$, and $b$.
+    \item \textbf{Update} the single shared weight matrices using the combined gradients.
+\end{enumerate}
+
+\begin{algorithm}[H]
+    \caption*{RNN Unrolling over $U$ Time Steps (with BPTT)}
+    \begin{algorithmic}[1]
+        \Require Sequence $\{x_1, \dots, x_U\}$, initial hidden state $h_0$
+        \Require Parameters $W_x, W_h, b$, learning rate $\eta$
+
+        \State $h_0 \gets \text{initial hidden state}$
+        \State $E \gets 0$
+
+        \Comment{Forward pass (unrolling)}
+        \For{$t = 1$ to $U$}
+            \State $h_t \gets f(W_x x_t + W_h h_{t-1} + b)$
+            \State Compute loss $E_t$
+            \State $E \gets E + E_t$
+        \EndFor
+
+        \Comment{Initialize gradients}
+        \State $\frac{\partial E}{\partial W_x} \gets 0$
+        \State $\frac{\partial E}{\partial W_h} \gets 0$
+        \State $\frac{\partial E}{\partial b} \gets 0$
+
+        \Comment{Backward pass (BPTT)}
+        \For{$t = U$ down to $1$}
+            \State Compute $\frac{\partial E_t}{\partial h_t}$
+            \State Propagate gradient through time to $h_{t-1}$
+            \State Accumulate:
+            \State \hspace{1em} $\frac{\partial E}{\partial W_x} \gets \frac{\partial E}{\partial W_x} + \frac{\partial E_t}{\partial W_x}$
+            \State \hspace{1em} $\frac{\partial E}{\partial W_h} \gets \frac{\partial E}{\partial W_h} + \frac{\partial E_t}{\partial W_h}$
+            \State \hspace{1em} $\frac{\partial E}{\partial b} \gets \frac{\partial E}{\partial b} + \frac{\partial E_t}{\partial b}$
+        \EndFor
+
+        \Comment{Parameter update}
+        \State $W_x \gets W_x - \eta \cdot \frac{\partial E}{\partial W_x}$
+        \State $W_h \gets W_h - \eta \cdot \frac{\partial E}{\partial W_h}$
+        \State $b \gets b - \eta \cdot \frac{\partial E}{\partial b}$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[!htp]
+    \centering
+    \tikzsetnextfilename{rnn-unrolling}
+    \begin{tikzpicture}[
+        >=Stealth,
+        node distance=1.6cm,
+        every node/.style={font=\small},
+        input/.style={
+            draw,
+            rounded corners,
+            fill=blue!10,
+            minimum width=1.1cm,
+            minimum height=0.7cm
+        },
+        cell/.style={
+            draw,
+            rounded corners,
+            fill=orange!15,
+            minimum width=1.4cm,
+            minimum height=0.9cm
+        },
+        state/.style={
+            draw,
+            circle,
+            fill=green!12,
+            minimum size=0.8cm
+        },
+        note/.style={
+            font=\footnotesize\itshape
+        }
+    ]
+
+    % Top hidden state
+    \node[state] (h0) {$h_0$};
+
+    % Step 1
+    \node[cell, below=1.2cm of h0] (c1) {RNN};
+    \node[state, below=1.2cm of c1] (h1) {$h_1$};
+    \node[input, left=1.8cm of c1] (x1) {$x_1$};
+
+    % Step 2
+    \node[cell, below=1.2cm of h1] (c2) {RNN};
+    \node[state, below=1.2cm of c2] (h2) {$h_2$};
+    \node[input, left=1.8cm of c2] (x2) {$x_2$};
+
+    % Dots
+    \node[below=1.2cm of h2] (dots1) {$\vdots$};
+    \node[left=1.8cm of dots1] (dots2) {$\vdots$};
+
+    % Final step U
+    \node[cell, below=1.2cm of dots1] (cU) {RNN};
+    \node[state, below=1.2cm of cU] (hU) {$h_U$};
+    \node[input, left=1.8cm of cU] (xU) {$x_U$};
+
+    % Hidden chain (vertical)
+    \draw[->, thick] (h0) -- (c1);
+    \draw[->, thick] (c1) -- (h1);
+    \draw[->, thick] (h1) -- (c2);
+    \draw[->, thick] (c2) -- (h2);
+    \draw[->, thick] (h2) -- (dots1);
+    \draw[->, thick] (dots1) -- (cU);
+    \draw[->, thick] (cU) -- (hU);
+
+    % Inputs
+    \draw[->, thick] (x1) -- (c1);
+    \draw[->, thick] (x2) -- (c2);
+    \draw[->, thick] (xU) -- (cU);
+
+    % Time labels
+    \node[right=0.6cm of c1] {$t=1$};
+    \node[right=0.6cm of c2] {$t=2$};
+    \node[right=0.6cm of cU] {$t=U$};
+
+    % Shared weights label
+    \node[note, right=2.3cm of h2, align=center] (shared)
+    {same cell\\shared parameters\\$W_x,\, W_h,\, b$};
+
+    \draw[dashed, gray] (shared.west) -- (c1.east);
+    \draw[dashed, gray] (shared.west) -- (c2.east);
+    \draw[dashed, gray] (shared.west) -- (cU.east);
+
+    % Optional brace (right side)
+    \draw[decorate, decoration={brace, amplitude=6pt}, thick]
+    ([xshift=1.8cm]h0.north) --
+    ([xshift=1.8cm]hU.south)
+    node[midway, right=8pt] {unrolled over $U$ time steps};
+
+    \end{tikzpicture}
+    \caption{Unrolling an RNN over $U$ time steps. Each RNN cell processes its own input and previous hidden state, producing its own output hidden state. All cells share the same parameters, illustrating how the same function is applied repeatedly across time.}
+    \label{fig:rnn-unrolling}
+\end{figure}

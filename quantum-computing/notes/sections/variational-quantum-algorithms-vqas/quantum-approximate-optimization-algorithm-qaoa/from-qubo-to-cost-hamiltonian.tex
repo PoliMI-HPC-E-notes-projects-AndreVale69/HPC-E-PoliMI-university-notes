@@ -1,0 +1,80 @@
+\subsubsection{From QUBO to Cost Hamiltonian}\label{sec:from-qubo-to-cost-hamiltonian}
+
+We have:
+\begin{itemize}
+    \item An optimization problem;
+    \item The optimization problem is expressed as a QUBO problem;
+    \item The $Q$ matrix is known and contains the coefficients of the QUBO problem.
+\end{itemize}
+But a quantum computer cannot optimize binary variables $x_i \in \{0, 1\}$ directly. Instead, it evolves \textbf{quantum states} under a \textbf{Hamiltonian}. So in this section we will see \textbf{\emph{how to convert a classical QUBO into a quantum Cost Hamiltonian}}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Step 1: Binary variables $\to$ Spin variables (QUBO $\to$ Ising model)}}
+\end{flushleft}
+A quantum computer does \textbf{not naturally understand binary variables} $x_i \in \{0, 1\}$. It naturally manipulates \textbf{qubits}, whose computational basis states are eigenstates of the Pauli-Z operator. The eigenvalues of the Pauli-Z operator are $\pm 1$, which is not the same as the binary values $0$ and $1$, but are exactly the values of \textbf{spin variables}! So we first rewrite the optimization problem using spins.
+
+\highspace
+Suppose we have a QUBO problem:
+\begin{equation*}
+    \min_{x} x^T Q x \quad \text{s.t. } x_i \in \{0, 1\}
+\end{equation*}
+Substitute the binary variables $x_i$ with spin variables $s_i$ using the relation:
+\begin{equation}\label{eq:binary-to-spin}
+    s = 2x - 1 \quad \Longleftrightarrow \quad x = \frac{1 + s}{2}
+\end{equation}
+After substituting $x_i = \frac{1 + s_i}{2}$ into the QUBO objective function (\autopageref{eq:qubo-formulation}):
+\begin{equation*}
+    y = \sum_{i} a_{i} x_{i} + \sum_{i > j} q_{ij} x_{i} x_{j}
+\end{equation*}
+Every QUBO can be rewritten as an Ising model (\autopageref{eq:ising-energy-function}):
+\begin{equation*}
+    \underbrace{y}_{H_{\text{Ising}}} = c + \sum_i S_{ii} s_i + \sum_{i>j} S_{ij} s_i s_j
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $c$ is a constant term that does not depend on the spin variables $s_i$;
+    \item $S_{ii}$ are the local fields (linear coefficients);
+    \item $S_{ij}$ are the coupling strengths (quadratic coefficients).
+\end{itemize}
+Notice that the Ising model has the same structure as the QUBO problem: a linear term (the first sum) and a quadratic term (the second sum). The only difference is that the variables are now spins $s_i \in \{-1, +1\}$ instead of binary variables $x_i \in \{0, 1\}$. Also, the matrix $Q$ is \textbf{replaced} by a new matrix $S$ that contains the \textbf{coefficients of the Ising model}, but \textbf{describe exactly the same optimization problem} as the original QUBO.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Step 2: From Ising Model to Cost Hamiltonian}}
+\end{flushleft}
+The Ising model is a classical model that describes the energy of a system of spins. However, the spins are still classical objects that can only be in one of two possible states. To ``\emph{quantize}'' the Ising model, we replace the classical spin variables $s_i$ with quantum operators. The natural choice for this is the Pauli-$Z$ operator, which has eigenvalues $\pm 1$ and acts on qubits (\autopageref{sec:quantum-ising-model}). The resulting quantum Hamiltonian is called the \definition{Cost Hamiltonian}:
+\begin{equation}\label{eq:cost-hamiltonian}
+    H_C = \sum_i S_{ii} \sigma_{Z}^{i} + \sum_{i > j} S_{ij} \sigma_{Z}^{i} \sigma_{Z}^{j}
+\end{equation}
+Nothing of difficult has happened here: we have \textbf{simply replaced the classical spin variables $s_i$ with quantum operators} $\sigma_{Z}^{i}$, which act on the $i$-th qubit. This simple \textbf{replacement is allowed} because the \textbf{Pauli-Z operator preserves the mathematical structure of the optimization problem} while turning it into a quantum operator:
+\begin{equation*}
+    Z\ket{0} = \ket{0}, \quad Z\ket{1} = -\ket{1}, \quad \text{with eigenvalues } +1 \text{ and } -1
+\end{equation*}
+
+\highspace
+The resulting Hamiltonian $H_C$ is a matrix of size $2^n \times 2^n$, where $n$ is the number of qubits. This exponential growth in size is due to the fact that each term $\sigma_{Z}^{i}$ acts on a different qubit, and the total Hilbert space is the tensor product of all the qubits ($I \otimes I \otimes \dots \otimes \sigma_Z^i \otimes \dots \otimes I$).
+
+\highspace
+The Cost Hamiltonian is a quantum operator that encodes the same optimization problem as the original QUBO, but in a form that can be manipulated by a quantum computer. Also, it is \textbf{diagonal} and \textbf{enumerates the energy of all possible states}, which is exactly what we need for optimization.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does the constant disappear?}} The constant term $c$ does not appear in the Hamiltonian because \hl{adding a constant to every energy level does \textbf{not} change which state has the lowest energy}. Since optimization only depends on the ordering of the energies, the constant term can be safely ignored.
+
+\highspace
+In summary, to obtain the Cost Hamiltonian from a QUBO problem, we follow these steps:
+\begin{enumerate}
+    \item The QUBO formulation is rewritten in terms of spin variables using the transformation $s=2x-1$. This produces a spin objective function of the form:
+    \begin{equation*}
+        y = c + \sum_i S_{ii} s_i + \sum_{i>j} S_{ij} s_i s_j
+    \end{equation*}
+    \item Each spin variable $s_i$ is replaced by the corresponding Pauli-$Z$ operator $\sigma_{Z}^{i}$, obtaining the Cost Hamiltonian:
+    \begin{equation*}
+        H_C = \sum_i S_{ii} \sigma_{Z}^{i} + \sum_{i > j} S_{ij} \sigma_{Z}^{i} \sigma_{Z}^{j}
+    \end{equation*}
+    The constant term can be discarded because it shifts all energies equally.
+\end{enumerate}
+The resulting Hamiltonian is diagonal, acts on quantum states, and its ground state corresponds to the optimal solution of the original optimization problem.
+
+\highspace
+At this point, we have successfully built the Cost Hamiltonian. The remaining question is purely practical: \emph{how do we implement} $U_C(\gamma) = e^{-i \gamma H_C}$ (i.e., the unitary operator corresponding to the Cost Hamiltonian) \emph{as an actual quantum circuit?} The next section answers this.

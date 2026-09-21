@@ -1,0 +1,80 @@
+\subsubsection{Encoder-Decoder Framework}
+
+In the previous subsection, we expressed the conditional probability of an output sequence as:
+\begin{equation*}
+    P\left(y_1, y_2, \dots, y_n \mid x\right)
+    =
+    \prod_{t=1}^{n}
+    P\left(y_t \mid y_1, \dots, y_{t-1}, x\right)
+\end{equation*}
+This formulation requires a model that can:
+\begin{enumerate}
+    \item Process the input sequence $x$;
+    \item Keep track of the previously generated outputs $y_1, \dots, y_{t-1}$;
+    \item Predict the next token $y_t$ at each timestep.
+\end{enumerate}
+
+\highspace
+To achieve this, we use the \definition{Encoder-Decoder Framework}, which decomposes the problem into two components (\emph{divide and conquer}):
+\begin{enumerate}
+    \item An \textbf{encoder}, which processes the input sequence $x$ and produces a fixed-dimensional representation (the context vector).
+    \item A \textbf{decoder}, which generates the output sequence $y$ one token at a time, conditioned on the context vector and the previously generated tokens.
+\end{enumerate}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{box} \textbf{Encoder}}
+\end{flushleft}
+The \definition{Encoder} is a Recurrent Neural Network (e.g., RNN, LSTM, or GRU) that \textbf{reads the input sequence one element at a time}:
+\begin{equation}\label{eq:encoder}
+    h_{t}^{\text{enc}} = \text{RNN}_{\text{enc}}\left(x_t, h_{t-1}^{\text{enc}}\right)
+\end{equation}
+At the final timestep $m$, the \textbf{hidden state contains a representation of the entire input sequence}:
+\begin{equation}\label{eq:context-vector}
+    c = h_m^{\text{enc}}
+\end{equation}
+This vector $c$ is called the \definition{Context Vector}, and it \textbf{summarizes the input sequence}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{box-open} \textbf{Decoder}}
+\end{flushleft}
+The \definition{Decoder} is another Recurrent Neural Network that \textbf{generates the output sequence one token at a time}. It is initialized using the \emph{context vector} $c$:
+\begin{equation*}
+    s_{0} = c
+\end{equation*}
+At each timestep $t$, the decoder updates its hidden state as:
+\begin{equation}\label{eq:decoder}
+    s_{t} = \text{RNN}_{\text{dec}}\left(y_{t-1}, s_{t-1}\right)
+\end{equation}
+And produces a probability distribution over the next token:
+\begin{equation*}
+    P\left(y_t \mid y_{<t}, x\right)
+\end{equation*}
+Where $y_{<t} = \left(y_1, \dots, y_{t-1}\right)$ are the previously generated tokens.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Where is $x$ in the decoder?}} The input sequence $x$ is encoded into the context vector $c$, which is used to initialize the decoder's hidden state. Thus, the decoder has access to the information from $x$ through its initial state and can use it to generate the output sequence.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Key idea.}} The encoder transforms the input sequence into a fixed-dimensional representation, and the decoder uses this representation to generate the output sequence step by step.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this necessary?}} This architecture allows us to handle:
+\begin{itemize}
+    \item Variable-length input sequences;
+    \item Variable-length output sequences;
+    \item Different input and output lengths ($m \neq n$).
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why not just use a single RNN?}} A single RNN would struggle to capture the complex dependencies between the input and output sequences, especially when they have different lengths. The encoder-decoder framework provides a structured way to model these dependencies by separating the processing of the input and output sequences.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitation of the basic encoder-decoder}}
+\end{flushleft}
+The basic encoder-decoder architecture can \textbf{struggle with long input sequences}, as the \textbf{context vector $c$ may not be able to capture all the necessary information}. This is reasonable, since $c$ is a fixed-dimensional vector that must summarize the entire input sequence, which can be very long and complex. This problem is known as the \definition{Bottleneck Problem}. To address this issue, more advanced architectures such as \textbf{attention mechanisms} have been developed, which allow the decoder to access different parts of the input sequence directly, rather than relying solely on a fixed context vector.
+
+\highspace
+\begin{definitionbox}[: Bottleneck Problem]
+    The \definition{Bottleneck Problem} arises because the \textbf{encoder compresses the entire input sequence into a single fixed-size context vector}, which may not be sufficient to retain all relevant information, especially for long sequences.
+\end{definitionbox}

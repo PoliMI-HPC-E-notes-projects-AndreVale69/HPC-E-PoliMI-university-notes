@@ -1,0 +1,229 @@
+\subsubsection{Training the Neural Language Model}\label{sec:training-the-neural-language-model}
+
+Up to now we have studied:
+\begin{enumerate}
+    \item \emph{Why Bengio's model was proposed} (\autopageref{sec:bengio-et-al-2003});
+    \item \emph{Its architecture} (\autopageref{sec:architecture-of-the-neural-language-model});
+    \item \emph{A complete forward pass of the model} (\autopageref{ex:two-word-context}).
+\end{enumerate}
+Now we must answer the next question: \textbf{\emph{how is the network actually\break trained?}} The answer is surprisingly simple: \hl{train the network so that the correct next word receives the highest probability.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What parameters are being learned?}} The goal of training is to learn the parameters of the network, which are:
+\begin{equation*}
+    \theta = \left(C, H, U, d, b\right)
+\end{equation*}
+Where $C$ is the word embedding matrix (stores word vectors), $H$ is the hidden layer weight matrix (connects projection layer to hidden layer), $U$ is the output layer weight matrix (connects hidden layer to output layer), $d$ is the hidden layer bias vector, and $b$ is the output layer bias vector. These parameters are learned by minimizing a loss function that quantifies how well the model predicts the next word given the context.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Maximum Likelihood Training}}
+\end{flushleft}
+Suppose our training sentence is ``\emph{the cat sleeps}''. Using a two-word context ``$\left(\emph{The}, \emph{cat}\right) \to \emph{sleeps}$'', the network outputs:
+\begin{center}
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Word} & \textbf{Probability} \\
+        \midrule
+        \emph{sleeps} & 0.40 \\
+        \emph{eats} & 0.30 \\
+        \emph{jumps} & 0.20 \\
+        \emph{computer} & 0.0001 \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+The correct answer is ``\emph{sleeps}''. We therefore want $P\left(\emph{sleeps} \, | \, \emph{the}, \emph{cat}\right)$ to becomes as large as possible.
+
+\highspace
+Formally, for a single training example:
+\begin{equation*}
+    \left(w_{t-N+1}, \dots, w_{t-1}, w_t\right)
+\end{equation*}
+The model predicts:
+\begin{equation*}
+    \hat{P}(w_t \, | \, \underbrace{w_{t-N+1}, \dots, w_{t-1}}_{\text{context}})
+\end{equation*}
+This is the probability assigned to the correct next word $w_t$ given the context. The \hl{training objective} is:
+\begin{equation*}
+    \max \hat{P}(w_t \, | \, w_{t-N+1}, \dots, w_{t-1})
+\end{equation*}
+In other words, we want to maximize the probability of the correct next word given the context. This is known as \emph{\textbf{maximum likelihood training}}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How do we maximize the probability of the correct next word?}}
+\end{flushleft}
+Naturally we would like to solve:
+\begin{equation*}
+    \max_{\theta} \hat{P}(w_t \, | \, w_{t-N+1}, \dots, w_{t-1}; \, \theta)
+\end{equation*}
+Where $\theta$ represents all network parameters. So, \emph{\textbf{why not maximize the probability of the correct next word directly?}} Two major problems arise:
+\begin{enumerate}
+    \item \important{We have many training examples}. A corpus (i.e., a collection of training sentences) contains millions of examples:
+    \begin{equation*}
+        \left(
+            w^{(1)}, w^{(2)}, \dots, w^{(M)}
+        \right)
+    \end{equation*}
+    The probability of the entire dateset is:
+    \begin{equation*}
+        L\left(\theta\right) = \prod_{k=1}^{M} P\left(w_{t}^{(k)} \, | \, \text{context}^{(k)}\right)
+    \end{equation*}
+    This is called the \textbf{likelihood function}. Notice the product over all training examples. If we have a million examples and each probability is around $0.01 - 0.1$, then:
+    \begin{equation*}
+        0.1^{1,000,000} \approx 0
+    \end{equation*}
+    Is an absurdly tiny number. Numerically impossible to handle.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Take the logarithm.}} Instead of maximizing:
+    \begin{equation*}
+        L\left(\theta\right) = \prod_{k} P_k
+    \end{equation*}
+    We maximize:
+    \begin{equation*}
+        \log L\left(\theta\right) = \log\left(\prod_k P_k\right)
+    \end{equation*}
+    Using the logarithm property $\log(ab) = \log a + \log b$:
+    \begin{equation*}
+        \log L\left(\theta\right) = \sum_k \log P_k
+    \end{equation*}
+    This is the classical mathematical trick of log-likelihood maximization. Instead of maximizing the product of probabilities, we maximize the sum of log-probabilities. This is possible because the logarithm is a monotonic function. Thus, if $a > b$, then $\log a > \log b$, thus maximizing $\log L\left(\theta\right)$ is equivalent to maximizing $L\left(\theta\right)$.
+
+    In short, the logarithm transforms products into sums, \hl{avoids numerical underflow} caused by multiplying many small probabilities, and produces a loss function that is easier to optimize with gradient-based methods (solution to the second problem, see below).
+
+
+    \item \important{Deep learning optimizers minimize}. Historically, optimization algorithms are formulated as:
+    \begin{equation*}
+        \min_{\theta} E(\theta)
+    \end{equation*}
+    Not:
+    \begin{equation*}
+        \max_{\theta} L(\theta)
+    \end{equation*}
+    This is a minor problem, but it is solved by simply negating the log-likelihood:
+    \begin{equation*}
+        \min_{\theta} -\log L(\theta)
+    \end{equation*}
+    Therefore, we will minimize the \definition{Negative Log-Likelihood (NLL)}:
+    \begin{equation}
+        -\log L(\theta) = -\sum_k \log P_k
+    \end{equation}
+    Furthermore, there is another \textbf{deep-learning reason} to minimize the negative log-likelihood instead of maximizing the log-likelihood. Imagine we maximize directly $P$. When $P$ gets close to $1$, \hl{gradients become very small and learning becomes difficult}. Instead, using the negative log-likelihood $-\log\left(P\right)$ gives a much stronger signal when the model is wrong. Look:
+    \begin{center}
+        \begin{tabular}{@{} c c @{}}
+            \toprule
+            $P$ & $-\log\left(P\right)$ \\
+            \midrule
+            $0.9$ & $0.105$ \\
+            $0.5$ & $0.693$ \\
+            $0.1$ & $2.30$ \\
+            $0.01$ & $4.60$ \\
+            $0.001$ & $6.90$ \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    Notice how a terrible prediction $P = 0.001$ gets punished much more strongly.
+\end{enumerate}
+In summary, the purpose of Negative Log-Likelihood is to \textbf{quantify how good or bad the prediction is}. But, notice something important: \hl{NLL assumes we already know a probability.} It requires $P\left(\emph{correct word}\right)$ as input. But \emph{where does this probability come from?} The network does \textbf{not output probabilities}. After the hidden layer (see \autopageref{fig:neural-language-model-architecture}), the network computes:
+\begin{equation*}
+    y = b + U h
+\end{equation*}
+Where $y$ is a vector of raw scores (logits) for each word in the vocabulary. To convert these scores into probabilities, we apply the \textbf{softmax function}. For example, given:
+\begin{equation*}
+    y = \left[7.2, 3.1, -2.0\right]
+\end{equation*}
+Softmax produces:
+\begin{equation*}
+    P = \left[0.983, 0.016, 0.001\right]
+\end{equation*}
+Now all values are positive, between $0$ and $1$, and sum to $1$.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{percentage} \textbf{Softmax Output}}
+\end{flushleft}
+To compute probabilities, the \hl{output layer uses \textbf{Softmax}.} The hidden layer produces a \textbf{vector of scores} $y$ for each word in the vocabulary:
+\begin{equation*}
+    y_1, y_2, \dots, y_{\left|V\right|}
+\end{equation*}
+These scores are often called \emph{logits}, \emph{activations}, or \emph{raw scores}. At this stage they are not probabilities. To \textbf{convert them into probabilities}, we apply the softmax function:
+\begin{equation}
+    \hat{P}\left(w_i = w_t \, | \, w_{t-N+1}, \dots, w_{t-1}\right) = \frac{\exp\left(y_{w_i}\right)}{\displaystyle\sum_{i'=1}^{\left|V\right|} \exp\left(y_{w_{i'}}\right)}
+\end{equation}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Computational Complexity}}
+\end{flushleft}
+The \textbf{complete mathematical description} of the entire neural language model is:
+\begin{equation}
+    y = b + U \cdot \tanh\left(d + Hx\right)
+\end{equation}
+Where:
+\begin{enumerate}
+    \item First the $x$ vector is the concatenation of context embeddings:
+    \begin{equation*}
+        x = \left[C\left(w_{t-N+1}\right), C\left(w_{t-N+2}\right), \dots, C\left(w_{t-1}\right)\right]
+    \end{equation*}
+    \item Then, the hidden layer computes:
+    \begin{equation*}
+        h = \tanh\left(d + Hx\right)
+    \end{equation*}
+    Where $H$ is the hidden layer weight matrix, $d$ is the hidden layer bias vector, and $\tanh$ is the hyperbolic tangent activation function.
+    \item Finally, the output layer computes:
+    \begin{equation*}
+        y = b + U h
+    \end{equation*}
+    Where $U$ is the output layer weight matrix, $b$ is the output layer bias vector, and $y$ is the vector of raw scores (logits) for each word in the vocabulary.
+    \item The softmax function is applied to $y$ to obtain the predicted probabilities for each word in the vocabulary:
+    \begin{equation*}
+        \hat{P}\left(w_i = w_t \, | \, w_{t-N+1}, \dots, w_{t-1}\right) = \frac{\exp\left(y_{w_i}\right)}{\displaystyle\sum_{i'=1}^{\left|V\right|} \exp\left(y_{w_{i'}}\right)}
+    \end{equation*}
+\end{enumerate}
+Where the parameters $C, H, U, d, b$ are updated during training, which is done using \textbf{Stochastic Gradient Descent} (SGD, \autopageref{def:stochastic-gradient-descent}). Precisely, once the loss is computed:
+\begin{equation*}
+    E = -\log P\left(\text{correct word}\right)
+\end{equation*}
+We perform (1) forward pass, (2) compute loss, (3) backpropagation, (4) update parameters, using SGD.
+
+\highspace
+And here we discover the \textbf{hidden weakness of Bengio's model}. The computational complexity of the training is:
+\begin{equation}
+    O\left(n \times m + n \times m \times h + h \times \left|V\right|\right)
+\end{equation}
+Where:
+\begin{itemize}
+    \item \important{Embedding Lookup $n \times m$}. The variable $n$ is the \textbf{context size} (number of previous words), and $m$ is the \textbf{embedding dimension} (i.e., the size of the word vectors). So, the embedding lookup requires $n$ lookups (\# of words in the context), each of size $m$ (the embedding dimension, length of each word vector). This is \textbf{usually not a problem}, as $n$ is small (e.g., 2 or 3) and $m$ is moderate (e.g., 100 or 300). Thus, the embedding lookup is relatively fast.
+
+
+    \item \important{Hidden Layer $n \times m \times h$}. After the embedding lookup, we have $n$ context words. Each embedding has size $m$. After concatenation $x \in \mathbb{R}^{n \times m}$. Now, the hidden layer needs to compute:
+    \begin{equation*}
+        h = \tanh\left(d + Hx\right)
+    \end{equation*}
+    Where $H \in \mathbb{R}^{h \times (n \times m)}$ is the hidden layer weight matrix. To compute the product $Hx$, we need $O\left(h \times (n \times m)\right)$ operations:
+    \begin{equation*}
+        \left(Hx\right)_{j} = \sum_{i=1}^{n \times m} H_{ji} x_i
+    \end{equation*}
+    And here is the \textbf{problem}: $h$ is usually large (e.g., 500 or 1000). Thus, the \textbf{hidden layer computation can be expensive}, especially when $n$ and $m$ are also large. This is a significant bottleneck in training.
+
+    For example, if we have $n = 5$, $m = 100$, and $h = 500$, then the hidden layer computation requires $5 \times 100 \times 500 = 250,000$ multiplications and additions. A quarter million multiply-adds for a single training example is quite expensive, especially when we have millions of training examples. But the story does not end here.   
+
+
+    \item \important{Output Layer $h \times \left|V\right|$}. This is the \textbf{killer term}. The output layer computes:
+    \begin{equation*}
+        y = b + U h
+    \end{equation*}
+    Where $U \in \mathbb{R}^{\left|V\right| \times h}$ is the output layer weight matrix. To compute the product $Uh$, we need $O\left(\left|V\right| \times h\right)$ operations:
+    \begin{equation*}
+        \left(Uh\right)_{j} = \sum_{i=1}^{h} U_{ji} h_i
+    \end{equation*}
+    And here is the \textbf{real problem}: $\left|V\right|$ is usually very large (e.g., $10,000$ or $100,000$). Thus, the \textbf{output layer computation is extremely expensive}, especially when $h$ is also large. This is the final bottleneck in training. For example, if we have $h = 500$ and $\left|V\right| = 50,000$, then the output layer computation requires $500 \times 50,000 = 25,000,000$ multiplications and additions. Twenty-five million multiply-adds for a single training example is prohibitively expensive, especially when we have millions of training examples.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Softmax Bottleneck.}} The issue with computational complexity comes from Softmax, because to compute:
+\begin{equation*}
+    P\left(w_i\right) = \frac{\exp\left(y_{w_i}\right)}{\displaystyle\sum_{i'=1}^{\left|V\right|} \exp\left(y_{w_{i'}}\right)}
+\end{equation*}
+We must compute a score for \textbf{every word in the vocabulary}. Even though we only care about one correct word. This becomes extremely expensive when the vocabulary is large. This is known as the \textbf{Softmax bottleneck}. This is why \hl{Bengio's model was revolutionary but not immediately practical.} Therefore, the model solved the curse of dimensionality conceptually, but introduced a new challenge: \emph{\textbf{how can we learn embeddings without computing a gigantic Softmax over the entire vocabulary?}}

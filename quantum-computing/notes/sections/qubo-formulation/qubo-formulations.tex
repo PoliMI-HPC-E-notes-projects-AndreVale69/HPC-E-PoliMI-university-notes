@@ -1,0 +1,310 @@
+\subsection{QUBO Formulations}\label{sec:qubo-formulations}
+
+In this section we present a few known QUBO formulations.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a QUBO formulation?}}
+\end{flushleft}
+A \definition{Quadratic Unconstrained Binary Optimization (QUBO)} formulation \hl{rewrites an optimization problem as the minimization of a quadratic function of binary variables:}
+\begin{equation*}
+    \min_{\mathbf{x}\in\{0,1\}^{n}} E(\mathbf{x})
+    =
+    \min_{\mathbf{x}\in\{0,1\}^{n}}
+    \mathbf{x}^{T}Q\mathbf{x}
+\end{equation*}
+The variables encode candidate decisions, while the energy function assigns lower
+values to better solutions. Since the formulation is \textbf{unconstrained}, hard
+constraints are typically converted into \textbf{penalty terms}: the penalty is zero when a constraint is satisfied and positive when it is violated. A coefficient such as $P$ or $p$ controls the strength of that penalty.
+
+\highspace
+The formulas below are useful as ready-made encodings. In practice, the usual
+workflow is:
+\begin{enumerate}
+    \item \textbf{Choose binary variables} to encode the problem.
+    \item \textbf{Write the objective function} in terms of those variables.
+    \item \textbf{Add penalty terms} for any hard constraints.
+    \item \textbf{Expand} the resulting expression into a \textbf{quadratic polynomial}.
+\end{enumerate}
+The coefficients of the resulting polynomial can then be placed in the QUBO
+matrix $Q$.
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{General Penalty Conversion Rules}}
+\end{flushleft}
+
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l l @{}}
+        \toprule
+        \textbf{Classical Constraint} & \textbf{Equivalent Penalty} \\
+        \midrule
+        $x+y\leq 1$
+        & $P(xy)$ \\[.3em]
+
+        $x+y\geq 1$
+        & $P(1-x-y+xy)$ \\[.3em]
+
+        $x+y=1$
+        & $P(1-x-y+2xy)$ \\[.3em]
+
+        $x\leq y$
+        & $P(x-xy)$ \\[.3em]
+
+        $x_1+x_2+x_3\leq 1$
+        & $P(x_1x_2+x_1x_3+x_2x_3)$ \\[.3em]
+
+        $x=y$
+        & $P(x+y-2xy)$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{A few known constraint/penalty pairs.}
+    \label{tab:qubo-penalty-conversion}
+\end{table}
+
+\noindent
+The following notation is used in the formulas below:
+\begin{itemize}
+    \item $G=(V,E)$ is an undirected graph.
+
+    \item In graph problems, assume $(i,j)=(j,i)$ and then consider each edge only once.
+
+    \item The complement graph is
+        \begin{equation*}
+            \bar{G}=(V,\bar{E}),
+            \qquad
+            \bar{E}
+            =
+            \left\{
+                (i,j) : i\neq j,\ (i,j)\notin E
+            \right\}
+        \end{equation*}
+
+    \item In Set Packing, $c_i$ is the capacity of set $S_i$,
+        $B\in\{0,1\}^{m\times n}$ is a constraint matrix
+        ($m$ constraints and $n$ variables), and
+        $\vec{1}$ is a vector of $n$ elements, all equal to $1$.
+
+    \item In CSPs, $C$ is a symmetric cost matrix, $A$ is a constraint
+        matrix, and $b$ is a target vector.
+\end{itemize}
+
+\longline
+
+\subsubsection{Max-Cut}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Partition the nodes of a graph into two sets $S$ and $V-S$ so as to maximize the number of edges crossing between them.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i=
+    \begin{cases}
+        1, & i\in S,\\
+        0, & \text{otherwise}.
+    \end{cases}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}}
+\begin{equation}\label{eq:qubo-max-cut}
+    \min
+    -\sum_{(i,j)\in E}
+    \left(x_i+x_j-2x_ix_j\right)
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}} None.
+
+\longline
+
+\subsubsection{Maximum Independent Set}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Find the largest set of nodes $S$ with no edges connecting them.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i=
+    \begin{cases}
+        1, & i\in S,\\
+        0, & \text{otherwise}.
+    \end{cases}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}}
+\begin{equation}\label{eq:qubo-max-independent-set}
+    \min -\sum_{i}^{|V|}x_i
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}}
+\begin{equation}\label{eq:qubo-max-independent-set-penalty}
+    p\sum_{(i,j)\in E}x_ix_j,
+    \qquad p=2
+\end{equation}
+
+\newpage
+
+\subsubsection{Minimum Vertex Cover}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Find the smallest set of nodes $C$ that touches every edge in the graph.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i=
+    \begin{cases}
+        1, & i\in C,\\
+        0, & \text{otherwise}.
+    \end{cases}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}}
+\begin{equation}\label{eq:qubo-min-vertex-cover}
+    \min \sum_{i}^{|V|}x_i
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}}
+\begin{equation}\label{eq:qubo-min-vertex-cover-penalty}
+    p\sum_{(i,j)\in E}
+    \left(1-x_i-x_j+x_ix_j\right),
+    \qquad p=|V|
+\end{equation}
+
+\longline
+
+\subsubsection{Maximum Clique}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Find the largest fully connected subset of nodes (clique) $C$.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i=
+    \begin{cases}
+        1, & i\in C,\\
+        0, & \text{otherwise}.
+    \end{cases}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}} This is the Maximum Independent Set formulation applied to the complement graph $\bar{G}$:
+\begin{equation}\label{eq:qubo-max-clique}
+    \min -\sum_{i}^{|V|}x_i
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}}
+\begin{equation}\label{eq:qubo-max-clique-penalty}
+    p\sum_{(i,j)\in\bar{E}}x_ix_j,
+    \qquad p=2
+\end{equation}
+
+\newpage
+
+\subsubsection{Number Partitioning}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Partition a set of numbers $Z$ into two groups $Z_1,Z_2$ such that the sums of the elements in $Z_1$ and $Z_2$ are as equal as possible.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i=
+    \begin{cases}
+        1, & z_i\in Z_1,\\
+        0, & z_i\in Z_2.
+    \end{cases}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}}
+\begin{equation}\label{eq:qubo-number-partitioning}
+    \min
+    \left(
+        \sum_{i}^{|Z|}
+        (2x_i-1)z_i
+    \right)^2
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}} None.
+
+\longline
+
+\subsubsection{2-SAT}\label{sec:qubo-2-sat}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Find a Boolean assignment that satisfies all clauses with two literals each.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}} One binary variable $x_i$ per Boolean literal.
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}} Sum of the penalties associated with the individual clauses.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Clause penalties.}}
+\begin{equation}\label{eq:qubo-2-sat-penalties}
+    \begin{aligned}
+        x_i\lor x_j
+        &\Rightarrow 1-x_i-x_j+x_ix_j,\\
+        x_i\lor \bar{x}_j
+        &\Rightarrow x_j-x_ix_j,\\
+        \bar{x}_i\lor \bar{x}_j
+        &\Rightarrow x_ix_j
+    \end{aligned}
+\end{equation}
+
+\newpage
+
+\subsubsection{Set Packing}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Select the most valuable disjoint subset of sets under mutual exclusion constraints.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i=
+    \begin{cases}
+        1, & S_i\text{ is selected},\\
+        0, & \text{otherwise}.
+    \end{cases}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}}
+\begin{equation}\label{eq:qubo-set-packing}
+    \min -\sum_{i}^{n}c_ix_i,\quad \text{subject to}\qquad Bx\leq\vec{1}
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}} Use the first and fifth formulas in \autoref{tab:qubo-penalty-conversion}, with:
+\begin{equation}\label{eq:qubo-set-packing-penalty}
+    p=\sum_{i}^{n}c_i
+\end{equation}
+
+\longline
+
+\subsubsection{Constraint Satisfaction Problem (CSP)}
+
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What it solves.}} Minimize a cost function while satisfying linear equality constraints.
+
+\highspace
+\textcolor{Green3}{\faIcon{book} \textbf{Variable definition.}}
+\begin{equation*}
+    x_i\in\{0,1\}
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{dollar-sign} \textbf{Cost function.}}
+\begin{equation}\label{eq:qubo-csp-cost}
+    \min x^{T}Cx,\quad \text{subject to}\quad Ax=b
+\end{equation}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Penalty.}}
+\begin{equation}\label{eq:qubo-csp-penalty}
+    p(Ax-b)^{T}(Ax-b)
+\end{equation}

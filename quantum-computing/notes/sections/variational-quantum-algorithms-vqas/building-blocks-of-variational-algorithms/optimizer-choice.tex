@@ -1,0 +1,80 @@
+\subsubsection{Optimizer Choice}\label{sec:optimizer-choice}
+
+So far, we have introduced two of the three fundamental building blocks of a Variational Quantum Algorithm: the \textbf{cost function} (\autopageref{sec:cost-function}), which defines the optimization objective, and the \textbf{ansatz} (\autopageref{sec:parametric-quantum-circuits-ansatz} and \autopageref{sec:ansatz-design}), which determines the family of quantum states that can be explored. The third essential component is the \definition{Classical Optimizer}, whose role is to \hl{search for the values of the variational parameters that minimize the cost function.}
+
+\highspace
+At first glance, it may seem surprising that a \emph{quantum} algorithm relies on a classical optimization procedure. However, this is precisely what makes Variational Quantum Algorithms (VQAs) \textbf{hybrid algorithms}. The quantum processor is responsible for preparing quantum states and measuring the objective function, while the classical computer analyzes the measurement results and decides how the circuit parameters should be modified in the next iteration. The \textbf{optimizer} therefore \textbf{acts as the ``\emph{decision-making}'' component of the algorithm}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{The optimization problem}}
+\end{flushleft}
+Suppose our ansatz contains several parameterized rotation gates:
+\begin{equation*}
+    R_{y}\left(\theta_1\right), \quad R_{z}\left(\theta_2\right), \quad R_{x}\left(\theta_n\right), \quad \ldots
+\end{equation*}
+The collection of all parameters can be represented as a vector:
+\begin{equation*}
+    \boldsymbol{\theta} = \left(\theta_1, \theta_2, \ldots, \theta_m\right)
+\end{equation*}
+For a given choice of parameters, the quantum circuit prepares a quantum state:
+\begin{equation*}
+    \ket{\psi\left(\boldsymbol{\theta}\right)}
+\end{equation*}
+After measuring the circuit, we evaluate the corresponding cost function:
+\begin{equation*}
+    C\left(\boldsymbol{\theta}\right)
+\end{equation*}
+The optimization problem is therefore simply:
+\begin{equation}
+    \min_{\boldsymbol{\theta}} C\left(\boldsymbol{\theta}\right)
+\end{equation}
+The objective of the classical optimizer is to discover the parameter vector that minimizes this quantity. Therefore, the optimization problem being solved is determined entirely by the cost function, while the \hl{optimizer is simply the algorithm used to search for the minimum.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How does the optimizer work?}}
+\end{flushleft}
+Unlike the quantum processor, the optimizer never manipulates quantum states directly. Instead, it only \textbf{receives numerical values}. A typical optimization cycle consists of the following steps:
+\begin{enumerate}
+    \item Choose a set of parameters $\boldsymbol{\theta}_0$ and send them to the quantum processor;
+    \item Execute the quantum circuit;
+    \item Measure the output;
+    \item Compute the cost function $C\left(\boldsymbol{\theta}_0\right)$;
+    \item Decide how the parameters should be modified to improve the cost function (here is where the optimizer's algorithm comes into play);
+    \item Repeat the process.
+\end{enumerate}
+This optimization loop continues until a stopping criterion is satisfied, such as reaching a maximum number of iterations or observing that the cost function no longer improves.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why is the optimizer necessary?}}
+\end{flushleft}
+One might wonder why we cannot simply compute the best parameters directly. The reason is that the \hl{relationship between the parameters and the cost function} is generally \textbf{highly nonlinear} and \textbf{extremely complex}.
+
+\highspace
+In other words, changing even a single parameter affects the entire quantum state produced by the circuit, which in turn changes all measurement probabilities. Consequently, the optimizer has no explicit formula for determining the optimal parameters. Instead, it must \hl{explore the parameter space by repeatedly trying different parameter values and observing how the cost changes.}
+
+\highspace
+This is essentially the same idea used in many classical machine learning algorithms: rather than solving an equation analytically, the optimizer progressively improves the solution through repeated evaluations (i.e., gradient-based methods).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Different optimizers can be used}}
+\end{flushleft}
+In general, the \hl{choice of optimizer is relatively free.} Unlike the ansatz, which must be implemented on the quantum hardware, the optimizer runs entirely on a classical computer. Therefore, many different optimization algorithms can be employed. Some common examples include \emph{Gradient Descent}, \emph{Stochastic Gradient Descent (SGD)}, \emph{Adam}, \emph{COBYLA}, \emph{Nelder-Mead}, \emph{SPSA (Simultaneous Perturbation Stochastic Approximation)}. Fortunately, this course does not require knowing the details of these algorithms. The important concept is that the optimizer is not fixed: \hl{different optimization methods can be combined with the same variational circuit.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{How to choose an optimizer? Which characteristics should it have?}}
+\end{flushleft}
+Although many optimization algorithms exist, a good optimizer for Variational Quantum Algorithms (VQAs) should possess several desirable properties.
+\begin{itemize}
+    \item First, it should require \textbf{as few evaluations of the quantum circuit as possible}. Each circuit execution is expensive because it involves preparing a quantum state and performing many measurements. Therefore, since each evaluation of the cost function requires executing the quantum circuit (often many times due to repeated measurements), a good optimizer should find the optimal parameters using as few quantum circuit executions as possible.
+    \item Second, it should \textbf{converge rapidly toward a good solution}. A slow optimizer that takes many iterations to improve the cost function may not be practical, especially when each iteration requires a costly quantum circuit execution.
+    \item Finally, it should \textbf{avoid becoming trapped in local minima}, where the optimization stops even though a better solution exists elsewhere.
+\end{itemize}
+For these reasons, the choice of optimizer has a significant impact on the practical performance of a Variational Quantum Algorithm. An appropriate optimizer helps reduce the number of calls to the quantum computer and prevents the optimization from getting stuck in poor solutions.
+
+\highspace
+In summary, the classical optimizer is the component of a Variational Quantum Algorithm responsible for \textbf{searching for the optimal values of the variational parameters}. It receives the measured value of the cost function, updates the circuit parameters, and repeatedly executes this optimization loop until convergence. Unlike the ansatz and the quantum circuit, the optimizer is entirely classical, and many different optimization algorithms can be employed. The optimizer itself does not determine which problem is being solved; that role belongs exclusively to the objective (cost) function. Its responsibility is simply to \textbf{find the parameter values that minimize that function as efficiently as possible}.

@@ -1,0 +1,92 @@
+\subsubsection{Global Co-occurrence Statistics}\label{sec:global-co-occurrence-statistics}
+
+In the previous sections, we saw that \textbf{Word2Vec learns word embeddings by repeatedly solving a local prediction task}. Each training example consists of a small context window, and the model gradually updates the embeddings through millions of local predictions.
+
+\highspace
+GloVe follows a different strategy. Before learning any embeddings, it \hl{first analyzes the entire corpus to collect statistical information} about how words co-occur. Instead of asking ``\emph{which word should I predict?}'', it asks ``\emph{\textbf{how often do words appear together throughout the whole corpus?}}'' This information is summarized in a \textbf{global co-occurrence matrix}, which becomes the \textbf{input to the training algorithm}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is co-occurrence?}}
+\end{flushleft}
+Two words are said to \important{co-occur} if they \textbf{appear within a predefined context window}. For example, consider the sentence:
+\begin{center}
+    \emph{The cat drinks fresh milk every morning.}
+\end{center}
+Suppose we choose a context window of size $2$. When the central word is ``\emph{cat}'', its context consists of:
+\begin{equation*}
+    \emph{The} \quad \emph{cat} \quad \emph{drinks} \quad \emph{fresh}
+\end{equation*}
+Therefore, the following co-occurrences are recorded:
+\begin{itemize}
+    \item (\emph{cat}, \emph{the})
+    \item (\emph{cat}, \emph{drinks})
+    \item (\emph{cat}, \emph{fresh})
+\end{itemize}
+Each occurrence increments a counter by one.
+
+\highspace
+Later, another sentence is processed:
+\begin{center}
+    \emph{The cat eats fish.}
+\end{center}
+Again, the word \emph{cat} appears together with \emph{the}, \emph{eats}, and \emph{fish}, and their counters are incremented. After scanning the entire corpus, \hl{every pair of words has an associated co-occurrence count.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{Building the global co-occurrence matrix}}
+\end{flushleft}
+Suppose our vocabulary contains only five words:
+\begin{equation*}
+    V = \left\{\emph{ice}, \emph{steam}, \emph{water}, \emph{solid}, \emph{gas}\right\}
+\end{equation*}
+The co-occurrence matrix might look like this:
+\begin{center}
+    \begin{tabular}{@{} c | c | c | c | c @{}}
+        \toprule
+        \textbf{Target word} & \textbf{\emph{solid}} & \textbf{\emph{gas}} & \textbf{\emph{water}} & \textbf{\emph{fashion}} \\
+        \midrule
+        \textbf{\emph{ice}}   &  1900 &  66 &  3000 &      17 \\
+        \cmidrule{1-5}
+        \textbf{\emph{steam}} &    22 & 780 &  2200 &      10 \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+These numbers are not probabilities. They are simply \textbf{counts collected from the corpus}. For example:
+\begin{itemize}
+    \item \emph{ice} appears near \emph{water} about 3000 times;
+    \item \emph{ice} appears near \emph{solid} about 1900 times;
+    \item \emph{ice} almost never appears near \emph{fashion}.
+\end{itemize}
+Therefore, the co-occurrence matrix captures the \textbf{global statistical information} about how words appear together in the corpus. This information is crucial for GloVe to learn meaningful word embeddings that reflect the relationships between words based on their co-occurrence patterns.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{arrow-right} \textbf{From counts to probabilities}}
+\end{flushleft}
+\textcolor{Red2}{\faIcon{exclamation-triangle}} \emph{What if we doubled the size of the corpus?} The counts in the co-occurrence matrix would approximately double as well. This means that raw counts are \textbf{not} invariant to the size of the corpus, which can lead to inconsistencies when comparing co-occurrence statistics across different corpora.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle}} To address this issue, GloVe converts the raw counts into \textbf{co-occurrence probabilities}. This normalization step ensures that the co-occurrence statistics are comparable across different corpora, regardless of their size.
+
+\highspace
+Let $X_{ij}$ denote the number of times word $j$ appears in the context of word $i$. The \hl{total number of context words observed around word $i$} is:
+\begin{equation}
+    X_i = \sum_{k} X_{ik}
+\end{equation}
+Where $X_i$ is the sum of all co-occurrence counts for word $i$. The \textbf{co-occurrence probability} of observing context word $j$ given the center word $i$ is then:
+\begin{equation}\label{eq:co-occurrence-probability}
+    P\left(j \mid i\right) = \frac{X_{ij}}{X_i}
+\end{equation}
+In other words, \emph{\textbf{among all context words that appeared around $i$, what fraction corresponds to word $j$?}} For example, if \emph{ice} appears 3000 times with \emph{water}, 1900 times with \emph{solid}, and 17 times with \emph{fashion}, then:
+\begin{equation*}
+    P\left(\emph{water} \mid \emph{ice}\right) > P\left(\emph{solid} \mid \emph{ice}\right) \gg P\left(\emph{fashion} \mid \emph{ice}\right)
+\end{equation*}
+These probabilities are much more informative than raw counts because they \textbf{normalize for the frequency of the center word}.
+
+\highspace
+With the co-occurrence probabilities computed, GloVe can now build a single sparse co-occurrence matrix. Once this matrix has been built, the original corpus is no longer needed for training. The optimization algorithm works directly on the stored statistics, learning embeddings that explain the observed co-occurrence patterns.
+
+\highspace
+In summary, the core idea of GloVe is to replace millions of local prediction tasks with a \textbf{global statistical view of the corpus}. Every pair of words is associated with a co-occurrence count, from which conditional probabilities are computed. Rather than predicting neighboring words as Word2Vec does, GloVe learns embeddings that capture these \textbf{global co-occurrence statistics}, providing the foundation for the training objective introduced in the next section.

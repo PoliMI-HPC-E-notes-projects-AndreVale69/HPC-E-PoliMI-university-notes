@@ -1,0 +1,95 @@
+\subsubsection{QAOA Ingredients}\label{sec:qaoa-ingredients}
+
+In this section, we will see the high-level architecture of the Quantum Approximate Optimization Algorithm (QAOA). We will discuss \textbf{what components QAOA needs}, before explaining how each one works.
+
+\highspace
+In general, we can think of QAOA as a recipe. To make a dish, we need ingredients. To run QAOA, we need ingredients as well. The ingredients of QAOA are:
+\begin{itemize}
+    \item Optimization problem (the problem we want to solve)
+    \item Cost Hamiltonian $H_C$
+    \item Mixer Hamiltonian $H_M$
+    \item Quantum circuit
+    \item Classical optimizer
+    \item Best parameters $(\gamma, \beta)$
+    \item Approximate optimal solution (the solution we get from QAOA)
+\end{itemize}
+Let's go through each of these ingredients in detail.
+\begin{enumerate}
+    \item \important{Build the Cost Hamiltonian}. We convert our optimization problem into $H_C$. The ground state of the Cost Hamiltonian should be the solution of the problem we want to solve. In other words, it answers the question: ``\emph{what are we trying to optimize?}''.
+    
+    In optimization we usually define a \textbf{cost function} $C(x)$ that we want to minimize. QAOA replaces that classical cost function with $H_C$. So, instead of minimizing $C(x)$, we \textbf{minimize the expected energy} of $H_C$:
+    \begin{equation*}
+        \langle H_C \rangle = \bra{\psi} H_C \ket{\psi}
+    \end{equation*}
+
+    For example, for every possible solution:
+    \begin{center}
+        \begin{tabular}{@{} c c @{}}
+            \toprule
+            \textbf{Solution} & \textbf{Energy} \\
+            \midrule
+            A & 12 \\
+            B & 7 \\
+            C & \textbf{1} \\
+            D & 9 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    The \textbf{lowest energy corresponds to the optimal solution}. So the Cost Hamiltonian simply answers: ``\emph{how good is this solution?}''.
+
+
+    \item \important{Build the Mixer Hamiltonian}. Now suppose the quantum computer is currently representing solution B. \emph{How can it move toward solution C?} It \hl{needs a mechanism that changes the quantum state.} That mechanism is the \textbf{Mixer Hamiltonian}. It doesn't know what the best solution is, it just moves the quantum state around.
+    
+    In other words, the \definition{Mixer Hamiltonian} \textbf{explores the space of possible quantum states}. It tries to solve the local minima problem by moving the quantum state around.
+
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why both the Cost Hamiltonian and the Mixer Hamiltonian?}} Because they do different jobs. The Cost Hamiltonian \textbf{evaluates} how good a solution is, while the Mixer Hamiltonian \textbf{explores} the space of possible solutions. The two work together to find the best solution.
+    \begin{itemize}
+        \item Cost Hamiltonian: \emph{How good is this solution?}
+        \item Mixer Hamiltonian: \emph{What other solutions should we try?}
+    \end{itemize}
+
+    
+    \item \important{Construct the Quantum Circuit}. Once we have both Hamiltonians, they must be \textbf{transformed into an actual quantum circuit}. This raises an obvious question; if Hamiltonians are matrices and quantum computers execute gates, \emph{how do we convert one into the other?} The answer will be discussed in the next sections.
+    
+    In general, we will see that (\autopageref{sec:unitaries-from-hamiltonians}):
+    \begin{equation*}
+        U = e^{-i \alpha H}
+    \end{equation*}
+    Allows us to convert a Hamiltonian into a unitary operator, which can then be implemented as quantum gates. However, for now, just know that we can convert Hamiltonians into unitary operators, and then into quantum circuits.
+
+
+    \item \important{Use a Classical Optimizer}. Just like VQE, QAOA is a \textbf{hybrid algorithm}. The quantum computer alone is \textbf{not enough}. So we need to choose a classical optimizer and begin to iterate. \emph{\textbf{Why?}} Because the circuit contains unknown parameters $(\gamma, \beta)$ that represent the angles of rotation for the Cost and Mixer Hamiltonians (we will see this in the next sections). The optimizer decides:
+    \begin{itemize}
+        \item Which values to try;
+        \item Whether the new result is better;
+        \item How to update the parameters.
+    \end{itemize}
+    
+
+    \item \important{Optimization Objective}. Finally, \emph{\textbf{what are we minimizing?}} Exactly the same objective as VQE: the expected energy of the Cost Hamiltonian. The classical optimizer will try to find the best parameters $(\gamma, \beta)$ that minimize the expected energy of $H_C$:
+    \begin{equation*}
+        \langle H_C \rangle = \bra{\psi(\gamma, \beta)} H_C \ket{\psi(\gamma, \beta)}
+        \quad
+        \to
+        \quad
+        \argmin_{\theta} \bra{\psi(\theta)} H_C \ket{\psi(\theta)}
+    \end{equation*}
+    Where the parameters $\theta$ are the angles $(\gamma, \beta)$ of the Cost and Mixer Hamiltonians.
+
+    Therefore, QAOA is searching for \hl{the values of $\gamma$ and $\beta$ that produce the quantum state with the lowest expected energy.} Since the Cost Hamiltonian was built so that the lowest energy corresponds to the optimal solution, this means that QAOA is searching for the best solution to the optimization problem.
+\end{enumerate}
+So to summarize, the entire algorithm can be summarized as follows:
+\begin{enumerate}
+    \item Optimization problem
+    \item Build Cost Hamiltonian $H_C$
+    \item Add Mixer Hamiltonian $H_M$
+    \item Build parameterized circuit
+    \item Choose $(\gamma, \beta)$
+    \item Run circuit
+    \item Measure
+    \item Compute $\langle \psi | H_C | \psi \rangle$
+    \item Classical optimizer
+    \item Update $(\gamma, \beta)$
+    \item Repeat
+\end{enumerate}
+Notice that this is essentially the \textbf{same hybrid optimization loop as VQE}. The only major difference is the \textbf{structure of the ansatz}: in VQE the ansatz is largely user-defined, whereas in QAOA the ansatz is \textbf{completely determined by the Cost Hamiltonian and the Mixer Hamiltonian}. That distinction will become the central topic of the next section.

@@ -1,0 +1,274 @@
+\subsubsection{Multiple Input Channels}\label{sec:multiple-input-channels}
+
+Now suppose the input is $32 \times 32 \times 3$. The three channels could represent RGB or, in deeper layers, three different feature maps. The arithmetic is exactly the same in both cases.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Does each channel have its own filter?}}
+\end{flushleft}
+This is the most common misconception and the answer is \textbf{no}. Instead, \textbf{one filter spans all input channels}. For a $5 \times 5$ kernel and three input channels, one filter has shape $5 \times 5 \times 3$. So the filter is really:
+\begin{itemize}
+    \item $5 \times 5$ for the first channel,
+    \item $5 \times 5$ for the second channel, and
+    \item $5 \times 5$ for the third channel.
+\end{itemize}
+These three slices belong to \textbf{one single filter}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{If each filter spans all input channels, what happens during convolution?}}
+Suppose the filter is placed at one spatial position:
+\begin{itemize}
+    \item For the red channel we compute: $s_R$
+    \item For the green channel we compute: $s_G$
+    \item For the blue channel we compute: $s_B$
+\end{itemize}
+The convolution does \textbf{not} produce three separate outputs. Instead, the three responses are added together to produce a single output value:
+\begin{equation*}
+    a(r, c) = s_R + s_G + s_B + b
+\end{equation*}
+Therefore, one spatial position still produces \textbf{one scalar output value}, not three.
+
+\highspace
+Even though channels are processed separately, their contributions are summed. The \hl{input depth affects \textbf{how much computation} is performed}, but \textbf{not} the number of output feature maps. They are determined \textbf{only} by the number of filters.
+
+\begin{examplebox}[: Multiple Input Channels]
+    Suppose the input is $32 \times 32 \times 3$ and one filter has shape $5 \times 5 \times 3$. Assuming stride $1$ and no padding, the spatial dimensions become:
+    \begin{equation*}
+        32 - 5 + 1 = 28 \Rightarrow 28 \times 28 \times 1
+    \end{equation*}
+    Notice something important: although the filter contains 3 different $5 \times 5$ slices, the output is \textbf{still} a single $28 \times 28$ feature map. The \textbf{number of output channels is determined by the number of filters}, not the number of input channels.
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{Connection with the previous section: Multiple Filters}}
+\end{flushleft}
+In the previous section, we saw that the depth of the output volume is determined by the number of filters:
+\begin{equation*}
+    \text{Output depth} = \text{Number of filters}
+\end{equation*}
+Now we see something equally important:
+\begin{equation*}
+    \text{Input depth} = \text{Filter depth}
+\end{equation*}
+Therefore:
+\begin{itemize}
+    \item \hl{Input depth} $\to$ Determines \hl{filter depth} (how many slices each filter has)
+    \item \hl{Number of filters} $\to$ Determines \hl{output depth} (how many output feature maps are produced)
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why does the number of parameters increase?}} Suppose previously we had a single filter of shape $5 \times 5 \times 1$ (one input channel). One filter contained $5 \cdot 5 \cdot 1 = 25$ weights. Now, the input has three channels, so the filter has shape $5 \times 5 \times 3$. This results in $5 \cdot 5 \cdot 3 = 75$ weights, which is three times more than before. However, the output size stays the same: $28 \times 28 \times 1$. But the \hl{filter is three times larger because it must learn how to combine information from all three input channels.}
+
+\highspace
+\textcolor{Green3}{\faIcon{link} \textbf{Relationship with the general convolution formula.}} This arithmetic example is exactly the concrete interpretation of the general convolution formula:
+\begin{equation*}
+    a(r, c, l) = \sum_{k=1}^{C} \sum_{u, v} w_{l} (u, v, k) \cdot x(r + u, c + v, k) + b_l
+\end{equation*}
+Previously, this looked like an abstract equation. Now tis meaning becomes clear:
+\begin{itemize}
+    \item The inner sum computes the convolution within one channel;
+    \item The outer sum over $k$ adds the responses from all input channels;
+    \item The result is \textbf{one activation} $a(r, c, l)$ for the $l$-th output channel.
+\end{itemize}
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item Every convolutional filter spans all input channels.
+        \item The convolution is computed independently on each channel, and the channel-wise responses are summed.
+        \item One filter still produces exactly one output feature map, regardless of how many input channels exist.
+        \item The input depth determines the filter depth, while the number of filters determines the output depth.
+    \end{itemize}
+\end{takeawaysbox}
+
+\begin{figure}[!htp]
+    \centering
+
+    \definecolor{ch1bg}{HTML}{E8F8F5}
+    \definecolor{ch1border}{HTML}{1ABC9C}
+
+    \definecolor{ch2bg}{HTML}{FEF9E7}
+    \definecolor{ch2border}{HTML}{F39C12}
+
+    \definecolor{ch3bg}{HTML}{F4ECF7}
+    \definecolor{ch3border}{HTML}{8E44AD}
+
+    \definecolor{outbg}{HTML}{EBF3FA}
+    \definecolor{outborder}{HTML}{3B7EA1}
+
+    \tikzsetnextfilename{multiple-input-channels}
+    \begin{tikzpicture}[
+        >=Stealth,
+        text=black,
+        title/.style={font=\bfseries\normalsize, text=black, align=center},
+        subtitle/.style={font=\small, text=black, align=center},
+        sumbox/.style={
+            draw=black!40,
+            fill=white,
+            rounded corners=4pt,
+            inner sep=6pt,
+            align=center,
+            line width=0.6pt
+        },
+        arrow/.style={
+            ->,
+            line width=0.8pt,
+            draw=black,
+            shorten >=4pt,
+            shorten <=4pt
+        }
+    ]
+
+    \def\offx{0.20cm}
+    \def\offy{0.20cm}
+
+    % =========================================================
+    % INPUT VOLUME (5 x 5 x 3)
+    % =========================================================
+
+    \node[title] (inputtitle) at (0,0) {Input volume};
+
+    \coordinate (inputtop) at ($(inputtitle.south) + (0, -0.25cm)$);
+    \coordinate (inputcenter) at ($(inputtop) - (0, 1.70cm)$);
+
+    % 1. Back Channel (Channel 3 - Purple)
+    \begin{scope}[shift={($(inputcenter)+(2*\offx,2*\offy)$)}]
+        \foreach \r in {0,1,2,3,4} {
+            \foreach \c in {0,1,2,3,4} {
+                \draw[fill=ch3bg, draw=ch3border!80, line width=0.4pt]
+                    ({-1.30 + \c*0.52}, {1.30 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % 2. Middle Channel (Channel 2 - Orange)
+    \begin{scope}[shift={($(inputcenter)+(\offx,\offy)$)}]
+        \foreach \r in {0,1,2,3,4} {
+            \foreach \c in {0,1,2,3,4} {
+                \draw[fill=ch2bg, draw=ch2border!80, line width=0.4pt]
+                    ({-1.30 + \c*0.52}, {1.30 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % 3. Front Channel (Channel 1 - Teal)
+    \begin{scope}[shift={(inputcenter)}]
+        \foreach \r in {0,1,2,3,4} {
+            \foreach \c in {0,1,2,3,4} {
+                \draw[fill=ch1bg, draw=ch1border!80, line width=0.4pt]
+                    ({-1.30 + \c*0.52}, {1.30 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % Connecting outer depth lines
+    \draw[ch3border!80, line width=0.5pt] ($(inputcenter)+(-1.30cm,1.30cm)$) -- ++(2*\offx,2*\offy);
+    \draw[ch3border!80, line width=0.5pt] ($(inputcenter)+(1.30cm,1.30cm)$) -- ++(2*\offx,2*\offy);
+    \draw[ch3border!80, line width=0.5pt] ($(inputcenter)+(1.30cm,-1.30cm)$) -- ++(2*\offx,2*\offy);
+
+    \coordinate (inputbottom) at ($(inputcenter) - (0, 1.30cm)$);
+
+    \node[subtitle, below=0.2cm of inputbottom] (inputdim) {$5 \times 5 \times 3$};
+    \node[subtitle, below=0.06cm of inputdim] (inputdesc) {$3\text{ input channels (e.g., R, G, B)}$};
+
+
+    % =========================================================
+    % FILTER w_1 (3 x 3 x 3)
+    % =========================================================
+
+    \node[title, below=0.9cm of inputdesc] (f1title) {Filter $w_1$};
+
+    \coordinate (f1top) at ($(f1title.south) + (0, -0.25cm)$);
+    \coordinate (f1center) at ($(f1top) - (0, 1.18cm)$);
+
+    % 1. Back Channel slice (Purple)
+    \begin{scope}[shift={($(f1center)+(2*\offx,2*\offy)$)}]
+        \foreach \r in {0,1,2} {
+            \foreach \c in {0,1,2} {
+                \draw[fill=ch3bg, draw=ch3border!80, line width=0.4pt]
+                    ({-0.78 + \c*0.52}, {0.78 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % 2. Middle Channel slice (Orange)
+    \begin{scope}[shift={($(f1center)+(\offx,\offy)$)}]
+        \foreach \r in {0,1,2} {
+            \foreach \c in {0,1,2} {
+                \draw[fill=ch2bg, draw=ch2border!80, line width=0.4pt]
+                    ({-0.78 + \c*0.52}, {0.78 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % 3. Front Channel slice (Teal)
+    \begin{scope}[shift={(f1center)}]
+        \foreach \r in {0,1,2} {
+            \foreach \c in {0,1,2} {
+                \draw[fill=ch1bg, draw=ch1border!80, line width=0.4pt]
+                    ({-0.78 + \c*0.52}, {0.78 - \r*0.52}) rectangle ++(0.52,-0.52);
+            }
+        }
+    \end{scope}
+
+    % Connecting outer depth lines
+    \draw[ch3border!80, line width=0.5pt] ($(f1center)+(-0.78cm,0.78cm)$) -- ++(2*\offx,2*\offy);
+    \draw[ch3border!80, line width=0.5pt] ($(f1center)+(0.78cm,0.78cm)$) -- ++(2*\offx,2*\offy);
+    \draw[ch3border!80, line width=0.5pt] ($(f1center)+(0.78cm,-0.78cm)$) -- ++(2*\offx,2*\offy);
+
+    \coordinate (f1bottom) at ($(f1center) - (0, 0.78cm)$);
+
+    \node[subtitle, below=0.2cm of f1bottom] (f1dim) {$3 \times 3 \times 3$};
+    \node[subtitle, below=0.06cm of f1dim] (f1desc) {One filter spans all $3$ channels (depth matches input)};
+
+
+    % =========================================================
+    % SUMMATION STEP
+    % =========================================================
+
+    \node[sumbox, below=0.8cm of f1desc] (sumcard) {
+        {\bfseries\small Channel-wise Summation}\\[4pt]
+        $a(r,c) = \underbrace{\textcolor{ch1border!90!black}{s_1}}_{\text{Ch 1}} + \underbrace{\textcolor{ch2border!90!black}{s_2}}_{\text{Ch 2}} + \underbrace{\textcolor{ch3border!90!black}{s_3}}_{\text{Ch 3}} + b$
+    };
+
+
+    % =========================================================
+    % OUTPUT MAP (3 x 3 x 1)
+    % =========================================================
+
+    \node[title, below=0.8cm of sumcard] (o1title) {Output map};
+
+    \matrix[
+        matrix of nodes,
+        nodes={
+            draw=outborder!70,
+            fill=outbg,
+            minimum size=0.52cm,
+            inner sep=0pt,
+            anchor=center
+        },
+        row sep=-\pgflinewidth,
+        column sep=-\pgflinewidth,
+        below=0.2cm of o1title
+    ] (o1) {
+        {} & {} & {} \\
+        {} & {} & {} \\
+        {} & {} & {} \\
+    };
+
+    \node[subtitle, below=0.2cm of o1] (o1dim) {$3 \times 3 \times 1$};
+    \node[subtitle, below=0.06cm of o1dim] (o1desc) {$3\text{ input channels} \Rightarrow 1\text{ filter} \Rightarrow \mathbf{1\text{ output map}}$};
+
+
+    % =========================================================
+    % CONNECTING ARROWS
+    % =========================================================
+
+    \draw[arrow] (inputdesc) -- (f1title);
+    \draw[arrow] (f1desc) -- (sumcard);
+    \draw[arrow] (sumcard) -- (o1title);
+
+    \end{tikzpicture}
+
+    \caption{Convolution over multiple input channels. A convolutional filter spans the complete depth of the input volume, so its depth matches the number of input channels. At each spatial location, the filter computes one response for each input channel; these channel-wise responses are summed together with a single bias to produce one activation. Sliding the filter across the input produces one output feature map. Thus, \hl{the input depth determines the filter depth, whereas one filter still produces exactly one output channel.}}
+    \label{fig:multiple-input-channels}
+\end{figure}

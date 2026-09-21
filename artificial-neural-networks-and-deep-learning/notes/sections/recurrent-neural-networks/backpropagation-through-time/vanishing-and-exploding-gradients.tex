@@ -1,0 +1,263 @@
+\subsubsection{Vanishing and Exploding Gradients Limitation}
+
+The vanishing and exploding gradient problem is the \textbf{core difficulty} of training ``vanilla'' RNNs, and the reason LSTMs and GRUs were invented. We saw some anticipation on page \hqpageref{def:why-shared-weights-critical}, but here, we will delve deeper into the mathematical details of this phenomenon.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why do gradients vanish or explode in RNNs?}}
+\end{flushleft}
+Because during Backpropagation Through Time (BPTT) algorithm, gradients must be passed all the way back through \textbf{T steps} (the length of the sequence). This means the gradient involves repeatedly multiplying by the same matrix:
+\begin{equation*}
+    \frac{\partial h_t}{\partial h_{t-1}} = W_h^T \cdot f'\left(\cdot\right)
+\end{equation*}
+Where $f'(\cdot)$ is the derivative of the activation function (like $\tanh$ or $\sigma$). So across $T$ time steps, the gradient becomes:
+\begin{equation*}
+    \frac{\partial h_T}{\partial h_0} \, \propto \, \left(W_h^T\right)^T
+\end{equation*}
+Where the $\propto$ symbol indicates proportionality, ignoring the activation derivatives for simplicity. In simple terms, this means we are multiplying the weight matrix $W_h$ \textbf{T times}. How we explained earlier, \textbf{repeated multiplication by the same matrix amplifies or shrinks signals exponentially}. That's the heart of the vanishing/exploding gradient problem in RNNs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Most common case: Vanish Gradient}}
+\end{flushleft}
+If the eigenvalues of $W_h$ are \textbf{less than 1}:
+\begin{equation*}
+    \left|\lambda_i\right| < 1 \quad \forall i
+\end{equation*}
+Then as we multiply $W_h$ repeatedly, the gradients \textbf{shrink exponentially}:
+\begin{equation*}
+    \left(W_h^T\right)^T \to 0 \quad \text{as } T \to \infty
+\end{equation*}
+This kills the gradient exponentially fast, making it nearly impossible for the model to learn long-term dependencies:
+\begin{itemize}
+    \item Early time steps receive near-zero gradients;
+    \item Long-term dependencies are impossible to learn;
+    \item The RNN ``forgets'' anything older than a few time steps (e.g., 5-10);
+    \item Training focuses only on very recent inputs.
+\end{itemize}
+\textbf{This is why vanilla RNNs cannot learn long sequences effectively}.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Less common case: Exploding Gradient}}
+\end{flushleft}
+Conversely, if the eigenvalues of $W_h$ are \textbf{greater than 1}:
+\begin{equation*}
+    \left|\lambda_i\right| > 1 \quad \text{for some } i
+\end{equation*}
+Then the gradients \textbf{grow exponentially}:
+\begin{equation*}
+    \left(W_h^T\right)^T \to \infty \quad \text{as } T \to \infty
+\end{equation*}
+This leads to unstable training, because the gradients:
+\begin{itemize}
+    \item Blow up to very large values;
+    \item Produce insane updates to the weights;
+    \item Destabilize training;
+    \item Result in NaN values and divergence.
+\end{itemize}
+In practice, \textbf{exploding gradients cause the loss curve to suddenly shoot to infinity}, making training impossible without special techniques.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{Why exploding gradients are easier to fix}}
+\end{flushleft}
+A simple technique called \definition{Gradient Clipping} can effectively mitigate exploding gradients. \textbf{Gradient Clipping} is a method where we \textbf{limit the maximum value of the gradients} during backpropagation. If the gradient norm exceeds a certain threshold, we scale it down to that threshold. This prevents the gradients from becoming too large and destabilizing training. However, \textbf{vanishing gradients are much harder to fix}, which is why architectures like LSTMs and GRUs were developed to address this fundamental limitation of vanilla RNNs.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{square-root-alt} \textbf{Mathematical Intuition}}
+\end{flushleft}
+To understand this mathematically, consider a simple vanilla RNN with hidden state update:
+\begin{equation*}
+    h_t = f\left(W_h h_{t-1} + W_x x_t + b\right)
+\end{equation*}
+We care about \textbf{how much the loss at time $t$}:
+\begin{equation*}
+    E_t = \text{loss}\left(y_t, \hat{y}_t\right)
+\end{equation*}
+Depends on a \textbf{hidden state at an earlier time $t-k$}, because this dependence (the gradient) determines whether the model can assign credit to events $k$ steps in the past ($k < t$). If that gradient vanishes or explodes, the network will struggle to learn long-range dependencies. In other words, \hl{the ability of the RNN to learn from past information hinges on the behavior of this gradient}: if it becomes too small (vanishes), the model forgets; if it becomes too large (explodes), training becomes unstable.
+
+\highspace
+Backpropagation Through Time (BPTT) algorithm tells us that:
+\begin{equation*}
+    \frac{\partial E_t}{\partial h_k} =
+    \frac{\partial E_t}{\partial h_t} \cdot
+    \frac{\partial h_t}{\partial h_{t-1}} \cdot
+    \frac{\partial h_{t-1}}{\partial h_{t-2}} \cdots
+    \frac{\partial h_{k+1}}{\partial h_k}
+\end{equation*}
+This expression shows that to compute the gradient of the loss at time $t$ with respect to the hidden state at time $k$, we need to multiply the gradients at each intermediate time step from $k$ to $t$. The \textbf{gradient starts at time $t$ because that's where the loss is computed}, and we \textbf{backpropagate through each time step until we reach time $k$ because that's the point in the past we are interested in} (e.g., to assign credit for events that happened $k$ steps ago).
+
+\highspace
+This can be compactly written as:
+\begin{equation*}
+    \frac{\partial E_t}{\partial h_k} = \frac{\partial E_t}{\partial h_t} \cdot \underbrace{\displaystyle\prod_{i=k+1}^{t} \frac{\partial h_i}{\partial h_{i-1}}}_{\text{\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{problem}}}}
+\end{equation*}
+So the gradient is a \textbf{product of Jacobians} from step $k$ to step $t$. \hl{That product is where vanishing/exploding gradients arise}. Since this term causes the gradient to either shrink or grow exponentially, we need to analyze it closely.
+
+\highspace
+\textcolor{Green3}{\faIcon{search} \textbf{Analyzing the Jacobian Terms.}} Now, we take a closer look at each \textbf{Jacobian term} $\frac{\partial h_i}{\partial h_{i-1}}$, because \hl{they determine how the gradient behaves as we multiply them together}. We can get each Jacobian term from:
+\begin{equation*}
+    a_i = W_h h_{i-1} + W_x x_i + b \quad \Rightarrow \quad h_i = \phi(a_i)
+\end{equation*}
+Where $a_i$ is a \textbf{vector} (e.g., 100-dimensional if hidden size is 100), and $h_i$ is obtained by applying the activation function $\phi$ (like $\tanh$) element-wise to $a_i$:
+\begin{equation*}
+    h_i = \phi\left(a_i\right) \implies \begin{array}{rcl}
+        h_i^{(1)} & = & \phi\left(a_i^{(1)}\right) \\[.7em]
+        h_i^{(2)} & = & \phi\left(a_i^{(2)}\right) \\
+        & \vdots & \\
+        h_i^{(n)} & = & \phi\left(a_i^{(n)}\right)
+    \end{array}
+\end{equation*}
+So \textbf{each component of the vector is activated independently}. Using the \textbf{chain rule} of calculus (\autopageref{box:chain-rule}) to \hl{understand how $h_i$ changes when we slightly change $h_{i-1}$}:
+\begin{equation*}
+    \frac{\partial h_i}{\partial h_{i-1}} = \frac{\partial h_i}{\partial a_i} \cdot \frac{\partial a_i}{\partial h_{i-1}} = \frac{\partial \phi\left(a_i\right)}{\partial a_i} \cdot \frac{\partial a_i}{\partial h_{i-1}}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $\dfrac{\partial a_i}{\partial h_{i-1}} = W_h$ is the weight matrix.
+
+
+    \item $\dfrac{\partial h_i}{\partial a_i} = \dfrac{\partial \phi\left(a_i\right)}{\partial a_i}$ is a \textbf{diagonal matrix} with activation derivatives on the diagonal:
+    \begin{equation*}
+        \dfrac{\partial h_i}{\partial a_i} = \begin{pmatrix}
+            \phi'\left(a_i[1]\right) & 0 & 0 & \dots \\[.3em]
+            0 & \phi'\left(a_i[2]\right) & 0 & \dots \\[.3em]
+            0 & 0 & \phi'\left(a_i[3]\right) & \dots \\[.3em]
+            \vdots & & & \ddots
+        \end{pmatrix} = D_i = \text{diag}\left(\phi'\left(a_i\right)\right)
+    \end{equation*}
+    It is naturally a diagonal matrix because $\phi$ is applied \textbf{element-wise}:
+    \begin{equation*}
+        h_i = \phi\left(a_i\right) = \begin{pmatrix}
+            \phi\left(a_i[1]\right) \\[.3em]
+            \phi\left(a_i[2]\right) \\[.3em]
+            \phi\left(a_i[3]\right) \\[.3em]
+            \vdots \\[.3em]
+            \phi\left(a_i[n]\right)
+        \end{pmatrix}
+    \end{equation*}
+\end{itemize}
+Putting it together:
+\begin{equation*}
+    \frac{\partial h_i}{\partial h_{i-1}} = D_i \cdot W_h
+\end{equation*}
+
+\highspace
+\textcolor{Green3}{\faIcon{search} \textbf{Analyzing the Product of Jacobians.}} Now, we will rewrite the product of Jacobians from time $k$ to time $t$:
+\begin{equation*}
+    \frac{\partial E_t}{\partial h_k} = \frac{\partial E_t}{\partial h_t} \cdot \underbrace{\displaystyle\prod_{i=k+1}^{t} \frac{\partial h_i}{\partial h_{i-1}}}_{\text{\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{problem}}}}
+\end{equation*}
+Expanding the product:
+\begin{equation*}
+    \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} = \displaystyle\prod_{i=k+1}^{t} \left(D_i \cdot W_h\right) = D_t \cdot W_h \cdot D_{t-1} \cdot W_h \cdots D_{k+1} \cdot W_h
+\end{equation*}
+This product alternates between the diagonal matrices $D_i$ (activation derivatives) and the weight matrix $W_h$. \hl{To understand whether this product vanishes or explodes, we need to analyze the \textbf{norms}} of these matrices. \textcolor{Green3}{\faIcon{question-circle} \textbf{Why norms?}} \textbf{Because the norm gives us a measure of the ``size'' of a matrix}, and repeated multiplication of matrices with norms less than 1 leads to vanishing gradients, while norms greater than 1 lead to exploding gradients (as discussed earlier).
+
+\highspace
+So, we do \textbf{not} care about the \emph{exact} gradient matrix. We care about something much simpler: \textbf{\emph{does the gradient get bigger or smaller as it flows backwards in time?}} This means we need a \textbf{single number} that measures the ``magnitude'' of a vector or matrix. That number is the \textbf{norm}, which is a tool that tells us: if the gradient explodes (norm $\to \infty$), vanishes (norm $\to 0$), or stays the same (norm $\approx$ constant).
+
+\highspace
+The exact gradient is impossible to compute symbolically because of the \textbf{nonlinear} activations and \textbf{complex} interactions. But we don't need the exact value, we need to understand \emph{its trend}. So, instead of computing it exactly, we compute an \textbf{upper bound} on its size using norms:
+\begin{equation*}
+    \left\|\dfrac{\partial E_t}{\partial h_k}\right\| = \left\|\dfrac{\partial E_t}{\partial h_t} \cdot \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}}\right\|
+\end{equation*}
+We can use \hl{sub-multiplicative property} of norms to separate this:
+\begin{equation*}
+    \text{sub-multiplicative property} \implies \left\|AB\right\| \leq \left\|A\right\| \cdot \left\|B\right\|
+\end{equation*}
+\begin{equation*}
+    \left\|\dfrac{\partial E_t}{\partial h_k}\right\| \leq \left\|\dfrac{\partial E_t}{\partial h_t}\right\| \cdot \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\|
+\end{equation*}
+And now, we focus on the second term:
+\begin{equation*}
+    \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\|
+\end{equation*}
+This term determines whether the gradient vanishes or explodes as we backpropagate through time. Using sub-multiplicative property again:
+\begin{equation*}
+    \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\| \leq \displaystyle\prod_{i=k+1}^{t} \left\| \dfrac{\partial h_i}{\partial h_{i-1}} \right\|
+\end{equation*}
+Recalling that:
+\begin{equation*}
+    \dfrac{\partial h_i}{\partial h_{i-1}} = D_i \cdot W_h
+\end{equation*}
+We substitute:
+\begin{equation*}
+    \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\| \leq \displaystyle\prod_{i=k+1}^{t} \left\| D_i \cdot W_h \right\|
+\end{equation*}
+Using sub-multiplicative property one last time:
+\begin{equation*}
+    \left\| D_i \cdot W_h \right\| \leq \left\| D_i \right\| \cdot \left\| W_h \right\|
+\end{equation*}
+So we have:
+\begin{equation*}
+    \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\| \leq \displaystyle\prod_{i=k+1}^{t} \left\| D_i \right\| \cdot \left\| W_h \right\|
+\end{equation*}
+Since $\left\| W_h \right\|$ is constant across time steps, we can factor it out:
+\begin{equation*}
+    \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\| \leq \left\| W_h \right\|^{t-k} \cdot \displaystyle\prod_{i=k+1}^{t} \left\| D_i \right\|
+\end{equation*}
+Now, we analyze $\left\| D_i \right\|$. Since $D_i$ is a diagonal matrix with activation derivatives on the diagonal, its norm is determined by the maximum absolute value of those derivatives:
+\begin{equation*}
+    \left\| D_i \right\| = \max_j \left| \phi'\left(a_i[j]\right) \right|
+\end{equation*}
+
+\newpage
+
+\noindent
+For common activation functions like $\tanh$ and $\sigma$ (sigmoid):
+\begin{itemize}
+    \item For $\tanh$, the derivative $\phi'(z) = 1 - \tanh^2(z)$ has a maximum value of 1 (at $z=0$, \autopageref{fig:tanh-activation-function}).
+    \item For $\sigma$ (sigmoid), the derivative $\phi'(z) = \sigma(z) \cdot (1 - \sigma(z))$ has a maximum value of 0.25 (at $z=0$, \autopageref{fig:sigmoid-activation-function}).
+\end{itemize}
+We define $\gamma_v$ as the \textbf{upper bound on the size of the recurrent weight matrix} $W_h$'s contribution to the gradient:
+\begin{equation*}
+    \gamma_v = \left\| W_h \right\|
+\end{equation*}
+And we define $\gamma_h'$ as the \textbf{upper bound on the size of the activation function derivatives}:
+\begin{equation*}
+    \gamma_h' = \max_j \left| \phi'\left(a_i[j]\right) \right| \quad \equiv \quad \gamma_h' = \sup_z \left| \phi'(z) \right|
+\end{equation*}
+Where $\sup$ denotes the supremum (least upper bound) over all possible inputs $z$. For $\tanh$ and $\sigma$, we have:
+\begin{equation*}
+    \gamma_h' = \begin{cases}
+        1 & \text{for } \tanh \\[.3em]
+        0.25 & \text{for } \sigma
+    \end{cases}
+\end{equation*}
+Thus, we can bound $\left\| D_i \right\|$ by $\gamma_h'$:
+\begin{equation*}
+    \left\| D_i \right\| \leq \gamma_h'
+\end{equation*}
+Using this bound, we have:
+\begin{equation*}
+    \displaystyle\prod_{i=k+1}^{t} \left\| D_i \right\| \leq \gamma_h'^{t-k}
+\end{equation*}
+Hence, \textbf{for every timestep $i$} (using sub-multiplicative property):
+\begin{equation*}
+    \left\| D_i \cdot W_h \right\| \leq \left\| D_i \right\| \cdot \left\| W_h \right\| \leq \gamma_h' \cdot \gamma_v
+\end{equation*}
+And defining:
+\begin{equation*}
+    \gamma = \gamma_h' \cdot \gamma_v
+\end{equation*}
+We get:
+\begin{equation*}
+    \left\| D_i \cdot W_h \right\| \leq \gamma
+\end{equation*}
+Putting it all together:
+\begin{equation*}
+    \left\| \displaystyle\prod_{i=k+1}^{t} \dfrac{\partial h_i}{\partial h_{i-1}} \right\| \leq \gamma^{t-k}
+\end{equation*}
+Therefore:
+\begin{equation*}
+    \left\|\dfrac{\partial E_t}{\partial h_k}\right\| \leq \left\|\dfrac{\partial E_t}{\partial h_t}\right\| \cdot \gamma^{t-k}
+\end{equation*}
+This inequality shows that the norm of the gradient $\dfrac{\partial E_t}{\partial h_k}$ depends exponentially on the term $\gamma^{t-k}$.
+\begin{itemize}
+    \item If $\gamma < 1$, then $\gamma^{t-k} \to 0$ as $t-k \to \infty$, leading to \textbf{vanishing gradients}.
+    \item If $\gamma > 1$, then $\gamma^{t-k} \to \infty$ as $t-k \to \infty$, leading to \textbf{exploding gradients}.
+    \item If $\gamma = 1$, the gradient norm remains constant over time steps.
+\end{itemize}

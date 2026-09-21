@@ -1,0 +1,126 @@
+\subsubsection{Quantum Error Correction Codes (QECC)}\label{sec:qecc}
+
+After understanding that physical qubits suffer from decoherence and gate errors, we need a \textbf{mechanism to preserve quantum information during a computation}. \hl{Quantum Error Correction Codes (QECCs)} achieve this by introducing \textbf{redundancy}: instead of storing information in a single physical qubit, the information is distributed across many qubits.
+
+\highspace
+We previously discussed this concept on \autopageref{sec:logical-vs-physical-qubits}, where we compared logical and physical qubits. Here, however, we present the concept with more detail because we now have a better understanding of possible errors and their impact on quantum computations.
+\begin{itemize}
+    \item A \definition{Physical Qubit} is a \textbf{real qubit implemented by hardware}, such as superconducting qubits, trapped-ion qubits or photonic qubits. Unfortunately, physical qubits are directly affected by decoherence (\autopageref{def:coherence}), thermal noise (\autopageref{sec:quantum-computation-errors}), and gate imperfections (infidelity, \autopageref{sec:gate-infidelity}). Therefore, a \textbf{physical qubit is unreliable if used alone} for quantum computation, as it is prone to errors that can lead to incorrect results.
+
+
+    \item To obtain reliable computation, quantum information is not stored in a single physical qubit. Instead, one creates a \definition{Logical Qubit} $\ket{q_L}$ which is \textbf{encoded into many physical qubits}. For instance, a logical qubit can be encoded into 5, 7, or even hundreds of physical qubits, depending on the specific error correction code used.
+    
+    The user of the quantum computer thinks in terms of logical qubits, while the hardware manipulates the underlying physical qubits.
+\end{itemize}
+
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{How can errors be detected without collapsing the state?}}
+\end{flushleft}
+Suppose our logical qubit is encoded into some physical qubits:
+\begin{equation*}
+    q_0, \, q_1, \, q_2, \, q_3, \, q_4
+\end{equation*}
+An error occurs on one of the physical qubits, say $q_2$. However, since the logical qubit is encoded across all five physical qubits, enough information remains in the qubits to recover the original state. The question is, \emph{\textbf{how do we know that an error occurred and which qubit was affected?}}
+
+\highspace
+\textcolor{Red2}{\faIcon{times-circle}} The first naïve solution could be to measure all the physical qubits to check for errors. However, this approach is flawed because \textbf{measuring a qubit collapses its quantum state}, which would destroy the quantum information we are trying to protect.
+
+\highspace
+At this point, we can \textbf{exploit the redundancy introduced by the logical encoding}. Consider a simple example where:
+\begin{equation*}
+    \ket{0_L} = \ket{000}
+    \qquad
+    \ket{1_L} = \ket{111}
+\end{equation*}
+Where $L$ stands for ``logical''. In this encoding, the logical qubit $\ket{0_L}$ is represented by three physical qubits all in the state $\ket{0}$, and the logical qubit $\ket{1_L}$ is represented by three physical qubits all in the state $\ket{1}$.
+A generic logical qubit is therefore:
+\begin{equation*}
+    \ket{\psi_L}
+    =
+    \alpha\ket{000}
+    +
+    \beta\ket{111}
+\end{equation*}
+Notice that in a \textbf{valid encoded state all physical qubits agree with each other}: they are either all $0$ or all $1$.
+
+\highspace
+Now, suppose that a \textbf{bit-flip error} affects the second physical qubit. The error acts on the entire quantum state:
+\begin{equation*}
+    \alpha\ket{000}
+    +
+    \beta\ket{111}
+    \quad\longrightarrow\quad
+    \alpha\ket{010}
+    +
+    \beta\ket{101}
+\end{equation*}
+In this case, the second qubit has flipped from $0$ to $1$ in the first term and from $1$ to $0$ in the second term. The resulting state is \textbf{no longer a valid encoded state} because the physical qubits do not all agree with each other.
+
+\highspace
+\textcolor{Green3}{\faIcon{check-circle} \textbf{Solution: Syndrome.}} Rather than asking ``\emph{what is the quantum state?}'' which would destroy the computation, we only ask: ``\emph{are neighbouring qubits equal or different?}''. For instance, we can check if $q_0$ and $q_1$ are the same, and if $q_1$ and $q_2$ are the same. This way, we can detect that $q_2$ is different from the others without measuring the actual state of any qubit. In other words, the \textbf{pattern of answers identifies the location of the error without revealing the coefficients} $\alpha$ and $\beta$ of the logical qubit. The collection of these answers is called the \textbf{syndrome}.
+
+\highspace
+\begin{definitionbox}[: Syndrome]
+    A \definition{Syndrome} is a classical piece of information that indicates the \textbf{presence and type of error without revealing the logical quantum state}. A \emph{syndrome} is obtained by performing a \definition{Syndrome Measurement}, which simply collects information about the error, a sort of ``\emph{error diagnosis}''. However, it is a \textbf{quantum measurement} and therefore \textbf{causes a collapse}. But it \textbf{collapses only the error-related degrees of freedom} (the syndrome subspace), not the logical quantum information encoded in the qubit. Therefore the logical state survives while the error information becomes known.
+
+    \highspace
+    For instance, if we have the logical state:
+    \begin{equation*}
+        \alpha\ket{0} + \beta\ket{1}
+    \end{equation*}
+    The syndrome does \textbf{not} tell us $\alpha$ or $\beta$, the syndrome only tells us things like ``\emph{error detected: yes}; \emph{location: qubit 5}; \emph{type: bit-flip}''.
+\end{definitionbox}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{How can we perform syndrome measurements without collapsing the logical state?}}
+\end{flushleft}
+The key insight is that we can perform \textbf{indirect measurements} by coupling the data qubits to an additional qubit, called an \definition{Ancilla Qubit}, and then measuring the ancilla. This way, we can extract information about the error without directly measuring the data qubits, thus preserving the logical quantum state.
+
+\highspace
+Usually the ancilla qubit starts in a known state, such as $\ket{0}$. We then \hl{apply a series of quantum gates that entangle the ancilla with the data qubits} in such a way that the state of the ancilla after the interaction contains information about the syndrome.
+
+\begin{examplebox}[: Syndrome Measurement with an Ancilla Qubit]
+    We want to know if $q_0$ and $q_1$ are the same or different. We initialize the ancilla qubit in the state $\ket{0}$ and apply a CNOT gate with $q_1$ as the control and the ancilla as the target:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$q_1$} & \ctrl{1} & \\
+            \lstick{Ancilla} & \targ{} &
+        \end{quantikz}
+    \end{center}
+    If $q_1$ is in the state $\ket{0}$, the ancilla remains in $\ket{0}$. If $q_1$ is in the state $\ket{1}$, the ancilla flips to $\ket{1}$. Next, we apply another CNOT gate with $q_0$ as the control and the ancilla as the target:
+    \begin{center}
+        \begin{quantikz}
+            \lstick{$q_0$} & \ctrl{1} & \\
+            \lstick{Ancilla} & \targ{} &
+        \end{quantikz}
+    \end{center}
+    After these two gates, the state of the ancilla will be $\ket{0}$ if $q_0$ and $q_1$ are the same (both $\ket{0}$ or both $\ket{1}$) and $\ket{1}$ if they are different. The final value becomes $\text{Ancilla} = q_0 \oplus q_1$, which is the syndrome for this particular check.
+\end{examplebox}
+
+\noindent
+Finally, we \textbf{measure the ancilla qubit}. The measurement outcome gives the syndrome, which can be used to determine whether an error occurred and, in many cases, which qubit was affected.
+
+\highspace
+An important observation is that the syndrome does not exist beforehand. The \hl{ancilla qubit is the physical system that temporarily stores the syndrome information so that it can be measured without directly measuring the data qubits.}
+
+\highspace
+\begin{definitionbox}[: Ancilla Qubit]
+    An \definition{Ancilla Qubit} is an \textbf{auxiliary qubit} introduced to assist a quantum computation. In QECC, ancilla qubits are used to interact with data qubits, extract information about errors without collapsing the data qubits' states, and help correct errors. They \textbf{do not store the logical quantum information} being protected.
+\end{definitionbox}
+
+\highspace
+In summary, QECC makes reliable quantum computation possible, but at a \textbf{significant cost}. A logical qubit is not implemented by a single physical qubit. Instead, it requires many physical qubits, including both data qubits and ancilla qubits used for syndrome extraction and error correction.
+
+\highspace
+As a consequence, the number of physical qubits required by a quantum computer grows dramatically. In practice, a \textbf{single logical qubit may require tens or even hundreds of physical qubits}. This phenomenon is known as the \definition{Blow-Up Problem}.
+
+\highspace
+\begin{definitionbox}[: Quantum Error Correction Code (QECC)]
+    A \definition{Quantum Error Correction Code (QECC)} is a \textbf{technique used to protect quantum information} from noise and decoherence. A logical qubit is encoded into multiple physical qubits, introducing redundancy that allows errors to be detected and corrected.
+
+    \highspace
+    Error detection is performed through \textbf{syndrome measurements}, typically using \textbf{ancilla qubits}, so that information about errors can be extracted \emph{without} directly measuring the logical quantum state.
+
+    \highspace
+    By continuously detecting and correcting errors, QECC enables reliable quantum computations despite the presence of imperfect hardware.
+\end{definitionbox}

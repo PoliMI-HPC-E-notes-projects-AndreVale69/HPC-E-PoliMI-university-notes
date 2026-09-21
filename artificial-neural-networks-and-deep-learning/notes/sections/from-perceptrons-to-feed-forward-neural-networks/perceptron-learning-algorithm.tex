@@ -48,7 +48,7 @@ Every deep learning model, even a transformer, still rests on these same princip
 \highspace
 The perceptron learning algorithm is designed for \textbf{binary classification tasks} where the data is \textbf{linearly separable}. It iteratively adjusts the weights of the perceptron based on the errors it makes on the training data, aiming to find a hyperplane that separates the two classes. So, \hl{we want to derive an \textbf{error function} that expresses how \emph{wrong} the perceptron is, such that we can later minimize it using a gradient-based rule}.
 \begin{enumerate}
-    \item \important{Start from the \emph{algebraic hyperplane}}. For a linear classifier, the decision boundary is a\textbf{hyperplane}:
+    \item \important{Start from the \emph{algebraic hyperplane}}. For a linear classifier, the decision boundary is a \textbf{hyperplane}:
     \begin{equation*}
         w^{T} x + w_{0} = 0
     \end{equation*}
@@ -111,9 +111,9 @@ The perceptron learning algorithm is designed for \textbf{binary classification 
 
     \item \important{Measure ``how wrong'' those samples are}. Each misclassified point $x_i$ with $i \in M$ lies at a \textbf{signed distance} from the hyperplane given by:
     \begin{equation*}
-        d_i = \dfrac{w^{T} x_i + w_0}{\left|w\right|}
+        d_i = \dfrac{w^{T} x_i + w_0}{\left\|w\right\|}
     \end{equation*}
-    Since the point is misclassified, $t_i \cdot \left(w^{T} x_i + w_0\right) < 0$, so the signed distance is \textbf{negative} (i.e., it's on the wrong side). To simplify, we can just use the \textbf{activation} $a_i = w^{T} x_i + w_0$ as a measure of error (ignoring the normalization by $\left|w\right|$). This simplification isn't a problem because it only scales the error, not its direction.
+    Since the point is misclassified, $t_i \cdot \left(w^{T} x_i + w_0\right) < 0$, so the signed distance is \textbf{negative} (i.e., it's on the wrong side). To simplify, we can just use the \textbf{activation} $a_i = w^{T} x_i + w_0$ as a measure of error (ignoring the normalization by $\left\|w\right\|$). This simplification isn't a problem because it only scales the error, not its direction.
 
 
     \item \important{Build an  error function using those distances}. To quantify the total error made by the perceptron, we sum the negative activations of all misclassified samples. So, we want a scalar function $D\left(w, w_0\right)$ that:
@@ -171,7 +171,7 @@ Now that we have defined the error function $D\left(w, w_0\right)$ that quantifi
     \end{equation*}
     \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Trying to optimize over all misclassified points at once.}}\label{warn:perceptron-batch} Here, we are happy to see that the updates \textbf{add contributions from all misclassified points}, pushing the weights and bias in the direction that reduces their error (i.e., moves \emph{all} misclassified points to the correct side of the hyperplane $\sum_{i \in M} t_i \cdot x_i$ and $\sum_{i \in M} t_i$).
     
-    However, this approach can be \hl{computationally expensive for large\break datasets since it requires summing over all misclassified points in each update}. Furthermore, there is \hl{no randomness}, which can lead to slow convergence and getting stuck in suboptimal solutions. To address these issues, we can add a pinch of \textbf{stochasticity} to the learning process.
+    However, this approach can be \hl{computationally expensive for large\break datasets}, since it requires summing over all misclassified points at each update. In practice, it is more convenient to perform \textbf{incremental updates}, correcting the model using one misclassified sample at a time. This leads to a \textbf{stochastic} version of the update rule, where the parameters are adjusted immediately after observing a misclassified example instead of aggregating all errors (i.e., we can update the weights and bias after processing each misclassified point, rather than waiting to compute the sum over all misclassified points). The resulting update rule is computationally simpler and allows the model to adapt continuously during the training pass through the data.
     
 
     \item \important{Make it \emph{stochastic}}.\label{def:stochastic-gradient-descent} The word ``stochastic'' means ``\emph{involving randomness or uncertainty}''. It comes from the Greek ``\emph{stochastikos}'', meaning ``\emph{able to guess}'' or ``\emph{randomly determined}''. So a \textbf{stochastic process} is one that includes random variables or random choices; instead, a \textbf{deterministic process} always behaves the same way for the same inputs (no randomness). In neural networks, \textbf{stochastic} means that we don't \textbf{compute the gradient} using \emph{all} training data at once, but rather we approximate it \textbf{using a \emph{subset}} (or even a single sample). This introduces a bit of \emph{random noise} in each update, but makes learning faster and more dynamic.
@@ -205,9 +205,13 @@ Now that we have defined the error function $D\left(w, w_0\right)$ that quantifi
         \item If $t_i = +1$ (positive class), the point is misclassified, so we \textbf{add} $x_i$ to $w$ to move the hyperplane closer to $w$.
         \item If $t_i = -1$ (negative class) and the point is misclassified, we \textbf{subtract} $x_i$ from $w$ to move the hyperplane away from $w$.
     \end{itemize}
-\end{enumerate}
 
-\newpage
+    \item \important{Repeat until convergence}. The \definition{Perceptron Convergence Theorem} states that \hl{if the training data is linearly separable} (i.e., there exists a hyperplane that can perfectly separate the two classes), \hl{the perceptron learning algorithm will converge to a solution} (a hyperplane that separates the classes) \hl{in a finite number of steps.} However, if the data is not linearly separable, the algorithm will never converge and will keep updating indefinitely. In practice, we can set a maximum number of iterations or a convergence criterion to stop the algorithm if it doesn't find a solution.
+    
+    \begin{theorem}[Perceptron Convergence Theorem]
+        If the training data is linearly separable, the perceptron learning algorithm will converge to a solution in a finite number of steps. If the data is not linearly separable, the algorithm will not converge.
+    \end{theorem}
+\end{enumerate}
 
 \begin{figure}[!htp]
     \centering
@@ -215,6 +219,8 @@ Now that we have defined the error function $D\left(w, w_0\right)$ that quantifi
     \caption{An illustration example of stochastic updates vs full-batch updates. The contours are the \textbf{MSE loss} for a simple linear regression in parameter space $\left(a, b\right)$. \textbf{Batch Gradient Descent} follows a smooth path (solid line) using the \textbf{full dataset gradient} each step, while \textbf{Stochastic Gradient Descent} (dashed line) takes a more erratic path using \textbf{individual sample gradients}, leading to faster but noisier convergence.}
     \label{fig:perceptron-stochastic-vs-batch}
 \end{figure}
+
+\newpage
 
 \begin{lstlisting}[language=pseudo-code,mathescape=true,style={pseudocode-style},caption={Perceptron Learning Algorithm}]
 // Init
@@ -230,3 +236,12 @@ while not converged:
             $w \leftarrow w + \eta \cdot t_i \cdot x_i$
             $w_0 \leftarrow w_0 + \eta \cdot t_i$
 \end{lstlisting}
+The above pseudo-code summarizes the Perceptron Learning Algorithm:
+\begin{enumerate}
+    \item \textbf{Initialization}. We start by initializing the weights $w$ and bias $w_0$ to small random values. This randomness helps break symmetry and allows the algorithm to explore different solutions.
+    \item \textbf{Training loop}. We repeat the training process until convergence (or a maximum number of iterations):
+    \begin{itemize}
+        \item For each training sample $(x_i, t_i)$, we compute the activation $a_i$.
+        \item We check if the sample is misclassified by evaluating $t_i \cdot a_i$. If it's less than or equal to zero, it means the sample is on the wrong side of the hyperplane, and we perform an update to the weights and bias to move the decision boundary closer to the misclassified point.
+    \end{itemize}
+\end{enumerate}

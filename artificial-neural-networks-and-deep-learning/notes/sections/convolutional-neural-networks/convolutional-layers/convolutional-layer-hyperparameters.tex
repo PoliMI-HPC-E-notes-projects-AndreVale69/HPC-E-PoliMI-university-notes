@@ -1,0 +1,102 @@
+\subsubsection{Convolutional-Layer Hyperparameters}\label{sec:convolutional-layer-hyperparameters}
+
+In this section, we will see \textbf{how to configure a convolutional layer} answering the following question: \emph{\textbf{what are the design choices when creating a Conv2D layer?}} Let's start from an example:
+\begin{lstlisting}[language=Python]
+Conv2D(
+    filters = n_f,
+    kernel_size = (h_r, h_c),
+    activation = 'relu',
+    strides = (1,1),
+    padding = 'same'
+)
+\end{lstlisting}
+\emph{Which of these values are chosen by us, and which are determined automatically?}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is a hyperparameter?}}
+\end{flushleft}
+A \textbf{parameter} is \textbf{learned} during training. For example, the filter weights of a convolutional layer, or the biases. Thus, a \textbf{hyperparameter} is a parameter that is \textbf{set before training}, and it is not learned. For example, the number of filters, the kernel size, the stride, and the padding are all hyperparameters of a convolutional layer and the optimizer never changes them during training.
+
+\highspace
+Thus, the \hl{Convolutional-Layer Hyperparameters} are the following:
+\begin{itemize}
+    \item \important{Number of filters}. This is:
+    \begin{equation*}
+        \texttt{filters = n\_f}
+    \end{equation*}
+    For example, if we set \texttt{filters = 32}, then the convolutional layer will learn 32 different filters, and thus it will produce 32 different output feature maps. This is probably the \textbf{most important hyperparameter} of a convolutional layer, as it determines the \textbf{capacity of the layer} to learn different features.
+
+
+    \item \important{Kernel size}. This is:
+    \begin{equation*}
+        \texttt{kernel\_size = (h\_r, h\_c)}
+    \end{equation*}
+    This determines the \textbf{spatial size} of every filter. Notice that the kernel size specifies only height and width, but \textbf{not} the depth of the filter. \emph{Why?} Because the \textbf{depth of the filter is automatically equal to the input depth}, it is not a free design choice.
+
+    \highspace
+    For example, if the input volume is a color image of size $32 \times 32 \times 3$, and we set \texttt{kernel\_size = (5,5)}, then the convolutional layer will learn filters of size $5 \times 5 \times 3$. The depth of the filter is automatically equal to the input depth, which is 3 in this case.
+
+    Similarly, if the previous layer is a convolutional layer that outputs a volume of size $16 \times 16 \times 64$, and we set \texttt{kernel\_size = (3,3)} in the next convolutional layer, then the next convolutional layer will learn filters of size $3 \times 3 \times 64$.
+
+
+    \item \important{Stride}. This is:
+    \begin{equation*}
+        \texttt{strides = (1, 1)}
+    \end{equation*}
+    Stride controls \textbf{how far the filter moves after each convolution}. For example, if we set \texttt{strides = (1, 1)}, then the filter moves one pixel at a time. If we set \texttt{strides = (2, 2)}, then the filter moves two pixels at a time. We will see later that the stride affects the size of the output feature map, and it is a hyperparameter that we can choose.
+
+
+    \item \important{Padding}. This is:
+    \begin{equation*}
+        \texttt{padding = 'same'}
+    \end{equation*}
+    Padding determines \textbf{how the image borders are handled}. If we set \texttt{padding = 'same'}, then the output feature map will have the same spatial size as the input. Again, the detailed explanation of padding will be given later, but for now it is enough to know that it is a hyperparameter that we can choose.
+\end{itemize}
+Notice that \hl{layers with the same hyperparameters can have different numbers of parameters depending on where they are located in the network.}
+
+\highspace
+At first this sounds strange. Suppose we build this CNN architecture:
+\begin{enumerate}
+    \item Input image: $64 \times 64 \times 3$
+    \item Conv2D layer: 32 filters, kernel size $3 \times 3$, stride $1$
+    \item Activation: $62 \times 62 \times 32$
+    \item MaxPool: $31 \times 31 \times 32$
+    \item Conv2D layer: 32 filters, kernel size $3 \times 3$, stride $1$
+\end{enumerate}
+The first convolutional layer has 32 filters of size $3 \times 3 \times 3$, thus it has:
+\begin{equation*}
+    \text{Number of parameters Conv2D layer 1} = 32 \cdot (3 \cdot 3 \cdot 3) + 32 = 896
+\end{equation*}
+Now we apply max pooling, which reduces the spatial size of the feature maps to $31 \times 31 \times 32$. Then, we apply the second convolutional layer, which has 32 filters of size $3 \times 3 \times 32$, thus it has:
+\begin{equation*}
+    \text{Number of parameters Conv2D layer 2} = 32 \cdot (3 \cdot 3 \cdot 32) + 32 = 9248
+\end{equation*}
+Much larger than the first convolutional layer, even though they have the same hyperparameters. The reason is that the \hl{input depth $C$ is always \textbf{the depth of the input activation volume}}, not the original image.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Parameters vs. Activations}}
+\end{flushleft}
+Parameters are the \textbf{memory} of the network. They are \textbf{learned during training} and remain \textbf{fixed during inference}. For a convolutional layer, the parameters are only:
+\begin{itemize}
+    \item The filter weights;
+    \item One bias per filter.
+\end{itemize}
+Instead, activations are \textbf{not learned}. They are simply the outputs produced when an input image passes through the network. For each image that we feed to the network, the activations are different. For a convolutional layer, the activations are the output feature maps produced by convolving the input with the filters: $a(r,c,l)$. In general:
+\begin{itemize}
+    \item \hl{\textbf{Parameters} describe the model.}
+    \item \hl{\textbf{Activations} describe the current input after it has been processed by the model.}
+\end{itemize}
+
+\highspace
+\begin{takeawaysbox}
+    A convolutional layer is defined by a few design choices (hyperparameters), while its trainable parameters are determined by those choices together with the depth of its input volume.
+    \begin{itemize}
+        \item A convolutional layer is configured by a small set of hyperparameters: number of filters, kernel size, stride, and padding.
+        \item The filter depth is not chosen manually; it automatically matches the input depth.
+        \item The number of filters determines the output depth.
+        \item Trainable parameters (weights and biases) are different from activations (output values).
+        \item Two convolutional layers can have identical hyperparameters but different numbers of trainable parameters because the input depth $C$ depends on the previous layer.
+    \end{itemize}
+\end{takeawaysbox}

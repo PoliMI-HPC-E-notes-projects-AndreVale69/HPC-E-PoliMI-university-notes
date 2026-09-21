@@ -1,0 +1,100 @@
+\subsubsection{Correlation as Template Matching}\label{sec:correlation-as-template-matching}
+
+In the previous section, we have seen that correlation is a local linear operation:
+\begin{equation*}
+    \left(I \otimes w\right)\left(r,c\right) = \left(I \star w\right)\left(r,c\right) = \sum_{u=-L}^{L} \sum_{v=-L}^{L} w_{u,v} \cdot I\left(r+u, c+v\right)
+\end{equation*}
+But \textbf{\emph{what does this number represent?}} In other words, what is the meaning of the correlation between a local neighbourhood of an image and a filter? The answer is simple: it measures \textbf{how well the image patch matches the filter (template)}.
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The Main Idea.}} Imagine that the filter is not just a random matrix. Instead, suppose it is an image of the object we are looking for. For example, if we are looking for a particular shape in an image, we can use a filter that is an image of that shape. Then, we slide this template over the image and compute the correlation at each position.
+
+\highspace
+To make the idea easier, considers \textbf{binary images}. A binary image contains only two colors, typically black and white.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{What happens during correlation?}} Suppose our template is:
+    \begin{equation*}
+        \mathbf{w} = \begin{bmatrix}
+            1 & 1 & 1 \\
+            1 & 0 & 1 \\
+            1 & 1 & 1
+        \end{bmatrix}
+    \end{equation*}
+    Now suppose we place it on top of the image. If the image patch under the template is exactly the same as the template, then the correlation will be high:
+    \begin{equation*}
+        \left(I \otimes w\right)\left(r,c\right) = 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 0 \cdot 0 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 = 8
+    \end{equation*}
+    Now suppose we move one pixel. The image patch under the template is now different from the template:
+    \begin{equation*}
+        \begin{bmatrix}
+            1 & 1 & 0 \\
+            1 & 0 & 0 \\
+            1 & 1 & 1
+        \end{bmatrix}
+    \end{equation*}
+    The correlation will be lower:
+    \begin{equation*}
+        \left(I \otimes w\right)\left(r,c\right) = 1 \cdot 1 + 1 \cdot 1 + 0 \cdot 1 + 1 \cdot 1 + 0 \cdot 0 + 0 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 = 6
+    \end{equation*}
+    Therefore, the \hl{correlation score decreases whenever the image becomes less similar to the template.} So the location with \textbf{the highest score} is where the template best matches the image.
+
+    \item[\textcolor{Green3}{\faIcon{map}}] \textcolor{Green3}{\textbf{Correlation Output.}} Instead of producing an image, we can think of the correlation output as a \textbf{similarity map}. \hl{Each pixel in the output image represents how similar the corresponding patch in the input image is to the template. The higher the value, the more similar the patch is to the template.} Thus, an example of a correlation output could look like this:
+    \begin{equation*}
+        \begin{bmatrix}
+            0 & 1 & 2 & 3 \\
+            1 & 3 & 5 & 4 \\
+            2 & 5 & 9 & 6 \\
+            1 & 2 & 4 & 3
+        \end{bmatrix}
+    \end{equation*}
+    The largest number in the output is 9, which indicates that the patch at that location is the most similar to the template. Therefore, we can conclude that the \textbf{template is located at that position in the input image}.
+
+    \item[\textcolor{Green3}{\faIcon{question-circle}}] \textcolor{Green3}{\textbf{Why does it work?}} Remember the correlation equation:
+    \begin{equation*}
+        \left(I \otimes w\right)\left(r,c\right) = \sum_{u=-L}^{L} \sum_{v=-L}^{L} w_{u,v} \cdot I\left(r+u, c+v\right)
+    \end{equation*}
+    Each multiplication contributes positively when bright template pixels overlap bright image pixels. If they don't match, many products become zero (or very small), so the total decreases. Therefore, larger correlation means grater similarity.
+\end{itemize}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Maximum Correlation}}
+\end{flushleft}
+When performing template matching, we are often interested in finding the location of the template in the image. To do this, we can look for the \textbf{maximum correlation value} in the output similarity map. The \hl{coordinates of this maximum value correspond to the location of the best match between the template and the image.}
+
+\highspace
+That's sound good, but there is a \textbf{problem}: the \hl{correlation value depends on the size of the template.} Suppose the template is:
+\begin{equation*}
+    \mathbf{w} = \begin{bmatrix}
+        1 & 1 & 1 \\
+        1 & 1 & 1 \\
+        1 & 1 & 1
+    \end{bmatrix}
+\end{equation*}
+And the image contains a large white region:
+\begin{equation*}
+    \begin{bmatrix}
+        0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+        1 & 1 & 1 & 1 & 1 & 1 & 1 & 1 \\
+        1 & 1 & 1 & 1 & 1 & 1 & 1 & 1 \\
+        1 & 1 & 1 & 1 & 1 & 1 & 1 & 1 \\
+        0 & 0 & 0 & 0 & 0 & 0 & 0 & 0
+    \end{bmatrix}
+\end{equation*}
+If we place the template anywhere inside this large white rectangle, the correlation will be:
+\begin{equation*}
+    \left(I \otimes w\right)\left(r,c\right) = 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 + 1 \cdot 1 = 9
+\end{equation*}
+This means that the correlation is \textbf{maximized at multiple locations}, which makes it difficult to determine the exact position of the template.
+
+\highspace
+But, \textbf{\emph{why is this a problem?}} We wanted the highest score to find the exact object location. Instead, we obtain the same score at multiple locations. At this point, the algorithm cannot distinguish the \emph{exact object} from \emph{any larger region} that completely contains the object.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{The Need for Normalization}}
+\end{flushleft}
+To solve this problem, the idea is to \textbf{normalize} the score so that it \textbf{reflects similarity}, \hl{not just the magnitude of the pixel values.} Without normalization, large bright regions naturally produce high correlation values, even if they are not the precise object we want to detect.
+
+\highspace
+So, \textbf{normalization is needed when using correlation for template matching}. Later in computer vision, this leads to Normalized Cross-Correlation (NCC), where the score is divided by quantities related to the energy (or norm) of both the template and the image patch. This makes the score independent of overall brightness and patch size.

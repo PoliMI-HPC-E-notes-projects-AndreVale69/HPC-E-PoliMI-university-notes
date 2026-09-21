@@ -1,0 +1,247 @@
+\subsection{Important Details of Convolution}\label{sec:important-details-of-convolution}
+
+\subsubsection{Correlation vs. Mathematical Convolution}\label{sec:correlation-vs-mathematical-convolution}
+
+This section is mainly a \textbf{terminology clarification}. Up to now, we have been calling the sliding filter operation a \textbf{convolution}, but mathematically the operation written in the earlier sections is actually a \textbf{correlation}. The two operations are \textbf{almost identical}. The only difference is whether the filter is \textbf{used \emph{as it is}} or \textbf{\emph{flipped}} before being applied.
+
+\highspace
+For \textbf{correlation}, we write the operation as (\autopageref{eq:linear-filter-rgb}):
+\begin{equation*}
+    T[I](r, c) = \sum_{u,v \in U} w(u, v) \cdot I(r + u, c + v)
+\end{equation*}
+Here, the filter weights are used directly: $w(u, v)$.
+
+\highspace
+For mathematical \textbf{convolution}, instead, we flip the filter before applying it:
+\begin{equation*}
+    T[I](r, c) = \sum_{u,v \in U} w(-u, -v) \cdot I(r + u, c + v)
+\end{equation*}
+Here, the filter weights are flipped: $w(-u, -v)$. Or equivalently, we can flip the image instead of the filter:
+\begin{equation*}
+    T[I](r, c) = \sum_{u,v \in U} w(u, v) \cdot I(r - u, c - v)
+\end{equation*}
+So the image indexing can be written in exactly the same form as correlation, provided that we replace $w(u, v) \to w(-u, -v)$. Thus, the \hl{convolution correspond to using the \textbf{flipped filter}.}
+
+\begin{figure}[!htp]
+    \centering
+
+    \definecolor{kernelbg}{RGB}{242, 245, 250}
+    \definecolor{flipbg}{RGB}{253, 238, 238}
+    \definecolor{cblue}{RGB}{31, 110, 165}
+    \definecolor{cred}{RGB}{180, 40, 30}
+    \definecolor{corange}{RGB}{210, 80, 0}
+    \definecolor{cteal}{RGB}{15, 140, 115}
+    \definecolor{darknavy}{RGB}{20, 35, 60}
+
+    \tikzsetnextfilename{correlation-vs-convolution}
+    \begin{tikzpicture}[
+        >=Stealth,
+        cell/.style={
+            draw=black!60,
+            rectangle,
+            minimum size=0.95cm,
+            anchor=center,
+            inner sep=0pt,
+            font=\small
+        }
+    ]
+
+    % =============================================================
+    % MATRIX 1: ORIGINAL KERNEL w(u,v)
+    % =============================================================
+    \matrix (K1) [
+        matrix of math nodes, 
+        nodes={cell, fill=kernelbg},
+        column sep=-\pgflinewidth,
+        row sep=-\pgflinewidth
+    ] {
+        |[fill=cblue!35, text=cblue, font=\bfseries]| 1 & |[fill=corange!20]| 2 & |[fill=corange!35, text=corange, font=\bfseries]| 3 \\
+        4 & 5 & 6 \\
+        |[fill=cteal!35, text=cteal, font=\bfseries]| 7 & |[fill=cteal!20]| 8 & |[fill=cred!35, text=cred, font=\bfseries]| 9 \\
+    };
+
+    % Coordinate Axes for K1 (Pure black for crisp legibility)
+    \node[above=2pt of K1-1-1.north, font=\tiny, text=black] {$v=-1$};
+    \node[above=2pt of K1-1-2.north, font=\tiny, text=black] {$v=0$};
+    \node[above=2pt of K1-1-3.north, font=\tiny, text=black] {$v=1$};
+
+    \node[left=3pt of K1-1-1.west, font=\tiny, text=black] {$u=-1$};
+    \node[left=3pt of K1-2-1.west, font=\tiny, text=black] {$u=0$};
+    \node[left=3pt of K1-3-1.west, font=\tiny, text=black] {$u=1$};
+
+    % =============================================================
+    % MATRIX 2: FLIPPED KERNEL w(-u,-v)
+    % =============================================================
+    \matrix (K2) [
+        right=3.5cm of K1, 
+        matrix of math nodes, 
+        nodes={cell, fill=flipbg},
+        column sep=-\pgflinewidth,
+        row sep=-\pgflinewidth
+    ] {
+        |[fill=cred!35, text=cred, font=\bfseries]| 9 & |[fill=cteal!20]| 8 & |[fill=cteal!35, text=cteal, font=\bfseries]| 7 \\
+        6 & 5 & 4 \\
+        |[fill=corange!35, text=corange, font=\bfseries]| 3 & |[fill=corange!20]| 2 & |[fill=cblue!35, text=cblue, font=\bfseries]| 1 \\
+    };
+
+    % Coordinate Axes for K2
+    \node[above=2pt of K2-1-1.north, font=\tiny, text=black] {$-v=1$};
+    \node[above=2pt of K2-1-2.north, font=\tiny, text=black] {$-v=0$};
+    \node[above=2pt of K2-1-3.north, font=\tiny, text=black] {$-v=-1$};
+
+    \node[right=3pt of K2-1-3.east, font=\tiny, text=black] {$-u=1$};
+    \node[right=3pt of K2-2-3.east, font=\tiny, text=black] {$-u=0$};
+    \node[right=3pt of K2-3-3.east, font=\tiny, text=black] {$-u=-1$};
+
+    % =============================================================
+    % MATRIX TITLES
+    % =============================================================
+    \node[above=0.8cm of K1, font=\bfseries\normalsize, text=darknavy] (T1) {Original Kernel $w(u,v)$};
+    \node[above=0.8cm of K2, font=\bfseries\normalsize, text=darknavy] (T2) {Flipped Kernel $w(-u,-v)$};
+
+    % =============================================================
+    % CENTRAL TRANSFORMATION BRIDGE
+    % =============================================================
+
+    % Curved Rotation Arc
+    \draw[->, line width=1.2pt, cblue, shorten >=2pt, shorten <=2pt] 
+        ($(K1.east)+(0.25cm, 0.65cm)$) to[out=30, in=150] 
+        node[midway, above=3pt, font=\bfseries\small, text=darknavy] {$180^\circ$ Spatial Rotation} 
+        ($(K2.west)+(-0.25cm, 0.65cm)$);
+
+    % Middle Row Mapping Arrow
+    \draw[->, line width=1.1pt, cblue!90!black, shorten <=6pt, shorten >=6pt] 
+        (K1-2-3.east) -- (K2-2-1.west)
+        node[midway, fill=white, inner sep=2pt, font=\scriptsize\itshape, text=black] {$w(u,v) \mapsto w(-u,-v)$};
+
+    % =============================================================
+    % INDEX MAPPING ANNOTATIONS BELOW
+    % =============================================================
+    \node[below=0.45cm of K1, font=\scriptsize, text=black, align=center] {
+        Top-Left: $w(-1,-1) = 1$\\[.3em]
+        Bottom-Right: $w(1,1) = 9$
+    };
+
+    \node[below=0.45cm of K2, font=\scriptsize, text=black, align=center] {
+        Top-Left: $w_{\text{flip}}(-1,-1) = w(1,1) = 9$\\[.3em]
+        Bottom-Right: $w_{\text{flip}}(1,1) = w(-1,-1) = 1$
+    };
+
+    \end{tikzpicture}
+
+    \caption{Kernel flipping in mathematical convolution. Replacing $w(u,v)$ with $w(-u,-v)$ reverses the kernel along both spatial dimensions, which is equivalent to a $180^\circ$ rotation. Thus, while correlation applies $w(u,v)$ directly, mathematical convolution applies its spatially flipped version $w(-u,-v)$.}
+    \label{fig:correlation-vs-convolution}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why this distinction?}}
+\end{flushleft}
+This distinction is important in different contexts:
+\begin{itemize}
+    \item \important{Classical Signal/Image Processing, the distinction matters}. Suppose we manually choose a fixed kernel:
+    \begin{equation*}
+        w = \begin{bmatrix}
+            1 & 0 & -1 \\
+            1 & 0 & -1 \\
+            1 & 0 & -1
+        \end{bmatrix}
+    \end{equation*}
+    Correlation uses exactly this matrix. True convolution first flips it:
+    \begin{equation*}
+        w_{\text{flip}} = \begin{bmatrix}
+            -1 & 0 & 1 \\
+            -1 & 0 & 1 \\
+            -1 & 0 & 1
+        \end{bmatrix}
+    \end{equation*}
+    Those can give different responses. For example, opposite signs for an oriented edge. So if the kernel is \textbf{given beforehand}, we absolutely need to know which operation we are performing.
+
+    \highspace
+    Mathematical convolution specifically includes the flip because that definition gives convolution its \hl{useful algebraic structure in signal processing, particularly through the Fourier theorem.}
+
+
+    \item \important{In a CNN, however, nobody gives us $w$}. Suppose true convolution would need to learn:
+    \begin{equation*}
+        w = \begin{bmatrix}
+            1 & 0 & -1 \\
+            1 & 0 & -1 \\
+            1 & 0 & -1
+        \end{bmatrix}
+    \end{equation*}
+    If our library performs correlation instead, training can simply learn the flipped version:
+    \begin{equation*}
+        w_{\text{flip}} = \begin{bmatrix}
+            -1 & 0 & 1 \\
+            -1 & 0 & 1 \\
+            -1 & 0 & 1
+        \end{bmatrix}
+    \end{equation*}
+    Then $\text{corr}(x, w_{\text{flip}})$ \textbf{produces the same result} that $\text{conv}(x, w)$ would have produced. So from the optimizer's perspective, \hl{learn $w$ and flip it during convolution}, and \hl{learn the already-flipped $w_{\text{flip}}$ and use correlation}, are \textbf{equivalent} parameterizations.
+
+    \highspace
+    That is what Goodfellow et al.\cite{Goodfellow-et-al-2016} means when saying that an algorithm using kernel flipping simply learns a kernel that is flipped relative to the one learned by an algorithm without flipping.
+
+    \begin{deepeningbox}[: What is Goodfellow's message?]
+        Goodfellow means that \hl{two CNNs can learn the same operation even if one implements true convolution and the other implements correlation; their stored kernels will simply be flipped versions of each other.}
+
+        \highspace
+        Suppose the useful operation requires, under \textbf{true convolution}, the learned kernel:
+        \begin{equation*}
+            W = \begin{bmatrix}
+                1 & 2 & 3 \\
+                4 & 5 & 6 \\
+                7 & 8 & 9
+            \end{bmatrix}
+        \end{equation*}
+        True convolution flips it before applying it:
+        \begin{equation*}
+            W' = \begin{bmatrix}
+                9 & 8 & 7 \\
+                6 & 5 & 4 \\
+                3 & 2 & 1
+            \end{bmatrix}
+        \end{equation*}
+        So the input actually gets multiplied against the pattern $W'$.
+
+        \highspace
+        Now consider another CNN implementation that performs \textbf{correlation}. It doesn't flip anything, so during training, it can simply learn the flipped version of the kernel:
+        \begin{equation*}
+            W' = \begin{bmatrix}
+                9 & 8 & 7 \\
+                6 & 5 & 4 \\
+                3 & 2 & 1
+            \end{bmatrix}
+        \end{equation*}
+        Then it applies $W'$ directly. Therefore:
+        \begin{equation*}
+            \underbrace{\text{Conv}(X, W)}_{\text{flip } W, \text{ then apply}} = \underbrace{\text{Corr}(X, W')}_{\text{apply } W' \text{ directly}}
+        \end{equation*}
+        In other words:
+        \begin{equation*}
+            W_{\text{convolutional implementation}} = \text{flip}\left(W_{\text{correlation implementation}}\right)
+        \end{equation*}
+        The \textbf{numerical values stored as the kernel are different}, but the operation performed on the input can be identical. This is possible precisely because \textbf{the kernel is not predetermined}. Gradient descent is free to learn whichever orientation is needed.
+        \begin{equation*}
+            \begin{array}{c}
+                \textbf{True convolution}\\[2mm]\text{learn }W\\\downarrow\\\text{flip }W\\\downarrow\\\text{apply}
+            \end{array}\qquad\equiv\qquad
+            \begin{array}{c}
+                \textbf{CNN correlation}\\[2mm]\text{learn }\operatorname{flip}(W)\\\downarrow\\\text{no flip}\\\downarrow\\\text{apply}
+            \end{array}
+        \end{equation*}
+        So Goodfellow is \textbf{not saying that training explicitly takes a learned kernel and flips it}. Rather, \hl{if we trained two otherwise equivalent systems, one using mathematical convolution and one using correlation, the kernels they learn would correspond to each other through a flip. That's why the choice does not reduce what the CNN can learn.}
+    \end{deepeningbox}
+\end{itemize}
+
+\newpage
+
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item Correlation applies the filter directly, whereas mathematical convolution flips the filter before applying it.
+        \item CNN libraries typically implement correlation but conventionally call it convolution.
+        \item Since CNN filters are learned from data, this distinction is usually irrelevant in practice, provided that the same convention is used consistently during learning and inference.
+        \item Correlation: $I(r + u, c + v)$.
+        \item Convolution: $I(r - u, c - v)$.
+    \end{itemize}
+\end{takeawaysbox}

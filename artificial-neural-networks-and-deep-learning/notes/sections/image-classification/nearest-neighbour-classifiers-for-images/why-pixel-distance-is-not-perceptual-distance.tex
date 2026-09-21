@@ -1,0 +1,79 @@
+\subsubsection{Why Pixel Distance is Not Perceptual Distance}\label{sec:why-pixel-distance-is-not-perceptual-distance}
+
+This section is, in many ways, the \textbf{most important conclusion} of everything we have discussed so far. We have seen:
+\begin{enumerate}
+    \item Images are represented as vectors of pixel values.
+    \item We compare vectors using Euclidean or Manhattan distance.
+    \item We build a k-NN classifier using those distances to find the nearest neighbors of a query (input) image.
+    \item \textbf{Now we ask}: \emph{is this notion of similarity actually meaningful for images?}
+\end{enumerate}
+The answer is \textbf{no}. \hl{Pixel distance is generally a poor measure of perceptual (semantic) similarity.}\footnote{%
+    Remark: Perceptual (semantic) similarity means that two images are similar in a way that is meaningful to humans. For example, two images of cats are perceptually similar, even if they have different pixel values.
+}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The hidden assumption of k-NN}}
+\end{flushleft}
+Recall how k-NN classifier works. For a query (input) image $x_q$, we compute the distance between $x_q$ and all training images $x_i$:
+\begin{equation*}
+    d(x_q, x_i) = \underbrace{\sqrt{\sum_{j=1}^{n} \left(x_{q,j} - x_{i,j}\right)^2}}_{\text{Euclidean}} \quad \text{or} \quad d(x_q, x_i) = \underbrace{\sum_{j=1}^{n} \left|x_{q,j} - x_{i,j}\right|}_{\text{Manhattan}}
+\end{equation*}
+The k-NN classifier is based on the \hl{idea that if two images have a small pixel distance, they are perceptually similar and belong to the same class.} However, this \textbf{idea contains a hidden assumption}: \hl{pixel similarity is equivalent to semantic (or perceptual) similarity.} As we saw in the previous section, that is \textbf{not true}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{not-equal} \textbf{Two completely different notions of similarity}}
+\end{flushleft}
+There are actually two different concepts of similarity as we have seen on \autopageref{sec:perceptual-similarity-vs-pixel-similarity}:
+\begin{itemize}
+    \item \definition{Pixel Similarity}. This is what Euclidean or Manhattan distance measures. Two images are considered similar if their corresponding pixels have similar RGB values. Mathematically:
+    \begin{equation*}
+        d\left(x_1, x_2\right) = \left\|x_1 - x_2\right\|_{2} \quad \text{or} \quad d\left(x_1, x_2\right) = \left\|x_1 - x_2\right\|_{1}
+    \end{equation*}
+    The algorithm never asks ``\emph{what object is present?}'', instead it only asks ``\emph{\textbf{how similar are the pixel values?}}''.
+
+
+    \item \definition{Perceptual Similarity}. Humans do something completely different. When we compare two images we ask:
+    \begin{itemize}
+        \item \emph{Is it the same object?}
+        \item \emph{Does it have the same shape?}
+        \item \emph{Does it represent the same concept?}
+    \end{itemize}
+    We ignore many pixel differences. For example, for us a dog in sunlight, a dog in shadow, a dog rotated or a dog translated is still the same dog. Our visual system focuses on \textbf{meaning}, not raw pixel values.
+\end{itemize}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{But why don't we like pixel distance as a metric?}} Because the Euclidean distance, or Manhattan distance, \textbf{treats every pixel independently}. Euclidean computes the distance between two images by summing the squared differences of each pixel:
+\begin{equation*}
+    \sum_i \left(x_i - y_i\right)^2
+\end{equation*}
+Every \textbf{pixel contributes equally} to the distance. Thus, the algorithm has \textbf{no idea} what an eye is, or a wheel, or a nose, or a face. It \textbf{only sees numbers}.
+
+\highspace
+This problem is closely related to the section on \autopageref{sec:why-image-classification-is-difficult} that discusses the challenges of image classification:
+\begin{itemize}
+    \item \textbf{Translation}: same object, we move all pixels to the right or left slightly, and the pixel distance becomes large, even though the images are perceptually similar.
+    \item \textbf{Rotation}: same object, we rotate the image slightly, and the pixel distance becomes large, even though the images are perceptually similar.
+    \item \textbf{Illumination}: same object, we change the lighting, and the pixel distance becomes large.
+    \item \textbf{Deformation}: same object, we deform it slightly, and the pixel distance becomes large.
+    \item \textbf{Viewpoint}: same object, we change the viewpoint, and the pixel distance becomes large.
+    \item \textbf{Inter-class variability}: in this case, even worse, two images of the same class can have a \textbf{very large} pixel distances, while two images of different classes (e.g., a dog on grass and a wolf on grass) may accidentally have \textbf{smaller} pixel distances because of similar colors or backgrounds. 
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle}} So, the \textbf{real problem} is \textbf{not} Euclidean or Manhattan distance, but rather the \textbf{pixels are not semantic features}.They are only measurements of light intensity. They are a \hl{very low-level representation of the image}. In other terms, Euclidean distance is measuring similarity in the \textbf{wrong space}. It is measuring similarity in the \textbf{pixel space}, not the \textbf{semantic space}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{check-circle} \textbf{A better representation is needed}}
+\end{flushleft}
+The above problem is the main reason to use deep learning for image classification. We will CNNs that instead of computing distances between raw pixels, they compare different features of the image like edges, corners, textures, object parts, and so on.
+
+\highspace
+Thus, we don't necessarily need a better distance. We first \textbf{need a better representation of the image}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{If k-NN is not good for images, why do we even discuss it?}} For different reasons:
+\begin{itemize}
+    \item We tried to build the simplest possible image classifier and saw why that was impossible (because pixel distance is not the same as perceptual distance).
+
+    \item \textbf{They are still used!} Suppose we have a database of 10 millions images. A user uploads a picture of a dog. They don't necessarily want to classify it, they want to \textbf{find similar images}. Thus, we can use a CNN to extract features from an image and create an embedding, which is a vector containing 512 (for example) numbers that represent the features the network has learned to be useful for distinguishing classes (e.g., dog face or dog body). Then, we can use k-Nearest Neighbors (k-NN), which calculates the distance between the embedding of the query image and the embeddings of all images in the database and returns the closest ones. This is called \textbf{image retrieval}.
+\end{itemize}
+Today, the k-NN classifier is not used for image classification, but it is still used for image retrieval combined with deep learning. The main idea is to use a CNN to extract features from the image, and then use k-NN to find the closest images in the feature space. This is a very powerful technique that is used in many applications, such as Google Images, Pinterest, and so on.

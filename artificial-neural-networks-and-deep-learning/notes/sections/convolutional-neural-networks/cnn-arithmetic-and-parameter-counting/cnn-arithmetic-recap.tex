@@ -1,0 +1,77 @@
+\subsubsection{CNN-Arithmetic Recap}\label{sec:cnn-arithmetic-recap}
+
+This last section is essentially a \textbf{recap} rather than a new theoretical concept. After progressively introducing one input map, multiple filters, multiple input maps, and parameter counting, we can now summarize the \textbf{arithmetic of convolutional layers}.
+
+\highspace
+The main goal is to make sure that we do \textbf{not confuse 5 different quantities}:
+\begin{equation*}
+    \text{spatial size}, \quad
+    \text{input channels}, \quad
+    \text{filters}, \quad
+    \text{filter size}, \quad
+    \text{parameters}
+\end{equation*}
+They are related, but they mean different things.
+\begin{itemize}
+    \item \important{Image / activation size}. A CNN receives a volume:
+    \begin{equation*}
+        H \times W \times C_{\text{in}}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item $H$ is the height of the input volume,
+        \item $W$ is the width of the input volume,
+        \item $C_{\text{in}}$ is the number of input channels.
+    \end{itemize}
+    For the first layer, this could be an RGB image:
+    \begin{equation*}
+        H \times W \times 3, \quad \text{e.g., } 32 \times 32 \times 3
+    \end{equation*}
+    For a deeper layer, it could instead be something like:
+    \begin{equation*}
+        H \times W \times 64, \quad \text{e.g., } 16 \times 16 \times 64
+    \end{equation*}
+    At that point those $64$ channels are \textbf{feature maps produced by a previous convolution}, not RGB channels.
+
+
+    \item \important{Number of input channels}. $C_{\text{in}}$ tells us the \textbf{depth of the incoming volume}. This quantity is important because every filter must span that entire depth. The filter depth is always equal to the input depth, so if the input has $C_{\text{in}}$ channels, then every filter will have depth $C_{\text{in}}$.
+    \begin{gather*}
+        C_{\text{in}} = 3 \quad \Rightarrow \quad 3 \times 3 \times \boxed{3} \\
+        C_{\text{in}} = 32 \quad \Rightarrow \quad 3 \times 3 \times \boxed{32}
+    \end{gather*}
+    This is also why two convolutional layers with otherwise similar settings can have very different parameter counts.
+    
+
+    \item \important{Filter size}. When we say $3 \times 3$ filters, we normally specify only its \textbf{spatial dimensions}. Its complete shape is actually:
+    \begin{equation*}
+        K_h \times K_w \times C_{\text{in}}
+    \end{equation*}
+    Because its depth is \textbf{automatically determined by the input}. So \texttt{kernel\_size = (3, 3)} does \textbf{not} mean that the filter is literally two-dimensional. For an input with $64$ channels, it represents a $3 \times 3 \times 64$ filter.
+    
+    
+    \item \important{Number of filters}. Now comes the other depth: $C_{\text{out}}$. This is the \textbf{number of filters in the convolutional layer}. Each filter process \textbf{all} $C_{\text{in}}$ input channels, combines their contributions, and produces \textbf{one output feature map}.
+    \begin{equation*}
+        C_{\text{out}} = \text{number of filters}
+    \end{equation*}
+    For example, if we have $32$ filters, we will produce $32$ output feature maps. This gives us a very important relationship:
+    \begin{equation*}
+        C_{\text{in}} \to \text{filter depth}, \quad
+        \text{whereas} \quad
+        C_{\text{out}} \to \text{output depth}
+    \end{equation*}
+    
+
+    \item \important{Number of parameters}. Finally, parameters are the actual \textbf{learned numbers} contained in the filters and biases. As we already derived earlier on \autopageref{sec:counting-convolutional-parameters}:
+    \begin{equation*}
+        \# \text{ parameters} = C_{\text{out}} \cdot (K_h \cdot K_w \cdot C_{\text{in}} + 1)
+    \end{equation*}
+    The $+1$ accounts for one bias per filter. Importantly, the $H$ and $W$ of the input volume do \textbf{not} appear in this equation because the number of parameters is \textbf{independent of the input size}. The same filter weights are reused at every spatial position.
+\end{itemize}
+In general, the input depth determines filter depth; number of filters determines output depth; kernel geometry determines how the spatial dimensions change; filter weights and biases determine the number of trainable parameters.
+\begin{align*}
+    \text{Input} &: H \times W \times C_{\text{in}} \\
+    \text{One filter} &: K_h \times K_w \times C_{\text{in}} \\
+    \text{Number of filters} &: C_{\text{out}} \\
+    \text{Output} &: H_{\text{out}} \times W_{\text{out}} \times C_{\text{out}} \\
+    \text{Number of parameters} &: C_{\text{out}} \cdot (K_h \cdot K_w \cdot C_{\text{in}} + 1)
+\end{align*}

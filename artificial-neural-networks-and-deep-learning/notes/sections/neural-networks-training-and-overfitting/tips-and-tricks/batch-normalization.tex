@@ -3,7 +3,7 @@
 When training deep networks, \textbf{each layer's input distribution keeps changing} as previous layers update their weights. This phenomenon is called \textbf{internal covariate shift}.
 
 \highspace
-In machine learning, the \definition{Internal Covariate Shift} (or simply \definition{Covariate Shift}) happens when the \textbf{distribution or input data} changes between training and testing. For example, we train a model to detect cats using bright studio photos; then we test it on dark or outdoor photos. The model struggles because $P_{train}(X) \neq P_{test}(X)$, even though the task (detect cats) remains the same. That's the \textbf{classic covariate shift} problem: a change in the \emph{input feature distribution} that forces the model to adapt to new data patterns. In a deep neural network, every layer has its own \emph{inputs}, and those inputs come from the \textbf{previous layer's outputs}, which are \emph{constantly changing} as training proceeds. So, while the external dataset stays the same, the \textbf{internal data} (the activations flowing between layers) keeps shifting its distribution during training. This is what we call \textbf{internal covariate shift}, and it is called ``\emph{internal}'' because it happens \emph{within} the network itself, not just between training and testing datasets.
+In machine learning, the \definition{Internal Covariate Shift} (or simply \definition{Covariate Shift}) happens when the \textbf{distribution or input data changes between training and testing}. For example, we train a model to detect cats using bright studio photos; then we test it on dark or outdoor photos. The model struggles because $P_{train}(X) \neq P_{test}(X)$, even though the task (detect cats) remains the same. That's the \textbf{classic covariate shift} problem: a change in the \emph{input feature distribution} that forces the model to adapt to new data patterns. In a deep neural network, every layer has its own \emph{inputs}, and those inputs come from the \textbf{previous layer's outputs}, which are \emph{constantly changing} as training proceeds. So, while the external dataset stays the same, the \textbf{internal data} (the activations flowing between layers) keeps shifting its distribution during training. This is what we call \textbf{internal covariate shift}, and it is called ``\emph{internal}'' because it happens \emph{within} the network itself, not just between training and testing datasets.
 
 \highspace
 In simple terms, every time earlier layers update their weights, the \emph{input distribution} to later layers changes. This means that from the perspective of layer $l$:
@@ -14,7 +14,7 @@ In simple terms, every time earlier layers update their weights, the \emph{input
 So layer $l$ is constantly trying to adapt to a \textbf{moving target} distribution, its own input is unstable.
 
 \highspace
-\textcolor{Red2}{\faIcon{question-circle} \textbf{Why is internal covariate shift a problem?}} Neural networks assume (implicitly) that the distribution of each layer's inputs stays within a ``reasonable'' range. But if these distributions shift too much:
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Why is internal covariate shift a problem?}} Neural networks assume (implicitly) that the distribution of each layer's inputs stays within a ``reasonable'' range. But if these distributions shift too much:
 \begin{itemize}
     \item Neurons may enter the \textbf{saturated region} of activation functions (like sigmoid or tanh), leading to \textbf{vanishing gradients}.
     \item Gradient flow becomes unstable, making optimization \textbf{slower} and more \textbf{difficult}.
@@ -34,19 +34,19 @@ Since covariate shift arises from changing input distributions, the solution is 
 Where $z^{(l)}$ is the input to layer $l$, $\mathbb{E}$ is the expectation (mean), and $\mathrm{Var}$ is the variance. That means the input distribution to each layer remains stable, even as earlier layers' weights keep evolving. So layer $l$ can focus on learning \emph{useful transformation}, not on constantly re-adjusting to a changing scale or mean.
 
 \highspace
-Formally, let's denote the pre-activations of a neuron as $z_i^{(l)}$ for the $i$-th example in a batch of size $m$. Batch Normalization performs the following steps during training:
+Formally, let's denote the pre-activations of a neuron as $z_i^{(l)}$ for the $i$-th example in a batch of size $m$. \textbf{Batch Normalization performs the following steps during training}:
 \begin{enumerate}
     \item \important{Compute the \emph{batch mean}}:
     \begin{equation}
-        \mu_B = \dfrac{1}{m} \sum_{i=1}^{m} z_i^{(l)}
+        \mu_B = \dfrac{1}{m} \cdot \sum_{i=1}^{m} z_i^{(l)}
     \end{equation}
-    Where $\mu_B$ is the mean of the pre-activations over the batch.
+    Where $\mu_B$ is the mean of the pre-activations over the batch, and $m$ is the batch size. It means that we take the average of the $z_i^{(l)}$ values across all examples in the batch to \textbf{find the central tendency of the activations for that layer at this training step} $l$.
 
     \item \important{Compute the \emph{batch variance}}:
     \begin{equation}
-        \sigma_B^2 = \dfrac{1}{m} \sum_{i=1}^{m} \left(z_i^{(l)} - \mu_B\right)^2
+        \sigma_B^2 = \dfrac{1}{m} \cdot \sum_{i=1}^{m} \left(z_i^{(l)} - \mu_B\right)^2
     \end{equation}
-    Where $\sigma_B^2$ is the variance of the pre-activations over the batch.
+    Where $\sigma_B^2$ is the variance of the pre-activations over the batch, and $m$ is the batch size. It means that we calculate the average of the squared differences between each activation $z_i^{(l)}$ and the batch mean $\mu_B$ (calculated in the previous step). This gives us a \textbf{measure of how spread out the activations are around the mean for that layer at this training step} $l$.
 
     \item \important{\emph{Normalize} each activation}:
     \begin{equation}
@@ -56,7 +56,7 @@ Formally, let's denote the pre-activations of a neuron as $z_i^{(l)}$ for the $i
 
     \item \important{\emph{Scale and shift} with learnable parameters}:
     \begin{equation}
-        y_i^{(l)} = \gamma \hat{z}_i^{(l)} + \beta
+        y_i^{(l)} = \gamma \cdot \hat{z}_i^{(l)} + \beta
     \end{equation}
     Where $y_i^{(l)}$ is the final output of the Batch Normalization layer, and $\gamma$ and $\beta$ are learnable \textbf{parameters that allow the network to restore the original distribution if needed}.
 
@@ -88,9 +88,16 @@ Formally, let's denote the pre-activations of a neuron as $z_i^{(l)}$ for the $i
         Thus, the original distribution is perfectly restored!
     \end{examplebox}
 \end{enumerate}
+
+\newpage
+
+\noindent
 So the full Batch Normalization transformation can be summarized as:
 \begin{equation}
-    y_i^{(l)} = \mathrm{BN}\left(z_i^{(l)}\right) = \gamma \cdot \dfrac{z_i^{(l)} - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}} + \beta
+    y_i^{(l)} =
+    \mathrm{BN}\left(z_i^{(l)}\right) =
+    \gamma \cdot \hat{z}_i^{(l)} + \beta =
+    \gamma \cdot \dfrac{z_i^{(l)} - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}} + \beta
 \end{equation}
 
 \highspace

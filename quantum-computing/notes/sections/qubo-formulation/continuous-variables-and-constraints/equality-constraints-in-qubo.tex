@@ -1,0 +1,92 @@
+\subsubsection{Equality Constraints in QUBO}\label{sec:equality-constraints-in-qubo}
+
+Up to now,we have seen examples such as (\autopageref{ex:penalty-terms-x1+x2-eq-1}):
+\begin{equation*}
+    x_1 + x_2 = 1
+\end{equation*}
+With penalty terms such as:
+\begin{equation*}
+    1 - x_1 - x_2 + 2x_1x_2
+\end{equation*}
+However, \textbf{\emph{how did we know that this was the correct penalty?}}
+
+\highspace
+Consider a generic optimization problem:
+\begin{equation*}
+    \argmin_{\mathbf{x}} \mathbf{x} Q \mathbf{x}^T
+\end{equation*}
+Subject to the constraint (a \emph{generic linear equality constraint}):
+\begin{equation*}
+    A\mathbf{x} = b
+\end{equation*}
+Where $A$ is a matrix and $b$ is a vector. The first part $\mathbf{x} Q \mathbf{x}^T$ is the \textbf{objective function}. The second part $A\mathbf{x} = b$ is an \textbf{equality constraint} that we would \textbf{like to enforce}.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The Problem.}} However, QUBO is \textbf{unconstrained}. Therefore we cannot directly enforce the constraint $A\mathbf{x} = b$ inside the optimizer. Instead, we must \hl{transform the constraint into an energy penalty}.
+
+\highspace
+\textcolor{Green3}{\faIcon{tools} \textbf{Measuring the Violation.}} The expression $A\mathbf{x} - b$ tells us how much the constraint is violated. If the constrained is \textbf{satisfied}:
+\begin{equation*}
+    A\mathbf{x} = b
+\end{equation*}
+Then the violation is zero (ground state):
+\begin{equation*}
+    A\mathbf{x} - b = 0
+\end{equation*}
+If the constraint is \textbf{violated}, then the violation is non-zero (excited state):
+\begin{equation*}
+    A\mathbf{x} - b \neq 0
+\end{equation*}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Making the Error Always Positive.}} We want to penalize the violation of the constraint. However, the violation $A\mathbf{x} - b$ can be \textbf{positive or negative}. To make it \hl{always positive}, the simplest way is to \hl{square the violation}:
+\begin{equation}
+    \text{penalty}(\mathbf{x}) =
+    \gamma \cdot \left(A\mathbf{x} - b\right)^{T} \left(A\mathbf{x} - b\right)
+\end{equation}
+We take the transpose of the violation and multiply it by itself, because we need to convert a verctor of violations into a single scalar penalty by taking its squared Euclidean norm. In simple terms, we are summing the squares of the individual violations to get a single penalty value that represents the overall violation of the constraint. However, for the sake of simplicity, we can also write the penalty as:
+\begin{equation*}
+    \text{penalty}(\mathbf{x}) =
+    \gamma \cdot \left(A\mathbf{x} - b\right)^{2}
+\end{equation*}
+Where the square is applied element-wise to the vector of violations, and then we sum the resulting values to get the total penalty.
+
+\highspace
+In summary, when we have an \textbf{equality constraint}:
+\begin{equation*}
+    \argmin_{\mathbf{x}} \mathbf{x} Q \mathbf{x}^T \quad \text{subject to} \quad A\mathbf{x} = b
+\end{equation*}
+We have a beautiful universal rule to transform it into a penalty term:
+\begin{equation*}
+    \text{penalty}(\mathbf{x}) =
+    \gamma \cdot \left(A\mathbf{x} - b\right)^{T} \left(A\mathbf{x} - b\right)
+\end{equation*}
+Therefore, we can rewrite the original optimization problem as:
+\begin{equation}
+    \argmin_{\mathbf{x}} \mathbf{x} Q \mathbf{x}^T + \gamma \cdot \left(A\mathbf{x} - b\right)^{T} \left(A\mathbf{x} - b\right)
+\end{equation}
+Where $\gamma$ is the penalty coefficient. In general, \hl{to convert an equality constraint into a QUBO penalty, compute the constraint violation and square it.}
+
+\highspace
+\begin{examplebox}[: Applying the Universal Rule for Equality Constraints in QUBO]
+    Let's consider the constraint $x_1 + x_2 = 1$ (\autopageref{ex:penalty-terms-x1+x2-eq-1}). Following the universal rule, we can write the penalty term as:
+    \begin{itemize}
+        \item Move everything to the left-hand side:
+        \begin{equation*}
+            x_1 + x_2 - 1 = 0
+        \end{equation*}
+        \item Square the violation:
+        \begin{equation*}
+            (x_1 + x_2 - 1)^2
+        \end{equation*}
+        \item Expand the square:
+        \begin{equation*}
+            x_1^2 + 2x_1x_2 + x_2^2 - 2x_1 - 2x_2 + 1
+        \end{equation*}
+        \item Since $x_1^2 = x_1$ and $x_2^2 = x_2$ for binary variables, we can simplify the expression to:
+        \begin{equation*}
+            1 - x_1 - x_2 + 2x_1x_2
+        \end{equation*}
+    \end{itemize}
+    As we can see, we have obtained the same penalty term that we had before. This is not a coincidence, but rather a consequence of the universal rule for transforming equality constraints into penalty terms.
+\end{examplebox}

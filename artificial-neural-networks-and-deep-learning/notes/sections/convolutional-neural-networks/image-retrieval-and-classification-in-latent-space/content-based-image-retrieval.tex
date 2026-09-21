@@ -1,0 +1,185 @@
+\subsection{Image Retrieval and Classification in Latent Space}\label{sec:image-retrieval-and-classification-in-latent-space}
+
+\subsubsection{Content-Based Image Retrieval}\label{sec:content-based-image-retrieval}
+
+In this section, we will turn the latent representation into something operational. \hl{Instead of using the CNN only to classify an image, use its latent vector to search for similar images.} The workflow is very simple:
+\begin{equation*}
+    \text{Query Image} \to \text{FEN} \to \text{Query Feature Vector}
+\end{equation*}
+And then compare that vector with the latent vectors of the images stored in the training/database set.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{Step 1: compute the query representation}}
+\end{flushleft}
+Given a query image $I_q$, pass it through the \textbf{Feature Extraction Network}:
+\begin{equation*}
+    \mathbf{z}_{q} = \text{FEN}\left(I_q\right)
+\end{equation*}
+It's similar to feeding a test or query image and computing its \textbf{latent representation}, i.e. a data-driven feature vector.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{database} \textbf{Step 2: compute the stored representations}}
+\end{flushleft}
+For every database image $I_i$, compute its latent representation:
+\begin{equation*}
+    \mathbf{z}_{i} = \text{FEN}\left(I_i\right)
+\end{equation*}
+So now we are no longer comparing the images themselves, but their learned representations:
+\begin{equation*}
+    I_i \to \mathbf{z}_{i} \quad \forall i
+\end{equation*}
+In practice, these database features can be computed in advance and stored in a database, so that the retrieval process is fast.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{search} \textbf{Step 3: measure distances in latent space}}
+\end{flushleft}
+For the query vector $\mathbf{z}_{q}$, compute a distance to every stored vector:
+\begin{equation*}
+    d_i = d\left(\mathbf{z}_{q}, \mathbf{z}_{i}\right) = \left\|\mathbf{z}_{q} - \mathbf{z}_{i}\right\|_{2} \quad \forall i
+\end{equation*}
+We could use any distance metric, but the most common is the Euclidean distance.
+The important part is \textbf{not} the exact metric. The key is that the \hl{comparison happens in the CNN feature space}, not raw pixel space.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{images} \textbf{Step 4: retrieve the nearest neighbours}}
+\end{flushleft}
+Sort the images according to increasing distance:
+\begin{equation*}
+    d_{(1)} \leq d_{(2)} \leq \ldots \leq d_{(N)}
+\end{equation*}
+And return the nearest ones. For example, with the \textbf{3-nearest neighbourhood} of a query image, we would return the three images with the smallest distances:
+\begin{equation*}
+    \{I_{(1)}, I_{(2)}, I_{(3)}\} \quad \text{where} \quad d_{(1)} \leq d_{(2)} \leq d_{(3)}
+\end{equation*}
+And then retrieve the original training images corresponding to those closest latent representations.
+
+\highspace
+So the complete pipeline is:
+\begin{equation*}
+    I_q \to \mathrm{FEN} \to \mathbf{z}_{q} \to \text{nearest-neighbour search} \to \text{similar images}
+\end{equation*}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called \emph{content-based} image retrieval?}} Because the search is driven by the \textbf{visual content of the image itself}, represented by the CNN feature vector. The query does not need to be a textual label such as ``\emph{dog}'' or ``\emph{car}''.
+
+\highspace
+\begin{takeawaysbox}
+    \textbf{A CNN's latent representation can be used as an image descriptor for retrieval.} Given a query image:
+    \begin{equation*}
+        \mathbf{z}_{q} = \text{FEN}\left(I_q\right)
+    \end{equation*}
+    Compute its distance from the latent vectors of the database images and retrieve the nearest ones. Since CNN latent space captures high-level visual structure, the closest vectors tend to correspond to visually or semantically similar images.
+\end{takeawaysbox}
+
+\begin{figure}[htbp]
+\centering
+\tikzsetnextfilename{content-based-image-retrieval}
+\begin{tikzpicture}[
+    >=Stealth,
+    font=\sffamily,
+    % Base Node Styles
+    box/.style={draw=black!75, rounded corners=4pt, align=center, line width=0.8pt, inner sep=4pt, font=\small},
+    colnode/.style={box, minimum width=3.3cm, text width=3.2cm, minimum height=0.95cm},
+    imgnode/.style={colnode, fill=gray!12, draw=gray!60},
+    fennode/.style={colnode, fill=blue!10, draw=blue!70!black},
+    vecnode/.style={colnode, fill=orange!15, draw=orange!85!black, line width=1.1pt},
+    dbnode/.style={colnode, fill=cyan!12, draw=cyan!80!black, line width=1.1pt},
+    centernode/.style={box, minimum width=8.0cm, text width=7.8cm, minimum height=1.05cm},
+    distnode/.style={centernode, fill=purple!10, draw=purple!75!black},
+    ranknode/.style={centernode, fill=yellow!35!orange!20, draw=orange!80!black},
+    resnode/.style={centernode, fill=teal!15, draw=teal!75!black, line width=1.1pt},
+    % Arrow & panel styles
+    flowarr/.style={->, line width=1.0pt, draw=black!80},
+    panel/.style={draw=black!30, fill=black!2, rounded corners=6pt, line width=0.7pt, dashed}
+]
+
+    % =========================================================================
+    % 1. TOP PARALLEL PATHS (ONLINE QUERY vs. OFFLINE INDEXING)
+    % =========================================================================
+    % Left Column: Online Query Pipeline
+    \node[imgnode] (query_img) at (-2.45, 0) {
+        \textbf{Query Image $I_q$}\\[1pt]
+        {\footnotesize Input Test Image}
+    };
+
+    \node[fennode, below=0.45cm of query_img] (fen_query) {
+        \textbf{FEN Backbone}\\[1pt]
+        {\footnotesize Feature Extractor}
+    };
+
+    \node[vecnode, below=0.45cm of fen_query] (query_vec) {
+        \textbf{Query Vector $\mathbf{z}_q$}\\[1pt]
+        {\footnotesize $\mathbf{z}_q = \mathrm{FEN}(I_q)$}
+    };
+
+    \draw[flowarr] (query_img) -- (fen_query);
+    \draw[flowarr] (fen_query) -- (query_vec);
+
+    % Right Column: Offline Database Pre-indexing
+    \node[imgnode] (db_imgs) at (2.45, 0) {
+        \textbf{Database Images}\\[1pt]
+        {\footnotesize $\{I_1, I_2, \dots, I_N\}$}
+    };
+
+    \node[fennode, below=0.45cm of db_imgs] (fen_db) {
+        \textbf{FEN Backbone}\\[1pt]
+        {\footnotesize Feature Extractor}
+    };
+
+    \node[dbnode, below=0.45cm of fen_db] (db_vecs) {
+        \textbf{Precomputed Gallery}\\[1pt]
+        {\footnotesize $\{\mathbf{z}_1, \mathbf{z}_2, \dots, \mathbf{z}_N\}$}
+    };
+
+    \draw[flowarr] (db_imgs) -- (fen_db);
+    \draw[flowarr] (fen_db) -- (db_vecs);
+
+    % Background Panels
+    \begin{scope}[on background layer]
+        \node[panel, fit={(query_img) (query_vec)}, inner xsep=6pt, inner ysep=7pt] (panel_l) {};
+        \node[panel, fit={(db_imgs) (db_vecs)}, inner xsep=6pt, inner ysep=7pt] (panel_r) {};
+    \end{scope}
+
+    \node[font=\footnotesize\bfseries, text=orange!90!black, anchor=south, yshift=2pt] at (panel_l.north) {Online Query Path};
+    \node[font=\footnotesize\bfseries, text=cyan!90!black, anchor=south, yshift=2pt] at (panel_r.north) {Offline Gallery Pre-indexing};
+
+    % =========================================================================
+    % 2. LATENT DISTANCE EVALUATION (MERGE)
+    % =========================================================================
+    \node[distnode, below=0.9cm of $(query_vec.south)!0.5!(db_vecs.south)$] (dist) {
+        \textbf{Latent Space Distance Measurement}\\[1pt]
+        $d_i = \|\mathbf{z}_q - \mathbf{z}_i\|_2$\\[1pt]
+        {\footnotesize (Euclidean distance in CNN feature space)}
+    };
+
+    % Orthogonal routing arrows into distance node
+    \draw[flowarr] (query_vec.south) -- ++(0, -0.4) -| ([xshift=-2.1cm]dist.north);
+    \draw[flowarr] (db_vecs.south)   -- ++(0, -0.4) -| ([xshift=2.1cm]dist.north);
+
+    % =========================================================================
+    % 3. SORTING & NEAREST-NEIGHBOUR SEARCH
+    % =========================================================================
+    \node[ranknode, below=0.55cm of dist] (rank) {
+        \textbf{Sort \& Nearest-Neighbour Search ($k$-NN)}\\[1pt]
+        {\footnotesize Rank by increasing distance: $d_{(1)} \le d_{(2)} \le \dots \le d_{(k)}$}
+    };
+
+    \draw[flowarr] (dist) -- (rank);
+
+    % =========================================================================
+    % 4. FINAL RETRIEVAL RESULTS
+    % =========================================================================
+    \node[resnode, below=0.55cm of rank] (results) {
+        \textbf{Top-$k$ Retrieved Similar Images}\\[1pt]
+        {\footnotesize $\{I_{(1)}, I_{(2)}, \dots, I_{(k)}\}$}\\[1pt]
+        {\footnotesize (Original images matching closest latent vectors)}
+    };
+
+    \draw[flowarr] (rank) -- (results);
+
+\end{tikzpicture}
+\caption{\textbf{Content-based image retrieval in CNN latent space.} Database images are encoded offline by the Feature Extraction Network (FEN) and their latent representations are stored in a feature gallery. At query time, the same FEN maps the query image $I_q$ to its latent vector $\mathbf{z}_q$. Distances between $\mathbf{z}_q$ and the stored feature vectors are computed and ranked, and the $k$ nearest vectors identify the most similar database images.}
+\label{fig:content-based-image-retrieval}
+\end{figure}

@@ -1,0 +1,238 @@
+\subsection{Convolutional Layers}\label{sec:convolutional-layers}
+
+\subsubsection{Convolution over Multi-Channel Inputs}\label{sec:convolution-over-multi-channel-inputs}
+
+Up to now, we have always talked about filtering an image with a kernel. Now we explain what happens when the input is no longer a single image, but a volume (e.g. an RGB image or the activations coming from a previous CNN layer).
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{link} \textbf{From a 2D image to a 3D volume}}
+\end{flushleft}
+Previously we considered grayscale images:
+\begin{equation*}
+    I \in \mathbb{R}^{H \times W}
+\end{equation*}
+Where each spatial location contains a single value (the pixel intensity). However, CNNs almost never process single-channel images, but rather multi-channel images, such as RGB images:
+\begin{equation*}
+    I \in \mathbb{R}^{H \times W \times C}
+\end{equation*}
+Where $C$ is the number of channels (e.g. 3 for RGB images). Furthermore, the output of a convolutional layer is also a volume:
+\begin{equation*}
+    O \in \mathbb{R}^{H' \times W' \times K}
+\end{equation*}
+Where $K$ is the number of filters (or kernels) applied to the input volume, for example, $K=64$ in the first convolutional layer of a CNN. The \hl{input is therefore a \textbf{volume}, not simply an image.}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle}} Suppose the input is a volume of size $32 \times 32 \times 3$ (a $32 \times 32$ RGB image) and we want to apply a $3 \times 3$ filter to it. \emph{Should we use one filter for Red, one for Green, and one for Blue?} \textbf{No}, and this is exactly \hl{what distinguishes CNN convolutions from traditional RGB image filtering.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{layer-group} \textbf{A CNN filter spans the whole depth of the input volume}}
+\end{flushleft}
+A convolutional filter is \textbf{not} a simple 2D kernel $3 \times 3$. It is a 3D kernel $3 \times 3 \times 3$ for an RGB image. The filter is therefore a \textbf{small box}, not a flat square, because it spans the entire depth of the input volume.
+
+\highspace
+Imagine looking at one pixel. Instead of looking at a single value (the pixel intensity, e.g., pixel $= 120$), we have an object with three values (the RGB values, e.g., pixel: $R = 120$, $G = 35$, $B = 90$). To compute one output value, the \hl{filter must decide how much importance to assign to Red, Green, and Blue simultaneously.} If it ignored two channels, much information would be lost.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What happens at one spatial position?}} Suppose we are centred at $(r,c)$. The filter extracts:
+\begin{itemize}
+    \item $3 \times 3$ patch from the Red channel: $\begin{pmatrix}
+        1 & 2 & 3 \\
+        4 & 5 & 6 \\
+        7 & 8 & 9
+    \end{pmatrix}$
+    \item $3 \times 3$ patch from the Green channel: $\begin{pmatrix}
+        9 & 8 & 7 \\
+        6 & 5 & 4 \\
+        3 & 2 & 1
+    \end{pmatrix}$
+    \item $3 \times 3$ patch from the Blue channel: $\begin{pmatrix}
+        5 & 5 & 5 \\
+        5 & 5 & 5 \\
+        5 & 5 & 5
+    \end{pmatrix}$
+\end{itemize}
+Each channel has its own kernel weights:
+\begin{gather*}
+    \text{Red } \begin{pmatrix}
+        1 & 0 & -1 \\
+        1 & 0 & -1 \\
+        1 & 0 & -1
+    \end{pmatrix}, \quad
+    \text{Green } \begin{pmatrix}
+        0 & 1 & 0 \\
+        0 & 1 & 0 \\
+        0 & 1 & 0
+    \end{pmatrix}, \quad
+    \text{Blue } \begin{pmatrix}
+        1 & 1 & 1 \\
+        0 & 0 & 0 \\
+        -1 & -1 & -1
+    \end{pmatrix}
+\end{gather*}
+Thus, the computation is:
+\begin{equation*}
+    \text{output} = \text{Red contribution} + \text{Green contribution} + \text{Blue contribution}
+\end{equation*}
+Or more formally:
+\begin{equation}\label{eq:convolution-layer-single-filter}
+    a\left(r,c,1\right) = \sum_{u,v \in U} \sum_{k} w_1(u,v,k) \cdot x(r+u, c+v, k) + b_1
+\end{equation}
+Only \textbf{after} summing all channels do we obtain a single activation. Let's interpret this equation:
+\begin{itemize}
+    \item $x(r+u, c+v, k)$ represents the \textbf{input} at position $(r+u, c+v)$ in channel $k$;
+    \item $w_1(u,v,k)$ represents the \textbf{weight} of the filter at position $(u,v)$ in channel $k$. The filter has \textbf{different weights for different channels}. The $1$ subscript indicates that this is the first filter (we can have multiple filters);
+    \item $\displaystyle \sum_{u,v \in U}$ \textbf{sums over} the spatial extent of the \textbf{filter} (e.g., $3 \times 3$);
+    \item $\displaystyle \sum_{k}$ \textbf{sums over} the \textbf{channels} of the input volume (e.g., $3$ for RGB);
+    \item $b_1$ is the \textbf{bias} term for the first filter.
+\end{itemize}
+Note, \hl{each filter owns \textbf{one single bias}} (see \autoref{fig:convolution-over-multi-channel-inputs}, \autopageref{fig:convolution-over-multi-channel-inputs}). That same bias is added to \textbf{every spatial position} where the filter is applied. For example, if the output map has $128 \times 128$ values, all $128 \times 128$ neurons share the same bias. This is another consequence of \textbf{parameter sharing} in CNNs.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why only one bias?}} Because we are \textbf{detecting the same feature everywhere}. If the feature is \emph{vertical edge}, it should have the same baseline response regardless of where it appears. Changing the bias from one position to another would contradict the idea that the filter detects the \textbf{same pattern} across the image.
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \tikzsetnextfilename{convolution-multi-channel-filter-activation}
+    \tikzwidth{\textwidth}
+    \begin{tikzpicture}[
+            >=Latex,
+            font=\sffamily,
+            title/.style={font=\bfseries\normalsize, anchor=south},
+            small/.style={font=\small},
+            line join=round,
+            line cap=round
+        ]
+
+        % =========================================================
+        % TOP TITLES (Strictly Aligned at Y = 3.40)
+        % =========================================================
+        \node[title] at (1.80, 3.40) {Input volume};
+        \node[title] at (6.10, 3.40) {One convolution};
+        \node[title] at (10.70, 3.40) {Activation map};
+
+
+        % =========================================================
+        % 1. INPUT VOLUME & SLIDING MOTION
+        % =========================================================
+        % Blue Layer (Back)
+        \filldraw[fill=blue!15, draw=blue!70!black, line width=0.5pt] 
+            (0.80, 0.60) rectangle (3.60, 2.90);
+        \filldraw[fill=blue!45, draw=blue!90!black] 
+            (2.80, 2.00) rectangle (3.50, 2.70);
+
+        % Green Layer (Middle)
+        \filldraw[fill=green!15, draw=green!60!black, line width=0.5pt] 
+            (0.40, 0.30) rectangle (3.20, 2.60);
+        \filldraw[fill=green!45, draw=green!80!black] 
+            (2.40, 1.70) rectangle (3.10, 2.40);
+
+        \draw[dashed, black!60] (2.40, 2.40) -- (2.80, 2.70);
+        \draw[dashed, black!60] (3.10, 2.40) -- (3.50, 2.70);
+        \draw[dashed, black!60] (3.10, 1.70) -- (3.50, 2.00);
+
+        % Red Layer (Front)
+        \filldraw[fill=red!15, draw=red!70!black, line width=0.5pt] 
+            (0.00, 0.00) rectangle (2.80, 2.30);
+        \filldraw[fill=red!45, draw=red!90!black] 
+            (2.00, 1.40) rectangle (2.70, 2.10);
+
+        \draw[dashed, black!60] (2.00, 2.10) -- (2.40, 2.40);
+        \draw[dashed, black!60] (2.70, 2.10) -- (3.10, 2.40);
+        \draw[dashed, black!60] (2.70, 1.40) -- (3.10, 1.70);
+
+        % SLIDING MOTION INDICATORS
+        \draw[->, red!80!black, line width=0.9pt] (2.00, 2.22) -- (2.50, 2.22); % Horizontal
+        \draw[->, red!80!black, line width=0.9pt] (1.88, 2.10) -- (1.88, 1.60); % Vertical
+        \node[small, red!80!black, font=\scriptsize\bfseries, anchor=south] at (2.25, 2.22) {slide};
+
+        % Labels
+        \node[small] at (1.40, -0.35) {$H \times W \times 3$};
+        \node[small, anchor=west] at (2.85, 0.00) {$R$};
+        \node[small, anchor=west] at (3.25, 0.30) {$G$};
+        \node[small, anchor=west] at (3.65, 0.60) {$B$};
+
+
+        % =========================================================
+        % 2. LOCAL CONVOLUTION OPERATION
+        % =========================================================
+        % Slices Back to Front
+        \filldraw[fill=blue!45, draw=blue!90!black] 
+            (6.10, 1.30) rectangle (6.80, 2.00);
+
+        \filldraw[fill=green!45, draw=green!80!black] 
+            (5.75, 0.95) rectangle (6.45, 1.65);
+
+        \filldraw[fill=red!45, draw=red!90!black] 
+            (5.40, 0.60) rectangle (6.10, 1.30);
+
+        % Outer 3D edges
+        \draw[black!80] (5.40, 1.30) -- (6.10, 2.00);
+        \draw[black!80] (6.10, 1.30) -- (6.80, 2.00);
+        \draw[black!80] (6.10, 0.60) -- (6.80, 1.30);
+
+        % Filter Dimensions
+        \node[small] at (6.10, 0.10) {$K_h \times K_w \times 3$};
+
+        % Direct Arrow from Input Patch -> Local Convolution
+        \draw[->, line width=0.85pt] (3.10, 1.75) -- (5.30, 1.15);
+
+
+        % =========================================================
+        % 3. SUMMATION & 2D ACTIVATION MAP
+        % =========================================================
+        \node[draw, circle, minimum size=0.75cm, line width=0.75pt, fill=white] (sum) at (8.30, 1.30) {$\Sigma$};
+
+        \node[draw, rounded corners=2pt, minimum width=0.52cm, minimum height=0.42cm, fill=white] (b) at (8.30, 2.35) {$b$};
+        \draw[->] (b.south) -- (sum.north);
+
+        \draw[->, line width=0.85pt] (6.80, 1.30) -- (sum.west);
+
+        \node[small, align=center, below=3pt of sum] {sum over\\all channels};
+
+        % 2D Activation Map Grid
+        \filldraw[fill=gray!10, draw=black!70, line width=0.5pt] 
+            (9.60, 0.20) rectangle (11.80, 2.40);
+
+        % Internal Light Grid Lines
+        \draw[black!25, line width=0.4pt] (10.15, 0.20) -- (10.15, 2.40);
+        \draw[black!25, line width=0.4pt] (10.70, 0.20) -- (10.70, 2.40);
+        \draw[black!25, line width=0.4pt] (11.25, 0.20) -- (11.25, 2.40);
+
+        \draw[black!25, line width=0.4pt] (9.60, 0.75) -- (11.80, 0.75);
+        \draw[black!25, line width=0.4pt] (9.60, 1.30) -- (11.80, 1.30);
+        \draw[black!25, line width=0.4pt] (9.60, 1.85) -- (11.80, 1.85);
+
+        % Highlighted Cell a_{r,c}
+        \filldraw[fill=red!30, draw=red!80!black, line width=0.6pt] 
+            (10.70, 1.30) rectangle (11.25, 1.85);
+
+        \node[font=\scriptsize\bfseries, red!80!black] at (10.975, 1.575) {$a_{r,c}$};
+
+        % Arrow to Highlighted Cell
+        \draw[->, line width=0.85pt] (sum.east) -- (10.65, 1.575);
+
+        % Dimension Label below Activation Map
+        \node[small] at (10.70, -0.35) {$H_{\text{out}} \times W_{\text{out}}$};
+
+        \end{tikzpicture}
+    \caption{Local convolution over a multi-channel input volume. A single filter of size $K_h \times K_w \times 3$ is applied to one spatial location of the input volume. The contributions from the 3 input channels are summed, a single bias term $b$ is added, and the resulting scalar activation $a(r,c)$ is stored at the corresponding position of the output activation map. Sliding the filter across the input repeats this computation to produce the \textbf{complete activation map}.}
+    \label{fig:convolution-over-multi-channel-inputs}
+\end{figure}
+
+\noindent
+\textcolor{Green3}{\faIcon{book} \textbf{One filter produces one activation map.}} As shown in \autoref{fig:convolution-over-multi-channel-inputs}, consider an input volume of size $64 \times 64 \times 3$ and a single convolutional filter of size $3 \times 3 \times 3$. At each spatial location, the filter processes a $3 \times 3$ neighbourhood from \textbf{all three input channels}. The responses obtained from the individual channels are summed together, a single bias is added, and the result is \textbf{one scalar} activation. Repeating this operation over the entire image produces a single output feature map of size $62 \times 62 \times 1$. Therefore, \textbf{one convolutional filter always produces exactly one output channel}.
+
+\highspace
+\begin{takeawaysbox}
+    In summary, a convolutional filter is a 3D kernel that spans the entire depth of the input volume. At every spatial location, it combines information from all input channels into one scalar activation. Sliding the filter over the input produces one output feature map. The steps are:
+    \begin{enumerate}
+        \item A convolutional filter spans the entire depth of the input volume.
+        \item At each spatial location, it combines information from all input channels.
+        \item The channel responses are summed and one bias is added to produce a single activation value.
+        \item Sliding one filter across the input generates one output feature map.
+    \end{enumerate}
+\end{takeawaysbox}

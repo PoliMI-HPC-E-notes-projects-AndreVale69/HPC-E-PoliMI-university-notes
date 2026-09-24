@@ -13,3 +13,4 @@
   - add `The Big Data and AI Market Landscape`
   - add `Technology evolution and the Hype Cycle`
   - add `The Big Data Deluge`
+  - add `The Data-Driven Virtuous Cycle`

@@ -1,0 +1,331 @@
+\subsection{The Data-Driven Virtuous Cycle}\label{subsec:big-data--the-data-driven-virtuous-cycle}
+
+The fundamental idea is that data should not simply be \textbf{collected and stored}. A data-driven organization continuously transforms data into value, and that value often creates new interactions that generate even more data. The cycle is:
+
+\begin{figure}[!htp]
+    \centering
+
+    \tikzsetnextfilename{data-driven-virtuous-cycle}
+    \tikzwidth{\linewidth}
+    \begin{tikzpicture}[
+            node distance=4cm,
+            stage/.style={
+                draw,
+                rounded corners=4pt,
+                minimum width=4.2cm,
+                minimum height=1.4cm,
+                align=center,
+                font=\bfseries
+            },
+            arrow/.style={
+                -{Stealth[length=3mm]},
+                very thick
+            },
+            labeltext/.style={
+                font=\small,
+                align=center
+            }
+        ]
+
+        % Main stages
+        \node[stage] (ingestion)
+        {Data Ingestion\\
+        \normalfont\small Collect observations};
+
+        \node[stage, right=of ingestion] (analysis)
+        {Data Analysis\\
+        \normalfont\small Extract information and insight};
+
+        \node[stage, below=3cm of $(ingestion)!0.5!(analysis)$] (value)
+        {Value Generation\\
+        \normalfont\small Decisions, services and actions};
+
+        % Forward flow
+        \draw[arrow]
+        (ingestion) --
+        node[above, labeltext]
+        {data}
+        (analysis);
+
+        \draw[arrow]
+        (analysis) --
+        node[right, labeltext]
+        {insights / models}
+        (value);
+
+        % Feedback loop
+        \draw[arrow]
+        (value) --
+        node[left, labeltext]
+        {new interactions\\new data}
+        (ingestion);
+
+        % Central idea
+        \node[
+            align=center,
+            font=\small\itshape
+        ] at ($(ingestion)!0.5!(analysis)+(0,-1.65)$)
+        {continuous\\improvement};
+
+    \end{tikzpicture}
+
+    \caption{\textbf{The data-driven virtuous cycle.}}
+    \label{fig:data-driven-virtuous-cycle}
+\end{figure}
+
+\noindent
+This is why it is called a \definition{Virtuous Cycle} rather than just a pipeline. A pipeline would be:
+\begin{equation*}
+    A\rightarrow B\rightarrow C
+\end{equation*}
+Instead, the cycle is:
+\begin{equation*}
+    A\rightarrow B\rightarrow C\rightarrow A\rightarrow\cdots
+\end{equation*}
+The result of using data improves the system, which produces more and possibly better data, which can then be analyzed again.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cloud-download-alt} \textbf{Step 1: Data ingestion}}
+\end{flushleft}
+The first step is \textbf{obtaining the data}:
+\begin{equation*}
+    \text{Data sources} \rightarrow \text{Data ingestion}
+\end{equation*}
+Data may originate from many independent systems such as WiFi logs, telecommunication networks, transport systems, IoT devices, social networks, websites, mobile applications, transactions, sensors, etc. For example, imagine a city's transportation system. It could continuously receive GPS positions of buses, ticket validations, traffic sensors, and weather information.
+
+\highspace
+The job of ingestion is to \textbf{bring these observations into the data system so that they can eventually be processed}. Notice that ingestion is not the same as analysis. At this stage we are essentially saying ``\emph{something happened, record it}''. For example:
+\begin{lstlisting}
+15:32:04 - Bus 73 at position X
+15:32:06 - passenger entered station Y
+15:32:07 - traffic sensor reports congestion
+\end{lstlisting}
+Those events are data, but they are not yet an insight.
+
+\highspace
+\textcolor{Green3}{\faIcon{exchange-alt} \textbf{Ingestion can be batch or continuous.}} A useful distinction, which will become much more important later, is \hl{between data that arrives periodically and data that arrives continuously.}
+\begin{itemize}
+    \item \important{Batch}. Suppose a company receives a daily file: \texttt{sales-2026-09-24.csv} and processes it overnight. The flow is approximately:
+        \begin{equation*}
+            \text{collect during day}
+            \rightarrow
+            \text{process later}
+        \end{equation*}
+        So the data is collected in a \emph{batch} and processed later.
+
+    \item \important{Streaming}. Now imagine sensor readings: $e_1,e_2,e_3,\ldots$ arriving continuously. We may want:
+        \begin{equation*}
+            \text{event}
+            \rightarrow
+            \text{processing}
+            \rightarrow
+            \text{result}
+        \end{equation*}
+        Almost immediately.
+\end{itemize}
+That distinction will later lead us toward \textbf{batch processing versus stream processing}. For now, the important point is simply that ingestion gets data into the system, whether in batches or continuously.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{chart-line} \textbf{Step 2: Data analysis}}
+\end{flushleft}
+Collecting data alone produces no useful decision. So the second phase is:
+\begin{equation*}
+    \text{Data}
+    \rightarrow
+    \text{Analysis}
+    \rightarrow
+    \text{Information / Insight}
+\end{equation*}
+This is where we \hl{try to answer questions about the phenomena represented by the data.} Exist two important kinds of analysis:
+\begin{itemize}
+    \item \important{Descriptive analysis} asks ``\emph{what is happening, or what happened?}''. For example:
+        \begin{itemize}
+            \item \emph{How many people entered a station today?}
+            \item \emph{Which products sell the most?}
+            \item \emph{At what time is traffic highest?}
+            \item \emph{Which pages receive the most visits?}
+            \item \emph{What percentage of users complete a purchase?}
+        \end{itemize}
+        Mathematically, this often means \hl{computing statistics or aggregations over observed data.} For example:
+        \begin{equation*}
+            \text{AverageDelay}
+            =
+            \frac{1}{n}\sum_{i=1}^{n}d_i
+        \end{equation*}
+        We transform many individual observations $d_1,d_2,\ldots,d_n$ into useful information.
+
+    \item \important{Predictive analysis} asks ``\emph{what is likely to happen?}''. For example:
+        \begin{equation*}
+            P(\text{congestion in 30 minutes}\mid\text{current observations})
+        \end{equation*}
+        Or:
+        \begin{equation*}
+            P(\text{customer buys product }x\mid\text{past behaviour})
+        \end{equation*}
+        Now we are moving from observations of the past/present toward \hl{estimation of future or unknown outcomes.} That can involve statistics, machine learning, forecasting, recommendation systems, etc.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Analysis is not valuable by itself.}} Suppose our analysis determines:
+\begin{equation*}
+    P(\text{traffic jam})=0.95
+\end{equation*}
+This is an insight, but if nobody uses that result, practically nothing changes. This leads to the third phase.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{gem} \textbf{Step 3: Value generation}}
+\end{flushleft}
+The output of analysis must eventually influence something:
+\begin{equation*}
+    \text{Insight}
+    \rightarrow
+    \text{Decision / Service / Action}
+\end{equation*}
+This is \textbf{value generation}. ``\emph{Value}'' does not necessarily mean only money, but rather it may be \textbf{economic value}:
+\begin{equation*}
+    \text{better recommendations}
+    \rightarrow
+    \text{more purchases}
+\end{equation*}
+Or:
+\begin{equation*}
+    \text{better pricing}
+    \rightarrow
+    \text{higher margins}
+\end{equation*}
+But it can also be \textbf{social value}:
+\begin{equation*}
+    \text{traffic analysis}
+    \rightarrow
+    \text{better urban transport}
+\end{equation*}
+Or \textbf{cultural value}:
+\begin{equation*}
+    \text{analysis of cultural activity}
+    \rightarrow
+    \text{better cultural services}
+\end{equation*}
+Or \textbf{knowledge value}:
+\begin{equation*}
+    \text{data}
+    \rightarrow
+    \text{new understanding of a phenomenon}
+\end{equation*}
+So a \emph{value} is not necessarily a \emph{profit}. This is particularly important because Big Data is used by businesses, governments, researchers, healthcare systems, cities, and many other organizations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{sync-alt} \textbf{Why is it a \emph{virtuous} cycle?}}
+\end{flushleft}
+Imagine an e-commerce company.
+\begin{enumerate}
+    \item It \textbf{collects} searches, clicks, purchases, product views, and cart operations.
+    \item It \textbf{analyzes} the data and discovers that:
+        \begin{equation*}
+            P(\text{buy headphones}\mid
+            \text{previous laptop purchase})
+        \end{equation*}
+        Is relatively high.
+    \item It \textbf{generates value} by recommending headphones to users who recently bought laptops.
+\end{enumerate}
+If some users click and buy, that produces recommendation impressions, click, time spent, and purchases, which are \textbf{new data points}. The cycle starts again because the new data can be analyzed to improve future recommendations.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{A more general representation}}
+\end{flushleft}
+We can therefore write:
+\begin{equation*}
+    D_t
+    \rightarrow
+    A(D_t)
+    \rightarrow
+    V_t
+    \rightarrow
+    D_{t+1}
+\end{equation*}
+Where:
+\begin{itemize}
+    \item $D_t$: data available at time $t$;
+    \item $A(D_t)$: analysis performed on the data;
+    \item $V_t$: value/action produced;
+    \item $D_{t+1}$: new data resulting from subsequent interactions.
+\end{itemize}
+Ideally:
+\begin{equation*}
+    D_{t+1} > D_t
+\end{equation*}
+Not necessarily only in quantity, but also potentially in \textbf{quality and usefulness}. The organization can therefore improve iteratively.
+
+\highspace
+\begin{examplebox}[: Navigation Application]
+    Suppose a navigation service wants to estimate road congestion. First \textbf{collect}, the service receives GPS positions from users. Then \textbf{analyze}, it estimates road speed:
+    \begin{equation*}
+        \text{road speed}
+        =
+        \frac{\text{distance}}{\text{time}}
+    \end{equation*}
+    For different road segments and detects congestion. Then \textbf{generate value}, it suggests a faster route to users.
+
+    \highspace
+    But here's the interesting part. Users follow that route while still transmitting GPS data. Therefore the service receives additional information about: travel time, congestion, alternative routes, and changes in traffic. So:
+    \begin{equation*}
+        \text{better service}
+        \rightarrow
+        +\text{ usage}
+        \rightarrow
+        +\text{ data}
+        \rightarrow
+        \text{better analysis}
+        \rightarrow
+        \text{better service}
+    \end{equation*}
+    That is a data-driven virtuous cycle.
+\end{examplebox}
+
+\begin{examplebox}[: Recommendation System]
+    Consider Netflix, which collects data about what users watch, skip, or pause. We can already anticipate the structure:
+    \begin{enumerate}
+        \item Viewing behaviour is collected;
+        \item Preferences are analyzed;
+        \item Content is recommended;
+        \item Users watch, skip, or pause;
+        \item New viewing behaviour is collected;
+        \item The preference model is improved;
+        \item Repeat.
+    \end{enumerate}
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{The crucial distinction: data itself is not value}}
+\end{flushleft}
+Having 100 TB of data does not mean we have 100 TB of value. Data becomes valuable only through a process:
+\begin{equation*}
+    \text{Data}
+    \xrightarrow{\text{analysis}}
+    \text{Insight}
+    \xrightarrow{\text{application}}
+    \text{Value}
+\end{equation*}
+Therefore, merely building an enormous data lake is not the objective. The \hl{real objective is to create a mechanism that continuously converts observations into useful actions.}
+
+\highspace
+\begin{takeawaysbox}
+    The \textbf{data-driven virtuous cycle} consists of three fundamental steps:
+    \begin{equation*}
+        \text{Collect / Ingest}
+        \rightarrow
+        \text{Analyze}
+        \rightarrow
+        \text{Build Value}
+    \end{equation*}
+    Where:
+    \begin{itemize}
+        \item \textbf{Data ingestion} acquires data from the available sources;
+        \item \textbf{Data analysis} transforms observations into descriptions or predictions;
+        \item \textbf{Value generation} uses the results to improve decisions, services, knowledge, or economic outcomes.
+    \end{itemize}
+    And the reason it is a \textbf{cycle} is that the value-generating actions create new interactions, which produce new data, which can be analyzed again.
+\end{takeawaysbox}

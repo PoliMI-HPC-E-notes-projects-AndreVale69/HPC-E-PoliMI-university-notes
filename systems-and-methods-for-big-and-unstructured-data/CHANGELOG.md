@@ -9,3 +9,5 @@
 ### v0.1.0
 
 - add `CHANGELOG.md` and `README.md`
+- add `Big Data`
+  - add `The Big Data and AI Market Landscape`

@@ -11,3 +11,4 @@
 - add `CHANGELOG.md` and `README.md`
 - add `Big Data`
   - add `The Big Data and AI Market Landscape`
+  - add `Technology evolution and the Hype Cycle`

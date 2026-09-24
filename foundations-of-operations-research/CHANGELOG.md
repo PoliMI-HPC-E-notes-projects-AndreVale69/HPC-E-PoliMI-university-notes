@@ -25,6 +25,7 @@ Each version follows the Conventional Commits structure. For more information on
 - add `Introduction`
   - add `What is Operations Research?`
   - add `Decision-Making Problems`
+  - add `The Scheme of an Operations Research Study`
 
 --------------------
 

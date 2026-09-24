@@ -10,8 +10,9 @@
 
 - add `CHANGELOG.md` and `README.md`
 - add `Big Data`
-  - add `The Big Data and AI Market Landscape`
-  - add `Technology evolution and the Hype Cycle`
-  - add `The Big Data Deluge`
-  - add `The Data-Driven Virtuous Cycle`
-  - add `Collecting Data from Heterogeneous Sources`
+  - add `Big Data Landscape and the Data-Driven Value Cycle`
+    - add `The Big Data and AI Market Landscape`
+    - add `Technology evolution and the Hype Cycle`
+    - add `The Big Data Deluge`
+    - add `The Data-Driven Virtuous Cycle`
+    - add `Collecting Data from Heterogeneous Sources`

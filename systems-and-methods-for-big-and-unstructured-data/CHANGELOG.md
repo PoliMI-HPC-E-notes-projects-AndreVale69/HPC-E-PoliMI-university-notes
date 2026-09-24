@@ -14,3 +14,4 @@
   - add `Technology evolution and the Hype Cycle`
   - add `The Big Data Deluge`
   - add `The Data-Driven Virtuous Cycle`
+  - add `Collecting Data from Heterogeneous Sources`

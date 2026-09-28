@@ -27,6 +27,7 @@ Each version follows the Conventional Commits structure. For more information on
   - add `Decision-Making Problems`
   - add `The Scheme of an Operations Research Study`
   - add `Historical Origins of Operations Research`
+  - add `Building Mathematical Optimization Models`
 
 --------------------
 

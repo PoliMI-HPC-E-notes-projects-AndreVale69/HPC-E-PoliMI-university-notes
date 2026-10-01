@@ -1,0 +1,165 @@
+\subsubsection{Simon as a Fourier / Period-Finding Algorithm}\label{sec:simon-as-a-fourier-period-finding-algorithm}
+
+We've been describing Simon using Hadamard gates $H^{\otimes n}$, but there is a deeper interpretation: \hl{$H^{\otimes n}$ is the quantum Fourier transform appropriate to $\mathbb{Z}_2^n$}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{What is $\mathbb{Z}_2^n$?}}
+\end{flushleft}
+It is essentially the mathematical structure of our $n$-bit strings:
+\begin{equation*}
+    \left\{0, 1\right\}^{n}
+\end{equation*}
+For example, for $n=2$, we have:
+\begin{equation*}
+    \mathbb{Z}_2^2 = \left\{00, 01, 10, 11\right\}
+\end{equation*}
+The \hl{operation is component-wise addition modulo 2, which is equivalent to the XOR operation.} So throughout Simon, whenever we've written $x \oplus a$, we've actually been performing addition in the group $\mathbb{Z}_2^n$. That's why Simon's promise:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+Can be interpreted as saying: \hl{$f$ possesses a hidden periodic symmetry under addition by $a$.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Where does Fourier analysis enter in?}}
+\end{flushleft}
+That's the fun part: we've already been doing Fourier analysis! Recall the formula we've used repeatedly:
+\begin{equation*}
+    H^{\otimes n} \ket{x} = \frac{1}{\sqrt{2^n}} \sum_{y \in \mathbb{Z}_2^n} (-1)^{x \cdot y} \ket{y}
+\end{equation*}
+The factors $(-1)^{x \cdot y}$ are the \textbf{Fourier phases} appropriate to the group $\mathbb{Z}_2^n$. So the final Hadamards \textbf{aren't just an arbitrary trick} that happens to produce interference. Mathematically, $H^{\otimes n}$ is \textbf{performing the Fourier transform} for the particular algebraic structure in which Simon's period lives.
+
+\highspace
+Thus, for bitstrings with XOR, this is called the \definition{Fourier transform over $\mathbb{Z}_2^n$}, or equivalently the \definition{Walsh-Hadamard transform}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{Simon as a hidden subgroup problem}}
+\end{flushleft}
+There's an even more abstract interpretation, but we only need the basic idea. Consider the set:
+\begin{equation*}
+    H = \left\{
+        0^{n}, a
+    \right\}
+\end{equation*}
+It forms a \textbf{small subgroup} of $\mathbb{Z}_2^n$, and Simon's function is constant on pairs of the form:
+\begin{equation*}
+    \left\{
+        x, x \oplus a
+    \right\}
+\end{equation*}
+These pairs are precisely the \textbf{cosets} (i.e., shifted copies) associated with that hidden subgroup. So, \hl{Simon hides the subgroup $H$ inside the equality structure of $f$.} The quantum algorithm uses Fourier sampling to obtain information that lets us reconstruct that hidden structure.
+
+\highspace
+In other words, the subgroup is the set of XOR shifts that don't change the function's output $f$. Obviously the trivial subgroup $\left\{0^n\right\}$ is always hidden, but the promise of Simon's problem is that there is a \textbf{non-trivial} hidden subgroup $\left\{0^n, a\right\}$, and the quantum algorithm is able to find it efficiently.
+
+\begin{examplebox}[: Simon's hidden subgroup]
+    Suppose Simon's secret is $a = 01$. The possible inputs are:
+    \begin{equation*}
+        \left\{00, 01, 10, 11\right\}
+    \end{equation*}
+    Simon promises that:
+    \begin{equation*}
+        f(x) = f(x \oplus a)
+    \end{equation*}
+    So the function is constant on the pairs:
+    \begin{equation*}
+        \underbrace{\left\{00, 01\right\}}_{
+            00 \oplus 01 = 01
+        },\quad \underbrace{\left\{10, 11\right\}}_{
+            10 \oplus 01 = 11
+        }
+    \end{equation*}
+    Therefore, the domain is partitioned.
+
+    \highspace
+    Now, the \textbf{hidden subgroup} is:
+    \begin{equation*}
+        H = \left\{00, 01\right\}
+    \end{equation*}
+    And it is special because if we combine its elements using XOR, we never leave the original set:
+    \begin{align*}
+        00 \oplus 00 &= 00,\\
+        00 \oplus 01 &= 01,\\
+        01 \oplus 00 &= 01,\\
+        01 \oplus 01 &= 00
+    \end{align*}
+    So $H$ has a closed little structure under XOR. The other coset is obtained by taking an element outside $H$, for example $10$, and XORing it with every element of $H$:
+    \begin{equation*}
+        10 \oplus H
+        =
+        \left\{
+            10 \oplus 00,\,
+            10 \oplus 01
+        \right\}
+        =
+        \left\{10,11\right\}
+    \end{equation*}
+    Therefore, the two cosets are:
+    \begin{equation*}
+        \underbrace{\left\{00,01\right\}}_{H}
+        \qquad\text{and}\qquad
+        \underbrace{\left\{10,11\right\}}_{10\oplus H}
+    \end{equation*}
+    The \textbf{second coset is not a subgroup}. In particular, it does not contain the identity element $00$ and it is not closed under XOR. For example:
+    \begin{equation*}
+        10 \oplus 11 = 01
+        \notin \left\{10,11\right\}
+    \end{equation*}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Subgroup vs. Coset.}} A \textbf{subgroup} is a \hl{group inside the larger group}, while a \textbf{coset} is a \hl{shifted copy of a subgroup.} In this case, $H$ is a subgroup because it contains the identity $00$, and XORing any two elements of $H$ keeps us inside $H$. In contrast, $10 \oplus H$ XORs with \textbf{every element of $H$} and produces:
+    \begin{equation*}
+        10 \oplus H = \left\{10,11\right\}
+    \end{equation*}
+    It is not a subgroup because it does not contain the identity $00$, but it is a coset because it is a shifted copy of $H$.
+\end{examplebox}
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is it called hidden?}} Simple, because we \textbf{don't know} $a$. If we knew $a$, we could easily find the subgroup $H = \left\{0^n, a\right\}$ instantly. But the oracle doesn't tell us $H$. Instead, we can only query $f$, and the structure of $f$ indirectly reveals that:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+Then:
+\begin{equation*}
+    H = \left\{0^n, a\right\}
+\end{equation*}
+Because \textbf{finding this subgroup is essentially equivalent to finding $a$}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Ordinary Period Finding}}
+\end{flushleft}
+Suppose instead that our inputs aren't $n$-bit strings under XOR. Imagine:
+\begin{equation*}
+    f: \mathbb{Z}_{N} \to \mathbb{Z}_{N}
+\end{equation*}
+With an ordinary modular period $r$:
+\begin{equation*}
+    f(x) = f((x + r) \mod N)
+\end{equation*}
+For example, suppose $N=12$ and $r=3$. Then we'd have patters like:
+\begin{gather*}
+    f(0) = f(3) = f(6) = f(9),\\
+    f(1) = f(4) = f(7) = f(10),\\
+    f(2) = f(5) = f(8) = f(11)
+\end{gather*}
+Compare that with Simon:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+The conceptual problem is extremely similar: \textbf{there is a hidden period, we need to recover it}. But the underlying mathematical structure has changed. Simon has $\mathbb{Z}_{2}^n$ as its domain, while the ordinary period finding problem has $\mathbb{Z}_{N}$ as its domain. And \hl{this is why we need something more general than Hadamards}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why isn't $H^{\otimes n}$ enough anymore?}} Because the Hadamard only introduces phases of $+1$ and $-1$. We can see that directly from $(-1)^{x \cdot y}$. Those phases are perfect for binary/XOR structure. But suppose the period lives in something like $\mathbb{Z}_{N}$, where $N$ is not a power of 2. Then we need richer phases corresponding to the $N$-th roots of unity:
+\begin{equation*}
+    1, \quad e^{2\pi i / N}, \quad e^{4\pi i / N}, \quad \ldots
+\end{equation*}
+That motivates the general \textbf{Quantum Fourier Transform}:
+\begin{equation*}
+    QFT_{N} \ket{x} = \frac{1}{\sqrt{N}} \sum_{y=0}^{N-1} e^{2\pi i xy / N} \ket{y}
+\end{equation*}
+We'll explore this in more detail in the next sections, but for now, compare it with Simon:
+\begin{equation*}
+    H^{\otimes n} \ket{x} = \frac{1}{\sqrt{2^n}} \sum_{y \in \mathbb{Z}_2^n} (-1)^{x \cdot y} \ket{y}
+\end{equation*}
+They have the \textbf{same broad structure}: a \hl{superposition over $y$ with phases depending on $x$ and $y$.} The difference is that Simon's underlying group is $\mathbb Z_2^n$, for which the Fourier transform happens to be simply $H^{\otimes n}$.

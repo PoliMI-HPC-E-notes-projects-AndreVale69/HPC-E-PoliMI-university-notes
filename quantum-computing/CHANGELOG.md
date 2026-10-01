@@ -2,6 +2,8 @@
 
 <h2>Table of Contents</h2>
 
+- [v0.10.1](#v0101)
+- [v0.10.0](#v0100)
 - [v0.9.0](#v090)
 - [v0.8.0](#v080)
 - [v0.7.0](#v070)
@@ -12,6 +14,82 @@
 - [v0.2.1](#v021)
 - [v0.1.1](#v011)
 - [v0.1.0](#v010)
+
+---------------------
+
+### v0.10.1
+
+- typo version, changed from v1.0.0 to v0.10.1
+
+---------------------
+
+### v0.10.0
+
+- add `Multiple Qubit Gates`
+  - add `Exercises`
+    - add `Single-Qubit States and Probabilities`
+    - add `Bloch sphere states`
+    - add `Tensor products and multi-qubit probabilities`
+    - add `Common factors, global phase and relative phase`
+    - add `Unitaries, Pauli Gates, and Eigenstates of Z, X, Y, H`
+    - add `Circuit notation and gate composition`
+  - add `Phase Kickback`
+    - add `Prerequisites: Eigenstates and Eigenvalues`
+    - add `Eigenvalues of Unitary Operators as Phase Factors`
+    - add `Controlled Unitary Operators`
+    - add `Definition and Derivation of Phase Kickback`
+    - add `Making the Kicked-Back Phase Observable`
+    - add `Repeated Controlled Operations`
+    - add `Phase Kickback with CNOT`
+    - add `Phase Kickback with Controlled Phase Gates`
+    - add `Phase Kickback with Controlled Hadamard`
+  - add `Deutsch's Algorithm`
+    - add `Problem Definition and the Four Possible Functions`
+    - add `Classical Solution and Query Complexity`
+    - add `Quantum Oracle U_f`
+    - add `Preparing the Input State`
+    - add `Oracle Action and Phase Kickback`
+    - add `Interference and Final Measurement`
+    - add `Quantum Advantage and Importance`
+  - add `Bernstein-Vazirani's Algorithm`
+    - add `Problem Definition and Classical Solution`
+    - add `Quantum Oracle Construction`
+    - add `Circuit and Algorithm Steps`
+    - add `Phase-Kickback Intuition`
+    - add `Complete Example for w = 101 (Exam Question)`
+    - add `General Mathematical Derivation`
+    - add `Complexity and Importance`
+  - add `Simon's Algorithm`
+    - add `Problem Definition and Classical Solution`
+    - add `Quantum Circuit and State Evolution`
+    - add `Why Simon's Algorithm Works`
+    - add `Recovering the Hidden Period`
+    - add `Examples`
+    - add `The Linear-Algebra Interpretation`
+    - add `Why Simon's Algorithm Is Important`
+    - add `Simon as a Fourier / Period-Finding Algorithm`
+- add `Limits of Quantum Information`
+  - add `Quantum Teleportation`
+    - add `Problem Definition and Required Resources`
+    - add `Shared Bell Pair and Initial Three-Qubit State`
+    - add `Alice's Operations and Mathematical Derivation`
+    - add `Measurement Outcomes and Bob's Corrections`
+    - add `Why Teleportation Works`
+- add `QUBO Formulation`
+  - add `QUBO Formulations`
+    - add `Max-Cut`
+    - add `Maximum Independent Set`
+    - add `Minimum Vertex Cover`
+    - add `Maximum Clique`
+    - add `Number Partitioning`
+    - add `2-SAT`
+    - add `Set Packing`
+    - add `Constraint Satisfaction Problems (CSPs)`
+- add `Exams`
+  - add `2024`
+    - add `June 20`
+  - add `2025`
+    - add `May 29`
 
 ---------------------
 

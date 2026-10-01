@@ -1,0 +1,331 @@
+\subsubsection{Examples}\label{sec:simons-algorithm-examples}
+
+Let's start with a simple example. For $n=1$, the hidden string has only one bit. Simon requires $a \neq 0$, so the only possibility is immediately $a = 1$. This means the Simon promise:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+Becomes:
+\begin{equation*}
+    f(x) = f(x \oplus 1)
+\end{equation*}
+For $x=0$, we have $0 \oplus 1 = 1$, so $f(0) = f(1)$. Thus, for $n=1$, a valid Simon function must actually be constant on the two inputs.
+
+\highspace
+\textbf{0.} Now follow the circuit. The \hl{initial state} is:
+\begin{equation*}
+    \ket{\psi_0} = \ket{0}\ket{0}
+\end{equation*}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \\
+        \lstick{$\ket{0}$} &
+    \end{quantikz}
+\end{center}
+\noindent
+The first qubit is the input register, the second is the output/work register.
+
+\highspace
+\textbf{1.} Apply the \hl{Hadamard gate} to the first qubit:
+\begin{equation*}
+    \ket{\psi_1} = H\ket{0}\ket{0} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})\ket{0} = \frac{1}{\sqrt{2}}(\ket{0} \ket{0} + \ket{1} \ket{0})
+\end{equation*}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \gate{H} & \\
+        \lstick{$\ket{0}$} &          &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\textbf{2.} Apply the \hl{oracle $U_f$}:
+\begin{equation*}
+    U_f \ket{x} \ket{y} = \ket{x}\ket{y \oplus f(x)}
+\end{equation*}
+To both terms of the superposition, we apply the oracle:
+\begin{align*}
+    U_f \underbrace{\ket{0}}_{\ket{x}} \underbrace{\ket{0}}_{\ket{y}} &= \ket{0} \ket{0 \oplus f(0)} = \ket{0} \ket{f(0)} \\[.3em]
+    U_f \ket{1} \ket{0} &= \ket{1} \ket{0 \oplus f(1)} = \ket{1} \ket{f(1)} \\[.3em]
+    \ket{\psi_2} &= \frac{1}{\sqrt{2}}(\ket{0} \ket{f(0)} + \ket{1} \ket{f(1)})
+\end{align*}
+Now, since $n=1$, recall the promise:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+Where the hidden period must satisfy $a \neq 0$. For $n=1$, $a$ consists of only one bit, so there are only two possibilities: $a=0$ or $a=1$. Since $a \neq 0$, we must have $a=1$. Now take $x=0$, Simon's promise says
+\begin{equation*}
+    f(0) = f(0 \oplus a) \xRightarrow{a = 1} f(0) = f(0 \oplus 1) = f(1)
+\end{equation*}
+Thus, we can simplify the state $\ket{\psi_2}$:
+\begin{align*}
+    \ket{\psi_2} &= \frac{1}{\sqrt{2}}(\ket{0} \ket{f(0)} + \ket{1} \ket{f(1)}) \\[.3em]
+    &= \frac{1}{\sqrt{2}}(\ket{0} \ket{f(0)} + \ket{1} \ket{f(0)}) \\[.3em]
+    &= \frac{1}{\sqrt{2}}(\ket{0} + \ket{1}) \ket{f(0)} \\[.3em]
+    &= \ket{+} \ket{f(0)}
+\end{align*}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \gate{H}           & \gate[2][2.8cm]{U_f}\gateinput{$\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$}\gateoutput{\ket{+}} & \\
+        \lstick{$\ket{0}$} & \centerbundle[1]   & \gateinput{\ket{0}}\gateoutput{\ket{f(0)}}                                                  &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\textbf{3.} Apply the \hl{Hadamard gate} to the first qubit again:
+\begin{equation*}
+    \ket{\psi_3} = H\ket{+}\ket{f(0)} = \ket{0}\ket{f(0)}
+\end{equation*}
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \gate{H}           & \gate[2][2.8cm]{U_f}\gateinput{$\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$}\gateoutput{\ket{+}} & \gate{H} & \\
+        \lstick{$\ket{0}$} & \centerbundle[1]   & \gateinput{\ket{0}}\gateoutput{\ket{f(0)}}                                                  & \centerbundle[1] &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\textbf{4.} \hl{Measure} the first qubit. The result is always $y = 0$ with probability $1$. And this satisfies Simon's condition:
+\begin{equation*}
+    a \cdot y = 1 \cdot 0 = 0 \pmod 2
+\end{equation*}
+In this special case, we can immediately recover the hidden period $a=1$ from the measurement result $y=0$. But this is a trivial case, and for $n>1$ we will need to repeat the algorithm multiple times to recover the hidden period.
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}$} & \gate{H}           & \gate[2][2.8cm]{U_f}\gateinput{$\frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$}\gateoutput{\ket{+}} & \gate{H} & \meter{} \\
+        \lstick{$\ket{0}$} & \centerbundle[1]   & \gateinput{\ket{0}}\gateoutput{\ket{f(0)}}                                                  & \centerbundle[1] &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{book} \textbf{What if $n=2$?}}
+\end{flushleft}
+The $n=2$ case is the \textbf{first really meaningful Simon example}, because now the algorithm gives a nontrivial constraint and we can actually recover the hidden period from measurement results.
+
+\highspace
+Let's consider the \textbf{hidden period} $a = 01$. The Simon promise says:
+\begin{equation*}
+    f(x) = f(x \oplus a) = f(x \oplus 01)
+\end{equation*}
+So the inputs are paired as follows:
+\begin{align*}
+    f(00) &= f(00 \oplus 01) = f(01) \\[.3em]
+    f(01) &= f(01 \oplus 01) = f(00) \\[.3em]
+    f(10) &= f(10 \oplus 01) = f(11) \\[.3em]
+    f(11) &= f(11 \oplus 01) = f(10)
+\end{align*}
+More compactly, we can write the function as:
+\begin{equation*}
+    f(00) = f(01) \quad \text{and} \quad f(10) = f(11)
+\end{equation*}
+A \hl{valid oracle} can therefore \hl{assign one output to the first pair and another output to the second pair.} We do not care what the actual outputs are; only the equality structure matters.
+
+\highspace
+\textbf{0.} The \hl{initial state} is:
+\begin{equation*}
+    \ket{\psi_0} = \ket{00}\ket{00}
+\end{equation*}
+\begin{center}
+    \begin{quantikz}
+        \lstick[2]{$\ket{00}$} & \\
+        & \\
+        \lstick[2]{$\ket{00}$} & \\
+        &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\textbf{1.} Apply the \hl{Hadamard gate} to the first two qubits:
+\begin{equation*}
+    \ket{\psi_1} = H^{\otimes 2}\ket{00}\ket{00} = \frac{1}{2}(\ket{00} + \ket{01} + \ket{10} + \ket{11})\ket{00}
+\end{equation*}
+\begin{center}
+    \begin{quantikz}
+        \lstick[2]{$\ket{00}$} & \gate[2]{H^{\otimes 2}} & \\
+        & & \\
+        \lstick[2]{$\ket{00}$} & \centerbundle[1] & \\
+        & \centerbundle[1] &
+    \end{quantikz}
+\end{center}
+
+\noindent
+\textbf{2.} Apply the \hl{oracle $U_f$}:
+\begin{equation*}
+    U_f \ket{x} \ket{y} = \ket{x}\ket{y \oplus f(x)}
+\end{equation*}
+The oracle acts on both registers: it preserves the first register $\ket{x}$, while the second register is transformed according to $\ket{y}\mapsto\ket{y\oplus f(x)}$.
+\begin{equation*}
+    U_f \ket{\psi_1} = \frac{1}{2}(U_f \underbrace{\ket{00}}_{\ket{x}} \underbrace{\ket{00}}_{\ket{y}} + U_f \underbrace{\ket{01}}_{\ket{x}} \underbrace{\ket{00}}_{\ket{y}} + U_f \underbrace{\ket{10}}_{\ket{x}} \underbrace{\ket{00}}_{\ket{y}} + U_f \underbrace{\ket{11}}_{\ket{x}} \underbrace{\ket{00}}_{\ket{y}})
+\end{equation*}
+Since:
+\begin{equation*}
+    \ket{y \oplus f(x)} = \ket{00 \oplus f(x)} = \ket{f(x)}
+\end{equation*}
+Because $00$ is the identity for bitwise XOR, we can simplify the oracle action:
+\begin{equation*}
+    \ket{\psi_2} = \frac{1}{2}(\ket{00}\ket{f(00)} + \ket{01}\ket{f(01)} + \ket{10}\ket{f(10)} + \ket{11}\ket{f(11)})
+\end{equation*}
+But at the beginning of this exercise, we established that:
+\begin{equation*}
+    f(00) = f(01) \quad \text{and} \quad f(10) = f(11)
+\end{equation*}
+Thus, we can simplify the state $\ket{\psi_2}$:
+\begin{align*}
+    \ket{\psi_2} &= \frac{1}{2}(\ket{00}\ket{f(00)} + \ket{01}\ket{f(01)} + \ket{10}\ket{f(10)} + \ket{11}\ket{f(11)}) \\[.3em]
+    &= \frac{1}{2}(\ket{00}\ket{f(00)} + \ket{01}\ket{f(00)} + \ket{10}\ket{f(10)} + \ket{11}\ket{f(10)}) \\[.3em]
+    &= \frac{1}{2}\left(
+        \ket{00} + \ket{01}
+    \right) \ket{f(00)} + \frac{1}{2}\left(
+        \ket{10} + \ket{11}
+    \right) \ket{f(10)}
+\end{align*}
+\begin{center}
+    \begin{quantikz}
+        \lstick[2]{$\ket{00}$} & \gate[2]{H^{\otimes 2}} & \gate[4][2.8cm]{U_f}\gateinput[2]{\ket{x}}\gateoutput[2]{\ket{x}} & \\
+        & & & \\
+        \lstick[2]{$\ket{00}$} & \centerbundle[1] & \gateinput[2]{\ket{y}}\gateoutput[2]{\ket{y \oplus f(x)}} & \\
+        & \centerbundle[1] &  &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\textbf{3.} Apply the \hl{Hadamard gate} to the first two qubits again:
+\begin{gather*}
+    \ket{\psi_3} = \left(H^{\otimes 2} \otimes I^{\otimes 2}\right)\ket{\psi_2} = \frac{1}{2}\left(
+        H^{\otimes 2}\ket{00} + H^{\otimes 2}\ket{01}
+    \right) \ket{f(00)} + \\
+    \phantom{\ket{\psi_3} = \left(H^{\otimes 2} \otimes I^{\otimes 2}\right)\ket{\psi_2}} \; \frac{1}{2}\left(
+        H^{\otimes 2}\ket{10} + H^{\otimes 2}\ket{11}
+    \right) \ket{f(10)}
+\end{gather*}
+Recall that:
+\begin{align*}
+    H^{\otimes 2}\ket{00} &= \frac{1}{2}(\ket{00} + \ket{01} + \ket{10} + \ket{11}) \\[.3em]
+    H^{\otimes 2}\ket{01} &= \frac{1}{2}(\ket{00} - \ket{01} + \ket{10} - \ket{11}) \\[.3em]
+    H^{\otimes 2}\ket{10} &= \frac{1}{2}(\ket{00} + \ket{01} - \ket{10} - \ket{11}) \\[.3em]
+    H^{\otimes 2}\ket{11} &= \frac{1}{2}(\ket{00} - \ket{01} - \ket{10} + \ket{11})
+\end{align*}
+Thus, we can substitute these into the expression for $\ket{\psi_3}$:
+\begin{itemize}
+    \item $\alpha = H^{\otimes 2}\ket{00} + H^{\otimes 2}\ket{01}$:
+        \begin{align*}
+            \alpha &= \frac{1}{2}(\ket{00} + \ket{01} + \ket{10} + \ket{11}) + \frac{1}{2}(\ket{00} - \ket{01} + \ket{10} - \ket{11}) \\[.3em]
+            &= \frac{1}{2}(\ket{00} + \ket{01} + \ket{10} + \ket{11} + \ket{00} - \ket{01} + \ket{10} - \ket{11}) \\[.3em]
+            &= \frac{1}{2}(2\ket{00} + 2\ket{10}) \\[.3em]
+            &= \frac{1}{2}(2(\ket{00} + \ket{10})) \\[.3em]
+            &= \ket{00} + \ket{10}
+        \end{align*}
+    \item $\beta = H^{\otimes 2}\ket{10} + H^{\otimes 2}\ket{11}$:
+        \begin{align*}
+            \beta &= \frac{1}{2}(\ket{00} + \ket{01} - \ket{10} - \ket{11}) + \frac{1}{2}(\ket{00} - \ket{01} - \ket{10} + \ket{11}) \\[.3em]
+            &= \frac{1}{2}(\ket{00} + \ket{01} - \ket{10} - \ket{11} + \ket{00} - \ket{01} - \ket{10} + \ket{11}) \\[.3em]
+            &= \frac{1}{2}(2\ket{00} - 2\ket{10}) \\[.3em]
+            &= \ket{00} - \ket{10}
+        \end{align*}
+\end{itemize}
+Substituting these back into the expression for $\ket{\psi_3}$, we have:
+\begin{equation*}
+    \ket{\psi_3} = \frac{1}{2}\left(
+        \ket{00} + \ket{10}
+    \right) \ket{f(00)} + \frac{1}{2}\left(
+        \ket{00} - \ket{10}
+    \right) \ket{f(10)}
+\end{equation*}
+\begin{center}
+    \begin{quantikz}
+        \lstick[2]{$\ket{00}$} & \gate[2]{H^{\otimes 2}} & \gate[4][2.8cm]{U_f}\gateinput[2]{\ket{x}}\gateoutput[2]{\ket{x}} & \gate[2]{H^{\otimes 2}} & \\
+        & & & & \\
+        \lstick[2]{$\ket{00}$} & \centerbundle[1] & \gateinput[2]{\ket{y}}\gateoutput[2]{\ket{y \oplus f(x)}} & \centerbundle[1] & \\
+        & \centerbundle[1] &  & \centerbundle[1] &
+    \end{quantikz}
+\end{center}
+
+\highspace
+\textbf{4.} \hl{Measure} the first two qubits. We want the probability of measuring the \textbf{first register} as $00$ or $10$.
+\begin{itemize}
+    \item For $y=00$, there are two branches containing $\ket{00}$:
+        \begin{equation*}
+            \frac{1}{2}\ket{00}\ket{f(00)} \quad \text{and} \quad \frac{1}{2}\ket{00}\ket{f(10)}
+        \end{equation*}
+        From Simon's full promise:
+        \begin{equation*}
+            f(x) = f(x') \iff x = x' \text{ or } x = x' \oplus a
+        \end{equation*}
+        With $a=01$, $00$ is paired only with $01$. Thus $10$ belongs to $11$. This means that:
+        \begin{equation*}
+            f(00) \neq f(10)
+        \end{equation*}
+        Because $f(00)$ and $f(10)$ are distinct classical bitstrings, the corresponding computational-basis states are orthogonal:
+        \begin{equation*}
+            \braket{f(00)}{f(10)} = 0
+        \end{equation*}
+        Therefore the two branches cannot interfere with one another when we measure only the first register. Extracting the relevant part of the state from $\ket{\psi_3}$, we have:
+        \begin{equation*}
+            \ket{00} \otimes \left(
+                \frac{1}{2}\ket{f(00)} + \frac{1}{2}\ket{f(10)}
+            \right)
+        \end{equation*}
+        Thus, the probability of measuring $y=00$ is:
+        \begin{align*}
+            P(y=00) &= \left\|
+            \frac{1}{2}\ket{f(00)} + \frac{1}{2}\ket{f(10)}
+            \right\|^{2} \\[.3em]
+            &=
+            \frac{1}{4}\braket{f(00)}{f(00)} +
+            \frac{1}{4}\braket{f(10)}{f(10)} + \\[.3em]
+            &\phantom{=} \;\;
+            \frac{1}{4}\braket{f(00)}{f(10)} +
+            \frac{1}{4}\braket{f(10)}{f(00)} \\[.3em]
+            &\downarrow \text{since }\braket{f(00)}{f(00)} = \braket{f(10)}{f(10)} = 1 \text{ (\autopageref{eq:measurement-operator})} \\[.3em]
+            &\downarrow \text{since }\braket{f(00)}{f(10)} = \braket{f(10)}{f(00)} = 0 \text{ (\autopageref{eq:measurement-operator})} \\[.3em]
+            &= \frac{1}{4} + \frac{1}{4} + 0 + 0 = \frac{1}{2}
+        \end{align*}
+
+    \item For $y=10$, there are two branches containing $\ket{10}$:
+        \begin{equation*}
+            \frac{1}{2}\ket{10}\ket{f(00)} \quad \text{and} \quad -\frac{1}{2}\ket{10}\ket{f(10)}
+        \end{equation*}
+        Again:
+        \begin{equation*}
+            \ket{10} \otimes \left(
+                \frac{1}{2}\ket{f(00)} - \frac{1}{2}\ket{f(10)}
+            \right)
+        \end{equation*}
+        Thus, the probability of measuring $y=10$ is:
+        \begin{equation*}
+            P(y = 10) = \left\|
+            \frac{1}{2}\ket{f(00)} - \frac{1}{2}\ket{f(10)}
+            \right\|^{2} = \frac{1}{4} + \frac{1}{4} = \frac{1}{2}
+        \end{equation*}
+\end{itemize}
+\begin{center}
+    \begin{quantikz}
+        \lstick[2]{$\ket{00}$} & \gate[2]{H^{\otimes 2}} & \gate[4][2.8cm]{U_f}\gateinput[2]{\ket{x}}\gateoutput[2]{\ket{x}} & \gate[2]{H^{\otimes 2}} & \meter[2]{} \\
+        & & & & \\
+        \lstick[2]{$\ket{00}$} & \centerbundle[1] & \gateinput[2]{\ket{y}}\gateoutput[2]{\ket{y \oplus f(x)}} & \centerbundle[1] & \\
+        & \centerbundle[1] &  & \centerbundle[1] &
+    \end{quantikz}
+\end{center}
+And for the other possible first-register values $y=01$ and $y=11$, their amplitudes have canceled completely, so the probability of measuring them is zero:
+\begin{equation*}
+    P(y=00) = \frac{1}{2}, \quad P(y=10) = \frac{1}{2}, \quad P(y=01) = 0, \quad P(y=11) = 0
+\end{equation*}
+
+\highspace
+Finally, let's check that the measurement results satisfy the constraint (explained on \autopageref{rem:hadamard-formula}, and \autopageref{eq:simons-algorithm-measurement-constraint}):
+\begin{equation*}
+    a \cdot y = 0 \pmod 2
+\end{equation*}
+For $y=00$, we have:
+\begin{equation*}
+    a \cdot y = 01 \cdot 00 \pmod 2 = 0(0) + 1(0) \pmod 2 = 0 \pmod 2
+\end{equation*}
+For $y=10$, we have:
+\begin{equation*}
+    a \cdot y = 01 \cdot 10 \pmod 2 = 0(1) + 1(0) \pmod 2 = 0 \pmod 2
+\end{equation*}
+Indeed, both measurement results satisfy the constraint. In fact, they undergo constructive interference, which allows us to measure them. In contrast, the other two possible results, $y = 01$ and $y = 11$, are destructively interfered with and thus have zero probability of being measured:
+\begin{equation*}
+    a \cdot y = 01 \cdot 01 \pmod 2 = 0(0) + 1(1) \pmod 2 = 1 \pmod 2
+\end{equation*}
+\begin{equation*}
+    a \cdot y = 01 \cdot 11 \pmod 2 = 0(1) + 1(1) \pmod 2 = 1 \pmod 2
+\end{equation*}

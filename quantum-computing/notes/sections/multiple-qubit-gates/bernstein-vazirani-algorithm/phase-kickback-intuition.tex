@@ -1,0 +1,289 @@
+\subsubsection{Phase-Kickback Intuition}\label{sec:phase-kickback-intuition}
+
+The remarkable feature of the Bernstein-Vazirani algorithm is that the \hl{oracle never explicitly writes the hidden bitstring $w$ into the data register.} Instead, it hides that information in the \textbf{phases} of the quantum state. This is possible because the ancilla is prepared in a very special state.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{flask} \textbf{The Ancilla is Prepared in \ket{-}}}
+\end{flushleft}
+After the first Hadamard gate, the ancilla is no longer in the computational basis:
+\begin{center}
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & & \qwbundle{n}  & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_1}} & \\
+        \lstick{$\ket{1}$}                                                                                          & &               & \gate{H}                                                                                                   &
+    \end{quantikz}
+\end{center}
+Instead, it is in the state:
+\begin{equation*}
+    \ket{-} = \frac{\ket{0} - \ket{1}}{\sqrt{2}}
+\end{equation*}
+This state is an eigenstate of the Pauli-$X$ gate with eigenvalue $-1$:
+\begin{equation*}
+    X\ket{-} = -\ket{-}
+\end{equation*}
+Therefore, whenever a CNOT attempts to flip the ancilla, the ancilla itself is unchanged (i.e., it remains in the state $\ket{-}$), but the control state acquires a minus sign. This phenomenon is called \textbf{phase kickback} and is exactly the same mechanism encountered in Deutsch's algorithm (\autopageref{sec:deutsch-applying-the-oracle-to-the-superposition}). Let's see in detail how this works in the Bernstein-Vazirani algorithm.
+
+\highspace
+\textcolor{Green3}{\faIcon{cogs} \textbf{Oracle Action.}} The oracle always satisfies:
+\begin{equation*}
+    U_f\ket{x}\ket{y} = \ket{x}\ket{y \oplus f(x)}
+\end{equation*}
+But notice something important: the \hl{oracle \textbf{does not know} that the second register is in the state $\ket{-}$.} It simply receives \emph{some quantum state} as the second qubit and applies XOR. Since the Bernstein-Vazirani algorithm prepares the second register (ancilla) in the state \ket{-}, the input to the oracle is actually:
+\begin{align*}
+    \ket{x}\ket{-} = \frac{1}{\sqrt{2}}\left(\ket{x0} - \ket{x1}\right)
+\end{align*}
+Now, since the quantum gates are \textbf{linear}, we can rewrite the oracle action as:
+\begin{align*}
+    U_f\ket{x}\ket{-} &= U_f \left(\frac{1}{\sqrt{2}}\left(\ket{x0} - \ket{x1}\right)\right) \\
+    &= \frac{1}{\sqrt{2}} \left(
+        U_f\ket{x0} - U_f\ket{x1}
+    \right) \\
+    &= \frac{1}{\sqrt{2}} \left(
+        U_f\ket{x}\ket{0} - U_f\ket{x}\ket{1}
+    \right)
+\end{align*}
+At this point, we can apply the oracle definition to each term. Remember that, by definition, the oracle satisfies:
+\begin{equation*}
+    U_f\ket{x}\ket{y} = \ket{x}\ket{y \oplus f(x)}
+\end{equation*}
+Thus, if:
+\begin{itemize}
+    \item $y = 0$, the expression becomes:
+    \begin{equation*}
+        U_f \ket{x}\ket{0} = \ket{x} \ket{0 \oplus f(x)}
+    \end{equation*}
+    But XOR has a simple property:
+    \begin{center}
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            $y$ & $f(x)$ & $y \oplus f(x)$ \\
+            \midrule
+            0 & 0 & 0 \\
+            0 & 1 & 1 \\
+            1 & 0 & 1 \\
+            1 & 1 & 0 \\
+            \bottomrule
+        \end{tabular}
+        $\quad y = 0 \implies y \oplus f(x) = f(x) \quad \forall f(x)$
+    \end{center}
+    Thus, we can rewrite the oracle action as:
+    \begin{equation*}
+        U_f \ket{x}\ket{0} = \ket{x} \ket{f(x)}
+    \end{equation*}
+
+    \item $y = 1$, the expression becomes:
+    \begin{equation*}
+        U_f \ket{x}\ket{1} = \ket{x} \ket{1 \oplus f(x)}
+    \end{equation*}
+    Similarly, the XOR property is the same, but on the opposite side:
+    \begin{equation*}
+        y = 1 \implies y \oplus f(x) = \overline{f(x)} \quad \forall f(x)
+    \end{equation*}
+    Thus, we can rewrite the oracle action as:
+    \begin{equation*}
+        U_f \ket{x}\ket{1} = \ket{x} \ket{\overline{f(x)}}
+    \end{equation*}
+\end{itemize}
+Substituting these results back into the oracle action, we have:
+\begin{align*}
+    U_f\ket{x}\ket{-} &= \frac{1}{\sqrt{2}} \left(
+        \ket{x}\ket{f(x)} - \ket{x}\ket{\overline{f(x)}}
+    \right) \\
+    &= \frac{1}{\sqrt{2}} \left(
+        \ket{x}\ket{f(x)} - \ket{x}\ket{1 \oplus f(x)}
+    \right)
+\end{align*}
+Leave $1 \oplus f(x)$ as it is for clarity. From this expression, we need to find a way to generalize it to all possible values (1 and 0) of $f(x)$:
+\begin{itemize}
+    \item $f(x) = 0$:
+    \begin{align*}
+        U_f\ket{x}\ket{-} &= \frac{1}{\sqrt{2}} \left(
+            \ket{x}\ket{0} - \ket{x}\ket{1}
+        \right) \\
+        &= \frac{1}{\sqrt{2}} \left(
+            \ket{x0} - \ket{x1}
+        \right) \\
+        &= \ket{x}\ket{-}
+    \end{align*}
+    \textbf{Nothing changes} in the state of the system, and the \hl{oracle does not introduce any phase change.}
+
+    \item $f(x) = 1$:
+    \begin{align*}
+        U_f\ket{x}\ket{-} &= \frac{1}{\sqrt{2}} \left(
+            \ket{x}\ket{1} - \ket{x}\ket{0}
+        \right) \\
+        &= -\frac{1}{\sqrt{2}} \left(
+            \ket{x}\ket{0} - \ket{x}\ket{1}
+        \right) \\
+        &= -\frac{1}{\sqrt{2}} \left(
+            \ket{x0} - \ket{x1}
+        \right) \\
+        &= -\ket{x}\ket{-}
+    \end{align*}
+    In this case, the \hl{oracle introduces a \textbf{phase change} of $-1$} in the state of the system.
+\end{itemize}
+Combining these two cases, we need to \hl{find a way to express the oracle action in a single expression that captures both cases:}
+\begin{equation*}
+    U_f\ket{x}\ket{-} = \begin{cases}
+        \ket{x}\ket{-} & \text{if } f(x) = 0, \\
+        -\ket{x}\ket{-} & \text{if } f(x) = 1.
+    \end{cases}
+\end{equation*}
+The simplest way to express this is:
+\begin{equation}\label{eq:bernstein-vazirani-oracle-action}
+    U_f\ket{x}\ket{-} = (-1)^{f(x)}\ket{x}\ket{-}
+\end{equation}
+For the skeptics, we can verify:
+\begin{gather*}
+    f(x) = 0 \implies (-1)^{f(x)} = (-1)^0 = 1 \implies U_f\ket{x}\ket{-} = \ket{x}\ket{-} \\
+    f(x) = 1 \implies (-1)^{f(x)} = (-1)^1 = -1 \implies U_f\ket{x}\ket{-} = -\ket{x}\ket{-}
+\end{gather*}
+Since we are very meticulous, we can expand $f(x)$ in the case of the Bernstein-Vazirani algorithm using the \autoref{eq:bernstein-vazirani-oracle-function} (\autopageref{eq:bernstein-vazirani-oracle-function}):
+\begin{equation}\label{eq:bernstein-vazirani-oracle-action-expanded}
+    U_f\ket{x}\ket{-} = \underbrace{(-1)^{w \cdot x}\ket{x}\ket{-}}_{\text{where } f(x) = w \cdot x \mod 2}
+\end{equation}
+Now, we can rewrite the Bernstein-Vazirani algorithm circuit (page \autopageref{fig:bernstein-vazirani-circuit}) with the explicit oracle action in mind:
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}
+        \lstick{$\ket{0}^{\otimes n}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_0}} & \qwbundle{n} & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_1}} & \gate[2][5.21cm]{U_{f_w}}\gateinput{$\dfrac{1}{\sqrt{2}}\displaystyle\sum_{x} \ket{x}$}\gateoutput{$\dfrac{1}{\sqrt{2^{n}}}\displaystyle\sum_{x} \left(-1\right)^{f_w(x)}\ket{x} \ket{-}$}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_2}}   & \qwbundle{n} & \gate{H^{\otimes n}}\slice[label style={inner sep=1pt,anchor=south west,rotate=40}]{\ket{\psi_3}} & \meter{} \\[1em]
+        \lstick{$\ket{1}$}                                                                                          &              & \gate{H}                                                                                          & \gateinput{\ket{-}}\gateoutput{\ket{-}}                                                                                                                                                                                                                                &              &                                                                                                   & 
+    \end{quantikz}
+    \caption{Bernstein-Vazirani algorithm circuit with the explicit oracle action. The oracle is applied to the superposition of all possible inputs, and it introduces a phase change of $(-1)^{f_w(x)}$ to each basis state $\ket{x}$ in the superposition.}
+    \label{fig:bernstein-vazirani-circuit-with-oracle-action}
+\end{figure}
+
+\newpage
+
+\noindent
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{search} \textbf{Looking at One Bit at a Time}}
+\end{flushleft}
+The \autoref{eq:bernstein-vazirani-oracle-action-expanded} explains the entire algorithm mathematically, but it does not immediately reveal why the hidden bitstring $w$ eventually appears at the output. A much more intuitive way is to examine the oracle \textbf{bit by bit}.
+
+\highspace
+Recall that the oracle contains one CNOT gate for every position where $w_i = 1$ (\autopageref{sec:quantum-oracle-construction}), because the oracle computes the function:
+\begin{equation*}
+    f_w(x) = w \cdot x \mod 2 = w_0 x_0 \oplus w_1 x_1 \oplus \dots \oplus w_{n-1} x_{n-1}
+\end{equation*}
+Now consider \textbf{what happens to a single data qubit after the first\break Hadamard layer}. Every data qubit starts in:
+\begin{equation*}
+    \ket{+} = \frac{\ket{0} + \ket{1}}{\sqrt{2}}
+\end{equation*}
+Then, there are two possibilities: $w_i = 0$ or $w_i = 1$.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why analyze the cases $w_i = 0$ and $w_i = 1$ when they are the goal and we cannot see them?}} Someone has already built the oracle. Suppose Nature secretly chooses a hidden bitstring:
+\begin{equation*}
+    w = 10110
+\end{equation*}
+The oracle is then physically built as:
+\begin{center}
+    \begin{quantikz}
+        \lstick{$q_1$}          & \ctrl{5}  &             &           & \\
+        \lstick{$q_2$}          &           &             &           & \\
+        \lstick{$q_3$}          &           & \ctrl{3}    &           & \\
+        \lstick{$q_4$}          &           &             & \ctrl{2}  & \\
+        \lstick{$q_5$}          &           &             &           & \\
+        \lstick{$\text{anc}$}   & \targ{}   & \targ{}     & \targ{}   & 
+    \end{quantikz}
+\end{center}
+\noindent
+Notice that the oracle contains a CNOT gate for every position where $w_i = 1$. The algorithm \textbf{never sees} this circuit, it simply receives the oracle as a black box.
+
+\highspace
+So we analyze the two cases $w_i = 0$ and $w_i = 1$ because \textbf{we}, as mathematicians, are \hl{trying to prove that the algorithm works \textbf{for every possible oracle}.}
+\begin{itemize}
+    \item Suppose the hidden bit at position $i$ is \hl{$w_i = 0$}. \emph{What happens?} There is no CNOT gate in the oracle for this position, so the \textbf{input data qubit $x_i$ remains unchanged}: \ket{+}.
+
+
+    \item Now suppose instead that the hidden bit at position $i$ is \hl{$w_i = 1$}. \emph{What happens?} \textbf{There is a CNOT gate} in the oracle for this position.
+    
+    Let's suppose a \textbf{single data qubit} and one ancilla qubit.
+    \begin{center}
+        \begin{quantikz}
+            \lstick{\ket{0}} & \gate{H} & \gate[2][1.7cm]{U_f}\gateinput{\ket{+}} \\
+            \lstick{\ket{1}} & \gate{H} & \gateinput{\ket{-}}
+        \end{quantikz}
+    \end{center}
+    Before the oracle, the state of the system is:
+    \begin{align*}
+        \ket{\psi_1} &= \ket{+}\ket{-} \\
+        &= \frac{1}{\sqrt{2}}\left(\ket{0} + \ket{1}\right)\frac{1}{\sqrt{2}}\left(\ket{0} - \ket{1}\right) \\
+        &= \frac{1}{2}\left(\ket{00} - \ket{01} + \ket{10} - \ket{11}\right)
+    \end{align*}
+    Now the oracle applies a CNOT gate:
+    \begin{align*}
+        \text{CNOT}\left(\ket{+}\ket{-}\right) &= \frac{1}{2}\left(\ket{00} - \ket{01} + \ket{11} - \ket{10}\right) \\
+        &= \frac{1}{2}\left(\ket{00} - \ket{01} - \ket{10} + \ket{11}\right)
+    \end{align*}
+    Now factor the expression:
+    \begin{align*}
+        \text{CNOT}\left(\ket{+}\ket{-}\right) &= \frac{1}{2}\left(\ket{0}\left(\ket{0} - \ket{1}\right) - \ket{1}\left(\ket{0} - \ket{1}\right)\right) \\
+        &= \frac{1}{2}\left(\ket{0} - \ket{1}\right)\left(\ket{0} - \ket{1}\right) \\
+        &= \ket{-}\ket{-}
+    \end{align*}
+\end{itemize}
+Therefore, \hl{each bit of the hidden bitstring $w$ determines whether the corresponding qubit ends up in the state $\ket{+}$ or $\ket{-}$ after the oracle.}
+\begin{equation}
+    x_i = \begin{cases}
+        \ket{+} & \text{if } w_i = 0, \\
+        \ket{-} & \text{if } w_i = 1.
+    \end{cases}
+\end{equation}
+If $w_i = 0$, the qubit remains in $\ket{+}$; if $w_i = 1$, it flips to $\ket{-}$. This is the \textbf{essence of phase kickback}: the oracle encodes the hidden bitstring into the phases of the quantum state without ever explicitly revealing it in the data register.
+
+\highspace
+For example, if the hidden bitstring is $w = 10110$, corresponds to:
+\begin{equation*}
+    \ket{-} \otimes \ket{+} \otimes \ket{-} \otimes \ket{-} \otimes \ket{+}
+\end{equation*}
+The oracle has effectively transformed each hidden bit into a different quantum state of the corresponding data qubit.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{unlock-alt} \textbf{The Final Hadamard Decodes the Answer}}
+\end{flushleft}
+The last Hadamard layer \textbf{converts these phase states back into computational basis states}. Recall the identities:
+\begin{align*}
+    H\ket{+} &= \ket{0} \\
+    H\ket{-} &= \ket{1}
+\end{align*}
+Thus, after the final Hadamard layer, the data qubits will be in the state
+\begin{equation*}
+    \ket{w_0}\ket{w_1}\ket{w_2}\ket{w_3}\ket{w_4} = \ket{10110}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{tools} \textbf{The Big Picture}}
+\end{flushleft}
+The Bernstein-Vazirani algorithm can now be summarized as a simple three-step process:
+\begin{enumerate}
+    \item The first Hadamard gates prepare every data qubit in the state \ket{+}.
+    \item The oracle uses phase kickback to change selected qubits into the state \ket{-}.
+    \item The final Hadamard gates convert:
+    \begin{equation*}
+        \ket{+} \to \ket{0} \quad \text{and} \quad \ket{-} \to \ket{1}
+    \end{equation*}
+    Revealing the hidden bitstring directly in the computational basis.
+\end{enumerate}
+This perspective explains why the algorithm succeeds with certainty: the oracle does not merely evaluate a Boolean function; it \textbf{encodes each hidden bit into the phase of its corresponding data qubit}, and the final Hadamard layer converts those phases back into ordinary bits.
+
+\highspace
+\begin{takeawaysbox}[: Phase Kickback Intuition]
+    The ancilla is prepared in the state \ket{-}, so each CNOT in the oracle produces phase kickback instead of flipping the ancilla. As a result:
+    \begin{equation*}
+        \ket{x}\ket{-} \mapsto (-1)^{f_w(x) = w \cdot x}\ket{x}\ket{-}
+    \end{equation*}
+    Meaning that each hidden bit is encoded as a phase on the corresponding data qubit:
+    \begin{equation*}
+        w_i = 0 \implies x_i = \ket{+} \quad \text{and} \quad w_i = 1 \implies x_i = \ket{-}
+    \end{equation*}
+    The final Hadamard layer then decodes these phase states using:
+    \begin{equation*}
+        H\ket{+} = \ket{0} \quad \text{and} \quad H\ket{-} = \ket{1}
+    \end{equation*}
+    Deterministically recovering the hidden bitstring $w$ in the computational basis.
+\end{takeawaysbox}

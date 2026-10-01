@@ -1,0 +1,2179 @@
+\section{Exams}
+
+\subsection{2024}
+
+\subsubsection{June 20}
+
+\phantomsection
+\addcontentsline{toc}{paragraph}{Simon's Algorithm}
+\eexercise[Simon's Algorithm]
+\begin{enumerate}
+    \item State the problem that is solved by the Simon's algorithm. Briefly describe the algorithm, draw its quantum circuit and state its speedup compared to a classical algorithm.
+
+    \item Consider a function $f(\{0,1\}^2) \to \{0,1\}^2$ such that $f(00)=f(10), f(01)=f(11)$. Use the Simon's algorithm to compute its period.
+\end{enumerate}
+Motivate your answer by showing all stages of the computation.
+
+\phantomsection
+\addcontentsline{toc}{subparagraph}{Problem solved by Simon's algorithm}
+\highspace
+\esolution[Problem solved by Simon's algorithm] We are given a black-box function:
+\begin{equation*}
+    f: \{0,1\}^n \to \{0,1\}^n
+\end{equation*}
+With the promise that there exists a hidden non-zero string:
+\begin{equation*}
+    a \in \left\{0,1\right\}^n, \quad a \neq 0^n
+\end{equation*}
+Such that:
+\begin{equation*}
+    f(x) = f(y) \iff x = y \quad \text{or} \quad x = y \oplus a
+\end{equation*}
+Equivalently:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+For every $x \in \{0,1\}^n$. The objective is to determine the hidden period $a$. Because $a \neq 0$, every output has exactly two corresponding inputs: $x$ and $x \oplus a$. So the domain is divided into cosets/pairs:
+\begin{equation*}
+    \left\{x, x \oplus a\right\}
+\end{equation*}
+\textbf{Classical vs quantum complexity.} Classically, we need to find two different inputs $x_1$, $x_2$, producing the same output:
+\begin{equation*}
+    f(x_1) = f(x_2)
+\end{equation*}
+Then:
+\begin{equation*}
+    a = x_1 \oplus x_2
+\end{equation*}
+Because this is essentially a collision-search problem, the randomized classical query complexity is:
+\begin{equation*}
+    O\left(2^{n/2}\right)
+\end{equation*}
+Simon's quantum algorithm requires only:
+\begin{equation*}
+    O\left(n\right)
+\end{equation*}
+Oracle calls, because each execution gives one linear constraint on $a$. Therefore Simon gives an \textbf{exponential speedup} over classical algorithms.
+
+\newpage
+
+\begin{figure}[!htp]
+    \centering
+    \begin{quantikz}[
+            slice all,
+            slice titles={\ket{\psi_{\col}}},
+            column sep=1cm,
+        ]
+        \lstick{$\ket{0}^{\otimes n}$}\slice{\ket{\psi_{0}}}    & \gate{H^{\otimes n}}          & \gate[2][2.3cm]{U_f}\gateinput{\ket{x}}\gateoutput{\ket{x}} & \gate{H^{\otimes n}} & \meter{} \\
+        \lstick{$\ket{0}^{\otimes n}$}                          & \centerbundle[n]              & \gateinput{\ket{y}}\gateoutput{\ket{y \oplus f(x)}} & \qw                  & \qw
+    \end{quantikz}
+    \caption*{Simon circuit.}
+\end{figure}
+
+\noindent
+The state evolution in the general case is as follows:
+\begin{itemize}
+    \item \textbf{Initial state}:
+        \begin{equation*}
+            \ket{\psi_{0}} = \ket{0}^{\otimes n} \ket{0}^{\otimes n}
+        \end{equation*}
+
+    \item \textbf{First Hadamards}:
+        \begin{equation*}
+            \ket{\psi_{1}} = H^{\otimes n} \ket{\psi_{0}} = \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \ket{x} \ket{0}^{\otimes n}
+        \end{equation*}
+
+    \item \textbf{Oracle}:
+        \begin{align*}
+            \ket{\psi_{2}} &= U_f \ket{\psi_{1}} \\[.3em]
+            &= U_f \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \ket{x} \ket{0}^{\otimes n} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} U_f \ket{x} \ket{0}^{\otimes n} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \ket{x} \ket{f(x)}
+        \end{align*}
+
+    \item \textbf{Second Hadamards}:
+        \begin{align*}
+            \ket{\psi_{3}} &= H^{\otimes n} \ket{\psi_{2}} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} H^{\otimes n} \ket{x} \ket{f(x)} \\[.3em]
+            &= \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^n} \left(
+                \frac{1}{\sqrt{2^{n}}} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y}
+            \right) \ket{f(x)} \\[.3em]
+            &= \frac{1}{2^{n}} \sum_{x \in \{0,1\}^n} \sum_{y \in \{0,1\}^n} (-1)^{x \cdot y} \ket{y} \ket{f(x)}
+        \end{align*}
+
+    \item \textbf{Measurement}. Group together $x$ and $x \oplus a$. Since:
+        \begin{equation*}
+            f(x) = f(x \oplus a)
+        \end{equation*}
+        Their combined amplitude contains:
+        \begin{equation*}
+            (-1)^{x \cdot y} + (-1)^{(x \oplus a) \cdot y}
+        \end{equation*}
+        Using the property:
+        \begin{equation*}
+            (x \oplus a) \cdot y = x \cdot y \oplus a \cdot y
+        \end{equation*}
+        Rewriting the amplitude:
+        \begin{align*}
+            (-1)^{x \cdot y} + (-1)^{(x \oplus a) \cdot y} &= (-1)^{x \cdot y} + (-1)^{x \cdot y \oplus a \cdot y} \\
+            &= (-1)^{x \cdot y} + (-1)^{x \cdot y} (-1)^{a \cdot y} \\
+            &= (-1)^{x \cdot y} \left(1 + (-1)^{a \cdot y}\right)
+        \end{align*}
+        Therefore, if $a \cdot y = 1$, the amplitude is zero (destructive interference):
+        \begin{equation*}
+            1 + (-1)^{a \cdot y} = 1 + (-1) = 0
+        \end{equation*}
+        If $a \cdot y = 0$, the amplitude is non-zero (constructive interference):
+        \begin{equation*}
+            1 + (-1)^{a \cdot y} = 1 + 1 = 2
+        \end{equation*}
+        Hence measurements can only return $y$ such that:
+        \begin{equation*}
+            a \cdot y = 0 \pmod 2
+        \end{equation*}
+        We repeat the algorithm until we have $n-1$ independent equations, then solve the over $GF(2)$ to recover $a$.
+\end{itemize}
+
+\begin{remarkbox}[: Why do we want destructive interference?]
+    Before the final Hadamards, the first register contains information about \textbf{all possible inputs} $x$. The problem is that if we simply measured it, we would essentially obtain a random $x$, which tells us almost nothing about the hidden period $a$.
+
+    \highspace
+    The purpose of the final $H^{\otimes n}$ is therefore \textbf{not just to create another superposition}. It makes the different computational paths interfere so that the hidden structure of $f$ becomes observable.
+
+    \highspace
+    For every pair:
+    \begin{equation*}
+        x,\qquad x\oplus a,
+    \end{equation*}
+    Simon's promise tells us:
+    \begin{equation*}
+        f(x)=f(x\oplus a)
+    \end{equation*}
+    Because they correspond to the \textbf{same output state}, their amplitudes can interfere.
+
+    \highspace
+    For a candidate measurement $y$, the two contributions are:
+    \begin{equation*}
+        (-1)^{x\cdot y}
+        +
+        (-1)^{(x\oplus a)\cdot y}
+        =
+        (-1)^{x\cdot y}
+        \left(1+(-1)^{a\cdot y}\right)
+    \end{equation*}
+    Now there are two cases:
+    \begin{center}
+        \begin{tabular}{@{} c | c | c @{}}
+            \toprule
+            $a\cdot y$ & \text{Interference} & \text{Result}\\
+            \midrule
+            $0$ & \text{constructive} & \text{amplitude survives}\\
+            $1$ & \text{destructive} & $\text{amplitude}=0$\\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    So destructive interference acts as a filter:
+    \begin{equation*}
+        a\cdot y=1
+        \quad\Longrightarrow\quad
+        P(y)=0
+    \end{equation*}
+    And therefore measurement can only give:
+    \begin{equation*}
+        a \cdot y = 0
+    \end{equation*}
+    That is the deep reason we care about destructive interference: \textbf{it removes outcomes that do not contain the constraint we need}.
+
+    \highspace
+    In general, one of the most important patterns to remember is: \hl{superposition alone does not give a quantum advantage. Interference is what makes the useful answers more likely and the useless answers less likely or impossible.} Simon is an especially clear example because the unwanted outcomes are \textbf{completely cancelled}.
+
+    \highspace
+    For example, if:
+    \begin{equation*}
+        a = 10 \quad \Rightarrow \quad a \cdot y = y_1
+    \end{equation*}
+    The four possible $y$'s start conceptually as:
+    \begin{equation*}
+        y = 00, 01, 10, 11
+    \end{equation*}
+    Interference eliminates the two with $y_1=1$, leaving only:
+    \begin{equation*}
+        y = 00, 01, \cancel{10}, \cancel{11}
+    \end{equation*}
+    And both of these remaining $y$'s satisfy the constraint:
+    \begin{equation*}
+        a \cdot y = 0
+    \end{equation*}
+    So the quantum computer is \textbf{not directly revealing} $a$. It uses destructive interference to prevent us from observing strings inconsistent with $a$. Repeating the experiment gives enough surviving constraints to reconstruct $a$. In other words, \hl{destructive interference removes measurement outcomes inconsistent with the hidden period.}
+\end{remarkbox}
+
+\phantomsection
+\addcontentsline{toc}{subparagraph}{Specific exam function}
+\noindent
+\esolution*[Specific exam function] We have:
+\begin{equation*}
+    f: \{0,1\}^2 \to \{0,1\}^2
+\end{equation*}
+And:
+\begin{equation*}
+    f(00) = f(10), \quad f(01) = f(11)
+\end{equation*}
+We want to determine the hidden period $a$. Before doing any quantum computation, we can already see what it must be. Since Simon's promise tells us:
+\begin{equation*}
+    f(x) = f(x \oplus a)
+\end{equation*}
+We also know that any value XORed with 00 returns the same value:
+\begin{center}
+    \begin{tabular}{@{} c c c @{}}
+        \toprule
+        $x$ & $y$ & $x \oplus y$ \\
+        \midrule
+        $0$ & $0$ & $0$ \\
+        $0$ & $1$ & $1$ \\
+        $1$ & $0$ & $1$ \\
+        $1$ & $1$ & $0$ \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\noindent
+Thus, the only way to satisfy:
+\begin{equation*}
+    f(00) = f(10)
+\end{equation*}
+Is if:
+\begin{equation*}
+    00 \oplus a = 10 \quad \Rightarrow \quad a = 10
+\end{equation*}
+We are confident that this is the correct answer, so let's try the other pair:
+\begin{equation*}
+    f(01) = f(11)
+\end{equation*}
+We can see that:
+\begin{equation*}
+    01 \oplus a = 11 \quad \Rightarrow \quad 01 \oplus 10 = 11
+\end{equation*}
+\begin{equation*}
+    11 \oplus a = 01 \quad \Rightarrow \quad 11 \oplus 10 = 01
+\end{equation*}
+Thus, both pairs are \textbf{consistent} with $a = 10$. Now let's see if the quantum algorithm gives the same answer.
+\begin{enumerate}[label={\textbf{Step \arabic*.}}, leftmargin=2cm]
+    \item \textbf{Initial state}. Since $n=2$, there are four qubits total:
+        \begin{equation*}
+            \ket{\psi_0} = \ket{00} \ket{00}
+        \end{equation*}
+
+    \item \textbf{First Hadamards}. Apply $H^{\otimes 2}$ to the first register:
+        \begin{align*}
+            \ket{\psi_1} &= H^{\otimes 2} \ket{\psi_0} \\[.3em]
+            &= H^{\otimes 2} \ket{00} \ket{00} \\[.3em]
+            &= \left(H \ket{0} \otimes H \ket{0}\right) \otimes \ket{00} \\[.3em]
+            &= \left(
+                \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \otimes
+                \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right)
+            \right) \otimes \ket{00} \\[.3em]
+            &= \frac{1}{2} \left(
+                \ket{00} + \ket{01} + \ket{10} + \ket{11}
+            \right) \otimes \ket{00}
+        \end{align*}
+        We omit the identity on the second register for brevity:
+        \begin{equation}
+            \left(H^{\otimes 2} \otimes I^{\otimes 2}\right) \ket{\psi_0}
+        \end{equation}
+
+    \item \textbf{Oracle}. The oracle leaves unchanged the first register and applies $y \oplus f(x)$ to the second register. Since the second register is initialized to $\ket{00}$, it will simply be replaced by $f(x)$:
+        \begin{align*}
+            \ket{\psi_2} &= U_f \ket{\psi_1} \\[.3em]
+            &= U_f \frac{1}{2} \left(
+                \ket{00} + \ket{01} + \ket{10} + \ket{11}
+            \right) \otimes \ket{00}
+        \end{align*}
+        Now we apply the oracle to each term. The first register remains unchanged, while the second register is replaced by $f(x)$. We follow the oracle's definition:
+        \begin{equation*}
+            U_f \ket{x} \ket{y} = \ket{x} \ket{y \oplus f(x)}
+        \end{equation*}
+        \begin{align*}
+            \ket{\psi_2} &= U_f \frac{1}{2} \left(
+                \ket{00} + \ket{01} + \ket{10} + \ket{11}
+            \right) \otimes \ket{00} \\[.3em]
+            &= \frac{1}{2} \left(
+                \ket{00} \ket{f(00)} +
+                \ket{01} \ket{f(01)} +
+                \ket{10} \ket{f(10)} +
+                \ket{11} \ket{f(11)}
+            \right) \\[.3em]
+            &\downarrow \text{ Since } f(00) = f(10) \text{ and } f(01) = f(11) \\[.3em]
+            &= \frac{1}{2} (
+                \ket{00} \ket{f(00)} +
+                \ket{01} \ket{f(01)} +
+                \ket{10} \underbrace{\cancel{\ket{f(10)}}}_{\ket{f(00)}} +
+                \ket{11} \underbrace{\cancel{\ket{f(11)}}}_{\ket{f(01)}}
+            ) \\[.3em]
+            &= \frac{1}{2} (
+                \ket{00} \ket{f(00)} +
+                \ket{01} \ket{f(01)} +
+                \ket{10} \ket{f(00)} +
+                \ket{11} \ket{f(01)}
+            ) \\[.3em]
+            &\downarrow \text{ Group terms with the same output } f(x) \\[.3em]
+            &= \frac{1}{2} \left[
+                \left(\ket{00} + \ket{10}\right) \ket{f(00)} +
+                \left(\ket{01} + \ket{11}\right) \ket{f(01)}
+            \right]
+        \end{align*}
+
+    \item \textbf{Apply the second $H^{\otimes 2}$}. We apply $H^{\otimes 2}$ to the first register:
+        \begin{align*}
+            \ket{\psi_3} &= \left(H^{\otimes 2} \otimes I^{\otimes 2}\right) \ket{\psi_2} \\[.3em]
+            &= \frac{1}{2} \left[
+                H^{\otimes 2} \left(\ket{00} + \ket{10}\right) \ket{f(00)} +
+                H^{\otimes 2} \left(\ket{01} + \ket{11}\right) \ket{f(01)}
+            \right]
+        \end{align*}
+        Now we compute each term separately:
+        \begin{itemize}
+            \item From the theory, we know that:
+                \begin{equation*}
+                    H\ket{0} = \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right), \qquad H\ket{1} = \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right)
+                \end{equation*}
+
+            \item Therefore, the combination $\ket{00}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{00} &= H\ket{0} \otimes H\ket{0} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} + \ket{01} + \ket{10} + \ket{11}\right)
+                \end{align*}
+
+            \item The combination $\ket{10}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{10} &= H\ket{1} \otimes H\ket{0} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} + \ket{01} - \ket{10} - \ket{11}\right)
+                \end{align*}
+
+            \item The combination $\ket{01}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{01} &= H\ket{0} \otimes H\ket{1} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} - \ket{01} + \ket{10} - \ket{11}\right)
+                \end{align*}
+
+            \item Finally, the combination $\ket{11}$ is:
+                \begin{align*}
+                    H^{\otimes 2} \ket{11} &= H\ket{1} \otimes H\ket{1} \\[.3em]
+                    &= \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \otimes \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \\[.3em]
+                    &= \frac{1}{2} \left(\ket{00} - \ket{01} - \ket{10} + \ket{11}\right)
+                \end{align*}
+        \end{itemize}
+        Before substituting these results back into the expression for $\ket{\psi_3}$, we can simplify the two terms:
+        \begin{itemize}
+            \item The first term $\ket{f(00)}$:
+                \begin{align*}
+                    H^{\otimes 2} \left(\ket{00} + \ket{10}\right)
+                    &=
+                    \frac{1}{2} \left(\ket{00} + \ket{01} + \ket{10} + \ket{11}\right)
+                    +\\[.3em]
+                    &\quad\; \frac{1}{2} \left(\ket{00} + \ket{01} - \ket{10} - \ket{11}\right) \\[.3em]
+                    &=
+                    \frac{1}{2} \left(
+                        2\ket{00} + 2\ket{01}
+                    \right) \\[.3em]
+                    &=
+                    \ket{00} + \ket{01}
+                \end{align*}
+                Where the terms $\ket{10}$ and $\ket{11}$ cancel out due to destructive interference.
+
+            \item The second term $\ket{f(01)}$:
+                \begin{align*}
+                    H^{\otimes 2} \left(\ket{01} + \ket{11}\right)
+                    &=
+                    \frac{1}{2} \left(\ket{00} - \ket{01} + \ket{10} - \ket{11}\right)
+                    +\\[.3em]
+                    &\quad\; \frac{1}{2} \left(\ket{00} - \ket{01} - \ket{10} + \ket{11}\right) \\[.3em]
+                    &=
+                    \frac{1}{2} \left(
+                        2\ket{00} - 2\ket{01}
+                    \right) \\[.3em]
+                    &=
+                    \ket{00} - \ket{01}
+                \end{align*}
+                Where the terms $\ket{10}$ and $\ket{11}$ cancel out due to destructive interference.
+        \end{itemize}
+        Now we can substitute these results back into the expression:
+        \begin{align*}
+            \ket{\psi_3} &= \frac{1}{2} \left[
+                \left(\ket{00} + \ket{01}\right) \ket{f(00)} +
+                \left(\ket{00} - \ket{01}\right) \ket{f(01)}
+            \right] \\[.3em]
+            &= \frac{1}{2} \left[
+                \ket{00} \ket{f(00)} + \ket{01} \ket{f(00)} +
+                \ket{00} \ket{f(01)} - \ket{01} \ket{f(01)}
+            \right] \\[.3em]
+            &= \frac{1}{2} \left[
+                \ket{00} \left(\ket{f(00)} + \ket{f(01)}\right) +
+                \ket{01} \left(\ket{f(00)} - \ket{f(01)}\right)
+            \right]
+        \end{align*}
+
+    \item \textbf{Measurement}. We measure the first register. First of all, we can see that it contains only \ket{00} and \ket{01}, so immediately:
+        \begin{equation*}
+            P(10) = P(11) = 0
+        \end{equation*}
+        Thus, the only possible outcomes are:
+        \begin{equation*}
+            y = 00, 01
+        \end{equation*}
+        Now the problem is that the ``amplitude'' of \ket{00} is not just a scalar, but a superposition of the second register:
+        \begin{equation*}
+            \ket{00} \left(\ket{f(00)} + \ket{f(01)}\right)
+        \end{equation*}
+        And similarly for \ket{01}:
+        \begin{equation*}
+            \ket{01} \left(\ket{f(00)} - \ket{f(01)}\right)
+        \end{equation*}
+        However, we try to take the squared norm of that second-register vector:
+        \begin{equation*}
+            P(00) = \left\|\frac{1}{2} \left(\ket{f(00)} + \ket{f(01)}\right)\right\|^2
+        \end{equation*}
+        Since the Simon's promise tells us:
+        \begin{equation*}
+            f(00) = f(10), \quad f(01) = f(11)
+        \end{equation*}
+        Then: $f(00) \neq f(01)$, so they are distinct computational-basis states. Using the orthonormality of the computational basis, we have:
+        \begin{align*}
+            P(00) &= \left\|\frac{1}{2} \left(\ket{f(00)} + \ket{f(01)}\right)\right\|^2 \\[.3em]
+            &= \frac{1}{4} \left\|\ket{f(00)} + \ket{f(01)}\right\|^2 \\[.3em]
+            &= \frac{1}{4} \left(
+                \braket{f(00)}{f(00)} + \braket{f(00)}{f(01)} + \right. \\[.3em]
+                &\quad\;\;\;\;\; \left.
+                \braket{f(01)}{f(00)} + \braket{f(01)}{f(01)}
+            \right) \\[.3em]
+            &= \frac{1}{4} \left(
+                1 + 0 + 0 + 1
+            \right) \\[.3em]
+            &= \frac{1}{2}
+        \end{align*}
+        Similarly:
+        \begin{align*}
+            P(01) &= \frac{1}{4} \left(
+                \braket{f(00)}{f(00)} - \braket{f(00)}{f(01)} - \right. \\[.3em]
+                &\quad\;\;\;\;\; \left.
+                \braket{f(01)}{f(00)} + \braket{f(01)}{f(01)}
+            \right) \\[.3em]
+            &= \frac{1}{4} \left(
+                1 - 0 - 0 + 1
+            \right) \\[.3em]
+            &= \frac{1}{2}
+        \end{align*}
+        Therefore, the measurement of the first register gives:
+        \begin{equation*}
+            P(00) = P(01) = \frac{1}{2}, \quad P(10) = P(11) = 0
+        \end{equation*}
+        So the only possible outcomes are:
+        \begin{equation*}
+            y = 00, 01
+        \end{equation*}
+        Let's try both of them:
+        \begin{itemize}
+            \item If $y = 00$, then the constraint is:
+                \begin{equation*}
+                    a \cdot y = 0 \quad \Rightarrow \quad a_1 \cdot 0 + a_2 \cdot 0 = 0
+                \end{equation*}
+                Which is always satisfied, so it gives no information about $a$.
+            \item If $y = 01$, then the constraint is:
+                \begin{equation*}
+                    a \cdot y = 0 \quad \Rightarrow \quad a_1 \cdot 0 + a_2 \cdot 1 = 0
+                \end{equation*}
+                Which implies $a_2 = 0$, giving us information about $a$.
+        \end{itemize}
+        So the possible values of the hidden period $a$ are:
+        \begin{equation*}
+            a = 00, 10
+        \end{equation*}
+        But since Simon's promise tells us that $a \neq 00$, the $a_1$ term must be $1$, so we conclude:
+        \begin{equation*}
+            a = 10
+        \end{equation*}
+\end{enumerate}
+We have therefore recovered the hidden period $a=10$ using Simon's algorithm. \hl{For $n=2$, only $n-1=1$ linearly independent equation is required to determine the nonzero hidden period.} In this execution, the measurement $y=01$ provides exactly this equation. In general, however, more than $n-1$ circuit executions may be necessary because some measured vectors may be zero or linearly dependent.
+
+\newpage
+
+\noindent
+\phantomsection
+\addcontentsline{toc}{paragraph}{Qubit States and Operations}
+\eexercise[Qubit States and Operations]
+\begin{itemize}
+    \item Describe the state space of a single qubit in terms of the two basis states $\ket{0}$ and $\ket{1}$. Explain what the Block Sphere is, how a qubit can be represented on it, and the meaning of the global phase.
+
+    \item Describe the mathematical formalism used to represent a qubit gate and the properties it must have. Show that gates $\sigma_X$ and $\sigma_Y$ satisfy those properties.
+
+    \item Provide a brief description of the no-cloning and no-delete principles.
+\end{itemize}
+\phantomsection
+\addcontentsline{toc}{subparagraph}{Single-Qubit state space}
+\esolution[Single-Qubit state space] A single qubit is a normalized vector in the two-dimensional complex Hilbert space:
+\begin{equation*}
+    \mathcal{H} = \mathbb{C}^{2}
+\end{equation*}
+Using the computational basis:
+\begin{equation*}
+    \ket{0} =
+    \begin{pmatrix}
+        1 \\
+        0
+    \end{pmatrix},
+    \quad
+    \ket{1} =
+    \begin{pmatrix}
+        0 \\
+        1
+    \end{pmatrix}
+\end{equation*}
+The most general pure state of a qubit is:
+\begin{equation*}
+    \ket{\psi} = \alpha\ket{0} + \beta\ket{1}, \quad \alpha, \beta \in \mathbb{C}
+\end{equation*}
+And normalization condition:
+\begin{equation*}
+    |\alpha|^2 + |\beta|^2 = 1
+\end{equation*}
+If the qubit is measured in the computational basis:
+\begin{equation*}
+    P(0) = |\alpha|^2, \quad P(1) = |\beta|^2
+\end{equation*}
+\textbf{Global phase.} At first, $\alpha$ and $\beta$ appear to contain four real parameters because each is complex. However, not all of these parameters correspond to physically distinct states. In particular:
+\begin{equation*}
+    \ket{\psi}, \quad \text{and} \quad \ket{\psi'} = e^{i\gamma}\ket{\psi}
+\end{equation*}
+Represent the \textbf{same physical quantum state}, where $e^{i\gamma}$ is called a \textbf{global phase}. For example, if:
+\begin{equation*}
+    \ket{\psi} = \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right)
+\end{equation*}
+And:
+\begin{equation*}
+    \ket{\psi'} = i \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right)
+\end{equation*}
+Then $\ket{\psi}$ and $\ket{\psi'}$ are physically indistinguishable, even though they have different coefficients. The global phase does not affect measurement probabilities. Because measurement probabilities are unchanged:
+\begin{equation*}
+    \left|e^{i \gamma} \alpha\right|^2 = \left|e^{i \gamma}\right|^2 |\alpha|^2 = |\alpha|^2
+\end{equation*}
+Since:
+\begin{equation*}
+    \left|e^{i \gamma}\right| = 1
+\end{equation*}
+And thus:
+\begin{equation*}
+    \ket{\psi} \sim e^{i\gamma} \ket{\psi}
+\end{equation*}
+
+\begin{remarkbox}[: Why is $\left|e^{i \gamma}\right| = 1$?]
+    Using \textbf{Euler's formula}:
+    \begin{equation*}
+        e^{i\gamma}=\cos\gamma+i\sin\gamma
+    \end{equation*}
+    The modulus of a complex number $a+ib$ is:
+    \begin{equation*}
+        \left|a+ib\right|=\sqrt{a^2+b^2}
+    \end{equation*}
+    Therefore:
+    \begin{equation*}
+        \left|e^{i\gamma}\right|
+        =
+        \sqrt{\cos^2\gamma+\sin^2\gamma}
+        =
+        \sqrt{1}
+        =
+        \boxed{1}
+    \end{equation*}
+    Geometrically, $e^{i\gamma}$ is \textbf{a point on the unit circle} in the complex plane. Changing $\gamma$ only rotates the point; its distance from the origin always remains $1$.
+
+    \highspace
+    This is why multiplying a quantum state by a global phase $e^{i\gamma}$ does \textbf{not change the magnitude of any amplitude}, and hence does not change measurement probabilities.
+\end{remarkbox}
+
+\highspace
+\textbf{Bloch Sphere.} After imposing normalization and removing the physically irrelevant global phase, every pure single-qubit state can be written as:
+\begin{equation*}
+    \ket{\psi} = \cos\frac{\theta}{2}\ket{0} + e^{i\phi}\sin\frac{\theta}{2}\ket{1}
+\end{equation*}
+With:
+\begin{equation*}
+    0 \leq \theta \leq, \quad 0 \leq \phi < 2\pi
+\end{equation*}
+This gives the \textbf{Bloch sphere representation}, every pure state of a single qubit corresponds to a point on the surface of a unit sphere.
+
+\begin{figure}[!htp]
+    \centering
+    \tdplotsetmaincoords{72}{120}
+    \tikzsetnextfilename{bloch-sphere-canonical-representation-exam}
+    \begin{tikzpicture}[tdplot_main_coords, scale=3.3, >=Latex]
+
+        \def\r{1}
+
+        % Axes: positive directions
+        \draw[->, thick] (0,0,0) -- (1.25,0.05,0) node[anchor=north east] {$x$};
+        \draw[->, thick] (0,0,0) -- (0,1.25,0) node[anchor=west] {$y$};
+        \draw[->, thick] (0,0,0) -- (0,0,1.25) node[anchor=south] {$z$};
+
+        % Axes: negative directions (lighter dashed hints)
+        \draw[dashed, thin, black!55] (0,0,0) -- (-1.15,0,0);
+        \draw[dashed, thin, black!55] (0,0,0) -- (0,-1.15,0);
+        \draw[dashed, thin, black!55] (0,0,0) -- (0,0,-1.15);
+
+        % Sphere
+        \tdplotdrawarc[dashed]{(0,0,0)}{\r}{0}{180}{}{}
+        \tdplotdrawarc[thick]{(0,0,0)}{\r}{180}{360}{}{}
+
+        \tdplotsetrotatedcoords{90}{0}{90}
+        \tdplotdrawarc[tdplot_rotated_coords,dashed]{(0,0,0)}{\r}{0}{180}{}{}
+        \tdplotdrawarc[tdplot_rotated_coords,thick]{(0,0,0)}{\r}{180}{360}{}{}
+
+        \tdplotsetrotatedcoords{0}{90}{90}
+        \tdplotdrawarc[tdplot_rotated_coords,dashed]{(0,0,0)}{\r}{0}{180}{}{}
+        \tdplotdrawarc[tdplot_rotated_coords,thick]{(0,0,0)}{\r}{180}{360}{}{}
+        \tdplotsetrotatedcoords{0}{0}{0}
+
+        % States
+        \fill (0,0,1) circle (0.015);
+        \node[anchor=south east] at (0,0,1.08) {$\ket{0}$};
+
+        \fill (0,0,-1) circle (0.015);
+        \node[anchor=north east] at (0,0,-1.08) {$\ket{1}$};
+
+        \fill (1,0,0) circle (0.015);
+        \node[anchor=north] at (1.11,0.10,0) {$\ket{+}$};
+
+        \fill (-1,0,0) circle (0.015);
+        \node[anchor=south] at (-1.11,0,0) {$\ket{-}$};
+
+        \fill (0,1,0) circle (0.015);
+        \node[anchor=south west] at (0.05,1.12,0) {$\ket{i}$};
+
+        \fill (0,-1,0) circle (0.015);
+        \node[anchor=north east] at (0.01,-1.10,0.05) {$\ket{-i}$};
+
+        % Generic vector
+        \def\thetavec{52}
+        \def\phivec{38}
+        \tdplotsetcoord{P}{\r}{\thetavec}{\phivec}
+
+        \pgfmathsetmacro{\px}{sin(\thetavec)*cos(\phivec)}
+        \pgfmathsetmacro{\py}{sin(\thetavec)*sin(\phivec)}
+
+        % Bloch vector
+        \draw[->, very thick, red] (0,0,0) -- (P);
+        \node[anchor=south west, red] at (0, 0.12, 0.16) {$\ket{v}$};
+
+        % Projection helpers:
+        % vertical dashed red line
+        \draw[dashed, red!70] (P) -- (\px,\py,0);
+        % red line in equatorial plane from origin to the foot of the vertical
+        \draw[dashed, red!70] (0,0,0) -- (\px,\py,0);
+
+        % Angles
+        \tdplotsetthetaplanecoords{\phivec}
+        \tdplotdrawarc[tdplot_rotated_coords,->]
+        {(0,0,0)}{0.50}{0}{\thetavec}
+        {anchor=south west}{$\theta$}
+
+        \tdplotsetrotatedcoords{0}{0}{0}
+        \tdplotdrawarc[->]
+        {(0,0,0)}{0.20}{0}{\phivec}
+        {anchor=north east}{$\phi$}
+
+    \end{tikzpicture}
+    \caption*{Reference to the Bloch sphere: \autopageref{fig:bloch-sphere}}
+\end{figure}
+
+\highspace
+The corresponding Cartesian coordinates are:
+\begin{equation*}
+    x = \sin\theta \cos\phi, \quad
+    y = \sin\theta \sin\phi, \quad
+    z = \cos\theta
+\end{equation*}
+And important states are therefore located at:
+\begin{itemize}
+    \item North pole. The state \ket{0} is located at the north pole of the Bloch sphere, where $z=1$:
+        \begin{equation*}
+            \ket{0} = \cos\frac{0}{2}\ket{0} + e^{i\phi}\sin\frac{0}{2}\ket{1} = 1\ket{0} + 0\ket{1}
+        \end{equation*}
+
+        \begin{remarkbox}
+            Since \ket{0} is the state:
+            \begin{equation*}
+                \ket{0} = 1\ket{0} + 0\ket{1}
+            \end{equation*}
+            The corresponding Bloch sphere coordinates must satisfy:
+            \begin{equation*}
+                \cos\frac{\theta}{2} = 1, \quad e^{i\phi}\sin\frac{\theta}{2} = 0
+            \end{equation*}
+            The $\cos$ term is $1$ only if $\theta=0$, and the $\sin$ term is $0$ when $\theta=0$. Thus, the coordinates of \ket{0} are:
+            \begin{equation*}
+                x = 0, \quad y = 0, \quad z = 1
+            \end{equation*}
+        \end{remarkbox}
+
+    \item South pole. The state \ket{1} is located at the south pole of the Bloch sphere, where $z=-1$:
+        \begin{equation*}
+            \ket{1} = \cos\frac{\pi}{2}\ket{0} + e^{i\phi}\sin\frac{\pi}{2}\ket{1} = 0\ket{0} + e^{i\phi}1\ket{1}
+        \end{equation*}
+        \begin{remarkbox}
+            Since \ket{1} is the state:
+            \begin{equation*}
+                \ket{1} = 0\ket{0} + 1\ket{1}
+            \end{equation*}
+            The corresponding Bloch sphere coordinates must satisfy:
+            \begin{equation*}
+                \cos\frac{\theta}{2} = 0, \quad e^{i\phi}\sin\frac{\theta}{2} = 1
+            \end{equation*}
+            The $\cos$ term is $0$ only if $\theta=\pi$, and the $\sin$ term is $1$ when $\theta=\pi$. Thus, the coordinates of \ket{1} are:
+            \begin{equation*}
+                x = 0, \quad y = 0, \quad z = -1
+            \end{equation*}
+        \end{remarkbox}
+
+    \item Equatorial plane. The states \ket{+}, \ket{-}, \ket{i}, and \ket{-i} are all located on the equatorial plane of the Bloch sphere, where $z=0$.
+        \begin{align*}
+            \ket{+} &= \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right) \quad \Rightarrow \quad x = 1, y = 0, z = 0 \\[.3em]
+            \ket{-} &= \frac{1}{\sqrt{2}} \left(\ket{0} - \ket{1}\right) \quad \Rightarrow \quad x = -1, y = 0, z = 0 \\[.3em]
+            \ket{i} &= \frac{1}{\sqrt{2}} \left(\ket{0} + i\ket{1}\right) \quad \Rightarrow \quad x = 0, y = 1, z = 0 \\[.3em]
+            \ket{-i} &= \frac{1}{\sqrt{2}} \left(\ket{0} - i\ket{1}\right) \quad \Rightarrow \quad x = 0, y = -1, z = 0
+        \end{align*}
+\end{itemize}
+
+\begin{takeawaysbox}
+    A useful pattern to remember is:
+    \begin{center}
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            State & $\left(\theta, \phi\right)$ & Bloch direction \\
+            \midrule
+            \ket{0}     & $(0,-)$ & $+z$ \\
+            \ket{1}     & $(\pi,-)$ & $-z$ \\
+            \ket{+}     & $(\pi/2,0)$ & $+x$ \\
+            \ket{-}     & $(\pi/2,\pi)$ & $-x$ \\
+            \ket{i}     & $(\pi/2,\pi/2)$ & $+y$ \\
+            \ket{-i}    & $(\pi/2,-\pi/2)$ & $-y$ \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    There is also a very useful connection with the Pauli matrices:
+    \begin{equation*}
+        \begin{aligned}
+            Z &: &&|0\rangle\ (+1),\quad |1\rangle\ (-1),\\
+            X &: &&|+\rangle\ (+1),\quad |-\rangle\ (-1),\\
+            Y &: &&|i\rangle\ (+1),\quad |-i\rangle\ (-1)
+        \end{aligned}
+    \end{equation*}
+    So another excellent way to remember the Bloch sphere is:
+    \begin{equation*}
+        Z\leftrightarrow\{|0\rangle,|1\rangle\},\quad
+        X\leftrightarrow\{|+\rangle,|-\rangle\},\quad
+        Y\leftrightarrow\{|i\rangle,|-i\rangle\}
+    \end{equation*}
+    The $+1$ eigenstate points along the positive axis and the $-1$ eigenstate along the negative axis.
+\end{takeawaysbox}
+
+\phantomsection
+\addcontentsline{toc}{subparagraph}{Mathematical formalism of quantum gates}
+\highspace
+\esolution*[Mathematical formalism of quantum gates] Since a qubit is represented by a vector in $\mathbb{C}^{2}$, a single-qubit quantum gate is represented by a $2\times 2$ complex matrix $U$. It transforms \ket{\psi} into:
+\begin{equation*}
+    \ket{\psi'} = U\ket{\psi}
+\end{equation*}
+But an arbitrary $2\times 2$ matrix cannot represent a quantum gate. The matrix must be \textbf{unitary}:
+\begin{equation*}
+    U^{\dagger}U = UU^{\dagger} = I
+\end{equation*}
+Or equivalently:
+\begin{equation*}
+    U^{-1} = U^{\dagger}
+\end{equation*}
+Unitary is a necessary condition for a quantum gate because it \textbf{preserves orthonormality} and \textbf{total probability}, gives \textbf{deterministic reversible evolution}, and therefore does \textbf{not lose information}.
+
+\begin{remarkbox}[: Why must a quantum gate be unitary?]
+    \important{First: probabilities must remain probabilities.} Suppose:
+    \begin{equation*}
+        \ket{\psi} =
+        \begin{pmatrix}
+            \alpha \\
+            \beta
+        \end{pmatrix}
+    \end{equation*}
+    Its norm is:
+    \begin{equation*}
+        \braket{\psi}{\psi} = |\alpha|^2 + |\beta|^2 = 1
+    \end{equation*}
+    This is fundamental because these are the measurement probabilities:
+    \begin{equation*}
+        P(0) = |\alpha|^2, \quad P(1) = |\beta|^2, \quad \Rightarrow \quad P(0) + P(1) = 1
+    \end{equation*}
+    Now apply a quantum gate $U$ to \ket{\psi}:
+    \begin{equation*}
+        \ket{\psi'} = U\ket{\psi}
+    \end{equation*}
+    We need the new state to remain normalized:
+    \begin{equation*}
+        \braket{\psi'}{\psi'} = 1
+    \end{equation*}
+    But:
+    \begin{equation*}
+        \braket{\psi'}{\psi'} = \left(\braket{U}{\psi}\right)^{\dagger} \braket{U}{\psi} = \braket{\psi}{U^{\dagger}U}{\psi}
+    \end{equation*}
+    Therefore, if:
+    \begin{equation*}
+        U^{\dagger}U = I
+    \end{equation*}
+    Then:
+    \begin{equation*}
+        \braket{\psi'}{\psi'} = \braket{\psi}{\psi} = 1
+    \end{equation*}
+    And that's exactly the definition of a \textbf{unitary} matrix:
+    \begin{equation*}
+        U^{\dagger}U = UU^{\dagger} = I
+    \end{equation*}
+    So unitary guarantees that \textbf{total probability remains 1}.
+
+    \highspace
+    \important{Unitary also preserves inner products.} Take two states: \ket{\psi} and \ket{\phi}. After applying $U$:
+    \begin{equation*}
+        \ket{\psi'}=U\ket{\psi},
+        \qquad
+        \ket{\phi'}=U\ket{\phi}
+    \end{equation*}
+    Their new inner product is:
+    \begin{equation*}
+        \begin{aligned}
+            \braket{\psi'}{\phi'} = \bra{\psi} U^\dagger U \ket{\phi} = \braket{\psi}{\phi}
+        \end{aligned}
+    \end{equation*}
+    So:
+    \begin{equation*}
+        \braket{U\psi}{U\phi}
+        =
+        \braket{\psi}{\phi}
+    \end{equation*}
+    This means that angles and orthogonality between quantum states are preserved. For example, initially
+    \begin{equation*}
+        \braket{0}{1}=0
+    \end{equation*}
+    After any unitary $U$:
+    \begin{equation*}
+        \braket{U0}{U1}=0
+    \end{equation*}
+    So two orthogonal states cannot suddenly become non-orthogonal under a quantum gate.
+
+    \begin{remarkbox}[: How the dagger behaves when we take the adjoint of a matrxi-vector product]
+        We start with:
+        \begin{equation*}
+            \ket{\psi'} = U\ket{\psi}
+        \end{equation*}
+        We want the norm of the new state:
+        \begin{equation*}
+            \braket{\psi'}{\psi'}
+        \end{equation*}
+        \textbf{From ket to a bra.} If:
+        \begin{equation*}
+            \ket{\psi'} = U\ket{\psi}
+        \end{equation*}
+        Then its bra is obtained by taking the Hermitian conjugate:
+        \begin{equation*}
+            \bra{\psi'} = \left(\ket{\psi'}\right)^{\dagger} = \left(U\ket{\psi}\right)^{\dagger}
+        \end{equation*}
+        Now recall the fundamental rule:
+        \begin{equation*}
+            \left(AB\right)^{\dagger} = B^{\dagger}A^{\dagger}
+        \end{equation*}
+        So \textbf{taking the dagger reverses the order}. Therefore:
+        \begin{equation*}
+            \left(U\ket{\psi}\right)^{\dagger} = \ket{\psi}^{\dagger}U^{\dagger} = \bra{\psi}U^{\dagger}
+        \end{equation*}
+        Hence:
+        \begin{equation*}
+            \left(U\ket{\psi}\right)^{\dagger} = \bra{\psi}U^{\dagger}, \quad \text{and} \quad \bra{\psi'} = \bra{\psi}U^{\dagger}
+        \end{equation*}
+        \textbf{Compute the inner product.} We have:
+        \begin{equation*}
+            \braket{\psi'}{\psi'}
+        \end{equation*}
+        Substitute:
+        \begin{equation*}
+            \ket{\psi'} = U\ket{\psi}
+        \end{equation*}
+        And:
+        \begin{equation*}
+            \bra{\psi'} = \bra{\psi}U^{\dagger} \quad \Rightarrow \quad \braket{\psi'}{\psi'} = \left(\bra{\psi}U^{\dagger}\right) U\ket{\psi} = \bra{\psi}U^{\dagger}U\ket{\psi}
+        \end{equation*}
+        Then because $U$ is unitary:
+        \begin{equation*}
+            \braket{\psi'}{\psi'} = \bra{\psi}U^{\dagger}U\ket{\psi} = \bra{\psi}I\ket{\psi} = \braket{\psi}{\psi}
+        \end{equation*}
+        Thus, the norm of the new state is equal to the norm of the original state, and total probability is preserved.
+    \end{remarkbox}
+
+    \important{Unitary evolution is reversible.} From:
+    \begin{equation*}
+        U^\dagger U=I
+    \end{equation*}
+    We immediately get:
+    \begin{equation*}
+        U^{-1}=U^\dagger
+    \end{equation*}
+    So if:
+    \begin{equation*}
+        \ket{\psi'} = U \ket{\psi}
+    \end{equation*}
+    We can always recover the original state:
+    \begin{equation*}
+        U^\dagger\ket{\psi'}
+        =
+        U^\dagger U\ket{\psi}
+        =
+        \ket{\psi}
+    \end{equation*}
+    For example, the $X$ gate does:
+    \begin{equation*}
+        \ket{0}\xrightarrow{X}\ket{1}
+    \end{equation*}
+    But:
+    \begin{equation*}
+        X^{-1}=X
+    \end{equation*}
+    So:
+    \begin{equation*}
+        \ket{1}\xrightarrow{X}\ket{0}
+    \end{equation*}
+    No information about the input is destroyed.
+
+    \highspace
+    \important{Why ``deterministic'' evolution?} This wording can initially be confusing because \textbf{quantum measurement is probabilistic}. But a quantum \textbf{gate itself} is not probabilistic. If we know: \ket{\psi} and apply a known gate $U$, the resulting quantum state is exactly:
+    \begin{equation*}
+        \ket{\psi'} = U \ket{\psi}
+    \end{equation*}
+    There's no randomness in that transformation. The randomness appears when we \textbf{measure} $\ket{\psi'}$.
+
+    \highspace
+    \important{Why ``does not lose information''?} Because a unitary transformation is one-to-one and invertible. Imagine a hypothetical operation:
+    \begin{equation*}
+        \ket{0} \to \ket{0}, \quad \ket{1} \to \ket{0}
+    \end{equation*}
+    If afterward someone gives us \ket{0}, can we determine whether the original state was \ket{0} or \ket{1}? No! The information has been lost:
+    \begin{equation*}
+        \ket{0}, \ket{1} \to \ket{0}
+    \end{equation*}
+    Such an operation cannot be unitary. \hl{A unitary gate instead cannot collapse two distinct orthogonal inputs into the same output, because it preserves their inner product.}
+\end{remarkbox}
+
+\newpage
+
+\noindent
+\textbf{Show that $\sigma_X$ is a valid quantum gate.} The Pauli-X matrix is:
+\begin{equation*}
+    \sigma_{X} = X =
+    \begin{pmatrix}
+        0 & 1 \\
+        1 & 0
+    \end{pmatrix}
+\end{equation*}
+Its conjugate transpose is:
+\begin{equation*}
+    \sigma_{X}^{\dagger} =
+    \begin{pmatrix}
+        0 & 1 \\
+        1 & 0
+    \end{pmatrix} = X
+\end{equation*}
+Then:
+\begin{equation*}
+    X^{\dagger}X =
+    \begin{pmatrix}
+        0 & 1 \\
+        1 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        0 & 1 \\
+        1 & 0
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        1 & 0 \\
+        0 & 1
+    \end{pmatrix}
+    = I
+\end{equation*}
+Therefore, $\sigma_X$ is unitary and is a valid quantum gate.
+
+\highspace
+\textbf{Show that $\sigma_Y$ is a valid quantum gate.} The Pauli-Y matrix is:
+\begin{equation*}
+    \sigma_{Y} = Y =
+    \begin{pmatrix}
+        0 & -i \\
+        i & 0
+    \end{pmatrix}
+\end{equation*}
+Here we need to pay attention because the entries are complex. First of all, the conjugate is:
+\begin{equation*}
+    Y^{*} =
+    \begin{pmatrix}
+        0 & i \\
+        -i & 0
+    \end{pmatrix}
+\end{equation*}
+Then the conjugate transpose is:
+\begin{equation*}
+    Y^{\dagger} =
+    \begin{pmatrix}
+        0 & -i \\
+        i & 0
+    \end{pmatrix}
+    = Y
+\end{equation*}
+Thus $Y$ is Hermitian (i.e., $Y^{\dagger} = Y$). Now we compute:
+\begin{equation*}
+    Y^{\dagger}Y =
+    \begin{pmatrix}
+        0 & -i \\
+        i & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+        0 & -i \\
+        i & 0
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        (-i)(i) & 0 \\
+        0 & (i)(-i)
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        1 & 0 \\
+        0 & 1
+    \end{pmatrix}
+    = I
+\end{equation*}
+Therefore, $\sigma_Y$ is unitary and is a valid quantum gate.
+
+\phantomsection
+\addcontentsline{toc}{subparagraph}{No-cloning and no-deleting}
+\highspace
+\esolution*[No-cloning and no-deleting] These two principles express fundamental restrictions on quantum information and are closely connected to the linear/unitary nature of quantum evolution.
+\begin{itemize}
+    \item \textbf{No-cloning theorem}. The no-cloning theorem states that \hl{it is impossible to perfectly copy an arbitrary unknown quantum state.} In other words, there is no universal unitary $U$ such that:
+        \begin{equation*}
+            U\left(\ket{\psi}\ket{0}\right) = \ket{\psi}\ket{\psi}
+        \end{equation*}
+        For \textbf{every} possible input state $\ket{\psi}$.
+
+        \begin{proof}
+            Suppose a cloning machine existed and could clone both \ket{\psi} and \ket{\phi}:
+            \begin{equation*}
+                U\ket{\psi, 0} = \ket{\psi, \psi}, \quad U\ket{\phi, 0} = \ket{\phi, \phi}
+            \end{equation*}
+            Unitary transformations preserve inner products, so:
+            \begin{equation*}
+                \braket{\psi, 0}{\phi, 0} = \braket{\psi, \psi}{\phi, \phi}
+            \end{equation*}
+            The left-hand side is:
+            \begin{equation*}
+                \braket{\psi, 0}{\phi, 0} = \braket{\psi}{\phi}\braket{0}{0} = \braket{\psi}{\phi}
+            \end{equation*}
+            The right-hand side is:
+            \begin{equation*}
+                \braket{\psi, \psi}{\phi, \phi} = \braket{\psi}{\phi}\braket{\psi}{\phi} = \braket{\psi}{\phi}^2
+            \end{equation*}
+            Therefore:
+            \begin{equation*}
+                \braket{\psi}{\phi} = \braket{\psi}{\phi}^2
+            \end{equation*}
+            This equation is satisfied only if:
+            \begin{equation*}
+                \braket{\psi}{\phi} = 0 \quad \text{or} \quad \braket{\psi}{\phi} = 1
+            \end{equation*}
+            Which means that $\ket{\psi}$ and $\ket{\phi}$ must be either orthogonal or identical. But this is a \hl{contradiction because we assumed that $\ket{\psi}$ and $\ket{\phi}$ were arbitrary unknown states.} Therefore, a universal cloning machine cannot exist.
+        \end{proof}
+
+        \textbf{Note:} this does not mean that \ket{0} and \ket{1} cannot be copied. A CNOT gate can copy computational-basis states. What is impossible is a universal operation that clones an \textbf{arbitrary unknown superposition}
+
+    \item \textbf{No-deleting principle}. The no-deleting principle is essentially the complementary restriction: \hl{it is impossible to delete one copy of an arbitrary unknown quantum state using a quantum gate.} That is, there cannot be a universal unitary operation satisfyingL
+        \begin{equation*}
+            U\left(\ket{\psi}\ket{\psi}\right) = \ket{\psi}\ket{0}
+        \end{equation*}
+        For every arbitrary input state $\ket{\psi}$.
+
+        \begin{proof}
+            Assume, by contradiction, that there exists a universal unitary deleting operator $U$ such that, for every quantum state $\ket{\psi}$:
+            \begin{equation*}
+                U\left(\ket{\psi}\ket{\psi}\right)
+                =
+                \ket{\psi}\ket{0}
+            \end{equation*}
+            Where $\ket{0}$ is a fixed blank state. Since the machine is universal, it must work for any two states $\ket{\psi}$ and $\ket{\phi}$:
+            \begin{equation*}
+                U\ket{\psi}\ket{\psi}
+                =
+                \ket{\psi}\ket{0}
+            \end{equation*}
+            \begin{equation*}
+                U\ket{\phi}\ket{\phi}
+                =
+                \ket{\phi}\ket{0}
+            \end{equation*}
+            Because $U$ is unitary, it preserves inner products. Therefore:
+            \begin{equation*}
+                \braket{\psi}{\phi}^2
+                =
+                \braket{\psi}{\phi}\braket{0}{0}
+            \end{equation*}
+            Since:
+            \begin{equation*}
+                \braket{0}{0}=1
+            \end{equation*}
+            We obtain:
+            \begin{equation*}
+                \braket{\psi}{\phi}^2
+                =
+                \braket{\psi}{\phi}
+            \end{equation*}
+            But this equation is satisfied only if:
+            \begin{equation*}
+                \braket{\psi}{\phi} = 0 \quad \text{or} \quad \braket{\psi}{\phi} = 1
+            \end{equation*}
+            Which means that $\ket{\psi}$ and $\ket{\phi}$ must be either orthogonal or identical. But this is a \hl{contradiction because we assumed that $\ket{\psi}$ and $\ket{\phi}$ were arbitrary unknown states.} Therefore, a universal deleting machine cannot exist.
+        \end{proof}
+\end{itemize}
+
+\newpage
+
+\noindent
+\phantomsection
+\addcontentsline{toc}{paragraph}{QUBO: SAT and Max-Cut problems}
+\eexercise[QUBO]
+\begin{itemize}
+    \item Compute the QUBO formulation of the following SAT problem. Show its coefficient matrix in binary variables and spin variables, compute the Problem Hamiltonian and use it to identify which is the best solution.
+
+        \begin{equation*}
+            \bar{x}_1 \vee x_2
+        \end{equation*}
+
+    \item Compute the QUBO formulation of the Max-Cut problem related to this graph. Show its coefficient matrix in binary variables and spin variables. Draw the circuit required to solve this problem with QAOA using 1 layer.
+
+        \begin{center}
+            \begin{tikzpicture}[scale=1.1, every node/.style={circle,draw,minimum size=0.75cm}]
+                \node (2) at (0,1.6) {$2$};
+                \node (4) at (2.1,1.6) {$4$};
+                \node (3) at (1.0,0.5) {$3$};
+                \node (1) at (0,-0.8) {$1$};
+                \node (5) at (2.1,-0.8) {$5$};
+
+                \draw (2)--(4);
+                \draw (2)--(3);
+                \draw (3)--(1);
+                \draw (3)--(5);
+                \draw (4)--(5);
+            \end{tikzpicture}
+        \end{center}
+\end{itemize}
+Motivate your answer by showing all stages of the computation.
+
+\phantomsection
+\addcontentsline{toc}{subparagraph}{SAT problem}
+\highspace
+\esolution[QUBO formulation of SAT problem]
+
+\begin{deepeningbox}[: QUBO formulation of SAT problem]
+    QUBO stands for Quadratic Unconstrained Binary Optimization. It is a mathematical formulation used to express optimization problems in terms of binary variables:
+    \begin{equation*}
+        \argmin_{x} E(x), \quad x_i \in \{0,1\}
+    \end{equation*}
+    Where $E(x)$ must be at most quadratic (i.e., it can contain terms like $x_i$, $x_i x_j$, but not higher-order terms like $x_i x_j x_k$). For Boolean problems, the strategy is simple: assign the \textbf{lowest energy to the Boolean assignments we want}, and a higher energy to the assignments we do not want. Then, minimizing the energy will give us the desired solution.
+\end{deepeningbox}
+
+\highspace
+\important{Step 1: From SAT to a minimization problem.} We define the energy function as (\autopageref{sec:qubo-2-sat}):
+\begin{equation*}
+    E(x_1, x_2) = x_1 - x_1 x_2
+\end{equation*}
+And then the QUBO problem is:
+\begin{equation*}
+    \boxed{\min_{x_1, x_2} E(x_1, x_2) = \min_{x_1, x_2} \left(x_1 - x_1 x_2\right)}
+\end{equation*}
+The three satisfying assignments $(0,0)$, $(0,1)$, and $(1,1)$ have energy $0$, while the violating assignment has energy $1$. Therefore, minimizing $E(x_1, x_2)$ will give us the satisfying assignments.
+
+\highspace
+\begin{deepeningbox}[: From SAT to a minimization problem]
+    Our original problem is not yet an optimization problem, it is simply the SAT clause:
+    \begin{equation*}
+        \bar{x}_1 \vee x_2
+    \end{equation*}
+    SAT\footnote{%
+        During the exams, the students are allowed to bring a copy of the most common QUBO problems (\autopageref{sec:qubo-formulations}), including the SAT problem.%
+    } is a decision problem (\autopageref{sec:qubo-2-sat}), which asks: ``\emph{which assignments of $x_1$ and $x_2$ make this logical expression \textbf{true}?}''. So before QUBO, we first understand the Boolean function itself. For OR:
+    \begin{equation*}
+        A \vee B
+    \end{equation*}
+    It is false only when \textbf{both operands are false}. In our case the operands are:
+    \begin{equation*}
+        A = \bar{x}_1, \quad B = x_2
+    \end{equation*}
+    Therefore the clause is false only when:
+    \begin{equation*}
+        \bar{x}_1 = 0, \quad x_2 = 0
+    \end{equation*}
+    But:
+    \begin{equation*}
+        \bar{x}_1 = 0 \iff x_1 = 1
+    \end{equation*}
+    So the only assignment that makes the clause false is:
+    \begin{equation*}
+        x_1 = 1, \quad x_2 = 0
+    \end{equation*}
+    All other assignments make the clause true:
+    \begin{equation*}
+        \text{SAT solutions } = \left\{(0,0), (0,1), (1,1)\right\}
+    \end{equation*}
+    This is the first thing we want QUBO to reproduce.
+
+    \highspace
+    Since QUBO does \textbf{not} directly understand logical expressions such as:
+    \begin{equation*}
+        \bar{x}_1 \vee x_2
+    \end{equation*}
+    We need to translate ``\emph{make the clause true}'' into ``\emph{minimize some numerical function}''. As we said, the strategy is to assign the lowest energy to the Boolean assignments we want, and a higher energy to the assignments we do not want. So for our clause we want to manufacture a polynomial with this table:
+    \begin{center}
+        \begin{tabular}{@{} c c c c @{}}
+            \toprule
+            $x_1$ & $x_2$ & \textbf{clause} & \textbf{desired} $E(x)$ \\
+            \midrule
+            0 & 0 & true & $E(0,0) = 0$ \\
+            0 & 1 & true & $E(0,1) = 0$ \\
+            1 & 0 & \textbf{false} & $\mathbf{E(1,0) = 1}$ \\
+            1 & 1 & true & $E(1,1) = 0$ \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    \noindent
+    In other words, we want a mathematical function that behaves like an \textbf{indicator for the bad state} $(1,0)$.
+\end{deepeningbox}
+
+\highspace
+\important{Step 2: Binary QUBO coefficient matrix.} We can rewrite our desired objective without changing its meaning:
+\begin{equation*}
+    E(x) = x_1^2 - x_1 x_2
+\end{equation*}
+We can immediately read off the coefficients:
+\begin{equation*}
+    1x_1^2 - 1x_1x_2 + 0x_2^2
+\end{equation*}
+\begin{equation*}
+    Q_{11} = 1, \quad Q_{12}+Q_{21} = -1, \quad Q_{22} = 0
+\end{equation*}
+Hence, the \textbf{QUBO coefficient matrix} is:
+\begin{equation*}
+    \boxed{Q =
+        \begin{pmatrix}
+            1 & -1 \\
+            0 & 0
+    \end{pmatrix}}
+\end{equation*}
+
+\begin{deepeningbox}[: QUBO coefficient matrix]
+    Because a QUBO objective is represented in matrix form as:
+    \begin{equation*}
+        E(x) = x^T Q x
+    \end{equation*}
+    Where here:
+    \begin{equation*}
+        x =
+        \begin{pmatrix}
+            x_1 \\
+            x_2
+        \end{pmatrix},
+        \quad
+        E(x) = x_1 - x_1 x_2
+    \end{equation*}
+    So our task is simply to find a matrix $Q$ such that multiplying $x^T Q x$ reproduces exactly $x_1 - x_1 x_2$.
+
+    \highspace
+    Naturally, the matrix multiplication produces:
+    \begin{gather*}
+        x^T Q x =
+        \begin{pmatrix}
+            x_1 & x_2
+        \end{pmatrix}
+        \begin{pmatrix}
+            Q_{11} & Q_{12} \\
+            Q_{21} & Q_{22}
+        \end{pmatrix}
+        \begin{pmatrix}
+            x_1 \\
+            x_2
+        \end{pmatrix}
+        = \\
+        Q_{11}x_1^2 + (Q_{12}+Q_{21})x_1x_2 + Q_{22}x_2^2
+    \end{gather*}
+    And we can notice something important: \hl{the diagonal entries of $Q$ naturally multiply squared variables.} Thus $Q_{11}$ multiplies $x_1^2$, and $Q_{22}$ multiplies $x_2^2$. But our objective contains $x_1$ and $x_2$ only to the first power.
+
+    \highspace
+    There's one little trick. Since $x_1$ and $x_2$ are binary variables, we can use the property:
+    \begin{equation*}
+        x_i^2 = x_i, \quad \text{for } x_i \in \{0,1\}
+    \end{equation*}
+    So we can freely replace $x_1^2$ with $x_1$, and $x_2^2$ with $x_2$.
+\end{deepeningbox}
+
+\highspace
+\begin{deepeningbox}[: (optional) Step 2b, check the binary energy]
+    Before continuing to spin variables, we can evaluate $E(x)$ for \textbf{all possible binary assignments} and verify that the minimum-energy assignments are exactly the solution of the original SAT problem:
+    \begin{itemize}
+        \item $x_1=0, x_2=0$: $E(0,0) = 0 - 0\cdot 0 = 0$
+        \item $x_1=0, x_2=1$: $E(0,1) = 0 - 0\cdot 1 = 0$
+        \item $x_1=1, x_2=0$: $E(1,0) = 1 - 1\cdot 0 = 1$
+        \item $x_1=1, x_2=1$: $E(1,1) = 1 - 1\cdot 1 = 0$
+    \end{itemize}
+    The minimum energy is $0$, and the corresponding assignments are:
+    \begin{equation*}
+        (x_1, x_2) \in \{(0,0), (0,1), (1,1)\}
+    \end{equation*}
+    Which are exactly the satisfying assignments of the original SAT clause.
+\end{deepeningbox}
+
+\highspace
+\important{Step 3: Convert binary variables to spin variables.} The \textbf{Ising/spin energy function} is:
+\begin{align*}
+    E(s_1, s_2) &= \frac{1 - s_1}{2} - \frac{1 - s_1}{2} \cdot \frac{1 - s_2}{2} \\[.3em]
+    &= \frac{1 - s_1}{2} - \frac{(1 - s_1)(1 - s_2)}{4} \\[.3em]
+    &= \frac{1 - s_1}{2} - \frac{1 - s_1 - s_2 + s_1 s_2}{4} \\[.3em]
+    &= \frac{2 - 2s_1 - 1 + s_1 + s_2 - s_1 s_2}{4} \\[.3em]
+    &= \frac{1 - s_1 + s_2 - s_1 s_2}{4} \\[.3em]
+    &= \boxed{\frac{1}{4} - \frac{s_1}{4} + \frac{s_2}{4} - \frac{s_1 s_2}{4}}
+\end{align*}
+
+\begin{deepeningbox}[: From binary to spin variables]
+    Our QUBO currently uses binary variables:
+    \begin{equation*}
+        x_i \in \{0,1\}
+    \end{equation*}
+    But the Ising formulation uses spins with values:
+    \begin{equation*}
+        s_i \in \{-1,+1\}
+    \end{equation*}
+    And this is particularly useful for quantum computing because the Pauli-$Z$ operator has eigenvalues $\pm 1$:
+    \begin{equation*}
+        Z\ket{0} = +1\ket{0}, \quad Z\ket{1} = -1\ket{1}
+    \end{equation*}
+    So we have a natural chain:
+    \begin{equation*}
+        x_i \in \{0,1\} \quad \to \quad s_i \in \{-1,+1\} \quad \to \quad Z_i
+    \end{equation*}
+    \emph{\textbf{How do we map $x_i$ to $s_i$?}} We use the formula:
+    \begin{equation*}
+        s_i = 1 - 2x_i \quad \Rightarrow \quad x_i = \frac{1 - s_i}{2}
+    \end{equation*}
+    Now we apply it to our energy function. We have:
+    \begin{equation*}
+        E(x_1, x_2) = x_1 - x_1 x_2
+    \end{equation*}
+    Substitute:
+    \begin{equation*}
+        x_1 = \frac{1 - s_1}{2}, \quad x_2 = \frac{1 - s_2}{2}
+    \end{equation*}
+    And the remaining steps are just algebraic simplifications, which we show in the main text.
+\end{deepeningbox}
+
+\highspace
+\important{Step 4: Spin QUBO coefficient matrix.} We have reached the spin energy function, and now the exam asks for the \textbf{coefficient matrix in spin variables}. The idea is essentially the same as what we did for the binary QUBO matrix $Q$: we want to take the coefficients appearing in the polynomial and organize them into a matrix. We can do this in four steps:
+\begin{enumerate}
+    \item \textbf{Separate the constant term.} Our expression contains:
+        \begin{equation*}
+            E(s_1, s_2) = \underbrace{\frac{1}{4}}_{\text{constant}} - \frac{s_1}{4} + \frac{s_2}{4} - \frac{s_1 s_2}{4}
+        \end{equation*}
+        It does \textbf{not} go into the spin coefficient matrix, because it is not multiplied by any spin variable. It \hl{shifts every possible energy by exactly the same amount, so it cannot change which assignment minimizes the problem.} Thus, for constructing the spin coefficient matrix, we can ignore it:
+        \begin{equation*}
+            - \frac{s_1}{4} + \frac{s_2}{4} - \frac{s_1 s_2}{4}
+        \end{equation*}
+
+    \item \textbf{Identify the coefficients.} The remaining terms are:
+        \begin{equation*}
+            s_1 \text{ with coefficient } -\frac{1}{4}, \quad
+            s_2 \text{ with coefficient } +\frac{1}{4},
+        \end{equation*}
+        \begin{equation*}
+            s_1 s_2 \text{ with coefficient } -\frac{1}{4}
+        \end{equation*}
+
+    \item \textbf{Construct the matrix.} The spin coefficient matrix is defined as:
+        \begin{itemize}
+            \item Linear coefficient of $s_1$ goes into the $(1,1)$ entry.
+            \item Linear coefficient of $s_2$ goes into the $(2,2)$ entry.
+            \item Coefficient of $s_1 s_2$ goes into the $(1,2)$ entry. The $(2,1)$ entry is usually set to $0$, because the matrix is upper-triangular.
+        \end{itemize}
+        Therefore:
+        \begin{equation*}
+            \boxed{S =
+                \begin{pmatrix}
+                    -\frac{1}{4} & -\frac{1}{4} \\
+                    0 & \frac{1}{4}
+                \end{pmatrix}
+                =
+                \begin{pmatrix}
+                    -0.25 & -0.25 \\
+                    0 & 0.25
+            \end{pmatrix}}
+        \end{equation*}
+\end{enumerate}
+
+\highspace
+\important{Step 5: Construct the Problem Hamiltonian.} The Problem Hamiltonian is simply:
+\begin{equation*}
+    \boxed{H_{\text{problem}} = -\frac{1}{4}Z_1 + \frac{1}{4}Z_2 - \frac{1}{4}Z_1 Z_2}
+\end{equation*}
+
+\begin{deepeningbox}[: From spin energy function to Problem Hamiltonian]
+    We currently have the spin energy function, and now the goal is to build the \textbf{Problem Hamiltonian} used by QAOA. The idea is that each classical spin variable:
+    \begin{equation*}
+        s_i \in \{-1,+1\}
+    \end{equation*}
+    Is replaced by a Pauli-$Z$ operator acting on qubit $i$:
+    \begin{equation*}
+        s_i \to Z_i
+    \end{equation*}
+    It makes sense because the Pauli-$Z$ matrix has eigenvalues $\pm 1$:
+    \begin{equation*}
+        Z\ket{0} = +1\ket{0}, \quad Z\ket{1} = -1\ket{1}
+    \end{equation*}
+    Thus, the constant term in the spin energy function is ignored, and the remaining terms are replaced by Pauli-$Z$ operators:
+    \begin{equation*}
+        H_{\text{problem}} = \frac{1}{4}I - \frac{1}{4}Z_1 + \frac{1}{4}Z_2 - \frac{1}{4}Z_1 Z_2
+    \end{equation*}
+    Where $I$ is the identity operator. However, the constant term does not affect the optimization, because it shifts all energies by the same amount. Therefore, we can drop it.
+\end{deepeningbox}
+
+\highspace
+\important{Step 6: Compute the Hamiltonian explicitly.} Let's calculate the diagonal entries of $H_{\text{problem}}$ by evaluating each term on the computational-basis states:
+\begin{itemize}
+    \item For \hl{$\ket{00}$}, the first qubit is $0$, so $Z_1$ contributes eigenvalue $+1$. Same for the second qubit, so $Z_2$ contributes eigenvalue $+1$. Therefore the energy of \ket{00} is:
+        \begin{equation*}
+            E_{00} = -\frac{1}{4}\underbrace{(+1)}_{Z_1} + \frac{1}{4}\underbrace{(+1)}_{Z_2} - \frac{1}{4}\underbrace{(+1)(+1)}_{Z_1 Z_2} = -\frac{1}{4} + \frac{1}{4} - \frac{1}{4} = -\frac{1}{4}
+        \end{equation*}
+
+    \item For \hl{$\ket{01}$}, the first qubit is $0$, so $Z_1$ contributes eigenvalue $+1$. The second qubit is $1$, so $Z_2$ contributes eigenvalue $-1$. Therefore the energy of \ket{01} is:
+        \begin{equation*}
+            E_{01} = -\frac{1}{4}\underbrace{(+1)}_{Z_1} + \frac{1}{4}\underbrace{(-1)}_{Z_2} - \frac{1}{4}\underbrace{(+1)(-1)}_{Z_1 Z_2} = -\frac{1}{4} - \frac{1}{4} + \frac{1}{4} = -\frac{1}{4}
+        \end{equation*}
+
+    \item For \hl{$\ket{10}$}, the first qubit is $1$, so $Z_1$ contributes eigenvalue $-1$. The second qubit is $0$, so $Z_2$ contributes eigenvalue $+1$. Therefore the energy of \ket{10} is:
+        \begin{equation*}
+            E_{10} = -\frac{1}{4}\underbrace{(-1)}_{Z_1} + \frac{1}{4}\underbrace{(+1)}_{Z_2} - \frac{1}{4}\underbrace{(-1)(+1)}_{Z_1 Z_2} = \frac{1}{4} + \frac{1}{4} + \frac{1}{4} = \frac{3}{4}
+        \end{equation*}
+
+    \item For \hl{$\ket{11}$}, the first qubit is $1$, so $Z_1$ contributes eigenvalue $-1$. Same for the second qubit, so $Z_2$ contributes eigenvalue $-1$. Therefore the energy of \ket{11} is:
+        \begin{equation*}
+            E_{11} = -\frac{1}{4}\underbrace{(-1)}_{Z_1} + \frac{1}{4}\underbrace{(-1)}_{Z_2} - \frac{1}{4}\underbrace{(-1)(-1)}_{Z_1 Z_2} = \frac{1}{4} - \frac{1}{4} - \frac{1}{4} = -\frac{1}{4}
+        \end{equation*}
+\end{itemize}
+We have:
+\begin{equation*}
+    \mathrm{diag}\left(H_{\text{problem}}\right) = \left(
+        -\frac{1}{4}, -\frac{1}{4}, \frac{3}{4}, -\frac{1}{4}
+    \right)
+\end{equation*}
+Therefore, the eigenvalues of $H_{\text{problem}}$ are:
+\begin{equation*}
+    E(0,0) = \ket{00} = -\frac{1}{4}, \quad
+    E(0,1) = \ket{01} = -\frac{1}{4},
+\end{equation*}
+\begin{equation*}
+    E(1,0) = \ket{10} = \frac{3}{4}, \quad
+    E(1,1) = \ket{11} = -\frac{1}{4}
+\end{equation*}
+The problem was defined as a minimization, so the diagonal entry with the lowest energy corresponds to the best solution.
+
+\begin{deepeningbox}[: From Problem Hamiltonian to best solution]
+    Imagine that we had $x_1, \dots, x_{100}$, there would be $2^{100}$ possible bitstrings. We don't want our quantum algorithm to be given a truth table containing all $2^{100}$ answers (because that would be exponential in size). Instead, we need to give the quantum computer a mathematical object that \textbf{encodes how good every possible solution is}.That object will be the \textbf{Problem Hamiltonian}.
+
+    \highspace
+    A quantum computer works with \textbf{quantum states and operators}. Our candidate classical solution:
+    \begin{equation*}
+        x_1 x_2 = 10
+    \end{equation*}
+    Can be represented by the quantum computational-basis state \ket{10}, likewise:
+    \begin{equation*}
+        00 \leftrightarrow \ket{00}, \quad 01 \leftrightarrow \ket{01}, \quad 11 \leftrightarrow \ket{11}
+    \end{equation*}
+    So representing the \textbf{candidate solutions} quantum mechanically is easy. But we still have another problem: \hl{\emph{how do we represent the classical cost function $E(x)$ quantum mechanically?} This is where the Problem Hamiltonian comes in.}
+
+    \highspace
+    We construct $H_{\text{problem}}$ so that candidate bitstrings become its eigenstates and their eigenvalues encode their costs. In other words, we want:
+    \begin{equation*}
+        H_{\text{problem}}\ket{x_1 x_2} = E(x_1, x_2)\ket{x_1 x_2}
+    \end{equation*}
+    So:
+    \begin{itemize}
+        \item[\textcolor{Green3}{\faIcon{check}}] If candidate $x_1 x_2$ is \textbf{good}, its corresponding quantum state should have \textbf{low energy}.
+
+        \item[\textcolor{Red2}{\faIcon{times}}] If candidate $x_1 x_2$ is \textbf{bad}, its corresponding state should have \textbf{higher energy}.
+    \end{itemize}
+    Therefore, best classical solutions correspond to the lowest-energy (ground) quantum state. The lowest-energy eigenstate of a Hamiltonian is called its \textbf{ground state}. So we have transformed find the minimum of $E(x)$ into find the ground state of $H_{\text{problem}}$.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Why did we go through spins?}} Because our classical variables are:
+    \begin{equation*}
+        x_i \in \{0,1\}
+    \end{equation*}
+    Whereas the Pauli-$Z$ has eigenvalues $\pm 1$. So spins are a convenient intermediate step:
+    \begin{equation*}
+        x_i \in \{0,1\} \quad \to \quad s_i \in \{-1,+1\} \quad \to \quad Z_i
+    \end{equation*}
+    Once we have the spin energy function, we can simply replace $s_i$ with $Z_i$ to get the Problem Hamiltonian.
+
+    \highspace
+    Now, once we have the Problem Hamiltonian, we want to see \hl{what energy this Hamiltonian assigns to each candidate state.} Because $H_{\text{problem}}$ contains only $Z$-type operators, it is diagonal in the computational basis:
+    \begin{equation*}
+        H_{\text{problem}} =
+        \begin{pmatrix}
+            E(0,0) & 0 & 0 & 0 \\
+            0 & E(0,1) & 0 & 0 \\
+            0 & 0 & E(1,0) & 0 \\
+            0 & 0 & 0 & E(1,1)
+        \end{pmatrix}
+    \end{equation*}
+    So we can compute the energies of all candidate states by simply evaluating $H_{\text{problem}}$ on each computational-basis state. \emph{Why?} Because the Hamiltonian itself is a \textbf{sum}:
+    \begin{equation*}
+        H = A + B + C
+    \end{equation*}
+    If all three matrices are diagonal:
+    \begin{equation*}
+        A =
+        \begin{pmatrix}
+            a_1 & 0 \\
+            0 & a_2
+        \end{pmatrix}, \quad
+        B =
+        \begin{pmatrix}
+            b_1 & 0 \\
+            0 & b_2
+        \end{pmatrix}, \quad
+        C =
+        \begin{pmatrix}
+            c_1 & 0 \\
+            0 & c_2
+        \end{pmatrix}
+    \end{equation*}
+    The ordinary matrix addition gives:
+    \begin{equation*}
+        H = A + B + C =
+        \begin{pmatrix}
+            a_1 + b_1 + c_1 & 0 \\
+            0 & a_2 + b_2 + c_2
+        \end{pmatrix}
+    \end{equation*}
+    Therefore:
+    \begin{equation*}
+        \mathrm{diag}(H) = \left(
+            a_1 + b_1 + c_1, a_2 + b_2 + c_2
+        \right)
+    \end{equation*}
+\end{deepeningbox}
+
+\highspace
+\important{Step 7: Identify the best solution.} The minimum eigenvalue of $H_{\text{problem}}$ is:
+\begin{equation*}
+    \min\left\{-\frac{1}{4}, -\frac{1}{4}, \frac{3}{4}, -\frac{1}{4}\right\} = -\frac{1}{4}
+\end{equation*}
+And the corresponding eigenstates are:
+\begin{equation*}
+    \ket{00}, \quad \ket{01}, \quad \ket{11}
+\end{equation*}
+Thus there are \textbf{three optimal bitstrings} that minimize the energy, which correspond to the three satisfying assignments of the original SAT clause:
+\begin{equation*}
+    (x_1, x_2) \in \{(0,0), (0,1), (1,1)\}
+\end{equation*}
+The only non-optimal assignment is $(1,0)$, which has energy $E(1,0) = \frac{3}{4}$.
+
+\newpage
+
+\phantomsection
+\addcontentsline{toc}{subparagraph}{Max-Cut problem}
+\noindent
+\esolution*[QUBO formulation of Max-Cut problem] The graph has $5$ vertices:
+\begin{equation*}
+    V = \{1,2,3,4,5\}
+\end{equation*}
+And $5$ edges:
+\begin{equation*}
+    E = \{(2,4), (2,3), (3,1), (3,5), (4,5)\}
+\end{equation*}
+
+\highspace
+\begin{deepeningbox}[: What does Max-Cut mean?]
+    We want to partition the vertices into two sets so that the \textbf{largest possible number of edges have their endpoints in different sets}. In other words, we want to maximize the number of edges that are ``cut'' by the partition.
+
+    \highspace
+    We associate one binary variable to each vertex:
+    \begin{equation*}
+        x_i =
+        \begin{cases}
+            0, & \text{if vertex $i$ belongs to one partition} \\
+            1, & \text{if vertex $i$ belongs to the other partition}
+        \end{cases}
+    \end{equation*}
+    For an edge $(i,j)$, we want to know whether $i$ and $j$ are on different sides.
+
+    \highspace
+    The formula to use is (\autopageref{eq:qubo-max-cut}):
+    \begin{equation*}
+        x_i + x_j - 2 x_i x_j
+    \end{equation*}
+    Because:
+    \begin{center}
+        \begin{tabular}{@{} c c c c @{}}
+            \toprule
+            $x_i$ & $x_j$ & $x_i + x_j - 2 x_i x_j$ & \textbf{Edge cut?} \\
+            \midrule
+            0 & 0 & 0 & No \\
+            0 & 1 & 1 & Yes \\
+            1 & 0 & 1 & Yes \\
+            1 & 1 & 0 & No \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    So the formula is exactly an \textbf{indicator for whether and edge is cut}.
+\end{deepeningbox}
+
+\highspace
+\important{Step 1: From Max-Cut to a minimization problem.} The number of cut edges is:
+\begin{equation*}
+    C(x) = \sum_{(i, j) \in E} \left(x_i + x_j - 2 x_i x_j\right)
+\end{equation*}
+But QUBO is expressed as a minimization problem. Therefore (\autopageref{eq:qubo-max-cut}):
+\begin{equation*}
+    \boxed{\min_{x} E(x) = \min_{x} -C(x) = \min_{x} - \sum_{(i, j) \in E} \left(x_i + x_j - 2 x_i x_j\right)}
+\end{equation*}
+\textcolor{Green3}{\faIcon[regular]{lightbulb} \textbf{Tip:}} This expression is \textbf{always the same} for any graph.
+
+\newpage
+
+\noindent
+\important{Step 2: Apply the formula to our graph.} We have $5$ edges:
+\begin{equation*}
+    E = \{(2,4), (2,3), (3,1), (3,5), (4,5)\}
+\end{equation*}
+So for each edge we apply the formula $x_i + x_j - 2 x_i x_j$, where $(i,j)$ are the endpoints of the edge. The energy function is:
+\begin{align*}
+    E(x) = -[&
+        \left(x_2 + x_4 - 2 x_2 x_4\right) + \\[.3em]
+        & \left(x_2 + x_3 - 2 x_2 x_3\right) + \\[.3em]
+        & \left(x_3 + x_1 - 2 x_3 x_1\right) + \\[.3em]
+        & \left(x_3 + x_5 - 2 x_3 x_5\right) + \\[.3em]
+    & \left(x_4 + x_5 - 2 x_4 x_5\right) ] \\[.3em]
+    =& -x_2 - x_4 + 2 x_2 x_4 \\[.3em]
+    & - x_2 - x_3 + 2 x_2 x_3 \\[.3em]
+    & - x_3 - x_1 + 2 x_3 x_1 \\[.3em]
+    & - x_3 - x_5 + 2 x_3 x_5 \\[.3em]
+    & - x_4 - x_5 + 2 x_4 x_5
+\end{align*}
+Now we can collect the linear terms. Since the equation is huge, we will do it with a trick. First, we count how many times each variable appears in the linear terms:
+\begin{equation*}
+    x_1: 1, \quad
+    x_2: 2, \quad
+    x_3: 3, \quad
+    x_4: 2, \quad
+    x_5: 2
+\end{equation*}
+Thus, the linear part is:
+\begin{equation*}
+    - x_1 - 2 x_2 - 3 x_3 - 2 x_4 - 2 x_5
+\end{equation*}
+The minus sign is because all linear terms are negative (see original expression). Second, we collect the quadratic terms:
+\begin{equation*}
+    2 x_1 x_3 +
+    2 x_2 x_3 +
+    2 x_2 x_4 +
+    2 x_3 x_5 +
+    2 x_4 x_5
+\end{equation*}
+So the complete \textbf{QUBO energy function} (QUBO formulation) is:
+\begin{equation*}
+    \boxed{
+        \begin{aligned}
+            \min_{x} E(x) = &- x_1 - 2 x_2 - 3 x_3 - 2 x_4 - 2 x_5 + 2 x_1 x_3 + \\
+            &2 x_2 x_3 +
+            2 x_2 x_4 +
+            2 x_3 x_5 +
+            2 x_4 x_5
+        \end{aligned}
+    }
+\end{equation*}
+
+\highspace
+\important{Step 3: Binary QUBO coefficient matrix.} We want:
+\begin{equation*}
+    E(x) = x^{T} Q x
+\end{equation*}
+Thus, the diagonal contains the linear coefficients:
+\begin{equation*}
+    Q_{11} = -1, \quad
+    Q_{22} = -2, \quad
+    Q_{33} = -3, \quad
+    Q_{44} = -2, \quad
+    Q_{55} = -2
+\end{equation*}
+And the upper-triangular part contains the quadratic coefficients:
+\begin{equation*}
+    Q_{13} = 2, \quad
+    Q_{23} = 2, \quad
+    Q_{24} = 2, \quad
+    Q_{35} = 2, \quad
+    Q_{45} = 2
+\end{equation*}
+Therefore the \textbf{QUBO coefficient matrix in binary variables} is:
+\begin{equation*}
+    \boxed{Q =
+        \begin{pmatrix}
+            -1 & 0 & 2 & 0 & 0 \\
+            0 & -2 & 2 & 2 & 0 \\
+            0 & 0 & -3 & 0 & 2 \\
+            0 & 0 & 0 & -2 & 2 \\
+            0 & 0 & 0 & 0 & -2
+    \end{pmatrix}}
+\end{equation*}
+
+\begin{deepeningbox}[: QUBO coefficient matrix]
+    Since we want to write the energy function in matrix form:
+    \begin{equation*}
+        E(x) = x^{T} Q x
+    \end{equation*}
+    With:
+    \begin{equation*}
+        x =
+        \begin{pmatrix}
+            x_1 \\
+            x_2 \\
+            x_3 \\
+            x_4 \\
+            x_5
+        \end{pmatrix}
+    \end{equation*}
+    We need to find the $5\times 5$ matrix $Q$ such that multiplying $x^T Q x$ reproduces exactly the energy function we derived in Step 2. The diagonal entries of $Q$ naturally multiply squared variables, so they correspond to the \textbf{linear terms}. So for example $-3x_3$ corresponds to $Q_{33} = -3$.
+
+    \highspace
+    For \textbf{quadratic terms}, we use the rule:
+    \begin{equation*}
+        c x_i x_j \quad \Rightarrow \quad Q_{ij} = c, \quad i < j
+    \end{equation*}
+    For example, $2 x_1 x_3$ corresponds to $Q_{13} = 2$. The $(j,i)$ entry is usually set to $0$, because the matrix is upper-triangular.
+
+    \highspace
+    In general, the memory rule is:
+    \begin{equation*}
+        E(x) = \sum_{i} a_{i}x_{i} + \sum_{i<j} b_{ij}x_{i}x_{j}
+    \end{equation*}
+    Corresponds to the QUBO coefficient matrix:
+    \begin{equation*}
+        Q_{ii} = a_i, \quad Q_{ij} = b_{ij}, \quad i < j
+    \end{equation*}
+
+    \highspace
+    \textcolor{Green3}{\faIcon[regular]{lightbulb}} For Max-Cut there is an even \textbf{faster shortcut}. For an unweighted graph:
+    \begin{equation*}
+        Q_{ii} = -d_i
+    \end{equation*}
+    Where $d_i$ is the degree of vertex $i$, while:
+    \begin{equation*}
+        Q_{ij} = 2, \quad \text{if } (i,j) \in E \quad \text{otherwise } 0
+    \end{equation*}
+\end{deepeningbox}
+
+\highspace
+\important{Step 4: Convert to spin variables.} We use the same formula as before:
+\begin{equation*}
+    s_i = 1 - 2x_i \quad \Rightarrow \quad x_i = \frac{1 - s_i}{2}
+\end{equation*}
+With $s_i \in \{-1,+1\}$. For one Max-Cut edge $(i,j)$, the cut indicator is (we saw this in Step 2):
+\begin{equation*}
+    x_i + x_j - 2 x_i x_j
+\end{equation*}
+Substitute:
+\begin{equation*}
+    x_i = \frac{1 - s_i}{2}, \quad x_j = \frac{1 - s_j}{2}
+\end{equation*}
+Then:
+\begin{equation*}
+    x_i + x_j = \frac{1 - s_i}{2} + \frac{1 - s_j}{2} = 1 - \frac{s_i + s_j}{2}
+\end{equation*}
+And:
+\begin{align*}
+    2 x_i x_j &= 2 \cdot \frac{1 - s_i}{2} \cdot \frac{1 - s_j}{2} \\[.3em]
+    &= \frac{(1 - s_i)(1 - s_j)}{2} \\[.3em]
+    &= \frac{1 - s_i - s_j + s_i s_j}{2}
+\end{align*}
+Now we can combine the two parts:
+\begin{align*}
+    x_i + x_j - 2 x_i x_j &= 1 - \frac{s_i + s_j}{2} - \frac{1 - s_i - s_j + s_i s_j}{2} \\[.3em]
+    &= 1 - \frac{s_i + s_j}{2} - \frac{1}{2} + \frac{s_i + s_j}{2} - \frac{s_i s_j}{2} \\[.3em]
+    &= \frac{1}{2} - \frac{s_i s_j}{2}
+\end{align*}
+So the cut indicator for one edge $(i,j)$ in spin variables is:
+\begin{equation*}
+    x_i + x_j - 2 x_i x_j = \frac{1}{2} - \frac{s_i s_j}{2}
+\end{equation*}
+Since our QUBO minimizes the \textbf{negative} of the cut indicator, we have:
+\begin{equation*}
+    \boxed{-\left(x_i + x_j - 2 x_i x_j\right) = -\frac{1}{2} + \frac{s_i s_j}{2}}
+\end{equation*}
+\textcolor{Green3}{\faIcon[regular]{lightbulb}} This part is \textbf{always the same} for any graph, because it is derived from the cut indicator formula, which is universal for Max-Cut.
+
+\highspace
+\important{Step 5: Apply cut indicator to all edges.} The graph has:
+\begin{equation*}
+    E=
+    \{(1,3),(2,3),(2,4),(3,5),(4,5)\}
+\end{equation*}
+Each edge contributes:
+\begin{equation*}
+    -\frac{1}{2} + \frac{1}{2} s_i s_j
+\end{equation*}
+Since there are five edges:
+\begin{equation*}
+    5\left(-\frac{1}{2}\right)
+    =
+    -\frac{5}{2}
+\end{equation*}
+Therefore:
+\begin{equation*}
+    \boxed{
+        E(s)
+        =
+        -\frac{5}{2}
+        +
+        \frac{1}{2}
+        \left(
+            s_1s_3
+            +s_2s_3
+            +s_2s_4
+            +s_3s_5
+            +s_4s_5
+        \right)
+    }
+\end{equation*}
+\textcolor{Green3}{\faIcon[regular]{lightbulb}} Notice that there are \textbf{no linear spin terms}.
+That is not an accident: \hl{in Max-Cut, the $s_i$ and $s_j$ linear pieces cancel inside every edge contribution.}
+
+\begin{deepeningbox}[: What is a cut indicator?]
+    A \textbf{cut} is simply a division of the graph's vertices into two groups. With binary variables, we encode the two groups as:
+    \begin{equation*}
+        x_i = 0 \quad \text{or} \quad x_i = 1
+    \end{equation*}
+    For example, if $x_1 = 0$ and $x_3 = 1$, then vertices $1$ and $3$ are in different groups. If there is an edge $(1,3)$, that edge is therefore \textbf{cut}.
+
+    \highspace
+    The expression:
+    \begin{equation*}
+        x_i + x_j - 2 x_i x_j
+    \end{equation*}
+    Is called a \textbf{cut indicator} because it tells us whether the edge $(i,j)$ crosses the cut:
+    \begin{center}
+        \begin{tabular}{@{} c c c @{}}
+            \toprule
+            $x_i$ & $x_j$ & $x_i + x_j - 2 x_i x_j$ \\
+            \midrule
+            0 & 0 & 0 \\
+            0 & 1 & 1 \\
+            1 & 0 & 1 \\
+            1 & 1 & 0 \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    So it returns $1$ if the edge is cut, and $0$ if it is not cut. That is why we found this expression in the first place: \hl{Max-Cut wants to count how many edges connect vertices belonging to different groups.} If the graph has edges $E$, then:
+    \begin{equation*}
+        \sum_{(i,j) \in E} \left(x_i + x_j - 2 x_i x_j\right)
+    \end{equation*}
+    Literally counts the number of cut edges. But QUBO is written as a \textbf{minimization} problem, whereas Max-Cut wants to maximize that count. So we minimize its negative:
+    \begin{equation*}
+        E(x)=
+        -\sum_{(i,j)\in E}
+        \left(x_i+x_j-2x_ix_j\right)
+    \end{equation*}
+    Therefore a cut edge contributes $-1$ to the energy, while a non-cut edge contributes $0$. So the more edges we cut, the lower the energy.
+
+    \highspace
+    Now, we want to convert the cut indicator into spin variables. Thus:
+    \begin{equation*}
+        x_i + x_j - 2 x_i x_j
+        =
+        \frac{1}{2} - \frac{1}{2}s_is_j
+    \end{equation*}
+    This means that \textbf{every edge contributes two pieces} to the spin energy function:
+    \begin{itemize}
+        \item A constant piece $-\frac{1}{2}$, which does not depend on the spin variables.
+        \item A quadratic piece $\frac{1}{2}s_is_j$, which does depend on the spin variables.
+    \end{itemize}
+    So the spin energy function is a sum of these two pieces over all edges:
+    \begin{equation*}
+        E(s) = \sum_{(i,j)\in E} \left(-\frac{1}{2} + \frac{1}{2}s_is_j\right)
+    \end{equation*}
+    In practice, we can calculate the constant piece separately:
+    \begin{equation*}
+        \sum_{(i,j)\in E} -\frac{1}{2} = -\frac{\left|E\right|}{2} = -\frac{5}{2}
+    \end{equation*}
+    And the quadratic piece separately:
+    \begin{equation*}
+        \sum_{(i,j)\in E} \frac{1}{2}s_is_j = \frac{1}{2}\left(s_1s_3 + s_2s_3 + s_2s_4 + s_3s_5 + s_4s_5\right)
+    \end{equation*}
+    Where each term corresponds to one edge in the graph, for example $s_1 s_3$ corresponds to edge $(1,3)$. Finally, we combine the two pieces to get the complete spin energy function:
+    \begin{equation*}
+        E(s) = -\frac{5}{2} + \frac{1}{2}\left(s_1s_3 + s_2s_3 + s_2s_4 + s_3s_5 + s_4s_5\right)
+    \end{equation*}
+    There is also a very nice physical interpretation. Since $s_i, s_j \in \{-1,+1\}$:
+    \begin{itemize}
+        \item If the vertices are on the \textbf{same side} $s_i = s_j$, then:
+            \begin{equation*}
+                s_i s_j = +1
+            \end{equation*}
+            And looking at the cut indicator of one edge:
+            \begin{equation*}
+                -\frac{1}{2} + \frac{1}{2}s_is_j = -\frac{1}{2} + \frac{1}{2}(+1) = 0
+            \end{equation*}
+            So it is \textbf{not cut}, and contributes $0$ to the energy.
+
+        \item If they are on \textbf{different sides} $s_i = -s_j$, then:
+            \begin{equation*}
+                s_i s_j = -1
+            \end{equation*}
+            And looking at the cut indicator of one edge:
+            \begin{equation*}
+                -\frac{1}{2} + \frac{1}{2}s_is_j = -\frac{1}{2} + \frac{1}{2}(-1) = -1
+            \end{equation*}
+            So it is \textbf{cut}, and contributes $-1$ to the energy.
+    \end{itemize}
+    Therefore the spin expression is doing exactly the same thing as the original binary cut indicator:
+    \begin{center}
+        \begin{tabular}{@{} c | c @{}}
+            \toprule
+            edge status & energy contribution \\
+            \midrule
+            not cut & $0$ \\
+            cut & $-1$ \\
+            \bottomrule
+        \end{tabular}
+    \end{center}
+    And that's why, if all 5 edges are cut:
+    \begin{equation*}
+        E = -1 -1 -1 -1 -1 = -5
+    \end{equation*}
+    The $-\frac{5}{2}$ alone is \textbf{not} the answer of the cut size. It is just the constant half of the transformed expression. The remaining:
+    \begin{equation*}
+        \frac{1}{2}\sum_{(i,j)\in E} s_is_j
+    \end{equation*}
+    Moves the energy up or down depending on whether each edge is cut or not.
+\end{deepeningbox}
+
+\highspace
+\important{Step 6: Spin coefficient matrix.} The spin energy function is:
+\begin{equation*}
+    E(s) = -\frac{5}{2} + \frac{1}{2}\left(s_1s_3 + s_2s_3 + s_2s_4 + s_3s_5 + s_4s_5\right)
+\end{equation*}
+Thus, the spin coefficient matrix is:
+\begin{equation*}
+    \boxed{S =
+        \begin{pmatrix}
+            0 & 0 & \frac{1}{2} & 0 & 0 \\[.3em]
+            0 & 0 & \frac{1}{2} & \frac{1}{2} & 0 \\[.3em]
+            0 & 0 & 0 & 0 & \frac{1}{2} \\[.3em]
+            0 & 0 & 0 & 0 & \frac{1}{2} \\[.3em]
+            0 & 0 & 0 & 0 & 0
+    \end{pmatrix}}
+\end{equation*}
+
+\highspace
+\begin{deepeningbox}[: How to find the spin coefficient matrix]
+    In general, the spin energy function is:
+    \begin{equation*}
+        E(s) = c + \sum_{i} S_ii s_i + \sum_{i<j} S_{ij} s_i s_j
+    \end{equation*}
+    But there is a very nice shortcut that we can call \textbf{``read the polynomial'' trick}.
+
+    \highspace
+    Once we have converted the binary objective to spins:
+    \begin{equation*}
+        E(s) = -\frac{5}{2} + \frac{1}{2}\left(s_1s_3 + s_2s_3 + s_2s_4 + s_3s_5 + s_4s_5\right)
+    \end{equation*}
+    First, ignore the constant:
+    \begin{equation*}
+        \cancel{-\frac{5}{2}} + \frac{1}{2}\left(s_1s_3 + s_2s_3 + s_2s_4 + s_3s_5 + s_4s_5\right)
+    \end{equation*}
+    Then remember a simple rule:
+    \begin{align*}
+        s_i & \to \text{diagonal entry } S_{ii} \\
+        s_i s_j & \to \text{position } (i,j)
+    \end{align*}
+    That's it!
+
+    \highspace
+    So, for our exercise, there are no linear terms:
+    \begin{equation*}
+        S_{11} = S_{22} = S_{33} = S_{44} = S_{55} = 0
+    \end{equation*}
+    And the quadratic terms are:
+    \begin{align*}
+        s_1 s_3 & \to S_{13} = \frac{1}{2} \\[.3em]
+        s_2 s_3 & \to S_{23} = \frac{1}{2} \\[.3em]
+        s_2 s_4 & \to S_{24} = \frac{1}{2} \\[.3em]
+        s_3 s_5 & \to S_{35} = \frac{1}{2} \\[.3em]
+        s_4 s_5 & \to S_{45} = \frac{1}{2}
+    \end{align*}
+\end{deepeningbox}
+
+\highspace
+\important{Step 7: From spin coefficient matrix to Cost Hamiltonian.} To create the QAOA circuit, we need the Cost Hamiltonian. We simply replace each spin variable $s_i$ with the corresponding Pauli-$Z$ operator $Z_i$. Thus, the Cost Hamiltonian is:
+\begin{equation*}
+    H_{\text{problem}} = -\frac{5}{2}I + \frac{1}{2}\left(Z_1Z_3 + Z_2Z_3 + Z_2Z_4 + Z_3Z_5 + Z_4Z_5\right)
+\end{equation*}
+The constant term $-\frac{5}{2}I$ only shifts all energies by the same amount, so it can be omitted when constructing the QAOA cost unitary. Thus we use:
+\begin{equation*}
+    \boxed{H_{\text{problem}} = \frac{1}{2}\left(Z_1Z_3 + Z_2Z_3 + Z_2Z_4 + Z_3Z_5 + Z_4Z_5\right)}
+\end{equation*}
+
+\newpage
+
+\noindent
+\important{Step 8: Circuit implementation to solve Max-Cut problem.} The QAOA circuit is built from the Cost Hamiltonian. The QAOA circuit $p=1$ to solve our Max-Cut problem is:
+\begin{center}
+    \resizebox{\textwidth}{!}{%
+        \begin{quantikz}[
+                column sep=0.4cm,
+            ]
+            \lstick{\ket{0}} & \gate{H} & \ctrl{2}\gategroup[4,steps=3,style={inner sep=1pt}]{$Z_{13} \parallel Z_{24}$} &                                & \ctrl{2} &                                                                                &                                &          &          &                                &          & \gate{R_{x}(\beta)} \\
+            \lstick{\ket{0}} & \gate{H} & \ctrl{2}                                                                       &                                & \ctrl{2} & \ctrl{1}\gategroup[4,steps=3,style={inner sep=1pt}]{$Z_{23} \parallel Z_{45}$} &                                & \ctrl{1} &          &                                &          & \gate{R_{x}(\beta)} \\
+            \lstick{\ket{0}} & \gate{H} & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \ctrl{2} &                                & \ctrl{2} & \gate{R_{x}(\beta)} \\
+            \lstick{\ket{0}} & \gate{H} & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \ctrl{1}                                                                       &                                & \ctrl{1} &          &                                &          & \gate{R_{x}(\beta)} \\
+            \lstick{\ket{0}} & \gate{H} &                                                                                &                                &          & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \targ{}  & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \gate{R_{x}(\beta)}
+        \end{quantikz}%
+    }
+\end{center}
+
+\highspace
+Or \textbf{equivalently}, we can take a shortcut and write directly the Hadamard layer without the initial state preparation:
+\begin{center}
+    \resizebox{\textwidth}{!}{%
+        \begin{quantikz}[
+                column sep=0.4cm,
+            ]
+            \lstick{$q_{1}$} & \gate{H} & \ctrl{2}\gategroup[4,steps=3,style={inner sep=1pt}]{$Z_{13} \parallel Z_{24}$} &                                & \ctrl{2} &                                                                                &                                &          &          &                                &          & \gate{R_{x}(\beta)} \\
+            \lstick{$q_{2}$} & \gate{H} & \ctrl{2}                                                                       &                                & \ctrl{2} & \ctrl{1}\gategroup[4,steps=3,style={inner sep=1pt}]{$Z_{23} \parallel Z_{45}$} &                                & \ctrl{1} &          &                                &          & \gate{R_{x}(\beta)} \\
+            \lstick{$q_{3}$} & \gate{H} & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \ctrl{2} &                                & \ctrl{2} & \gate{R_{x}(\beta)} \\
+            \lstick{$q_{4}$} & \gate{H} & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \ctrl{1}                                                                       &                                & \ctrl{1} &          &                                &          & \gate{R_{x}(\beta)} \\
+            \lstick{$q_{5}$} & \gate{H} &                                                                                &                                &          & \targ{}                                                                        & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \targ{}  & \gate{R_{z}(\frac{\gamma}{2})} & \targ{}  & \gate{R_{x}(\beta)}
+        \end{quantikz}%
+    }
+\end{center}
+
+\highspace
+\begin{deepeningbox}[: How to implement the QAOA circuit for Max-Cut]
+    Once we have reached the \textbf{spin energy function}, building the $p=1$ QAOA circuit can become almost mechanical. For our exercise, the spin energy function is:
+    \begin{equation*}
+        E(s) = -\frac{5}{2} + \frac{1}{2}\left(s_1s_3 + s_2s_3 + s_2s_4 + s_3s_5 + s_4s_5\right)
+    \end{equation*}
+    The corresponding Cost Hamiltonian is:
+    \begin{equation*}
+        H_{\text{problem}} = -\frac{5}{2}I + \frac{1}{2}\left(Z_1Z_3 + Z_2Z_3 + Z_2Z_4 + Z_3Z_5 + Z_4Z_5\right)
+    \end{equation*}
+    The constant term $-\frac{5}{2}I$ can be omitted, because it only shifts all energies by the same amount. So we can use:
+    \begin{equation*}
+        H_{\text{problem}} = \frac{1}{2}\left(Z_1Z_3 + Z_2Z_3 + Z_2Z_4 + Z_3Z_5 + Z_4Z_5\right)
+    \end{equation*}
+
+    \highspace
+    \important{1.} First, \textbf{superposition layer}. We begin with the initial state $\ket{0}^{\otimes n}$. In our case, $n=5$ qubits. Then, since QAOA wants to consider all $2^{n}$ candidate binary solutions, we apply a Hadamard gate to each qubit to create an equal superposition of all $2^{5} = 32$ states. Since:
+    \begin{equation*}
+        H \ket{0} = \ket{+} = \frac{1}{\sqrt{2}} \left(\ket{0} + \ket{1}\right)
+    \end{equation*}
+    We obtain:
+    \begin{equation*}
+        \ket{+}^{\otimes n} = \frac{1}{\sqrt{2^{n}}} \sum_{x \in \{0,1\}^{n}} \ket{x}
+    \end{equation*}
+    For our exercise, this is:
+    \begin{equation*}
+        \ket{+}^{\otimes 5} = \frac{1}{\sqrt{32}} \sum_{x \in \{0,1\}^{5}} \ket{x} = \frac{1}{\sqrt{32}} \left(\ket{00000} + \ket{00001} + \ldots + \ket{11111}\right)
+    \end{equation*}
+    So the \textbf{first rule} is trivial: \hl{one $H$ on every qubit.}
+
+    \highspace
+    \important{2.} \textbf{Cost layer: encode the objective function.} Now comes:
+    \begin{equation*}
+        U_C(\gamma) = e^{-i \gamma H_{\text{problem}}}
+    \end{equation*}
+    The purpose of this layer is to make th quantum sensitive to the \textbf{cost/energy of each candidate solution}. Since $H_{\text{problem}}$ is diagonal in the computational basis, it essentially gives different phases to solutions according to their cost. Obviously, we don't need to calculate the full exponential. Instead, look at the terms of $H_{\text{problem}}$:
+    \begin{itemize}
+        \item \textbf{Linear terms.} If:
+            \begin{equation*}
+                H_{\text{problem}} \supset h_i Z_i
+            \end{equation*}
+            (in words, if there is a linear term in the spin energy function), then this produces a single-qubit $Z$-rotation on qubit $i$. Schematically:
+            \begin{equation*}
+                h_i Z_i \quad \Rightarrow \quad R_z \left(h_i \gamma\right)
+            \end{equation*}
+            So, for example, if $H_{\text{problem}}$ had a term $-2 Z_1$, then we would apply a $R_z(-2\gamma)$ on qubit $1$.
+
+        \item \textbf{Quadratic terms.} If:
+            \begin{equation*}
+                H_{\text{problem}} \supset J_{ij} Z_i Z_j
+            \end{equation*}
+            (in words, if there is a quadratic term in the spin energy function), then the cost unitary contains:
+            \begin{equation*}
+                e^{-i \gamma J_{ij} Z_i Z_j}
+            \end{equation*}
+            As we saw in the theory section, we can implement this with a CNOT ``sandwich'' around a $R_z$ rotation. Schematically:
+            \begin{equation*}
+                \text{CNOT}_{ij} \to R_{z}\left(J_{ij} \gamma\right) \to \text{CNOT}_{ij}
+            \end{equation*}
+            For example, if $H_{\text{problem}}$ had a term $\frac{1}{2} Z_1 Z_3$, then we would apply a CNOT with control qubit $1$ and target qubit $3$, then a $R_z(\frac{\gamma}{2})$ on qubit $3$, and finally another CNOT with control qubit $1$ and target qubit $3$.
+    \end{itemize}
+    \textcolor{Green3}{\faIcon[regular]{lightbulb}} To speedup this process, we can read the Cost Hamiltonian:
+    \begin{equation*}
+        H_{\text{problem}} = \frac{1}{2}\left(Z_1Z_3 + Z_2Z_3 + Z_2Z_4 + Z_3Z_5 + Z_4Z_5\right)
+    \end{equation*}
+    From this, we can see immediately:
+    \begin{itemize}
+        \item No linear terms, so no single-qubit $R_z$ rotations.
+        \item Five quadratic terms, so five CNOT-$R_z$-CNOT sandwiches.
+        \item Each sandwich has a $R_z(\frac{\gamma}{2})$ rotation, because the coefficient of all quadratic terms is $\frac{1}{2}$.
+        \item The control-target pairs are:
+            \begin{align*}
+                Z_1 Z_3 & \to \text{CNOT}_{1,3} \to R_z\left(\frac{\gamma}{2}\right) \to \text{CNOT}_{1,3} \\[.3em]
+                Z_2 Z_3 & \to \text{CNOT}_{2,3} \to R_z\left(\frac{\gamma}{2}\right) \to \text{CNOT}_{2,3} \\[.3em]
+                Z_2 Z_4 & \to \text{CNOT}_{2,4} \to R_z\left(\frac{\gamma}{2}\right) \to \text{CNOT}_{2,4} \\[.3em]
+                Z_3 Z_5 & \to \text{CNOT}_{3,5} \to R_z\left(\frac{\gamma}{2}\right) \to \text{CNOT}_{3,5} \\[.3em]
+                Z_4 Z_5 & \to \text{CNOT}_{4,5} \to R_z\left(\frac{\gamma}{2}\right) \to \text{CNOT}_{4,5}
+            \end{align*}
+    \end{itemize}
+    So the Hamiltonian already tells us the circuit.
+
+    \highspace
+    \important{3.} \textbf{Mixing layer: $R_x$ rotations.} After the cost layer comes:
+    \begin{equation*}
+        U_{M}(\beta) = e^{-i \beta H_{M}}
+    \end{equation*}
+    Where the mixing Hamiltonian is:
+    \begin{equation*}
+        H_{M} = \sum_{i=1}^{n} X_i
+    \end{equation*}
+    Because the $X_{i}$'s act on different qubits, this decomposes into independent $X$-rotations: $R_x(\beta)$ on \textbf{every qubit}. So the \textbf{third rule} is trivial: \hl{one $R_x(\beta)$ on every qubit.} In our case, $n=5$ qubits, therefore:
+    \begin{equation*}
+        U_{M}(\beta) = R_x(\beta)^{\otimes 5}
+    \end{equation*}
+    The mixer is important because the cost layer by itself only changes \textbf{phases}. It doesn't directly make good solutions more probable. The mixer allows those phase to interfere and thereby changes the measurement probabilities.
+
+    \highspace
+    \textcolor{Green3}{\faIcon{question-circle} \textbf{Can we parallelize the operations?}} \hl{Yes, in general QAOA cost gates can be often be parallelized, but not arbitrarily.} However, actual gates cannot generally execute simultaneously if they require the same qubit. For example:
+    \begin{equation*}
+        Z_1 Z_3 \quad \text{and} \quad Z_2 Z_3
+    \end{equation*}
+    Both require qubit $3$, so they cannot be executed simultaneously. But:
+    \begin{equation*}
+        Z_1 Z_3 \quad \text{and} \quad Z_2 Z_4
+    \end{equation*}
+    Can be executed simultaneously, because they require different qubits. So the circuit can be parallelized.
+\end{deepeningbox}

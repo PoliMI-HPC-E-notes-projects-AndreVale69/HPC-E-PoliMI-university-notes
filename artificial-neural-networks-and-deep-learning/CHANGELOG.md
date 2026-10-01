@@ -15,6 +15,7 @@
 
 ### v0.8.0
 
+- refactor code-style and boxes
 - add `CNN Anatomy, Transfer Learning, and Data Scarcity`
   - add `CNNs as Structured Neural Networks`
     - add `Convolution as a Linear Operation`

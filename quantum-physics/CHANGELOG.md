@@ -16,3 +16,5 @@ Each version follows the Conventional Commits structure. For more information on
 ### v0.1.0
 
 - feat(structure): add CHANGELOG.md
+- add `From Wave-Particle Duality to Quantum States`
+  - add `Experimental Motivation: Wave-Particle Duality`

@@ -1,0 +1,152 @@
+\subsection{Fundamental Properties}\label{subsec:introduction--fundamental-properties}
+
+In this section we discuss three fundamental properties of distributed systems. More precisely, these are three characteristics that arise from the fact that a distributed system consists of \textbf{independent computers communicating over a network}: concurrency, no global clock, independent/partial failures. These properties are consequences of distribution itself.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{random} \textbf{Concurrency}}
+\end{flushleft}
+In a centralized system, concurrency is often a \textbf{design choice}. We may decide to write a single-threaded program, or a multi-threaded program. In a distributed system, instead, concurrency is essentially \textbf{unavoidable}. Suppose we have tre independent computers: $C_1$, $C_2$, and $C_3$. Each has its own processor and executes independently:
+\begin{equation*}
+    \begin{aligned}
+        C_1 &: a_1 \rightarrow a_2 \rightarrow a_3\\
+        C_2 &: b_1 \rightarrow b_2 \rightarrow b_3\\
+        C_3 &: c_1 \rightarrow c_2 \rightarrow c_3
+    \end{aligned}
+\end{equation*}
+Their computations are happening \textbf{at the same time}. Therefore, \hl{concurrency is inherent in distributed systems.} This creates \textbf{coordination problems} whenever several components access or modify logically shared resources, like \textbf{synchronization}, \textbf{mutual exclusion}, and \textbf{consistency}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{clock} \textbf{Absence of a Global Clock}}
+\end{flushleft}
+On one computer, we have a physical clock that the operating system can use as a common time reference. Different processes can therefore consult approximately the same underlying clock.
+
+\highspace
+In a distributed system, however, each computer has its own physical clock:
+\begin{equation*}
+    C_1 \rightarrow \text{clock}_1
+\end{equation*}
+\begin{equation*}
+    C_2 \rightarrow \text{clock}_2
+\end{equation*}
+\begin{equation*}
+    C_3 \rightarrow \text{clock}_3
+\end{equation*}
+And these clocks are \textbf{not necessarily synchronized}:
+\begin{equation*}
+    \text{clock}_1 \neq \text{clock}_2 \neq \text{clock}_3
+\end{equation*}
+Even if we initially synchronize them, physical clocks drift. So there is \hl{no perfectly shared \textbf{global clock} available to every component.}
+
+\highspace
+This becomes especially problematic when we want to determine the \textbf{ordering of events}. Looking only at the local timestamps may not always be sufficient, because the clocks can disagree. So distributed systems need other ways to reason about ordering and synchronization. Later in this notes we will discuss \textbf{logical clocks} rather than physical clocks. However, in general, \hl{there is no perfectly shared notion of time across all machines.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{exclamation-triangle} \textbf{Independent/Partial Failures}}
+\end{flushleft}
+In a centralized system, if the machine crashes, typically the whole application fails. The failure is relatively easy to conceptualize.
+
+\highspace
+In a distributed system, instead, each machine can fail independently:
+\begin{equation*}
+    C_1:\checkmark
+    \qquad
+    C_2:\checkmark
+    \qquad
+    C_3:\times
+    \qquad
+    C_4:\checkmark
+\end{equation*}
+One component fails while the others continue running. As anticipated in the previous section, this is called a \textbf{partial failure}.
+
+\highspace
+Also, \hl{communication makes failure detection more difficult.} Suppose:
+\begin{equation*}
+    A \xrightarrow{\text{request}} B
+\end{equation*}
+And $A$ receives no response. What happened?
+\begin{enumerate}
+    \item $B$ crashed
+    \item The request was lost
+    \item The reply was lost
+    \item $B$ is simply slow
+    \item The network is extremely slow or unavailable
+\end{enumerate}
+For $A$, all of these can initially appear as no response from $B$. Therefore determining whether another component has actually failed can be \textbf{hard or even impossible with certainty} under some assumptions. This is a much deeper problem than in an ordinary centralized application.
+
+\highspace
+Finally, \hl{recovery is also harder.} Suppose machine $C_2$ crashes and later restarts. \emph{Where is the application state?} It may be distributed across $C_1$, $C_2$, and $C_3$. Perhaps $C_1$ believes one thing while $C_3$ has slightly different information. So recovery is not simply a matter of restarting the crashed machine. We may need to reconstruct a \textbf{consistent distributed state}. This is why fault tolerance becomes such a large and important topic in distributed systems.
+
+\highspace
+\begin{figure}[!htp]
+    \centering
+    \tikzsetnextfilename{fundamental-properties}
+    % \tikzwidth{\linewidth}
+    \begin{tikzpicture}[
+            yscale=0.85,
+            >=Stealth,
+            proc/.style={draw, rounded corners, minimum width=1.1cm, minimum height=0.7cm, fill=blue!8},
+            ev/.style={circle, fill=black, inner sep=1.6pt},
+            clk/.style={draw, rounded corners, font=\scriptsize, fill=yellow!25, minimum width=2.4cm},
+            note/.style={font=\scriptsize, align=center}
+        ]
+
+        % --- Machines ---
+        \node[proc] (c1) at (0,0) {$C_1$};
+        \node[proc] (c2) at (4,0) {$C_2$};
+        \node[proc] (c3) at (8,0) {$C_3$};
+
+        % --- Time axis (illustrative only) ---
+        \draw[->, gray] (-1.3,-0.6) -- (-1.3,-7.2)
+        node[midway, sloped, above, font=\scriptsize, black] {time (as drawn)};
+
+        % --- Timelines ---
+        \draw[->] (0,-0.4) -- (0,-7.2);
+        \draw[->] (4,-0.4) -- (4,-7.2);
+        \draw[->] (8,-0.4) -- (8,-4.5);                    % C3 runs until the crash
+        \draw[->, red, dashed] (8,-4.7) -- (8,-7.2);       % ...then nothing
+
+        % --- Events ---
+        \node[ev, label=right:{\scriptsize $a_1$}] at (0,-1.5) {};
+        \node[ev, label=left:{\scriptsize $a_2$}]  (a2) at (0,-3.3) {};
+        \node[ev, label=right:{\scriptsize $a_3$}] at (0,-6.2) {};
+
+        \node[ev, label=right:{\scriptsize $b_1$}] at (4,-1.9) {};
+        \node[ev, label=below right:{\scriptsize $b_2$}] (b2) at (4,-3.6) {};
+        \node[ev, label=left:{\scriptsize $b_3$}] (b3) at (4,-5.0) {};
+
+        \node[ev, label=right:{\scriptsize $c_1$}] at (8,-2.3) {};
+        \node[ev, label=right:{\scriptsize $c_2$}] (c2e) at (8,-3.4) {};
+
+        % --- 1. Concurrency: no causal path between these events ---
+        \draw[blue!60!black, thick, decorate,
+        decoration={snake, amplitude=1pt, segment length=12pt}]
+        (a2) -- (b2) -- (c2e);
+        \node[note, blue!60!black, fill=white, inner sep=2pt]
+        at (2,-2.8) {concurrent: $a_2 \parallel b_2 \parallel c_2$};
+
+        % --- 3. Partial failure ---
+        \node[red] at (8,-4.6) {\Large $\times$};
+        \node[note, red, anchor=west] at (8.3,-4.6) {$C_3$ crashed};
+
+        \draw[->, thick, red!70!black] (b3) -- node[note, above, sloped, pos=0.5] {request} (8,-5.6);
+        \node[note, red!70!black] at (6,-6.4) {no response:\\ crash? lost? slow?};
+
+        % --- 2. No global clock ---
+        \node[clk] at (0,-7.9) {$clock_1 = 10{:}00{:}03$};
+        \node[clk] at (4,-7.9) {$clock_2 = 10{:}00{:}01$};
+        \node[clk] at (8,-7.9) {$clock_3 = 10{:}00{:}07$};
+        \node[note] at (4,-8.7)
+        {clocks read at the same real instant: $clock_1 \neq clock_2 \neq clock_3$};
+
+    \end{tikzpicture}
+    \caption{\textbf{The three fundamental properties of distributed systems.} Independent computers $C_1, C_2, C_3$ execute \hl{concurrently} (blue wavy line: no causal path between the events), each has its own physical clock with \hl{no global time} (yellow boxes), and a component such as $C_3$ can \hl{fail while the others keep running}, leaving the sender unable to tell a crash from a lost message or a slow node (red).}
+    \label{fig:fundamental-properties}
+\end{figure}
+
+\highspace
+\begin{takeawaysbox}
+    Distributed systems inherently execute \textbf{concurrently}, have \textbf{no perfectly shared global clock}, and can suffer independent partial failures. These three properties are fundamental because \hl{most of the difficult problems in distributed systems arise from them.}
+\end{takeawaysbox}

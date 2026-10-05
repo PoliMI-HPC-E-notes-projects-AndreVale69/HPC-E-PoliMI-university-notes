@@ -16,3 +16,4 @@
     - add `Why Distributed Systems Are Special`
   - add `What is a Distributed System?`
   - add `Middleware`
+  - add `Fundamental Properties`

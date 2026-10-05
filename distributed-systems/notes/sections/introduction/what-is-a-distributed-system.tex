@@ -1,0 +1,181 @@
+\subsection{What is a Distributed System?}\label{sec:what-is-a-distributed-system}
+
+There is no single definition of a distributed system. Here we provide \textbf{three different definitions}, each of which emphasizes a different aspect of distribution.
+
+\highspace
+\begin{definitionbox}[: Tanenbaum \& Van Steen -- The user's perspective]
+    A \definition{Distributed System} is a collection of independent computers that appears to its users as a single coherent system.
+\end{definitionbox}
+
+\highspace
+In the first definition, Tanenbaum \& Van Steen emphasize two parts, and \textbf{both matter}:
+\begin{itemize}
+    \item ``\emph{\textbf{Collection of independent computers}}''. The \hl{system} is physically \hl{composed of multiple autonomous machines}:
+        \begin{equation*}
+            C_1, C_2, \ldots, C_n
+        \end{equation*}
+        Each machine has its own processor, memory, operating system, and can potentially fail independently.
+
+    \item ``\emph{\textbf{Appears to its users as a single coherent system}}''. Externally we want:
+        \begin{equation*}
+            C_1 + C_2 + \ldots + C_n \approx \text{one coherent system}
+        \end{equation*}
+        The user should not necessarily have to think: ``\emph{my request is currently being handled by machine 37 in data center B}''. Instead, the user sees something like \emph{Google Search} or \emph{online banking service} even though internally many machines cooperate.
+\end{itemize}
+So this definition combines two seemingly contradictory ideas:
+\begin{equation*}
+    \textbf{physical multiplicity} \quad \text{and} \quad \textbf{logical unity}
+\end{equation*}
+In other words, \hl{many machines underneath, one system from the outside.} It anticipates the concept of \textbf{transparency}, which we will see later.
+
+\highspace
+\begin{definitionbox}[: Lamport -- The failure perspective]
+    A \definition{Distributed System} is a system on which I cannot get any work done because some machine I have never heard of has crashed.
+\end{definitionbox}
+
+\highspace
+It sounds like a joke, but it highlights one of the \textbf{deepest properties} of distributed systems. Imagine that we are using service $A$. From our point of view, perhaps $A$ is working perfectly. But internally:
+\begin{equation*}
+    A \to B \to C \to D
+\end{equation*}
+And $A$ depends on $B$, which depends on $C$, and so on. Now suppose that $C$ crashes. Then $B$ cannot complete its work, and $A$ cannot complete its work either:
+\begin{equation*}
+    C \text{ fails} \implies B \text{ cannot proceed} \implies A \text{ cannot serve users}
+\end{equation*}
+So our application fails because of a remote component completely invisible to us. This reveals an essential property: \hl{components fail independently.} A centralized system often has a simpler failure model: if the central server fails, the whole system fails. In a distributed system, failures can be more subtle and complex:
+\begin{equation*}
+    C_1:\checkmark
+    \qquad
+    C_2:\checkmark
+    \qquad
+    C_3:\times
+    \qquad
+    C_4:\checkmark
+\end{equation*}
+The system is neither completely alive nor completely dead. This is what we later call a\textbf{partial failure}. Therefore, Lamport's definition emphasizes that \hl{distribution creates dependencies on independently failing components.}
+
+\highspace
+\begin{definitionbox}[: Coulouris -- The communication perspective]
+    A \definition{Distributed System} is a system in which hardware or software components located at networked computers communicate and coordinate their actions only by passing messages.
+\end{definitionbox}
+
+\highspace
+Suppose we have two processes $P_1$ and $P_2$ running on different machines. They do \textbf{not} communicate by directly reading and writing the same physical memory. Instead, they communicate by sending messages over the network:
+\begin{equation*}
+    P_1 \xleftrightarrow{\text{network}} P_2
+\end{equation*}
+Communication and coordination occur through the network. So if $P_1$ wants information held by $P_2$, it cannot simply do:
+\begin{equation*}
+    x = \text{memory}\left[\texttt{address}\right]
+\end{equation*}
+It needs some form of communication:
+\begin{equation*}
+    \text{request}
+    \rightarrow
+    \text{network}
+    \rightarrow
+    P_2
+\end{equation*}
+Followed potentially by:
+\begin{equation*}
+    P_2
+    \rightarrow
+    \text{network}
+    \rightarrow
+    \text{reply}
+\end{equation*}
+This immediately explains why the network matters so much. However, the network introduces a new source of complexity: delay, message loss, finite bandwidth, failures, uncertainty, and so on. Therefore, \hl{message passing is not merely an implementation detail}, it fundamentally changes how programs must be designed.
+
+\highspace
+Therefore, the 3 definitions are not competing definitions, they describe the same object from different perspectives:
+\begin{itemize}
+    \item \important{Structural viewpoint}. Multiple independent computers that should appear as one coherent system.
+
+    \item \important{Failure viewpoint}. Independent components can fail and affect one another.
+
+    \item \important{Communication viewpoint}. Components coordinate through message passing.
+\end{itemize}
+Together, we obtain a very useful working definition.
+
+\highspace
+\begin{definitionbox}[: Distributed Systems]
+    A \definition{Distributed System} consists of independent networked components that coordinate through message passing to provide some coherent overall service.
+\end{definitionbox}
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Independent does not mean isolated.}} When we say ``\emph{independent networked components}'', we do \textbf{not} mean that $C_1$ and $C_2$ are completely isolated with no interaction.
+
+\highspace
+If they were completely isolated, we would simply have two unrelated computers. Instead, we mean that they are \textbf{autonomous}, in the sense that each component has its own processor, memory, and operating system, but they can \textbf{cooperate} to provide a service.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Parallel Computing vs. Distributed Computing}}
+\end{flushleft}
+A natural question is: \emph{\textbf{what is the difference between parallel computing and distributed computing?}} At first sight, the two fields look almost identical.
+\begin{itemize}
+    \item \textbf{Parallel computing} $P_1$, $P_2$, $\ldots$, $P_n$ perform computation together.
+    \item \textbf{Distributed computing} $C_1$, $C_2$, $\ldots$, $C_n$ also perform computation together.
+\end{itemize}
+\emph{So why distinguish them?} Because the \textbf{assumptions about the architecture are different}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{How tightly coupled are the processors?}} A useful way of understanding the distinction is through \textbf{memory and communication}. Consider two processors $\text{CPU}_{1}$ and $\text{CPU}_2$:
+\begin{itemize}
+    \item \important{Shared-Memory Parallel System}. The two processors may \textbf{share the same shared memory}. Then both processors can access variables stored in that memory.
+
+        If $x=5$ is stored in shared memory, both processors can potentially read $x$. Communication can therefore happen implicitly through memory:
+        \begin{equation*}
+            \text{CPU}_{1}: \; x \leftarrow 5 \quad \text{and} \quad \text{CPU}_{2}: \; \text{read } x
+        \end{equation*}
+        This is characteristic of a \textbf{tightly coupled} parallel machine.
+
+    \item \important{Distributed Systems use Private Memories}. Now consider two separate computers:
+        \begin{equation*}
+            \text{CPU}_{1} + \text{Memory}_{1} \quad \text{and} \quad \text{CPU}_{2} + \text{Memory}_{2}
+        \end{equation*}
+        There is no physical shared memory between them. Communication can only happen through message passing over the network:
+        \begin{equation*}
+            \text{CPU}_{1} \xleftrightarrow{\text{network}} \text{CPU}_{2}
+        \end{equation*}
+\end{itemize}
+So the conceptual difference is that \hl{parallel computing assumes shared memory, while distributed computing assumes private memories but networked communication}. This is exactly why the Coulouris definition stresses the sentence: ``\textbf{\emph{only by passing messages}}''.
+
+\highspace
+Furthermore, there is another architectural dimension: \textbf{how processors are interconnected}. A simple multiprocessor may use a common bus to connect all processors with shared memory. This makes communication very direct, but a common bus does not scale indefinitely because all processors compete for the same interconnect.
+
+\highspace
+\textcolor{Red2}{\faIcon{exclamation-triangle}} More sophisticated parallel machines may therefore use switching networks connecting processors and memories. Thus, \emph{parallel computing is similar to distributed computing, right?} Not quite. The essential point for us is not to memorize every hardware topology, but to understand that \hl{parallel computing often assumes a much tighter integration between processors} than a typical distributed system.
+
+\highspace
+\textcolor{Green3}{\faIcon{balance-scale} \textbf{Different primary objectives.}} There is also a useful conceptual distinction in \textbf{why} we use multiple processors. In \textbf{parallel computing}, the central goal is often to \textbf{speed up one computation}. Suppose a computation takes time $T$ on one processor, ideally with $p$ processors we would like:
+\begin{equation*}
+    T_{p} \approx \frac{T}{p}
+\end{equation*}
+Although real systems obviously have overhead. Instead, \textbf{distributed computing} has broader goals: \hl{scalability, geographical distribution, resource sharing, reliability, inherent distribution of users/data.} Performance can certainly be one objective, but it is \textbf{not the defining one}.
+\begin{itemize}
+    \item Parallel computing: mainly cooperation for computational performance.
+    \item Distributed computing: cooperation among autonomous networked components.
+\end{itemize}
+
+\highspace
+\begin{takeawaysbox}
+    \begin{itemize}
+        \item \textbf{A distributed system is made of independent computers/components that cooperate to provide one coherent system.}
+            \begin{equation*}
+                \boxed{\text{many independent machines} \rightarrow \text{one logical service}}
+            \end{equation*}
+
+        \item \textbf{Communication and coordination happen through message passing.} Components on different machines cannot simply access each other's memory:
+            \begin{equation*}
+                P_1 \xrightarrow{\text{message}} P_2
+            \end{equation*}
+
+        \item \textbf{Independence implies independent failures.} One machine may fail while the others continue running. This possibility of \textbf{partial failure} is one of the defining difficulties of distributed systems.
+
+        \item \textbf{Distributed computing is not the same as parallel computing.} Both use multiple processors, but parallel systems are generally more tightly coupled and may use shared memory, whereas distributed systems consist of autonomous machines with local/private state connected through a network.
+
+        \item \textbf{The main objective differs.} Parallel computing is primarily concerned with accelerating computation; distributed computing is broader and includes cooperation, scalability, geographical distribution, resource sharing, and reliability.
+    \end{itemize}
+    A distributed system consists of autonomous networked components that coordinate by message passing while appearing as one coherent system.
+\end{takeawaysbox}

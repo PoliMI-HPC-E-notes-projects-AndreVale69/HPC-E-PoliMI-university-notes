@@ -14,3 +14,4 @@
     - add `Motivation: Why Distributed Systems?`
     - add `Why Distribute a System?`
     - add `Why Distributed Systems Are Special`
+  - add `What is a Distributed System?`

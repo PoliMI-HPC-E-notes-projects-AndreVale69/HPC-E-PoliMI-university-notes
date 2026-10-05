@@ -15,3 +15,4 @@
     - add `Why Distribute a System?`
     - add `Why Distributed Systems Are Special`
   - add `What is a Distributed System?`
+  - add `Middleware`

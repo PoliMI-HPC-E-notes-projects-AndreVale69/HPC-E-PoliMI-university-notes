@@ -17,3 +17,5 @@
   - add `What is a Distributed System?`
   - add `Middleware`
   - add `Fundamental Properties`
+  - add `Main Challenges`
+  - add `Transparency`

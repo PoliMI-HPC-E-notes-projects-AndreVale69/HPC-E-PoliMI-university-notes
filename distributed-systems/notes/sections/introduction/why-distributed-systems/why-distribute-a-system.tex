@@ -1,0 +1,165 @@
+\subsubsection{Why Distribute a System?}\label{subsubsec:introduction--why-distributed-systems--why-distribute-a-system}
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{coins} \textbf{Economics}}
+\end{flushleft}
+Historically, computing was often organized around large centralized machines, such as \textbf{mainframes} (i.e., a single computer that serves multiple users), with many users or terminals depending on that central machine. The alternative is to use many smaller machines $M_1, M_2, M_3, \dots$ and let them cooperate. The economic argument is based on the \textbf{price/performance ratio}.
+
+\highspace
+Instead of buying one extremely powerful machine, it \hl{may be more convenient to buy several cheaper machines and combine their resources.} The idea is not that several small computers automatically behave like one large computer. We need software that coordinates them. But \textbf{distribution allows us to exploit the aggregate resources of many machines}. So the economic motivation is that \hl{it can be cheaper to obtain computing power by combining multiple machines.} This is one of the historical reasons why distributed computing became attractive.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Incremental growth and load balancing}}
+\end{flushleft}
+This is one of the most important practical advantages. Suppose a centralized system starts with one machine $M_1$ and its workload increases. Eventually:
+\begin{equation*}
+    \text{load} > \text{capacity of } M_1
+\end{equation*}
+With a distributed architecture, we can add more machines:
+\begin{equation*}
+    M_1 \to M_1 + M_2 \to M_1 + M_2 + M_3 \to \dots
+\end{equation*}
+THis is \textbf{incremental growth}. We do not necessarily need to replace the entire system with a much larger machine every time demand increases. Instead, \hl{capacity can grow by adding resources.} This is closely related to \textbf{load balancing}.
+
+\highspace
+Imagine that three machines are available:
+\begin{equation*}
+    M_1, M_2, M_3
+\end{equation*}
+And requests arrive:
+\begin{equation*}
+    R_1, R_2, R_3, R_4, R_5, R_6
+\end{equation*}
+Rather than sending everything to $M_1$:
+\begin{equation*}
+    R_1, R_2, R_3, R_4, R_5, R_6 \to M_1
+\end{equation*}
+We can distribute them:
+\begin{equation*}
+    R_1, R_2 \to M_1, \quad R_3, R_4 \to M_2, \quad R_5, R_6 \to M_3
+\end{equation*}
+The objective is to use the available resources more uniformly.
+
+\highspace
+So there are really two connected ideas:
+\begin{itemize}
+    \item \textbf{Incremental growth}: add resources gradually as the system grows.
+    \item \textbf{Load balancing}: spread the workload among the available resources.
+\end{itemize}
+In summary, it makes easier to \textbf{evolve the system} and \textbf{use its resources uniformly}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{Inherent distribution}}
+\end{flushleft}
+Sometimes we distribute a system because we want the benefits of distribution. But in other cases, \hl{distribution is not really a design choice, but rather the problem itself is already distributed.}
+
+\highspace
+For example, consider a bank. Its users, branches, ATMs, databases, and services may naturally exist in different locations: ATM Milan, ATM Rome, ATM New York, etc. All of them interact with the same overall banking system. Trying to force everything into one physical place would not make sense (i.e., it would be inefficient and impractical). This is what \textbf{inherent distribution} means: \hl{the entities involved in the problem are naturally located in different places.}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{shield-alt} \textbf{Reliability}}
+\end{flushleft}
+Distribution can also improve \textbf{reliability}. Consider a purely centralized architecture client-server. If that server fails, the entire service may disappear. This is a \textbf{single point of failure}. Now suppose the system is distributed over several components $S_1, S_2, S_3, \dots$. If one of them fails, the others may still be able to provide the service. So \hl{one failure does not necessarily bring down the whole system.} This is particularly important for \textbf{mission-critical applications}, where complete service failure is unacceptable.
+
+\highspace
+But there is an important subtlety. Distribution does \textbf{not automatically guarantee reliability}. It merely gives us the possibility of designing a system that survives individual failures. For example, if all machines depend on one central database, then the database may still be a single point of failure. Thus, to obtain reliability, we often need techniques such as \textbf{redundancy}, \textbf{replication}, \textbf{failure detection}, and \textbf{recovery}. These are all topics that will be covered in later sections. However, here the main point is that \hl{distribution allows failures to be partial rather than necessarily total.} That sounds good, and it often is, but partial failures will also turn out to be one of the hardest aspects of distributed systems.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{The complexity cost of distribution}}
+\end{flushleft}
+Obviously, distribution is not free. \hl{Distribution systems are considerably more difficult to get right.} Everything we have discussed sounds attractive: lower cost, easy growth, load balancing, reliability, and so on. But none of this is free.
+
+\highspace
+Consider two components $A$ and $B$ on two different machines. If $A$ needs something from $B$, communication now happens through a netork:
+\begin{equation*}
+    A \xrightarrow{\text{network}} B
+\end{equation*}
+That introduces many questions:
+\begin{itemize}
+    \item \emph{What if the message is delayed?}
+        \begin{equation*}
+            A \xrightarrow{\text{delayed}} B
+        \end{equation*}
+    \item \emph{What if the message is lost?}
+        \begin{equation*}
+            A \not\xrightarrow{\text{lost}} B
+        \end{equation*}
+    \item \emph{What if $B$ has crashed?}
+    \item \emph{What if $B$ is alive but just very slow?}
+\end{itemize}
+From $A$'s perspective, slow network and failed machine may be difficult to distinguish. Then there are \textbf{synchronization problems}.
+
+\highspace
+Suppose two machines modify the same logical data:
+\begin{gather*}
+    A \; : \; x \leftarrow 5 \\
+    B \; : \; x \leftarrow 7
+\end{gather*}
+Which value should the system consider correct? There is also no single perfectly shared notion of time:
+\begin{equation*}
+    \text{clock}_{A} \neq \text{clock}_B
+\end{equation*}
+And components may fail independently.
+
+\highspace
+So distributing a system trades one kind of difficulty for another. A centralized system may be easier to reason about one machine at a time, while a distributed system gives us additional capabilities (many machines) but also introduces new problems: communication, concurrency, partial failure, coordination, and so on. This is the central trade-off.
+
+\highspace
+\begin{takeawaysbox}[: Why Distribute a System?]
+    There are four main motivations for distributing a system:
+    \begin{enumerate}
+        \item \important{Economics}. Several smaller machines may provide a
+            better \textbf{price/performance ratio} than one extremely powerful
+            centralized machine.
+            \begin{equation*}
+                \text{many cheaper machines}
+                \longrightarrow
+                \text{aggregate computational resources}
+            \end{equation*}
+
+        \item \important{Incremental growth and load balancing}.
+            A distributed system can grow gradually by adding resources as the
+            workload increases:
+            \begin{equation*}
+                M_1
+                \rightarrow
+                M_1 + M_2
+                \rightarrow
+                M_1 + M_2 + M_3
+                \rightarrow \dots
+            \end{equation*}
+            The workload can then be distributed among those resources rather
+            than concentrating it on a single machine.
+
+        \item \important{Inherent distribution}. Sometimes the problem itself
+            is naturally distributed: users, resources, or activities already
+            exist at different locations.
+            \begin{equation*}
+                \text{distributed problem}
+                \Longrightarrow
+                \text{naturally distributed solution}
+            \end{equation*}
+            Typical examples are banking systems, reservation systems,
+            distributed games, collaborative applications, and mobile
+            applications.
+
+        \item \important{Reliability}. Distribution makes it possible for the
+            system to continue operating even if one component fails:
+            \begin{equation*}
+                \text{failure of one component}
+                \not\Rightarrow
+                \text{failure of the entire system}.
+            \end{equation*}
+            This is especially important for \textbf{mission-critical systems}.
+            However, reliability is not automatic: the architecture must avoid
+            introducing new single points of failure.
+
+    \end{enumerate}
+    So in general, \hl{distribution brings advantages, \textbf{but} it also makes systems harder to build correctly.}
+    Communication, coordination, concurrency, and failures introduce
+    complexity that does not appear in the same form in centralized systems.
+\end{takeawaysbox}

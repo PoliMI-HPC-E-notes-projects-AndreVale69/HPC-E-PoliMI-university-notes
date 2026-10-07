@@ -90,6 +90,18 @@ All the notes are in English, except for the [Calcolo Numerico](calcolo-numerico
     </tr>
     <tr>
         <td align="center">❌</td>
+        <td>2026/2027</td>
+        <td>Distributed Systems</td>
+        <td><a href="https://onlineservices.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?EVN_ELENCO_DIDATTICA=evento&lang=IT&k_doc=51387&aa=2026&n_docente=Cugola%20Gianpaolo%20Saverio&tab_ricerca=2&jaf_currentWFID=main" target="_blank">Cugola Gianpaolo Saverio</a>
+        <br><a href="https://onlineservices.polimi.it/manifesti/manifesti/controller/ricerche/RicercaPerDocentiPublic.do?evn_didattica=evento&k_doc=179218&aa=2026&lang=IT&jaf_currentWFID=main" target="_blank">Margara Alessandro</a>
+        </td>
+        <td><ul>
+            <li><a href="distributed-systems">Course Details</a></li>
+            <li><a href="distributed-systems/notes/distributed-systems.pdf">PDF v0.1.0</a></li>
+        </ul></td>
+    </tr>
+    <tr>
+        <td align="center">❌</td>
         <td>2024/2025<br>2025/2026</td>
         <td>Foundations of Operations Research</td>
         <td><a href="https://aunicalogin.polimi.it/aunicalogin/getservizio.xml?id_servizio=167&evn_didattica=evento&k_doc=685067" target="_blank">Braz Pascoal Marta Margarida</a></td>

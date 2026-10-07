@@ -1,0 +1,21 @@
+<h1>CHANGELOG</h1>
+
+<h2>Table of Contents</h2>
+
+- [v0.1.0](#v010)
+
+---------------------
+
+### v0.1.0
+
+- add `CHANGELOG.md` and `README.md`
+- add `Introduction`
+  - add `Why Distributed Systems?`
+    - add `Motivation: Why Distributed Systems?`
+    - add `Why Distribute a System?`
+    - add `Why Distributed Systems Are Special`
+  - add `What is a Distributed System?`
+  - add `Middleware`
+  - add `Fundamental Properties`
+  - add `Main Challenges`
+  - add `Transparency`

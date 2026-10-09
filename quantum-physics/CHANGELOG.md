@@ -18,3 +18,4 @@ Each version follows the Conventional Commits structure. For more information on
 - feat(structure): add CHANGELOG.md
 - add `From Wave-Particle Duality to Quantum States`
   - add `Experimental Motivation: Wave-Particle Duality`
+  - add `Intrinsic Randomness of Quantum Measurements`

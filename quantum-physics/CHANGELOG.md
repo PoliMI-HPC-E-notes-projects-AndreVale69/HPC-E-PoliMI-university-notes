@@ -19,3 +19,5 @@ Each version follows the Conventional Commits structure. For more information on
 - add `From Wave-Particle Duality to Quantum States`
   - add `Experimental Motivation: Wave-Particle Duality`
   - add `Intrinsic Randomness of Quantum Measurements`
+  - add `Beam Splitters and the Mach-Zehnder Interferometer`
+    - add `The single beam splitter`

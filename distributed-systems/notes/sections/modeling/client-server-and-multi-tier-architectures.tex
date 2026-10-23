@@ -1,0 +1,629 @@
+\subsection{Client-Server and Multi-Tier Architectures}\label{sec:modeling--client-server-and-multi-tier-architectures}
+
+In the previous section, we discussed the \textbf{software infrastructure} that enables distributed applications to communicate, particularly Network Operating Systems and middleware. Now we address a different question: once we have the infrastructure to communicate, \textbf{\emph{how should we organize the components of a distributed system, and how should they interact?}} This is the purpose of \textbf{run-time architecture}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{Run-time Architecture and Architectural Styles}}
+\end{flushleft}
+The \definition{Run-Time Architecture} of a distributed system describes \hl{how its components are organized and interact while the system is executing.} In particular, it identifies three fundamental elements:
+\begin{enumerate}
+    \item \important{Components}: the computational \textbf{entities that perform operations}, such as clients, servers, services, and databases.
+    \item \important{Connectors}: the \textbf{mechanisms} through which components \textbf{interact}, such as message passing, RPC, or shared repositories.
+    \item \important{Exchanged data}: the \textbf{information transferred} between components, such as requests, responses, events, or data objects.
+\end{enumerate}
+Instead, an \definition{Architectural Style} is a \hl{reusable way of organizing distributed components and defining how they interact.}
+
+\highspace
+Rather than designing every distributed system from scratch, we can \hl{adopt well-established architectural patterns.} Some examples include \emph{client-server}, \emph{service-oriented}, \emph{REST}, \emph{peer-to-peer}, \emph{object-oriented}, \emph{data-centered}, \emph{event-based}, and \emph{mobile-code architectures}. These styles are \textbf{not} necessarily mutually exclusive. For example, a system may use client-server interactions while exposing RESTful interfaces and communicating asynchronously through events.
+\begin{itemize}
+    \item \textbf{Software infrastructure} describes \hl{how communication is supported.}
+    \item \textbf{Run-time architecture} describes \hl{how components are organized.}
+\end{itemize}
+
+\begin{examplebox}[: Run-time Architecture]
+    For example, consider an e-commerce platform where a browser displays the website, a backend processes orders, and a database stores products and customer information. The run-time architecture describes their roles, relationships, and communication mechanisms.
+    \begin{center}
+        \tikzsetnextfilename{runtime-architecture-styles}
+        \tikzwidth{\textwidth}
+        \begin{tikzpicture}[
+                font=\normalsize,
+                >={Stealth[length=2mm]},
+                box/.style={draw=#1, thick, rounded corners=3pt, fill=#1!5},
+                title/.style={anchor=north west, font=\normalsize\bfseries},
+                comp/.style={draw=black!70, thick, rounded corners=2pt, fill=blue!8,
+                minimum width=1.9cm, minimum height=0.8cm, align=center, font=\small},
+                db/.style={cylinder, shape border rotate=90, aspect=0.25, draw=black!70, thick,
+                    fill=blue!8, minimum width=1.9cm, minimum height=1.0cm, align=center,
+                font=\small},
+                conn/.style={<->, very thick, violet!60!black},
+                data/.style={draw=orange!70!black, fill=orange!12, rounded corners=1pt,
+                font=\footnotesize, inner sep=2pt},
+                role/.style={font=\footnotesize\itshape, text=black!65, align=center},
+                legend/.style={anchor=west, font=\footnotesize, align=left},
+                style/.style={draw=blue!50!black, fill=white, rounded corners=2pt,
+                minimum width=2.65cm, minimum height=0.58cm, font=\footnotesize},
+            ]
+
+            % 1. Components, connectors and exchanged data (e-commerce example)
+            \draw[box=blue!50!black] (0,3.0) rectangle (11.4,6.9);
+            \node[title, text=blue!50!black] at (0.1,6.85) {Run-time architecture: an e-commerce platform};
+
+            \node[comp] (br) at (1.1,5.35) {Browser};
+            \node[comp] (be) at (5.7,5.35) {Backend};
+            \node[db]   (dbs) at (10.3,5.35) {Database};
+            \node[role, below=2pt of br]  {displays the\\website};
+            \node[role, below=2pt of be]  {processes\\orders};
+            \node[role, below=2pt of dbs] {stores products\\and customers};
+
+            \draw[conn] (br) -- (be)
+            node[midway, above=1pt, font=\footnotesize, text=violet!60!black] {HTTP messages};
+            \draw[conn] (be) -- (dbs)
+            node[midway, above=1pt, font=\footnotesize, text=violet!60!black] {DB protocol};
+            \node[data] at ($(br.east)!0.5!(be.west)+(0,-0.4)$) {request/response};
+            \node[data] at ($(be.east)!0.5!(dbs.west)+(0,-0.4)$) {query / rows};
+
+            % legend: the three fundamental elements
+            \draw[black!25] (0.2,4.0) -- (11.2,4.0);
+            \node[comp, minimum width=0.6cm, minimum height=0.4cm] at (0.45,3.5) {};
+            \node[legend] at (0.85,3.5) {\textbf{Component}\\computational entity};
+            \draw[conn] (3.8,3.5) -- (4.3,3.5);
+            \node[legend] at (4.4,3.5) {\textbf{Connector}\\interaction mechanism};
+            \node[data, minimum width=0.6cm, minimum height=0.35cm] at (7.95,3.5) {};
+            \node[legend] at (8.35,3.5) {\textbf{Exchanged data}\\data transferred};
+
+            % 2. Architectural styles
+            \draw[box=blue!50!black] (0,0.4) rectangle (11.4,2.75);
+            \node[title, text=blue!50!black] at (0.1,2.7) {Architectural styles};
+            \node[anchor=north east, font=\footnotesize\itshape, text=blue!50!black, align=right]
+            at (11.3,2.7) {reusable ways to organize components\\not mutually exclusive};
+            \foreach \s [count=\i from 0] in {client-server, service-oriented, REST, peer-to-peer,
+            object-oriented, data-centered, event-based, mobile code} {
+                \pgfmathsetmacro{\x}{1.45+2.83*mod(\i,4)}
+                \pgfmathsetmacro{\y}{\i<4 ? 1.55 : 0.85}
+                \node[style] at (\x,\y) {\s};
+            }
+
+            % 3. Two different questions
+            \draw[box=blue!50!black] (0,-0.7) rectangle (11.4,0.15);
+            \node[anchor=west, font=\small] at (0.15,-0.275)
+            {\textbf{Run-time architecture} $\rightarrow$
+            how components are organized and interact};
+            \draw[box=violet!60!black] (0,-1.7) rectangle (11.4,-0.85);
+            \node[anchor=west, font=\small] at (0.15,-1.275)
+            {\textbf{Software infrastructure}
+            $\rightarrow$ how communication is supported};
+        \end{tikzpicture}
+    \end{center}
+    The figure shows the run-time architecture of an e-commerce platform. While the system executes, \emph{components} (browser, backend, database) interact through \emph{connectors} (HTTP messages, a database protocol) and exchange \emph{data} (requests, responses, queries, rows).
+\end{examplebox}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{server} \textbf{Client-Server Architecture}}
+\end{flushleft}
+\definition{Client-Server Architecture} is one of the most common architectural styles in distributed systems. Its fundamental characteristic is the \textbf{asymmetry of component roles}:
+\begin{itemize}
+    \item A \textbf{server} provides services through a well-defined interface (API).
+    \item A \textbf{client} requests and consumes these services.
+\end{itemize}
+The typical interaction works as follows:
+\begin{enumerate}
+    \item The server exposes operations through an API and \emph{passively} waits for requests.
+    \item The client sends a request to invoke an operation.
+    \item The server receives the request, executes the corresponding logic, and possibly accesses other resources.
+    \item The server sends a response back to the client.
+\end{enumerate}
+
+\begin{center}
+    \tikzsetnextfilename{client-server-interaction}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            box/.style={draw=#1, thick, rounded corners=3pt, fill=#1!5},
+            title/.style={anchor=north west, font=\normalsize\bfseries},
+            comp/.style={draw=black!70, thick, rounded corners=2pt, fill=blue!8,
+            align=center, font=\small},
+            db/.style={cylinder, shape border rotate=90, aspect=0.25, draw=black!70, thick,
+                fill=blue!8, minimum width=1.5cm, minimum height=1.1cm, align=center,
+            font=\footnotesize},
+            msg/.style={->, very thick, violet!60!black},
+            lbl/.style={font=\footnotesize, align=center, text=violet!60!black},
+            role/.style={font=\footnotesize\itshape, text=black!65, align=center},
+            txt/.style={anchor=north west, font=\footnotesize, text width=#1, align=left,
+            inner sep=1pt, execute at begin node={\hyphenpenalty=10000}},
+        ]
+
+        % 1. The interaction
+        \draw[box=blue!50!black] (0,4.0) rectangle (11.4,8.0);
+        \node[title, text=blue!50!black] at (0.1,7.95) {Client-server interaction};
+        \node[anchor=north east, font=\footnotesize\itshape, text=blue!50!black]
+        at (11.3,7.95) {asymmetric roles};
+
+        \node[comp, minimum width=2.4cm, minimum height=1.5cm] (cl) at (1.5,5.9)
+        {\textbf{Client}\\{\footnotesize (e.g.\ browser)}};
+        \node[role, below=3pt of cl] {active: sends\\requests};
+
+        \node[comp, minimum width=2.6cm, minimum height=1.5cm] (sv) at (7.5,5.9)
+        {\textbf{Server}\\{\footnotesize\textbf{1}\ exposes the API}\\
+        {\footnotesize\textbf{3}\ executes logic}};
+        \node[draw=violet!60!black, thick, fill=violet!15, minimum width=0.45cm,
+        minimum height=1.5cm, inner sep=0pt, anchor=east] (api) at (sv.west)
+        {\rotatebox{90}{\footnotesize\bfseries API}};
+        \node[role, below=3pt of sv] {passive: waits for\\requests};
+
+        \node[db] (db) at (10.4,5.9) {Data /\\resources};
+        \draw[<->, thick, black!70] (sv.east) -- (db.west)
+        node[midway, above, font=\footnotesize] {uses};
+
+        \draw[msg] (cl.east |- 0,6.35) -- (api.west |- 0,6.35)
+        node[midway, above, lbl] {\textbf{2}\ request\\\texttt{GET /products/42}};
+        \draw[msg] (api.west |- 0,5.45) -- (cl.east |- 0,5.45)
+        node[midway, below, lbl] {\textbf{4}\ response\\\texttt{200 OK} + product};
+        \node[role] at (4.22,5.9) {message-based};
+    \end{tikzpicture}
+\end{center}
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is the server described as passive?}} Because, in the basic client-server model, the \hl{server waits for requests instead of spontaneously initiating the interaction with its clients.} This does not mean it performs no background processing or cannot contact other services. It \hl{describes its \textbf{role} in the client-server interaction.} For example, an HTTP server waits for incoming HTTP requests, processes them, and produces responses.
+
+\highspace
+\begin{examplebox}[: Client-Server Interaction]
+    Suppose we open an e-commerce website. Our browser sends:
+\begin{lstlisting}
+GET /products/42 HTTP/1.1
+Host: www.example.com
+\end{lstlisting}
+    The server processes the request and returns an HTTP response containing the requested resource representation. But the browser does not need to know how the server obtains product information. It only needs to understand the exposed communication interface (API). This is an important architectural principle: \hl{service consumers and service provides have a \textbf{clear separation of responsibilities}.}
+\end{examplebox}
+\noindent
+\textcolor{Green3}{\faIcon{check} \textbf{Strengths}} \textbf{and} \textcolor{Red2}{\faIcon{exclamation-triangle} \textbf{Limitations}}. Client-server offers a \textbf{clear separation of roles}, \textbf{centralized management} of services and data, and \textbf{well-defined interfaces}. However, centralization may also introduce:
+\begin{itemize}
+    \item \textbf{Performance bottlenecks}: a server may become overloaded when too many clients issue requests.
+    \item \textbf{Single points of failure}: if a required server fails, its service may become unavailable.
+    \item \textbf{Scalability constraints}: additional users may require more server capacity.
+\end{itemize}
+Fortunately, these limitations can be mitigated through \textbf{replication}, \textbf{load balancing}, \textbf{caching}, and other techniques.
+
+\highspace
+Finally, \emph{client} and \emph{server} are \textbf{roles, not machines}. A single component can act as a server for one client and as a client for another server. This brings us to the concept of \textbf{multi-tier architectures}, which are extensions of the client-server model.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{layer-group} \textbf{Separation of Application Responsibilities}}
+\end{flushleft}
+Before discussing tiers, we need to distinguish rapidly three fundamental \textbf{classes of functionality} within an application:
+\begin{itemize}
+    \item \important{Presentation}: the \emph{user interface} and \emph{interaction logic}, which is responsible for displaying information and capturing user input.
+    \item \important{Business Logic}: the \emph{application services}, which process requests, enforce business rules, and coordinate operations.
+    \item \important{Storage}: the \emph{data services}, which store, retrieve, and manage persistent data.
+\end{itemize}
+\begin{examplebox}[: Application Responsibilities]
+    For example, consider an online banking application.
+    \begin{itemize}
+        \item The user interface displays the account balance and transfer form.
+        \item The applications services check whether a transfer is permitted and process the transaction.
+        \item The data services store account information and transaction history in a database.
+    \end{itemize}
+    These are \textbf{logical responsibilities}, they do not necessarily need to execute on separate machines. \hl{How we distribute these responsibilities determines the \textbf{tiered architecture} of the system.}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{columns} \textbf{Two-Tier Architecture}}
+\end{flushleft}
+A \definition{Two-Tier Architecture} separates an application into \textbf{two communicating execution tiers}. The most traditional arrangement is a client application interacting directly with a database server.
+
+\begin{figure}[H]
+    \centering
+    \tikzsetnextfilename{two-tier-architecture}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            tier/.style={draw=#1, thick, dashed, rounded corners=4pt, fill=#1!4},
+            title/.style={anchor=north west, font=\normalsize\bfseries},
+            sub/.style={anchor=north west, font=\footnotesize\itshape, text=black!65},
+            host/.style={draw=black!70, thick, rounded corners=2pt, fill=white},
+            layer/.style={draw=#1!70!black, fill=#1!15, rounded corners=1pt,
+            minimum width=2.5cm, minimum height=0.45cm, font=\footnotesize, inner sep=1pt},
+            conn/.style={<->, very thick, violet!60!black},
+        ]
+
+        % Tier 1: fat clients
+        \draw[tier=blue!50!black] (0,0.2) rectangle (5.0,6.3);
+        \node[title, text=blue!50!black] at (0.1,6.25) {Tier 1: clients};
+        \node[sub] at (0.1,5.82) {fat clients: UI + business logic};
+        \foreach \y/\n in {4.7/1, 3.05/2, 1.4/3} {
+            \draw[host] (0.3,\y-0.62) rectangle (4.7,\y+0.62);
+            \node[font=\footnotesize, align=center] at (0.98,\y) {Desktop\\app \n};
+            \node[layer=orange] at (3.37,\y+0.25) {User interface};
+            \node[layer=green]  at (3.37,\y-0.25) {Business logic};
+        }
+
+        % Tier 2: database server
+        \draw[tier=violet!60!black] (6.6,0.2) rectangle (11.4,6.3);
+        \node[title, text=violet!60!black] at (6.7,6.25) {Tier 2: server};
+        \node[sub] at (6.7,5.82) {manages the data};
+        \draw[host] (7.0,1.25) rectangle (11.0,4.85);
+        \node[font=\small\bfseries] at (9.0,4.55) {Database server};
+        \node[layer=blue, minimum width=3.4cm] at (9.0,3.95) {Data services};
+        \node[cylinder, shape border rotate=90, aspect=0.25, draw=black!70, thick,
+            fill=blue!8, minimum width=2.4cm, minimum height=1.55cm, align=center,
+        font=\footnotesize] at (9.0,2.4) {PostgreSQL\\database};
+        \node[sub, anchor=north] at (9.0,1.1) {single shared data store};
+
+        % Direct client-to-database communication
+        \draw[conn] (4.7,4.7)  -- (7.0,4.0);
+        \draw[conn] (4.7,3.05) -- (7.0,3.05) node[midway, above, font=\footnotesize,
+        text=violet!60!black] {direct SQL};
+        \draw[conn] (4.7,1.4)  -- (7.0,2.1);
+    \end{tikzpicture}
+\end{figure}
+
+\noindent
+The client handles the UI and much of the business logic, while the server manages the data. The client communicate directly with the database server. Such clients are called \definition{Fat Clients} or \definition{Thick Clients}, because they \textbf{contain significant application logic}.
+
+\begin{examplebox}[: Two-Tier Architecture]
+    Imagine a desktop inventory application installed on every employee's computer.
+    The application displays products, calculates discounts, and validates orders locally, while connecting directly to a central PostgreSQL database.
+    This is a typical two-tier architecture.
+\end{examplebox}
+
+\noindent
+\textcolor{DarkOrange3}{\faIcon{exclamation-triangle} \textbf{Note:}} two-tier does not necessarily imply that business logic resides \textbf{entirely} on the client. The \hl{defining characteristic is the existence of \textbf{two execution tiers},} not one fixed allocation of responsibilities.
+
+\highspace
+\textcolor{Red2}{\faIcon{times-circle} \textbf{Limitations of Two-Tier Architectures.}} Two-tier architectures can be simple and effective, but traditional fat-client systems introduce challenges:
+\begin{itemize}
+    \item Updating business rules may require \textbf{updating each client installation}.
+    \item Clients may need direct access to the database, increasing \textbf{security and management complexity}.
+    \item A large number of clients directly accessing one database may cause \textbf{scalability problems}.
+\end{itemize}
+One solution is to introduce an intermediate tier that centralizes the application logic, leading to a three-tier architecture.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{stream} \textbf{Three-Tier Architecture}}
+\end{flushleft}
+A \definition{Three-Tier Architecture} separates \textbf{presentation}, \textbf{application logic}, and \textbf{data management} into three execution tiers.
+
+\begin{figure}[H]
+    \centering
+    \tikzsetnextfilename{three-tier-architecture}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            tier/.style={draw=#1, thick, dashed, rounded corners=4pt, fill=#1!4},
+            title/.style={anchor=north west, font=\normalsize\bfseries},
+            sub/.style={anchor=north west, font=\footnotesize\itshape, text=black!65},
+            host/.style={draw=black!70, thick, rounded corners=2pt, fill=white},
+            hosttitle/.style={font=\small\bfseries, align=center},
+            layer/.style={draw=#1!70!black, fill=#1!15, rounded corners=1pt,
+            minimum width=2.3cm, minimum height=0.45cm, font=\footnotesize, inner sep=1pt},
+            conn/.style={<->, very thick, violet!60!black},
+            lbl/.style={midway, above=1pt, font=\footnotesize, text=violet!60!black, fill=white, inner sep=1pt, rounded corners=1pt},
+        ]
+
+        % Tier 1: thin clients
+        \draw[tier=blue!50!black] (0,0.2) rectangle (3.13,6.3);
+        \node[title, text=blue!50!black] at (0.1,6.25) {Tier 1: clients};
+        \node[sub] at (0.1,5.82) {thin clients: UI only};
+        \foreach \y/\n in {4.7/1, 3.05/2, 1.4/3} {
+            \draw[host] (0.25,\y-0.55) rectangle (2.88,\y+0.55);
+            \node[font=\footnotesize] at (1.565,\y+0.25) {Client \n};
+            \node[layer=orange] at (1.565,\y-0.2) {User interface};
+        }
+
+        % Tier 2: application server
+        \draw[tier=green!40!black] (4.13,0.2) rectangle (7.27,6.3);
+        \node[title, text=green!40!black] at (4.23,6.25) {Tier 2: logic};
+        \node[sub] at (4.23,5.82) {processes requests};
+        \draw[host] (4.4,1.25) rectangle (7.0,4.85);
+        \node[hosttitle] at (5.7,4.3) {Application\\server};
+        \node[layer=green, minimum height=1.6cm, align=center] at (5.7,2.55)
+        {\textbf{Business logic}\\[2pt]rules, validation,\\coordination};
+        \node[sub, anchor=north] at (5.7,1.1) {shared by all clients};
+
+        % Tier 3: database server
+        \draw[tier=violet!60!black] (8.27,0.2) rectangle (11.4,6.3);
+        \node[title, text=violet!60!black] at (8.37,6.25) {Tier 3: data};
+        \node[sub] at (8.37,5.82) {manages the data};
+        \draw[host] (8.55,1.25) rectangle (11.15,4.85);
+        \node[hosttitle] at (9.85,4.3) {Database\\server};
+        \node[layer=blue] at (9.85,3.4) {Data services};
+        \node[cylinder, shape border rotate=90, aspect=0.25, draw=black!70, thick,
+            fill=blue!8, minimum width=2.0cm, minimum height=1.3cm, align=center,
+        font=\footnotesize] at (9.85,2.15) {PostgreSQL\\database};
+        \node[sub, anchor=north, align=center] at (9.85,1.15) {accessed only\\by Tier 2};
+
+        % Communication
+        \draw[conn] (2.88,4.7)  -- (4.4,4.0);
+        \draw[conn] (2.88,3.05) -- (4.4,3.05) node[lbl] {requests};
+        \draw[conn] (2.88,1.4)  -- (4.4,2.1);
+        \draw[conn] (7.0,3.05) -- (8.55,3.05) node[lbl] {SQL};
+    \end{tikzpicture}
+\end{figure}
+
+\highspace
+\begin{examplebox}[: Three-Tier Architecture]
+    Consider the same inventory application of the previous example. Instead of performing all business logic on the user's computer, we introduce an application server that \textbf{centralizes the business logic}. Then, the interaction becomes:
+    \begin{enumerate}
+        \item The client requests information through the user interface.
+        \item The application server receives the request and executes business logic.
+        \item If necessary, it queries the database server.
+        \item The database returns the requested data.
+        \item The application server processes the result and returns a response to the client.
+    \end{enumerate}
+\end{examplebox}
+
+\highspace
+Notice an important detail: \textbf{the \emph{application server} has two different roles}.
+\begin{enumerate}
+    \item From the \textbf{browser's perspective}, it is a \textbf{server} that provides application services.
+    \item From the \textbf{database's perspective}, it is a \textbf{client} that requests data.
+\end{enumerate}
+Therefore, client-server roles are relative to a particular interaction. A component can be a client in one interaction and a server in another.
+
+\newpage
+
+\noindent
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why introduce an additional tier?}} Now a natural question arises: \emph{why introduce additional components and communication overhead?} There are four primary advantages:
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Centralized business logic.} Rules can be updated on the application server without redeploying the entire client application.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Independent scaling.} If application processing becomes the bottleneck, additional application-server instances can be deployed without necessarily adding database instances.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Security and encapsulation.} Clients no longer need direct access to the database. Data access can be controlled through the application server.
+    \item[\textcolor{Green3}{\faIcon{check}}] \textbf{Maintainability.} Presentation, application logic, and data management can evolve more independently when their interfaces are properly designed.
+\end{itemize}
+\textcolor{Red2}{\faIcon{times-circle}} However, there is a \textbf{trade-off}: introducing more tiers also introduces \textbf{additional network communication}, \textbf{deployment complexity}, and \textbf{potential failures}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{cubes} \textbf{From Three-Tier to N-Tier Architecture}}
+\end{flushleft}
+A \textbf{three-tier} architecture may \textbf{still be insufficient} for large or complex distributed applications. For example, one application server could become responsible for authentication, payments, inventory, recommendations, and reporting. We might want to decompose this infrastructure into additional tiers. An \definition{N-Tier Architecture} extends the idea of distributing application responsibilities across multiple execution tiers.
+
+\begin{figure}[H]
+    \centering
+    \tikzsetnextfilename{n-tier-architecture}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            tier/.style={draw=#1, thick, dashed, rounded corners=4pt, fill=#1!4},
+            title/.style={anchor=north west, font=\normalsize\bfseries},
+            sub/.style={anchor=north west, font=\footnotesize\itshape, text=black!65},
+            host/.style={draw=black!70, thick, rounded corners=2pt, fill=white},
+            layer/.style={draw=#1!70!black, fill=#1!15, rounded corners=1pt,
+            minimum width=1.6cm, minimum height=0.42cm, font=\footnotesize, inner sep=1pt},
+            conn/.style={<->, very thick, violet!60!black},
+        ]
+
+        % Tier 1: presentation
+        \draw[tier=blue!50!black] (0,1.2) rectangle (2.15,6.3);
+        \node[title, text=blue!50!black] at (0.1,6.25) {Tier 1};
+        \node[sub] at (0.1,5.82) {presentation};
+        \foreach \y/\c in {4.3/Browser, 2.4/Mobile app} {
+            \draw[host] (0.15,\y-0.55) rectangle (2.0,\y+0.55);
+            \node[font=\footnotesize] at (1.075,\y+0.25) {\c};
+            \node[layer=orange, minimum width=1.35cm] at (1.075,\y-0.2) {UI};
+        }
+
+        % Tier 2: web / API
+        \draw[tier=orange!70!black] (2.4,1.2) rectangle (4.8,6.3);
+        \node[title, text=orange!70!black] at (2.5,6.25) {Tier 2};
+        \node[sub] at (2.5,5.82) {web / API};
+        \draw[host] (2.5,1.95) rectangle (4.7,4.75);
+        \node[font=\footnotesize\bfseries] at (3.6,4.4) {Web / API};
+        \foreach \y/\s in {3.75/routing, 3.2/API handling, 2.65/auth checks} {
+            \node[layer=yellow, minimum width=1.8cm] at (3.6,\y) {\s};
+        }
+
+        % Tier 3: application (replicated behind a load balancer)
+        \draw[tier=green!40!black] (5.05,1.2) rectangle (9.0,6.3);
+        \node[title, text=green!40!black] at (5.15,6.25) {Tier 3};
+        \node[sub, align=left] at (5.15,5.82) {application: orders,\\payments, inventory};
+        \node[draw=green!40!black, thick, fill=green!25, rounded corners=2pt,
+        minimum width=0.55cm, minimum height=3.3cm, inner sep=0pt] (lb) at (5.5,3.18)
+        {\rotatebox{90}{\footnotesize\bfseries Load balancer}};
+        \foreach \y/\i in {4.43/1, 3.18/2, 1.93/3} {
+            \draw[host] (6.25,\y-0.48) rectangle (8.8,\y+0.48);
+            \node[font=\footnotesize] at (7.525,\y+0.2) {Backend \#\i};
+            \node[layer=green, minimum width=2.2cm] at (7.525,\y-0.2) {Business logic};
+            \draw[->, thick, green!40!black] (lb.east |- 0,\y) -- (6.25,\y);
+        }
+
+        % Tier 4: data
+        \draw[tier=violet!60!black] (9.3,1.2) rectangle (11.4,6.3);
+        \node[title, text=violet!60!black] at (9.4,6.25) {Tier 4};
+        \node[sub] at (9.4,5.82) {data};
+        \draw[host] (9.45,1.85) rectangle (11.25,4.85);
+        \node[font=\footnotesize\bfseries, align=center] at (10.35,4.45) {Database\\[-2pt]server};
+        \node[layer=blue, minimum width=1.45cm] at (10.35,3.65) {Storage};
+        \node[cylinder, shape border rotate=90, aspect=0.25, draw=black!70, thick,
+            fill=blue!8, minimum width=1.45cm, minimum height=1.05cm,
+        font=\footnotesize] at (10.35,2.6) {Database};
+
+        % Communication between adjacent tiers
+        \draw[conn] (2.0,4.3) -- (2.5,3.75);
+        \draw[conn] (2.0,2.4) -- (2.5,2.95);
+        \draw[conn] (4.7,3.18) -- (lb.west);
+        \draw[conn] (8.8,4.43) -- (9.45,3.9);
+        \draw[conn] (8.8,3.18) -- (9.45,3.18);
+        \draw[conn] (8.8,1.93) -- (9.45,2.6);
+
+        % Tiers are not servers
+        \node[font=\footnotesize, align=center] at (5.7,0.55)
+        {\textbf{4 tiers $\neq$ 4 servers}: a tier is a logical layer of responsibility;\\
+        Tier 3 alone runs on several replicated backend instances};
+        \draw[->, thick, black!50] (0.3,6.75) -- (11.1,6.75)
+        node[midway, fill=white, font=\footnotesize\itshape, text=black!60] {requests flow from left to right};
+    \end{tikzpicture}
+    \caption{N-tier architecture with four tiers: presentation (web and mobile
+        clients), a web/API tier (routing, API handling, auth checks), an application
+        tier (orders, payments, inventory) replicated behind a load balancer, and the
+    data tier. The number of tiers is not the number of servers.}
+    \label{fig:n-tier-architecture}
+\end{figure}
+
+\newpage
+
+\begin{examplebox}[: N-Tier Architecture]
+    Consider a simplified online store:
+    \begin{center}
+        \tikzsetnextfilename{online-store-four-tiers}
+        \tikzwidth{\textwidth}
+        \begin{tikzpicture}[
+                font=\normalsize,
+                >={Stealth[length=2mm]},
+                tab/.style={draw=#1, thick, fill=#1!18, rounded corners=3pt, align=center,
+                font=\footnotesize\bfseries, text=#1, minimum width=2.15cm, inner sep=2pt},
+                band/.style={draw=#1, thick, fill=#1!4, rounded corners=3pt},
+                chip/.style={draw=orange!70!black, fill=yellow!20, rounded corners=1pt,
+                    minimum width=2.2cm, minimum height=0.45cm, font=\footnotesize, inner sep=1pt,
+                text height=1.6ex, text depth=0.45ex},
+                svc/.style={draw=green!40!black, thick, fill=white, rounded corners=2pt,
+                minimum width=2.1cm, minimum height=0.9cm, align=center, font=\small},
+                db/.style={cylinder, shape border rotate=90, aspect=0.25, draw=violet!60!black,
+                    thick, fill=violet!10, minimum width=1.85cm, minimum height=1.2cm,
+                align=center, font=\footnotesize},
+                call/.style={->, thick, black!55},
+                req/.style={->, very thick, red!70!black},
+                lbl/.style={font=\footnotesize, text=black!70},
+            ]
+
+            % ---------------- bands and tier tabs
+            \foreach \y/\h/\c/\t in {6.75/1.4/blue!50!black/{Tier 1\\Presentation},
+                5.0/1.45/orange!70!black/{Tier 2\\Web / API},
+                3.0/1.7/green!40!black/{Tier 3\\Application\\[1pt]{\mdseries\itshape replicated}},
+            1.1/1.6/violet!60!black/{Tier 4\\Data}} {
+                \draw[band=\c] (2.3,\y) rectangle (11.4,\y+\h);
+                \node[tab=\c, minimum height=\h cm, anchor=south west] at (0,\y) {\t};
+            }
+
+            % ---------------- Tier 1: clients
+            % laptop
+            \draw[blue!50!black, thick, fill=white, rounded corners=1pt] (3.4,7.45) rectangle (4.3,8.0);
+            \fill[blue!12] (3.47,7.52) rectangle (4.23,7.93);
+            \draw[blue!50!black, thick, fill=blue!25, rounded corners=1pt]
+            (3.2,7.3) -- (4.5,7.3) -- (4.35,7.45) -- (3.35,7.45) -- cycle;
+            \node[lbl] at (3.85,7.0) {Web browser};
+            % phone
+            \draw[blue!50!black, thick, fill=white, rounded corners=2pt] (9.65,7.28) rectangle (10.05,8.02);
+            \fill[blue!12] (9.7,7.4) rectangle (10.0,7.92);
+            \fill[blue!50!black] (9.85,7.34) circle (0.025);
+            \node[lbl] at (9.85,7.0) {Mobile app};
+
+            % ---------------- Tier 2: API gateway
+            \draw[orange!70!black, thick, fill=white, rounded corners=2pt] (2.6,5.15) rectangle (11.1,6.3);
+            \node[font=\small\bfseries, text=orange!70!black] at (6.85,6.02) {API gateway};
+            \node[chip] at (3.85,5.5) {routing};
+            \node[chip] at (6.85,5.5) {API handling};
+            \node[chip] at (9.85,5.5) {auth check};
+
+            % ---------------- Tier 3: services (replicated) and Tier 4: databases
+            \foreach \x/\s in {3.85/Orders, 6.85/Payments, 9.85/Inventory} {
+                \foreach \d in {0.16,0.08} {
+                    \draw[green!40!black, fill=green!10, rounded corners=2pt]
+                    (\x-1.05+\d,3.5+\d) rectangle (\x+1.05+\d,4.4+\d);
+                }
+                \node[svc] (\s) at (\x,3.95) {\textbf{\s}\\[-2pt]{\footnotesize service}};
+                \node[db] (\s db) at (\x,1.9) {\s\\DB};
+            }
+
+            % ---------------- calls between tiers
+            \draw[call] (9.85,6.8) -- (9.85,6.3);
+            \draw[call] (6.85,5.15) -- ([yshift=1.6mm]Payments.north);
+            \draw[call] (9.85,5.15) -- ([yshift=1.6mm]Inventory.north);
+            \draw[call] (Payments.south) -- ([yshift=1pt]Paymentsdb.north);
+            \draw[call] (Inventory.south) -- ([yshift=1pt]Inventorydb.north);
+            \draw[call, <->] ([xshift=1.6mm]Orders.east) -- (Payments.west);
+            \draw[call, <->] ([xshift=1.6mm]Payments.east) -- (Inventory.west);
+
+            % ---------------- one request, traced through the tiers
+            \draw[req] (3.85,6.8) -- (3.85,6.3);
+            \draw[req] (3.85,5.15) -- ([yshift=1.6mm]Orders.north);
+            \draw[req] (Orders.south) -- ([yshift=1pt]Ordersdb.north);
+
+            % ---------------- legend
+            \draw[req] (0.1,0.55) -- (0.8,0.55);
+            \node[anchor=west, font=\footnotesize, align=left] at (0.9,0.55)
+            {one request (\texttt{POST /orders}) crosses all four tiers: every tier
+            boundary\\is a remote call, which adds latency and failure points};
+        \end{tikzpicture}
+    \end{center}
+
+    This example contains four execution tiers.
+    \begin{itemize}
+        \item The \textbf{presentation tier} contains the user interface and interaction logic, which is responsible for displaying information and capturing user input.
+        \item The \textbf{web/API tier} handles incoming requests and may perform routing, authentication checks, or other cross-cutting operations.
+        \item The \textbf{application tier} implements domain-specific behavior, such as processing orders, payments, and inventory operations.
+        \item The \textbf{data tier} manages persistent data, such as databases and storage systems.
+    \end{itemize}
+    The main idea is to \hl{decompose the system into smaller responsibilities that can be deployed, managed, and scaled more \textbf{independently}.} This can improve modularity, maintainability, scalability, and operational flexibility. However, adding tiers is not automatically beneficial. More tiers also mean more remote calls, latency, failure points, and coordination requirements.
+\end{examplebox}
+
+\highspace
+\textcolor{DarkOrange3}{\faIcon{exclamation-triangle} \textbf{Tiers vs. Components.}} A \textbf{tier} is \textbf{not} necessarily a \textbf{single server or machine}. For example, the \emph{application tier} might contain five replicated backend instances behind a load balancer. So:
+\begin{equation*}
+    \text{Number of Tiers} \neq \text{Number of Servers}
+\end{equation*}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{Comparing the Architectures}}
+\end{flushleft}
+\begin{table}[H]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabularx}{\textwidth}{@{}l
+            >{\raggedright\arraybackslash}X
+            >{\raggedright\arraybackslash}X
+        >{\raggedright\arraybackslash}X@{}}
+        \toprule
+        \textbf{Architecture} & \textbf{Typical organization} & \textbf{Main advantage} & \textbf{Main limitation} \\
+        \midrule
+        Client-server & Consumers request services from providers & Simple, well-defined roles & Potential server bottlenecks \\[2.8em]
+        Two-tier & Client + backend/data server & Simpler deployment structure & Tight coupling and scalability issues in traditional designs \\[2.8em]
+        Three-tier & Presentation + application + data & Separation of concerns and independent scaling & Additional communication and deployment complexity \\[3.2em]
+        N-tier & Multiple execution tiers & Greater decomposition and flexibility & More complex communication, management, and failure handling \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Comparison of client-server and multi-tier architectures.}
+    \label{tab:architectures-comparison}
+\end{table}
+
+\noindent
+Client-server and multi-tier are \hl{\textbf{not} competing architectural styles:}
+\begin{itemize}
+    \item \textbf{Client-server} defines the \textbf{roles} components play in an \textbf{interaction}.
+    \item \textbf{Multi-tier} describes \textbf{how application} functionality \textbf{is distributed}\break across execution tiers.
+\end{itemize}
+A three-tier or N-tier architecture can therefore be constructed from several interconnected client-server relationships.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Red2}{\faIcon{network-wired} \textbf{Distributed Systems Implications}}
+\end{flushleft}
+The architecture of a distributed system has important implications beyond software organization. As soon as different tiers run on different machines, interactions across tiers become distributed interactions. Consider a client requesting a product price from an application server, which queries a database. A lot of complications arise:
+\begin{itemize}
+    \item \textbf{Latency}: each network request adds communication overhead.
+    \item \textbf{Partial failures}: the application server may be operational while the database is unreachable.
+    \item \textbf{Concurrency}: multiple application instances may attempt to update the same records.
+    \item \textbf{Consistency}: distributed application components must coordinate how shared state is read and modified.
+    \item \textbf{Scalability}: increasing the number of application instances does not automatically eliminate a database bottleneck.
+\end{itemize}
+Choosing an architecture therefore requires balancing modularity, performance, reliability, scalability, and development complexity.
+
+\highspace
+\begin{takeawaysbox}
+    The five key takeaways from this section are:
+    \begin{enumerate}
+        \item \textbf{Run-time architecture} defines the components, connectors, and exchanged data of a distributed system.
+        \item \textbf{Client-server} assigns asymmetric roles: clients request services, servers provide them through defined interfaces.
+        \item Applications commonly separate three responsibilities: presentation, business logic, and data management.
+        \item \textbf{Two-tier, three-tier, and N-tier architectures} describe how those responsibilities are distributed across execution tiers.
+        \item More tiers can improve separation of concerns and scalability, but increase communication and operational complexity.
+    \end{enumerate}
+    The most important conceptual relationship is that \textbf{client-server} defines the \textbf{interaction roles} of components, while \textbf{multi-tier} defines functional deployment organization.
+\end{takeawaysbox}

@@ -1,0 +1,782 @@
+\section{Modeling}\label{sec:modeling}
+
+After discussing \emph{what a distributed system is}, we now move on to \textbf{how we can structure, describe, and reason about one} (i.e., how we can model it). We divide this section into four major parts:
+\begin{itemize}
+    \item \textbf{Software architecture}: \emph{what infrastructure supports applications?}
+    \item \textbf{Run-time architecture}: \emph{how are components organized and connected?}
+    \item \textbf{Interaction model}: \emph{what assumptions can we make about time and communication?}
+    \item \textbf{Failure model}: \emph{what can go wrong, and what can we guarantee despite failures?}
+\end{itemize}
+
+\newpage
+
+\subsection{Software Architecture and Middleware}\label{sec:modeling--software-architecture-and-middleware}
+
+Before examining specific distributed architectures such as client-server, peer-to-peer, or REST, we need to understand a more fundamental question: \emph{\textbf{how can applications running on different computers communicate and cooperate without having to manage every detail of the underlying platforms?}}
+
+\highspace
+Consider two machines:
+\begin{itemize}
+    \item Machine A runs Linux and an application written in Python.
+    \item Machine B runs Windows and an application written in Java.
+\end{itemize}
+They have different operating systems, programming environments, and potentially different hardware architectures.
+Nevertheless, we want their applications to \hl{communicate and cooperate as part of a single distributed system.}
+There are \textbf{two main approaches} to organizing the software infrastructure supporting this interaction: \textbf{Network Operating Systems (NOS)} and \textbf{Middleware}. Let's examine them in more detail.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{network-wired} \textbf{Network OS-Based Architecture}}
+\end{flushleft}
+A \definition{Network Operating System (NOS)} is an \textbf{operating system} that \hl{provides facilities for computers to communicate over a network.} In a network OS-based architecture, applications rely directly on networking services provided by their respective operating systems.
+
+\highspace
+For example, a programmer may use TCP sockets to exchange messages between two machines. The operating system provides basic facilities such as:
+\begin{itemize}
+    \item Establishing network connections.
+    \item Sending and receiving bytes.
+    \item Managing transport protocols such as TCP and UDP.
+\end{itemize}
+\textcolor{Red2}{\faIcon{exclamation-triangle}} However, these facilities do \hl{not automatically define how the applications should interpret the exchanged data or coordinate their behavior.}
+
+\highspace
+Let's imagine another scenario. \emph{Machine A} wants to invoke an operation on \emph{Machine B}:
+\begin{lstlisting}[language=python]
+result = calculate_price(product_id)
+\end{lstlisting}
+If \texttt{calculate\_price()} is implemented on \emph{Machine B}, the programmer cannot simply invoke it as an ordinary local function. Instead, the application must implement the required communication logic:
+\begin{enumerate}
+    \item Establish a connection with \emph{Machine B}.
+    \item Serialize the request into a transferable representation.
+    \item Send the request across the network.
+    \item Wait for and receive a response.
+    \item Deserialize the response.
+    \item Handle network errors, timeouts, and other failures.
+\end{enumerate}
+Moreover, the implementations may need adaptations for different programming environments and platform-specific interfaces.
+
+\highspace
+Notice that \hl{some of these problems are common to almost every distributed application.} \emph{\textbf{Why should every application developer have to implement them again?}} This motivates the second approach: \textbf{middleware-based architecture}.
+
+\highspace
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{network-os-architecture}
+    \begin{tikzpicture}[
+            font=\small,
+            >={Stealth[length=2mm]},
+            layer/.style={draw=black!70, thick, rounded corners=2pt,
+            minimum width=4.1cm, align=center, inner sep=3pt},
+            app/.style={layer, fill=blue!8, minimum height=3.05cm},
+            api/.style={layer, fill=orange!15, minimum height=0.55cm},
+            nos/.style={layer, fill=green!10, minimum height=1.45cm},
+            hw/.style={layer, fill=gray!15, minimum height=0.55cm},
+            proto/.style={draw=green!40!black, fill=white, rounded corners=1pt,
+            minimum width=1.2cm, minimum height=0.45cm, font=\footnotesize},
+            steps/.style={draw=red!60!black, dashed, rounded corners=2pt, fill=white,
+            text width=3.6cm, align=left, font=\scriptsize, inner sep=3pt},
+            machine/.style={draw=black!40, dashed, rounded corners=4pt, inner sep=4pt},
+            pro/.style={text width=5.25cm, align=left, inner sep=4pt,
+            font=\scriptsize, execute at begin node={\hyphenpenalty=10000}},
+            con/.style={pro},
+            idea/.style={draw=blue!50!black, very thick, fill=blue!6, rounded corners=3pt,
+                text width=10.4cm, align=center, inner sep=4pt,
+            font=\footnotesize, execute at begin node={\hyphenpenalty=10000}},
+        ]
+
+        % Machine A: Linux + Python
+        \node[hw]  (hwA)  at (2.15,0.30) {Hardware + NIC (e.g.\ x86-64)};
+        \node[nos, above=0.12cm of hwA]  (osA) {};
+        \node[anchor=north, font=\small\bfseries] at (osA.north) {Network OS: Linux};
+        \node[proto] (tcpA) at ($(osA.center)+(-0.7,-0.15)$) {TCP};
+        \node[proto] (udpA) at ($(osA.center)+( 0.7,-0.15)$) {UDP};
+        \node[font=\scriptsize, anchor=south] at (osA.south) {IP, drivers};
+        \node[api, above=0.12cm of osA] (apiA) {Socket API (POSIX sockets)};
+        \node[app, above=0.12cm of apiA] (appA) {};
+        \node[anchor=north, font=\small\bfseries] at (appA.north) {Python application};
+        \node[anchor=north, font=\scriptsize\ttfamily] at ($(appA.north)+(0,-0.42)$)
+        {r = calculate\_price(id)};
+        \node[steps, anchor=south] (stA) at ($(appA.south)+(0,0.08)$) {%
+            \textbf{\color{red!60!black}Developer must write:}\\[1pt]
+            1.\ connect to B\\
+            2.\ serialize request\\
+            3.\ send bytes\\
+            4.\ wait \& receive reply\\
+            5.\ deserialize result\\
+        6.\ handle errors, timeouts};
+        \node[machine, fit=(hwA)(appA), label={[font=\bfseries]above:Machine A}] (mA) {};
+
+        % Machine B: Windows + Java
+        \node[hw]  (hwB)  at (9.05,0.30) {Hardware + NIC (e.g.\ ARM64)};
+        \node[nos, above=0.12cm of hwB]  (osB) {};
+        \node[anchor=north, font=\small\bfseries] at (osB.north) {Network OS: Windows};
+        \node[proto] (tcpB) at ($(osB.center)+(-0.7,-0.15)$) {TCP};
+        \node[proto] (udpB) at ($(osB.center)+( 0.7,-0.15)$) {UDP};
+        \node[font=\scriptsize, anchor=south] at (osB.south) {IP, drivers};
+        \node[api, above=0.12cm of osB] (apiB) {Socket API (Winsock)};
+        \node[app, above=0.12cm of apiB] (appB) {};
+        \node[anchor=north, font=\small\bfseries] at (appB.north) {Java application};
+        \node[anchor=north, font=\scriptsize\ttfamily] at ($(appB.north)+(0,-0.42)$)
+        {double calculatePrice(int)};
+        \node[steps, anchor=south] (stB) at ($(appB.south)+(0,0.08)$) {%
+            \textbf{\color{red!60!black}Developer must write:}\\[1pt]
+            1.\ accept connection\\
+            2.\ receive bytes\\
+            3.\ deserialize request\\
+            4.\ call calculatePrice\\
+            5.\ serialize \& send result\\
+        6.\ handle errors, timeouts};
+        \node[machine, fit=(hwB)(appB), label={[font=\bfseries]above:Machine B}] (mB) {};
+
+        % Network between the two machines
+        \node[cloud, cloud puffs=10, aspect=1.8, draw=black!60, fill=cyan!8,
+        minimum width=1.7cm, minimum height=1.1cm, font=\footnotesize]
+        (net) at ($(osA.east)!0.5!(osB.west)$) {Network};
+        \draw[<->, very thick, black!70] (osA.east) -- (net.west);
+        \draw[<->, very thick, black!70] (net.east) -- (osB.west);
+        \node[font=\scriptsize, align=center, below=0.05cm of net]
+        {raw bytes\\(stream or\\datagrams)};
+
+        % What the programmer would like vs. what actually happens
+        \draw[->, thick, dashed, red!60!black]
+        ($(appA.east)+(0,0.9)$) -- ($(appB.west)+(0,0.9)$)
+        node[midway, above, font=\scriptsize, align=center]
+        {remote call?\\not a local\\function call}
+        node[midway, font=\Large, red!70!black] {$\times$};
+
+        % The problem: the same logic is re-implemented on both sides
+        \draw[<->, thick, red!60!black] ($(stA.east)+(0,-0.1)$) -- ($(stB.west)+(0,-0.1)$)
+        node[midway, below=1pt, font=\scriptsize\bfseries, align=center, text=red!60!black]
+        {same logic,\\written twice,\\in two\\languages};
+
+        % Strengths vs. weaknesses, and the way out
+        \node[pro, anchor=north west] (pro) at ($(mA.south west)+(0,-0.3)$) {%
+            \textbf{\color{green!40!black}\checkmark\ Strengths}\par\smallskip
+            \begin{tabular}{@{}l@{\,}p{4.85cm}@{}}
+                $+$ & \raggedright simple: only OS and network, no extra layer \tabularnewline
+                $+$ & \raggedright full control of protocol, data format and performance \tabularnewline
+                $+$ & \raggedright no dependency on extra infrastructure \tabularnewline
+                $+$ & \raggedright low overhead: data goes straight to the OS sockets \tabularnewline
+        \end{tabular}};
+        \node[con, anchor=north east] (con) at ($(mB.south east)+(0,-0.3)$) {%
+            \textbf{\color{red!60!black}$\times$\ Weaknesses}\par\smallskip
+            \begin{tabular}{@{}l@{\,}p{4.85cm}@{}}
+                $-$ & \raggedright every app re-implements connect, serialize, send, receive, errors \tabularnewline
+                $-$ & \raggedright platform differences (POSIX vs.\ Winsock, data formats) left to developers \tabularnewline
+                $-$ & \raggedright low-level and error-prone; coordination built ad hoc \tabularnewline
+        \end{tabular}};
+        \begin{scope}[on background layer]
+            \path let \p1 = (pro.south), \p2 = (con.south) in
+            coordinate (low) at (0, {min(\y1,\y2)});
+            \draw[draw=green!40!black, fill=green!5, rounded corners=2pt]
+            (pro.north west) rectangle (pro.east |- low);
+            \draw[draw=red!60!black, fill=red!4, rounded corners=2pt]
+            (con.north west) rectangle (con.east |- low);
+        \end{scope}
+        \path let \p1 = (pro.south), \p2 = (con.south) in
+        node[idea, anchor=north] (idea) at (5.6, {min(\y1,\y2)-0.5cm}) {%
+            \textbf{Why rewrite it in every application?}
+            Move the common communication code into a reusable layer
+        between applications and OS $\Rightarrow$ \textbf{Middleware}};
+        \draw[->, very thick, red!60!black] (con.south |- low) -- (con.south |- idea.north);
+    \end{tikzpicture}
+    \caption{\textbf{Network OS-based architecture.} Each application relies directly on the
+        networking facilities (TCP/UDP sockets) of its own operating system. The OS
+        only moves bytes: connecting, serializing, sending, receiving, deserializing
+        and handling failures must be implemented by each application, on each
+        platform. This gives full control, but the same generic logic is rewritten
+    again and again, which motivates middleware.}
+    \label{fig:network-os-architecture}
+\end{figure}
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{layer-group} \textbf{Middleware-Based Architecture}}
+\end{flushleft}
+\definition{Middleware} is a \textbf{software layer} positioned logically \hl{between distributed applications and the underlying operating-system/network facilities.} Its purpose is to \hl{provide reusable services and abstractions that simplify the development of distributed applications.}
+
+\highspace
+\textcolor{Green3}{\faIcon[regular]{lightbulb}} The central idea is that applications communicate through a \textbf{common, well-defined API} instead of dealing directly with all the underlying networking details.
+
+\highspace
+For example, consider a middleware supporting Remote Procedure Calls (RPC). An application may invoke:
+\begin{lstlisting}[language=python]
+result = remote_service.calculate_price(product_id)
+\end{lstlisting}
+The middleware can take responsibility for: (1) serializing arguments, (2) transmitting requests, (3) receiving responses, and (4) reconstructing results. The \hl{programmer works with a higher-level abstraction}, like invoking a remote operation rather than manually transmitting bytes over a socket.
+
+\highspace
+The middleware also \textbf{hides many differences between platforms} by providing compatible interfaces and communication protocols.
+Note: the operating systems are still involved. Middleware does not replace their networking facilities, \textbf{it builds higher-level abstractions on top of them}.
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} >{\raggedright\arraybackslash}p{.22\linewidth} >{\raggedright\arraybackslash}p{.34\linewidth} >{\raggedright\arraybackslash}p{.34\linewidth} @{}}
+        \toprule
+        \textbf{Aspect} & \textbf{Network OS-Based} & \textbf{Middleware-Based} \\
+        \midrule
+        Communication abstraction & OS networking facilities & High-level APIs \\[1.8em]
+        Platform differences & Largely handled by application developers & Partly hidden by middleware \\[1.8em]
+        Coordination services & Often developed by applications & Can be provided as reusable services \\[1.8em]
+        Development complexity & More low-level concerns & More infrastructure functionality reused \\[1.8em]
+        Examples & Direct socket programming & RPC frameworks, message brokers \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+Middleware simplifies many aspects of distribution, but it does \hl{not make remote communication identical to local execution.} Network latency, partial failures, and inconsistent system states remain relevant.
+
+\begin{figure}[htbp]
+    \centering
+    \tikzsetnextfilename{middleware-architecture}
+    \begin{tikzpicture}[
+            font=\small,
+            >={Stealth[length=2mm]},
+            layer/.style={draw=black!70, thick, rounded corners=2pt,
+            minimum width=4.1cm, align=center, inner sep=3pt},
+            app/.style={layer, fill=blue!8, minimum height=1.55cm},
+            mwapi/.style={layer, fill=violet!20, minimum height=0.5cm, font=\footnotesize},
+            mw/.style={layer, fill=violet!8, draw=violet!60!black, very thick,
+            minimum height=2.2cm},
+            api/.style={layer, fill=orange!15, minimum height=0.5cm, font=\footnotesize},
+            nos/.style={layer, fill=green!10, minimum height=1.25cm},
+            hw/.style={layer, fill=gray!15, minimum height=0.5cm, font=\footnotesize},
+            proto/.style={draw=green!40!black, fill=white, rounded corners=1pt,
+            minimum width=1.2cm, minimum height=0.4cm, font=\footnotesize},
+            svc/.style={draw=violet!60!black, fill=white, rounded corners=1pt,
+            minimum width=1.85cm, minimum height=0.4cm, font=\scriptsize},
+            machine/.style={draw=black!40, dashed, rounded corners=4pt, inner sep=4pt},
+            pro/.style={text width=5.25cm, align=left, inner sep=4pt,
+            font=\scriptsize, execute at begin node={\hyphenpenalty=10000}},
+            idea/.style={draw=blue!50!black, very thick, fill=blue!6, rounded corners=3pt,
+                text width=10.4cm, align=center, inner sep=4pt,
+            font=\footnotesize, execute at begin node={\hyphenpenalty=10000}},
+        ]
+
+        % Machine A: Linux + Python
+        \node[hw]  (hwA)  at (2.15,0.25) {Hardware + NIC (e.g.\ x86-64)};
+        \node[nos, above=0.12cm of hwA]  (osA) {};
+        \node[anchor=north, font=\small\bfseries] at (osA.north) {Network OS: Linux};
+        \node[proto] (tcpA) at ($(osA.center)+(-0.7,-0.12)$) {TCP};
+        \node[proto] (udpA) at ($(osA.center)+( 0.7,-0.12)$) {UDP};
+        \node[api, above=0.12cm of osA] (apiA) {Socket API (POSIX sockets)};
+        \node[mw, above=0.12cm of apiA] (mwA) {};
+        \node[anchor=north, font=\small, text=violet!60!black] at (mwA.north)
+        {\textbf{Middleware} \footnotesize(e.g.\ gRPC)};
+        \node[svc] at ($(mwA.center)+(-0.97, 0.20)$) {(de)serialize};
+        \node[svc] at ($(mwA.center)+( 0.97, 0.20)$) {send/receive};
+        \node[svc] at ($(mwA.center)+(-0.97,-0.27)$) {failures};
+        \node[svc] at ($(mwA.center)+( 0.97,-0.27)$) {naming};
+        \node[svc] at ($(mwA.center)+(-0.97,-0.74)$) {security};
+        \node[svc] at ($(mwA.center)+( 0.97,-0.74)$) {transactions};
+        \node[mwapi, above=0.12cm of mwA] (mapiA) {Middleware API (common)};
+        \node[app, above=0.12cm of mapiA] (appA) {};
+        \node[anchor=north, font=\small\bfseries] at (appA.north) {Python application};
+        \node[anchor=north, font=\scriptsize\ttfamily, align=center]
+        at ($(appA.north)+(0,-0.42)$)
+        {r = remote\_service.\\\phantom{r = }calculate\_price(id)};
+        \node[anchor=south, font=\scriptsize\itshape] at (appA.south) {business logic only};
+        \node[machine, fit=(hwA)(appA), label={[font=\bfseries]above:Machine A}] (mA) {};
+
+        % Machine B: Windows + Java
+        \node[hw]  (hwB)  at (9.05,0.25) {Hardware + NIC (e.g.\ ARM64)};
+        \node[nos, above=0.12cm of hwB]  (osB) {};
+        \node[anchor=north, font=\small\bfseries] at (osB.north) {Network OS: Windows};
+        \node[proto] (tcpB) at ($(osB.center)+(-0.7,-0.12)$) {TCP};
+        \node[proto] (udpB) at ($(osB.center)+( 0.7,-0.12)$) {UDP};
+        \node[api, above=0.12cm of osB] (apiB) {Socket API (Winsock)};
+        \node[mw, above=0.12cm of apiB] (mwB) {};
+        \node[anchor=north, font=\small, text=violet!60!black] at (mwB.north)
+        {\textbf{Middleware} \footnotesize(e.g.\ gRPC)};
+        \node[svc] at ($(mwB.center)+(-0.97, 0.20)$) {(de)serialize};
+        \node[svc] at ($(mwB.center)+( 0.97, 0.20)$) {send/receive};
+        \node[svc] at ($(mwB.center)+(-0.97,-0.27)$) {failures};
+        \node[svc] at ($(mwB.center)+( 0.97,-0.27)$) {naming};
+        \node[svc] at ($(mwB.center)+(-0.97,-0.74)$) {security};
+        \node[svc] at ($(mwB.center)+( 0.97,-0.74)$) {transactions};
+        \node[mwapi, above=0.12cm of mwB] (mapiB) {Middleware API (common)};
+        \node[app, above=0.12cm of mapiB] (appB) {};
+        \node[anchor=north, font=\small\bfseries] at (appB.north) {Java application};
+        \node[anchor=north, font=\scriptsize\ttfamily] at ($(appB.north)+(0,-0.42)$)
+        {double calculatePrice(int)};
+        \node[anchor=south, font=\scriptsize\itshape] at (appB.south) {business logic only};
+        \node[machine, fit=(hwB)(appB), label={[font=\bfseries]above:Machine B}] (mB) {};
+
+        % 1. Application level: a remote call that looks like a method call
+        \draw[->, thick, dashed, green!40!black] (appA.east) -- (appB.west)
+        node[midway, above, font=\scriptsize, align=center]
+        {remote call\\through the\\middleware}
+        node[midway, below, font=\Large, green!40!black] {\checkmark};
+
+        % 2. Middleware level: the two components speak a compatible protocol
+        \draw[<->, very thick, dashed, violet!60!black] (mwA.east) -- (mwB.west)
+        node[midway, above, font=\scriptsize, align=center, text=violet!60!black]
+        {compatible\\protocol}
+        node[midway, below, font=\scriptsize, align=center, text=violet!60!black]
+        {(e.g.\ HTTP/2\\+ Protobuf)};
+
+        % 3. OS level: bytes still travel through the OS networking facilities
+        \node[cloud, cloud puffs=10, aspect=1.8, draw=black!60, fill=cyan!8,
+        minimum width=1.7cm, minimum height=1.0cm, font=\footnotesize]
+        (net) at ($(osA.east)!0.5!(osB.west)$) {Network};
+        \draw[<->, very thick, black!70] (osA.east) -- (net.west);
+        \draw[<->, very thick, black!70] (net.east) -- (osB.west);
+        \node[font=\scriptsize, align=center, below=0.05cm of net]
+        {OS still moves\\the bytes};
+
+        % Benefits vs. what remains, and the take-away
+        \node[pro, anchor=north west] (pro) at ($(mA.south west)+(0,-0.3)$) {%
+            \textbf{\color{green!40!black}\checkmark\ Benefits}\par\smallskip
+            \begin{tabular}{@{}l@{\,}p{4.85cm}@{}}
+                $+$ & \raggedright communication code written once and reused by every app \tabularnewline
+                $+$ & \raggedright higher-level abstraction: call an operation, not send bytes \tabularnewline
+                $+$ & \raggedright platform differences partly hidden by common API and protocol \tabularnewline
+                $+$ & \raggedright reusable services: naming, security, transactions, messaging \tabularnewline
+        \end{tabular}};
+        \node[pro, anchor=north east] (con) at ($(mB.south east)+(0,-0.3)$) {%
+            \textbf{\color{orange!70!black}!\ Still to consider}\par\smallskip
+            \begin{tabular}{@{}l@{\,}p{4.85cm}@{}}
+                $-$ & \raggedright network latency: a remote call is slower than a local one \tabularnewline
+                $-$ & \raggedright partial failures: the other side may crash or be unreachable \tabularnewline
+                $-$ & \raggedright inconsistent states between the components \tabularnewline
+                $-$ & \raggedright an extra layer to deploy, configure and depend on \tabularnewline
+        \end{tabular}};
+        \begin{scope}[on background layer]
+            \path let \p1 = (pro.south), \p2 = (con.south) in
+            coordinate (low) at (0, {min(\y1,\y2)});
+            \draw[draw=green!40!black, fill=green!5, rounded corners=2pt]
+            (pro.north west) rectangle (pro.east |- low);
+            \draw[draw=orange!70!black, fill=orange!5, rounded corners=2pt]
+            (con.north west) rectangle (con.east |- low);
+        \end{scope}
+        \node[idea, anchor=north] (idea) at ($(5.6,0)+(0,-0.5)+(0,0 |- low)$) {%
+            \textbf{Middleware builds on the OS, it does not replace it.}
+            It simplifies distributed programming, but a remote call is
+        \emph{not} identical to a local one};
+        \draw[->, very thick, orange!70!black] (con.south |- low) -- (con.south |- idea.north);
+    \end{tikzpicture}
+    \caption{\textbf{Middleware-based architecture.} A middleware layer sits between each
+        application and its operating system. The applications use a common,
+        high-level API (e.g.\ a remote procedure call), while the two middleware
+        components take care of serialization, transmission, failures and other
+        reusable services, talking to each other through a compatible protocol.
+    The operating systems still move the bytes over the network.}
+    \label{fig:middleware-architecture}
+\end{figure}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{layer-group} \textbf{Middleware as a Functional Abstraction}}
+\end{flushleft}
+We have described \textbf{where middleware fits} in a distributed system, and now we need to understand \textbf{what services it provides}.
+
+\highspace
+A fundamental property is that middleware typically provides \textbf{business-\break unaware services}. This means that middleware does not need to understand the specific business logic of an application. Consider an e-commerce platform:
+\begin{itemize}
+    \item The application knows what a customer, product, order, or payment represents.
+    \item The middleware does not need to know these concepts.
+\end{itemize}
+Instead, it \hl{provides generic mechanisms for communicating, coordinating, and managing the distributed components} implementing that business logic.
+We can \textbf{classify middleware functionality} into three main categories:
+\begin{enumerate}
+    \item \important{Communication and Coordination Services.} These services determine \hl{how distributed components exchange information and coordinate their activities.} Communication can be:
+        \begin{itemize}
+            \item \textbf{Synchronous}, the \textbf{caller waits} for a response before continuing.
+            \item \textbf{Asynchronous}, the \textbf{sender} can \textbf{continue} without waiting for a response.
+        \end{itemize}
+        Also, communication can be:
+        \begin{itemize}
+            \item \textbf{Point-to-point}, where a message is sent to a \textbf{specific recipient}.
+            \item \textbf{Multicast}, where a message is sent to \textbf{multiple recipients} simultaneously.
+        \end{itemize}
+        In addition to communication, middleware can also provide \textbf{coordination primitives}, such as distributed locks, synchronization mechanisms, or coordination protocols.
+
+        \begin{figure}[H]
+            \centering
+            \tikzsetnextfilename{middleware-communication-coordination}
+            \begin{tikzpicture}[
+                    font=\small,
+                    >={Stealth[length=2mm]},
+                    panel/.style={draw=violet!60!black, thick, rounded corners=3pt, fill=violet!4},
+                    title/.style={anchor=north west, font=\small\bfseries, text=violet!60!black},
+                    comp/.style={draw=black!70, thick, rounded corners=2pt, fill=blue!8,
+                    minimum width=1.5cm, minimum height=0.5cm, font=\footnotesize, align=center},
+                    mwnode/.style={comp, fill=violet!15, draw=violet!60!black},
+                    life/.style={draw=black!40, dashed},
+                    msg/.style={->, thick},
+                    note/.style={font=\scriptsize, align=center},
+                ]
+
+                % Synchronous
+                \draw[panel] (0,0) rectangle (5.55,3.9);
+                \node[title] at (0.1,3.85) {Synchronous {\normalfont\footnotesize(e.g.\ blocking RPC)}};
+                \node[comp] (cal) at (1.2,3.05) {Caller};
+                \node[comp] (cle) at (4.3,3.05) {Callee};
+                \draw[life] (cal.south) -- (1.2,0.2);
+                \draw[life] (cle.south) -- (4.3,0.2);
+                \fill[red!30, draw=red!60!black] (1.12,2.55) rectangle (1.28,0.85);
+                \fill[blue!20, draw=blue!50!black] (4.22,2.25) rectangle (4.38,1.2);
+                \draw[msg] (1.28,2.55) -- (4.22,2.25) node[midway, above, note] {request};
+                \draw[msg] (4.22,1.2) -- (1.28,0.9) node[midway, below, note] {response};
+                \node[note, anchor=west, text=red!60!black] at (1.35,1.75) {caller is blocked:\\it waits for the reply};
+
+                % Asynchronous
+                \begin{scope}[xshift=5.85cm]
+                    \draw[panel] (0,0) rectangle (5.55,3.9);
+                    \node[title] at (0.1,3.85) {Asynchronous {\normalfont\footnotesize(e.g.\ message queue)}};
+                    \node[comp] (snd) at (1.0,3.05) {Sender};
+                    \node[comp] (rcv) at (4.5,3.05) {Receiver};
+                    \draw[life] (snd.south) -- (1.0,0.2);
+                    \draw[life] (rcv.south) -- (4.5,0.2);
+                    \foreach \i in {0,1,2}
+                    \draw[draw=violet!60!black, fill=violet!15] (2.4+0.25*\i,2.3) rectangle ++(0.22,0.35);
+                    \node[note, text=violet!60!black, above] at (2.735,2.65) {queue};
+                    \fill[green!30, draw=green!40!black] (0.92,2.5) rectangle (1.08,0.4);
+                    \fill[blue!20, draw=blue!50!black] (4.42,1.6) rectangle (4.58,0.75);
+                    \draw[msg] (1.08,2.5) -- (2.38,2.45) node[midway, below, note] {send};
+                    \draw[msg, dashed] (3.17,2.4) -- (4.42,1.6) node[midway, above right=-2pt, note] {later};
+                    \node[note, anchor=west, text=green!40!black] at (1.15,1.3) {sender continues\\without waiting};
+                \end{scope}
+
+                % Point-to-point
+                \draw[panel] (0,-3.4) rectangle (3.6,-0.3);
+                \node[title] at (0.1,-0.35) {Point-to-point};
+                \node[comp] (ord) at (1.8,-1.3) {Order service};
+                \node[comp] (pay) at (1.8,-2.75) {Payment service};
+                \draw[msg] (ord) -- (pay) node[midway, right, note] {pay(order)};
+                \node[note, text=black!60] at (1.8,-3.18) {one specific recipient};
+
+                % Multicast
+                \draw[panel] (3.9,-3.4) rectangle (7.5,-0.3);
+                \node[title] at (4.0,-0.35) {Multicast};
+                \node[comp] (cfg) at (5.7,-1.3) {Config service};
+                \foreach \x/\n in {4.55/1, 5.7/2, 6.85/3}
+                \node[comp, minimum width=0.9cm] (s\n) at (\x,-2.75) {Svc \n};
+                \foreach \n in {1,2,3}
+                \draw[msg] (cfg.south) -- (s\n.north);
+                \node[note, text=black!60] at (5.7,-3.18) {``config updated'' to many};
+
+                % Coordination: distributed lock
+                \draw[panel] (7.8,-3.4) rectangle (11.4,-0.3);
+                \node[title] at (7.9,-0.35) {Coordination};
+                \node[mwnode] (lock) at (9.6,-1.3) {Lock service};
+                \node[comp, minimum width=1.2cm] (c1) at (8.6,-2.75) {Comp.\ 1};
+                \node[comp, minimum width=1.2cm] (c2) at (10.6,-2.75) {Comp.\ 2};
+                \draw[msg, green!40!black] (c1.north) -- (lock.south west)
+                node[pos=0.35, right, note, text=green!40!black] {granted\,\checkmark};
+                \draw[msg, red!60!black, dashed] (c2.north) -- (lock.south east)
+                node[pos=0.7, left, note, text=red!60!black] {waits};
+                \node[note, text=black!60] at (9.6,-3.18) {one holder at a time};
+            \end{tikzpicture}
+            % \caption{Communication and coordination services offered by middleware.
+            %     Top: in a synchronous interaction the caller waits for the response,
+            %     while in an asynchronous one the sender continues and the message is
+            %     delivered later. Bottom: a message can go to one specific recipient
+            %     (point-to-point) or to many (multicast); coordination primitives such as
+            % a distributed lock let components agree on who may act.}
+            \label{fig:middleware-communication-coordination}
+        \end{figure}
+
+    \item \important{Special Application Services.} These are \hl{reusable, higher-level functionalities} provided by middleware to \hl{solve common application problems.}
+
+        \begin{examplebox}[: E-commerce Middleware Services]
+            For example, in an e-commerce application, the middleware might provide:
+            \begin{itemize}
+                \item \textbf{Distributed transaction management}: coordinate operations across several components so that they respect transaction guarantees.
+                \item \textbf{Messaging services}: store, route, and deliver messages between distributed components.
+                \item \textbf{Notification services}: inform interested components when relevant events occur.
+                \item \textbf{Workflow and groupware services}: support coordinated activities involving multiple participants or applications.
+            \end{itemize}
+            For instance, consider an order that requires updating an inventory service and a payment service.
+            The middleware might provide distributed transaction mechanisms to coordinate the updates.
+            However, it does not determine whether a customer is allowed to purchase a particular product. That decision belongs to the application.
+            The distinction is:
+            \begin{equation*}
+                \underbrace{\text{How to coordinate updates}}_{\text{Middleware}}
+                \neq
+                \underbrace{\text{Which updates are valid}}_{\text{Application logic}}
+            \end{equation*}
+            So \textbf{middleware} provides the \textbf{mechanisms} (e.g., message queues, transaction coordination), while the \textbf{application} decides \textbf{how to use them} (e.g., send an order confirmation after payment is successful).
+            \begin{center}
+                \tikzsetnextfilename{middleware-application-services}
+                \tikzwidth{\textwidth}
+                \begin{tikzpicture}[
+                        font=\small,
+                        >={Stealth[length=2mm]},
+                        comp/.style={draw=black!70, thick, rounded corners=2pt, fill=blue!8,
+                        minimum width=2.4cm, minimum height=0.8cm, font=\footnotesize, align=center},
+                        chip/.style={draw=violet!60!black, fill=white, rounded corners=2pt,
+                        text width=2.35cm, minimum height=1.0cm, align=center, font=\scriptsize},
+                        hot/.style={chip, very thick, fill=violet!18},
+                        role/.style={font=\scriptsize\itshape, align=right, anchor=north east},
+                        msg/.style={->, thick},
+                        note/.style={font=\scriptsize, align=center},
+                    ]
+
+                    % Application layer: knows the business
+                    \draw[thick, draw=black!70, fill=blue!8, rounded corners=3pt] (0,3.65) rectangle (11.4,5.05);
+                    \node[anchor=north west, font=\small\bfseries] at (0.1,5.0) {Order application};
+                    \node[role, text=blue!50!black] at (11.3,5.0)
+                    {business-aware:\\decides \textbf{which} updates are valid};
+                    \node[anchor=west, font=\footnotesize] at (0.2,4.0)
+                    {Business rule: \emph{may this customer buy this product?}};
+
+                    % Middleware layer: generic, reusable services
+                    \draw[very thick, draw=violet!60!black, fill=violet!6, rounded corners=3pt]
+                    (0,0.9) rectangle (11.4,2.85);
+                    \node[anchor=north west, font=\small\bfseries, text=violet!60!black] at (0.1,2.8)
+                    {Middleware};
+                    \node[role, text=violet!60!black] at (11.3,2.8)
+                    {business-unaware:\\decides \textbf{how} to coordinate updates};
+                    \node[chip] (msgq) at (1.45,1.5) {\textbf{Messaging}\\store, route, deliver};
+                    \node[hot]  (tx)   at (4.28,1.5) {\textbf{Distributed\\transactions}};
+                    \node[chip] (ntf)  at (7.11,1.5) {\textbf{Notifications}\\inform on events};
+                    \node[chip] (wf)   at (9.94,1.5) {\textbf{Workflow /}\\\textbf{groupware}};
+
+                    \draw[msg] (4.28,3.65) -- (tx.north)
+                    node[pos=0.22, right, note] {place order (update stock + charge)};
+
+                    % Services touched by the transaction
+                    \node[comp] (inv) at (2.6,-0.7)  {Inventory service};
+                    \node[comp] (pay) at (5.96,-0.7) {Payment service};
+                    \draw[msg] (tx.south) -- (inv.north) node[midway, above left=-1pt, note] {reserve stock};
+                    \draw[msg] (tx.south) -- (pay.north) node[midway, above right=-1pt, note] {charge};
+                    \node[draw=violet!60!black, dashed, rounded corners=2pt, fill=violet!4,
+                        text width=3.3cm, align=left, font=\scriptsize, anchor=west,
+                    execute at begin node={\hyphenpenalty=10000}] at (7.75,-0.7)
+                    {\textbf{All or nothing:} both updates commit, or both are rolled back
+                    (e.g.\ payment fails $\Rightarrow$ stock is released).};
+
+                    % The key distinction
+                    % \node[font=\footnotesize] at (5.7,-2.3)
+                    % {$\underbrace{\text{How to coordinate updates}}_{\text{Middleware}}
+                    %     \;\neq\;
+                    % \underbrace{\text{Which updates are valid}}_{\text{Application logic}}$};
+                \end{tikzpicture}
+            \end{center}
+        \end{examplebox}
+
+        \newpage
+
+    \item \important{Management Services.} These services address the \textbf{operational complexity} of distributed systems. Three fundamental examples are:
+        \begin{itemize}
+            \item \textbf{Naming}: locating and identifying distributed resources and services.
+            \item \textbf{Security}: providing mechanism for authentication, authorization, and protected communication.
+            \item \textbf{Failure handling}: detecting or reporting failures and supporting recovery mechanisms.
+        \end{itemize}
+
+        \begin{figure}[H]
+            \centering
+            \tikzsetnextfilename{middleware-management-services}
+            \begin{tikzpicture}[
+                    font=\small,
+                    >={Stealth[length=2mm]},
+                    panel/.style={draw=violet!60!black, thick, rounded corners=3pt, fill=violet!4},
+                    title/.style={anchor=north west, font=\small\bfseries, text=violet!60!black},
+                    comp/.style={draw=black!70, thick, rounded corners=2pt, fill=blue!8,
+                    minimum width=1.5cm, minimum height=0.55cm, font=\footnotesize, align=center},
+                    mwnode/.style={comp, fill=violet!15, draw=violet!60!black,
+                    execute at begin node={\hyphenpenalty=10000}},
+                    msg/.style={->, thick},
+                    note/.style={font=\scriptsize, align=center},
+                ]
+
+                % Naming / discovery
+                \draw[panel] (0,0) rectangle (11.4,3.7);
+                \node[title] at (0.1,3.65) {Naming / discovery};
+                \node[anchor=north east, font=\scriptsize\itshape, text=violet!60!black, align=right]
+                at (11.3,3.65) {same logical name even if the service moves\\$\Rightarrow$ location transparency};
+
+                \node[comp] (cli) at (1.3,2.0) {Client\\[1pt]\scriptsize\ttfamily authentication-\\[-2pt]\scriptsize\ttfamily service};
+                \node[mwnode, text width=3.0cm] (ns) at (5.75,2.0)
+                {\textbf{Naming service}\\[2pt]
+                    \scriptsize\ttfamily authentication-service\\
+                \scriptsize$\mapsto$ \ttfamily 10.0.1.7:8443};
+                \node[comp, dashed, draw=black!40, fill=gray!8, text=black!50] (old) at (9.7,2.3)
+                {Machine X\\\scriptsize(old location)};
+                \node[font=\Large, red!60!black] at (old.north east) {$\times$};
+                \node[comp] (new) at (9.7,0.7) {Machine Y\\\scriptsize auth service\\\scriptsize\ttfamily 10.0.1.7};
+                \draw[->, dashed, black!40] (old.south) -- (new.north) node[midway, right, note, text=black!50] {moved};
+
+                \draw[msg] ($(cli.east)+(0,0.3)$) -- ($(ns.west)+(0,0.3)$)
+                node[midway, above, note] {1.\ resolve};
+                \draw[msg] ($(ns.west)+(0,-0.3)$) -- ($(cli.east)+(0,-0.3)$)
+                node[midway, below, note] {2.\ endpoint};
+                \draw[msg] (cli.south) |- (new.west)
+                node[pos=0.75, above, note] {3.\ connect};
+                \draw[->, dashed, violet!60!black] (new.north west) -- (ns.south east)
+                node[midway, below left=-2pt, note, text=violet!60!black] {0.\ register};
+
+                % Security: checks on the way to the service, over a protected channel
+                \draw[panel] (0,-4.6) rectangle (5.55,-0.3);
+                \node[title] at (0.1,-0.35) {Security};
+                \node[comp, minimum width=2.71cm] (sc) at (1.6,-1.15) {Client};
+                \node[mwnode, text width=2.5cm, font=\scriptsize] (au) at (1.6,-2.1)
+                {\textbf{1.\ Authentication}\\who are you?};
+                \node[mwnode, text width=2.5cm, font=\scriptsize] (az) at (1.6,-3.15)
+                {\textbf{2.\ Authorization}\\may you do this?};
+                \node[comp, minimum width=2.71cm] (ss) at (1.6,-4.1) {Service};
+                \draw[msg] (sc) -- (au);
+                \draw[msg] (au) -- (az);
+                \draw[msg] (az) -- (ss);
+                % the whole exchange travels over a protected channel (bracket broken by the padlock)
+                \draw[very thick, green!40!black] (3.1,-1.15) -- (3.25,-1.15) -- (3.25,-2.2);
+                \draw[very thick, green!40!black] (3.25,-2.95) -- (3.25,-4.1) -- (3.1,-4.1);
+                \begin{scope}[shift={(3.25,-2.625)}] % padlock icon
+                    \draw[thick, fill=white] (-0.15,0.06) arc (180:0:0.15 and 0.17);
+                    \draw[thick, fill=yellow!60!orange] (-0.21,-0.17) rectangle (0.21,0.09);
+                \end{scope}
+                \node[note, align=left, anchor=west, text=green!40!black] at (3.5,-2.625)
+                {\textbf{3.\ Protected}\\\textbf{channel}\\(e.g.\ TLS):\\nobody can\\read or alter\\the data};
+
+                % Failure handling: detect, report, fail over
+                \draw[panel] (5.85,-4.6) rectangle (11.4,-0.3);
+                \node[title] at (5.95,-0.35) {Failure handling};
+                \node[comp, minimum width=1.3cm] (fc) at (8.6,-1.15) {Client};
+                \node[mwnode] (fd) at (8.6,-2.55) {Failure detector};
+                \node[comp, minimum width=1.4cm, draw=red!60!black, fill=red!8] (r1) at (6.95,-4.15)
+                {Replica 1 {\color{red!60!black}$\times$}};
+                \node[comp, minimum width=1.4cm] (r2) at (10.45,-4.15) {Replica 2};
+                % heartbeats
+                \draw[->, thick, dashed, black!35] ($(r1.north)+(0.4,0)$) -- (fd.south west)
+                node[pos=0.3, right, note, text=red!60!black] {no\\heartbeat};
+                \draw[->, thick, dashed, green!40!black] ($(r2.north)+(-0.4,0)$) -- (fd.south east)
+                node[pos=0.7, left, note] {heartbeat};
+                % report and fail over
+                \draw[->, thick, violet!60!black] (fd) -- (fc)
+                node[midway, right, note, text=violet!60!black] {report failure};
+                \draw[->, thick, dashed, red!60!black] (fc.west) -| (r1.north)
+                node[pos=0.75, left, note, align=right] {before};
+                \draw[->, very thick, green!40!black] (fc.east) -| (r2.north)
+                node[pos=0.75, right, note, align=left] {after\\fail\\over};
+            \end{tikzpicture}
+        \end{figure}
+
+        \begin{examplebox}[: Naming and Discovery]
+            For example, suppose a client needs to communicate with an \textbf{authentication service}.
+            Instead of hardcoding the IP address of a particular server, it might use a logical service name:
+            \texttt{authentication-service}.
+
+            \highspace
+            A naming or discovery mechanism resolves that name to an appropriate endpoint.
+            If the service moves to another machine, the client may continue using the same logical name.
+            This connects directly to the concept of \textbf{location transparency} (\autopageref{item:location-transparency}).
+
+            \highspace
+            Middleware can \textbf{help achieve transparency}, although how much distribution can actually be hidden depends on its design and on the guarantees offered by the system.
+        \end{examplebox}
+\end{enumerate}
+
+\newpage
+
+\begin{examplebox}
+    Some examples of middleware:
+    \begin{itemize}
+        \item \textbf{gRPC}: remote procedure calls.
+        \item \textbf{MPI}: message passing between processes, especially in parallel computing.
+        \item \textbf{Apache Kafka}: distributed event streaming and messaging.
+        \item \textbf{CORBA}: distributed object interaction.
+    \end{itemize}
+    These technologies solve different problems, but they share the principle of \hl{providing reusable abstractions above lower-level networking facilities.}
+
+    \highspace
+    MPI, for example, is a specialized form of communication middleware. It offers operations such as \texttt{MPI\_Send}, \texttt{MPI\_Recv}, and collective communication primitives instead of requiring developers to build their own network communication protocols.
+
+    \highspace
+    Note: middleware does not necessarily need to be a separate server. It might be \hl{implemented as libraries inside application processes}, as external infrastructure such as message brokers, or as a combination of both.
+\end{examplebox}
+
+\highspace
+\begin{takeawaysbox}
+    Network Operating Systems provide basic communication facilities (i.e., moving bytes), while middleware provides higher-level reusable abstractions (i.e., moving objects, messages, or events).
+
+    \highspace
+    \textbf{Middleware provides three broad families of services}:
+    \begin{enumerate}
+        \item \textbf{Communication and Coordination}: exchanging messages and coordinating components (e.g., RPC, message queues, distributed locks).
+        \item \textbf{Special application services}: transactions, messaging, notifications, workflows.
+        \item \textbf{Management services}: naming, security, failure handling.
+    \end{enumerate}
+    Its main \textbf{advantage} is \hl{reducing the complexity of developing distributed applications} by providing \hl{common, platform-independent abstractions and reusable services.}
+
+    In general, middleware simplifies the development of distributed applications, but does \textbf{not eliminate the fundamental challenges of distribution}.
+
+    \begin{center}
+        \tikzsetnextfilename{middleware-key-takeaways}
+        \tikzwidth{\textwidth}
+        \begin{tikzpicture}[
+                font=\small,
+                >={Stealth[length=2mm]},
+                box/.style={draw=#1, thick, rounded corners=3pt, fill=#1!5},
+                title/.style={anchor=north west, font=\small\bfseries},
+                lay/.style={draw=black!60, rounded corners=1pt, minimum width=2.9cm,
+                minimum height=0.42cm, font=\scriptsize, inner sep=1pt},
+                txt/.style={anchor=north west, font=\scriptsize, text width=#1, align=left, inner sep=1pt,
+                execute at begin node={\hyphenpenalty=10000}},
+                chip/.style={draw=violet!60!black, fill=white, rounded corners=2pt, text width=3.25cm,
+                    minimum height=1.25cm, align=center, font=\scriptsize,
+                execute at begin node={\hyphenpenalty=10000}},
+            ]
+
+            % 1. Network OS-based vs. middleware-based
+            % --- Network OS-based
+            \draw[box=green!40!black] (0,3.95) rectangle (5.1,7.35);
+            \node[title, text=green!40!black] at (0.1,7.3) {Network OS-based};
+            \node[anchor=north west, font=\scriptsize\itshape] at (0.1,6.9)
+            {$\Rightarrow$ basic communication facilities};
+            \node[lay, fill=blue!8]   (a1) at (2.55,5.97) {App + communication code};
+            \node[lay, fill=green!12, below=1pt of a1] (a2) {Network OS};
+            \node[txt=4.85cm] at (0.12,4.95)
+            {$-$ raw sockets: bytes over TCP/UDP\\
+                $-$ same logic rewritten by every app\\
+            $-$ platform differences left to the app};
+
+            % --- Middleware-based
+            \draw[box=violet!60!black] (6.3,3.95) rectangle (11.4,7.35);
+            \node[title, text=violet!60!black] at (6.4,7.3) {Middleware-based};
+            \node[anchor=north west, font=\scriptsize\itshape] at (6.4,6.9)
+            {$\Rightarrow$ higher-level reusable abstractions};
+            \node[lay, fill=blue!8]    (b1) at (8.85,6.2) {App (business logic only)};
+            \node[lay, fill=violet!15, draw=violet!60!black, below=1pt of b1] (b2) {Middleware};
+            \node[lay, fill=green!12,  below=1pt of b2] (b3) {Network OS};
+            \node[txt=4.85cm] at (6.42,4.95)
+            {$+$ common, well-defined API\\
+                $+$ reusable services, written once\\
+            $+$ platform differences partly hidden};
+
+            \draw[->, very thick, violet!60!black] (5.15,5.55) -- (6.25,5.55)
+            node[midway, above, font=\scriptsize, align=center] {factor\\out}
+            node[midway, below, font=\scriptsize, align=center] {common\\code};
+
+            % 2. The three families of middleware services
+            \draw[box=violet!60!black] (0,0.5) rectangle (11.4,3.65);
+            \node[title, text=violet!60!black] at (0.1,3.6) {Three families of middleware services};
+            \node[anchor=north east, font=\scriptsize\itshape, text=violet!60!black] at (11.3,3.6)
+            {business-unaware: \textbf{how}, not \textbf{which}};
+            \node[chip] at (1.9,2.4)
+            {\textbf{1.\ Communication \&}\\\textbf{coordination}\\sync/async, locks,\\
+            point-to-point/multicast};
+            \node[chip] at (5.7,2.4)
+            {\textbf{2.\ Special application}\\\textbf{services}\\transactions, messaging,
+            notifications, workflows};
+            \node[chip] at (9.5,2.4)
+            {\textbf{3.\ Management}\\\textbf{services}\\naming, security,\\failure handling};
+            \node[font=\scriptsize, align=center] at (5.7,1.05)
+            {\textbf{Examples:} gRPC (RPC) $\cdot$ MPI (message passing) $\cdot$\\
+                Kafka (event streaming) $\cdot$ CORBA (distributed objects)\\
+            as libraries inside the processes, as external brokers, or both};
+
+            % 3. What to keep in mind
+            \draw[box=orange!70!black] (0,-1.45) rectangle (11.4,0.2);
+            \node[title, text=orange!70!black] at (0.1,0.15) {! Not a silver bullet};
+            \node[txt=11.0cm] at (0.15,-0.38)
+            {Middleware simplifies the development of distributed applications, but it does
+                \emph{not} remove the challenges of distribution: network latency, partial
+            failures and inconsistent states remain.};
+        \end{tikzpicture}
+    \end{center}
+    In summary, a network OS offers only basic communication facilities, while middleware factors the common logic into higher-level reusable abstractions. Its services fall into three business-unaware families. Middleware simplifies distribution without eliminating its challenges.
+\end{takeawaysbox}

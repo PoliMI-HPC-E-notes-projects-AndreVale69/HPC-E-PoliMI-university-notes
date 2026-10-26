@@ -1,0 +1,725 @@
+\subsection{Service-Oriented Architecture (SOA)}\label{sec:modeling--service-oriented-architecture-soa}
+
+In the previous section, we discussed \textbf{client-server and multi-tier architectures}, where components are organized according to their roles and responsibilities. Now we consider a \textbf{more complex application}, such as an e-commerce platform. It might need to perform several operations:
+\begin{multicols}{2}
+    \begin{itemize}
+        \item Authenticate customers.
+        \item Check product availability.
+        \item Process payments.
+        \item Arrange shipments.
+        \item Send notifications.
+    \end{itemize}
+\end{multicols}
+\noindent
+One possibility is to implement all these functionalities within a \emph{single application server}. But \textbf{\emph{what if we want each functionality to be developed, deployed, maintained, and potentially reused independently?}} This is the motivation behind \textbf{Service-Oriented Architecture (SOA)}.
+
+\highspace
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{puzzle-piece} \textbf{What is Service-Oriented Architecture?}}
+\end{flushleft}
+\definition{Service-Oriented Architecture (SOA)} is an architectural style\footnote{%
+    An architectural style (\autopageref{def:architectural-style}) is a reusable way of organizing distributed components and defining how they interact.
+} in which a \hl{distributed application is organized as a \textbf{collection of loosely coupled services} that \textbf{communicate through well-defined interfaces}.}
+
+\highspace
+A \definition{Service} is a \hl{self-contained unit of functionality that exposes operations to other components without requiring them to understand its internal implementation.}
+
+\highspace
+\begin{examplebox}[: Payment Service]
+    For example, a payment service might expose:
+\begin{lstlisting}
+PaymentService
+    - authorizePayment(amount, currency, cardInfo)
+    - capturePayment(transactionId)
+    - refundPayment(transactionId)
+\end{lstlisting}
+    Other applications can \textbf{invoke} these operations \textbf{without knowing}:
+    \begin{itemize}
+        \item Which programming language implements the service.
+        \item Which operating system hosts it.
+        \item How its internal algorithms work.
+        \item How it stores its data.
+    \end{itemize}
+\end{examplebox}
+
+\highspace
+In general, external applications only need to understand the service's \textbf{public contract}, which specifies the available operations and how to invoke them. This is an \hl{application of \emph{information hiding}}, a principle that we will encounter again when discussing \emph{distributed objects}.
+
+\highspace
+\textcolor{Green3}{\faIcon{question-circle} \textbf{What ``\emph{loosely coupled}'' means in SOA definition?}} A fundamental \textbf{objective} of SOA is to \hl{minimize dependencies between services and their consumers.} For example, if a payment service is used by three different applications (e.g., an e-commerce platform, a mobile app, and a subscription management system), we want to ensure that \hl{internal changes in the payment service do not break the applications that use it.} Therefore, the service's public contract should remain stable, even if its internal implementation evolves over time:
+\begin{equation*}
+    \text{SOA} = \text{Independent Services} + \text{Well-defined contracts} + \text{Loose Coupling}
+\end{equation*}
+However, \emph{loose coupling} does not mean \textbf{no coupling at all}. Services or consumers still depend on the service's public contract, availability and behavior. If the service is unavailable or its behavior changes unexpectedly, the consumers may fail to function correctly.
+
+\highspace
+In summary, ``\emph{\textbf{loose coupling}}'' in SOA means that \hl{services have \textbf{minimal dependencies on each other},} so one service can change \textbf{independently} without requiring changes to its consumers. It does \textbf{not} mean zero dependencies, as services still rely on each other's public contracts and availability.
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{sitemap} \textbf{Fundamental Components of SOA}}
+\end{flushleft}
+A traditional SOA model identifies 4 fundamental concepts.
+
+\begin{figure}[H]
+    \centering
+    \tikzsetnextfilename{soa-fundamental-components}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            box/.style={draw=#1, thick, rounded corners=3pt, fill=#1!5},
+            head/.style={font=\small\bfseries, text=#1},
+            badge/.style={circle, fill=#1, text=white, font=\footnotesize\bfseries,
+            inner sep=0pt, minimum size=0.42cm},
+            step/.style={circle, draw=#1, fill=white, text=#1, font=\scriptsize\bfseries,
+            inner sep=0pt, minimum size=0.36cm},
+            flow/.style={->, very thick, #1},
+            lbl/.style={font=\footnotesize, align=center, text=#1},
+            note/.style={font=\footnotesize\itshape, text=black!65, align=center},
+        ]
+
+        % D. Service broker (top)
+        \draw[box=orange!70!black] (3.2,5.0) rectangle (8.6,7.0);
+        \node[head=orange!70!black] (hb) at (6.1,6.7) {Service broker};
+        \node[badge=orange!70!black, left=3pt of hb] {D};
+        \node[cylinder, shape border rotate=90, aspect=0.25, draw=orange!70!black, thick,
+        fill=white, minimum width=1.3cm, minimum height=0.95cm, font=\footnotesize]
+        at (4.25,5.65) {Registry};
+        \node[draw=orange!70!black, fill=white, rounded corners=1pt, text width=2.75cm,
+            align=left, font=\footnotesize, inner sep=3pt,
+        execute at begin node={\hyphenpenalty=10000}] at (6.95,5.65)
+        {\textbf{CurrencyService}\\operations, protocol,\\endpoint, interface};
+        \node[note, anchor=north] at (5.9,4.92) {discovery only (optional)};
+
+        % C. Service consumer (bottom left)
+        \draw[box=blue!50!black] (0,0) rectangle (3.8,3.2);
+        \node[head=blue!50!black] (hc) at (2.2,2.9) {Service consumer};
+        \node[badge=blue!50!black, left=3pt of hc] {C};
+        \node[font=\footnotesize] at (1.9,2.4) {e.g.\ online store};
+        \node[draw=black!40, fill=white, rounded corners=1pt, font=\footnotesize\ttfamily,
+        align=left, inner sep=3pt] at (1.9,1.6) {convert(100,\\\ \ "USD", "EUR")};
+        \node[note] at (1.9,0.45) {knows only the contract};
+
+        % B. Service provider (bottom right) hosting A. the service
+        \draw[box=green!40!black] (7.0,0) rectangle (11.4,3.2);
+        \node[head=green!40!black] (hp) at (9.45,2.9) {Service provider};
+        \node[badge=green!40!black, left=3pt of hp] {B};
+        \draw[violet!60!black, thick, dashed, rounded corners=3pt, fill=violet!4]
+        (7.2,0.15) rectangle (11.25,2.55);
+        \node[badge=violet!60!black] at (7.5,2.25) {A};
+        \node[anchor=west, font=\footnotesize\bfseries, text=violet!60!black] at (7.72,2.25)
+        {Service};
+        \node[anchor=east, font=\footnotesize\itshape, text=violet!60!black] at (11.15,2.25)
+        {replicated};
+        \foreach \d in {0.16,0.08} {
+            \draw[violet!60!black, fill=violet!12, rounded corners=2pt]
+            (8.5+\d,0.4+\d) rectangle (10.9+\d,1.6+\d);
+        }
+        \node[draw=violet!60!black, thick, fill=white, rounded corners=2pt,
+        minimum width=2.4cm, minimum height=1.2cm, align=center, font=\footnotesize]
+        (svc) at (9.7,1.0) {\textbf{CurrencyService}\\[1pt]implementation\\hidden};
+        \node[draw=violet!60!black, thick, fill=violet!25, minimum width=0.42cm,
+        minimum height=1.2cm, inner sep=0pt, anchor=east] (api) at (svc.west)
+        {\rotatebox{90}{\footnotesize contract}};
+
+        % Interactions: publish - find - bind - invoke
+        \draw[flow=green!40!black] (10.6,3.2) |- (8.6,6.1)
+        node[pos=0.25, left=4pt, lbl=green!40!black] {publish\\description}
+        node[pos=0.25, step=green!40!black] {1};
+        \draw[flow=blue!50!black] (0.9,3.2) |- (3.2,6.3)
+        node[pos=0.25, left=4pt, lbl=blue!50!black] {find}
+        node[pos=0.25, step=blue!50!black] {2};
+        \draw[flow=orange!70!black] (3.2,5.4) -| (2.1,3.2)
+        node[pos=0.75, right=4pt, lbl=orange!70!black] {endpoint\\+ contract}
+        node[pos=0.75, step=orange!70!black] {3};
+        \draw[flow=violet!60!black, <->] (3.8,1.0) -- (api.west);
+        \node[lbl=violet!60!black, anchor=south] at (5.6,1.05) {bind \& invoke};
+        \node[lbl=violet!60!black, anchor=north] at (5.6,0.95) {request / response};
+        \node[step=violet!60!black] at (4.15,1.27) {4};
+    \end{tikzpicture}
+    \caption{\textbf{Fundamental components of SOA.} The provider (B) hosts a service (A) and
+        publishes its description to the broker (D) in step~1. The consumer (C) finds the
+        service in the registry (2), receives its endpoint and contract (3), and then binds
+    to and invokes the service directly at the provider (4).}
+    \label{fig:soa-fundamental-components}
+\end{figure}
+
+\begin{enumerate}[label={\Alph*.}]
+    \item \definition{Service} represents a \textbf{reusable unit of functionality} (e.g., authentication, payment, inventory, shipping services). Ideally, \hl{each service encapsulates its own implementation and exposes a well-defined interface.} A service is a \textbf{logical concept}, not necessarily one process or one physical server. For example, a service can be implemented by multiple servers for scalability and fault tolerance.
+
+    \item \definition{Service Provider} is the component \hl{responsible for \textbf{implementing} and \textbf{exposing} a service.} Its responsibilities include:
+        \begin{enumerate}
+            \item Implementing the service functionality.
+            \item Defining its public interface (contract).
+            \item Making the service accessible through a communication endpoint.
+            \item Optionally publishing its description to a service broker.
+        \end{enumerate}
+        \begin{examplebox}[: Currency Conversion Service Provider]
+            For example, a company might operate a currency-conversion service accessible through a network API. The provider handles the actual conversion, while consumers only need to know how to request it.
+        \end{examplebox}
+
+    \item \definition{Service Consumer} is \hl{any component that \textbf{requires functionality} exposed by another service.}
+
+        \begin{examplebox}[: Currency Conversion Service Consumer]
+            For example, an online store might invoke:
+\begin{lstlisting}[language=Python]
+price_eur = currency_service.convert(
+    amount=100,
+    source="USD",
+    target="EUR"
+)
+\end{lstlisting}
+            This is conceptual pseudocode, as the actual invocation syntax depends on the communication technology used (e.g., REST, gRPC, SOAP). The consumer needs \textbf{to know the service's contract} (i.e., the API), but \textbf{not how} the exchange rate is \textbf{calculated internally}.
+        \end{examplebox}
+
+        Importantly, \hl{a component may simultaneously be a provider and a consumer.} For example, an order service might consume a payment service to process payments, while also providing its own order management service to other components. This is similar to the client-server roles, where a server can also act as a client to another server.
+
+    \item\label{def:service-broker} \definition{Service Broker} provides a \hl{mechanism for discovering available services.} It maintains a \hl{registry containing descriptions of services published by providers.}
+
+        \begin{examplebox}[: Currency Conversion Service Discovery]
+            Imagine that a consumer needs a service capable of converting currencies. Instead of already knowing the provider's endpoint, it queries the registry to discover a suitable service, and the broker may return information such as the service's identity, its supported operations, its communication protocol, its network endpoint, a description of its interface. Then, the consumer can use this information to communicate with the provider.
+        \end{examplebox}
+
+        The broker typically does not execute the service's business logic. Its \hl{main responsibility is \textbf{service discovery}.} Also, a broker is \textbf{not mandatory for every SOA implementation}: services can be configured or discovered through other mechanisms.
+\end{enumerate}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{exchange-alt} \textbf{Publish-Find-Bind-Invoke Model}}
+\end{flushleft}
+The interaction among providers, consumers and brokers follows a characteristic sequence of steps, known as the \definition{Publish-Find-Bind-Invoke Model}.
+
+\begin{figure}[H]
+    \centering
+    \tikzsetnextfilename{soa-publish-find-bind-invoke}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            actor/.style={draw=#1, thick, fill=#1!12, rounded corners=3pt, minimum width=2.6cm,
+            minimum height=0.8cm, align=center, font=\small\bfseries, text=#1},
+            badge/.style={circle, fill=#1, text=white, font=\footnotesize\bfseries,
+            inner sep=0pt, minimum size=0.42cm},
+            life/.style={densely dashed, thick, #1!60},
+            act/.style={draw=#1, thick, fill=white},
+            phase/.style={fill=#1!7, rounded corners=3pt},
+            plabel/.style={rotate=90, font=\footnotesize\bfseries, text=#1},
+            call/.style={->, very thick, #1},
+            reply/.style={->, very thick, dashed, #1},
+            msg/.style={font=\footnotesize, text=#1, align=center},
+            step/.style={circle, draw=#1, fill=white, text=#1, font=\scriptsize\bfseries,
+            inner sep=0pt, minimum size=0.36cm},
+        ]
+        \def\xc{2.3}\def\xb{6.2}\def\xp{10.0}
+
+        % phases
+        \fill[phase=green!40!black]  (0,6.65) rectangle (11.4,8.05);
+        \fill[phase=blue!50!black]   (0,4.15) rectangle (11.4,6.45);
+        \fill[phase=violet!60!black] (0,0.45) rectangle (11.4,3.95);
+        \node[plabel=green!40!black]  at (0.3,7.35) {Publish};
+        \node[plabel=blue!50!black]   at (0.3,5.3)  {Find};
+        \node[plabel=violet!60!black] at (0.3,2.2)  {Bind \& invoke};
+
+        % actors and lifelines
+        \foreach \x/\c/\n/\l in {\xc/blue!50!black/{Service\\consumer}/C,
+            \xb/orange!70!black/{Service\\broker}/D,
+        \xp/green!40!black/{Service\\provider}/B} {
+            \draw[life=\c] (\x,8.25) -- (\x,0.25);
+            \node[actor=\c] (a\l) at (\x,8.7) {\n};
+            \node[badge=\c] at (a\l.north west) {\l};
+        }
+
+        % activation bars
+        \draw[act=orange!70!black] (\xb-0.1,6.95) rectangle (\xb+0.1,7.45);
+        \draw[act=orange!70!black] (\xb-0.1,4.65) rectangle (\xb+0.1,5.75);
+        \draw[act=blue!50!black]   (\xc-0.1,4.45) rectangle (\xc+0.1,5.95);
+        \draw[act=blue!50!black]   (\xc-0.1,0.8) rectangle (\xc+0.1,3.5);
+        \draw[act=green!40!black]  (\xp-0.1,1.3) rectangle (\xp+0.1,3.35);
+
+        % 1. publish
+        \draw[call=green!40!black] (\xp-0.1,7.2) -- (\xb+0.1,7.2)
+        node[midway, above=2pt, msg=green!40!black] {publish service description};
+        \node[step=green!40!black] at (\xp+0.45,7.2) {1};
+
+        % 2. find, 3. description + endpoint
+        \draw[call=blue!50!black] (\xc+0.1,5.6) -- (\xb-0.1,5.6)
+        node[midway, above=2pt, msg=blue!50!black] {find a ``currency\\converter'' service};
+        \node[step=blue!50!black] at (\xc-0.45,5.6) {2};
+        \draw[reply=orange!70!black] (\xb-0.1,4.8) -- (\xc+0.1,4.8)
+        node[midway, below=2pt, msg=orange!70!black] {description + endpoint};
+        \node[step=orange!70!black] at (\xb+0.45,4.8) {3};
+
+        % 4. bind and invoke, 5. result
+        \draw[call=violet!60!black] (\xc+0.1,3.15) -- (\xp-0.1,3.15)
+        node[midway, above=3pt, msg=violet!60!black, fill=violet!7, inner sep=1pt]
+        {bind \& invoke: \texttt{convert(100, USD, EUR)}};
+        \node[step=violet!60!black] at (\xc-0.45,3.15) {4};
+        \node[msg=green!40!black, anchor=east, font=\footnotesize\itshape, align=right]
+        at (\xp-0.25,2.3) {executes the\\business logic};
+        \node[font=\footnotesize\itshape, text=orange!70!black, fill=violet!7, align=center,
+        inner sep=1pt] at (\xb,2.3) {broker not\\involved};
+        \draw[reply=green!40!black] (\xp-0.1,1.5) -- (\xc+0.1,1.5)
+        node[midway, below=3pt, msg=green!40!black, fill=violet!7, inner sep=1pt]
+        {return result: \texttt{92.40 EUR}};
+        \node[step=green!40!black] at (\xp+0.45,1.5) {5};
+    \end{tikzpicture}
+    \caption{\textbf{The publish-find-bind-invoke model.} The provider publishes its service
+        description to the broker (1). The consumer finds a suitable service (2) and
+        receives its description and endpoint (3). It then binds to the provider and
+        invokes the operation directly (4), and the provider returns the result (5);
+    the broker is not involved in the invocation.}
+    \label{fig:soa-publish-find-bind-invoke}
+\end{figure}
+\begin{enumerate}[label={\important{Step \arabic*:}}, leftmargin=1.6cm]
+    \item \important{Publish.} The \hl{\textbf{provider} registers information describing its service.}
+        \begin{examplebox}[: Currency Conversion Service Description]
+            For example, a currency conversion service might publish:
+\begin{lstlisting}
+Service: CurrencyConversion
+Operation: convert(amount, source, target)
+Endpoint: https://currency.example.com/service
+\end{lstlisting}
+        \end{examplebox}
+
+    \item \important{Find.} The \hl{\textbf{consumer} requests information about a service} satisfying certain requirements.
+        \begin{examplebox}[: Currency Conversion Service Find Request]
+            For example, find a service that converts amounts between currencies.
+        \end{examplebox}
+
+    \item \important{Discover.} The \hl{\textbf{broker} returns the description of a suitable service,} including the \hl{information} needed \hl{to contact it.}
+
+    \item \important{Bind and Invoke.} The \hl{\textbf{consumer} establishes} the necessary \hl{communication} relationship (\textbf{binding}) and \hl{invokes the operation} through the service's interface.
+
+        \emph{Binding} does not necessarily mean opening a persistent network connection. It means \hl{associating the consumer with the selected service and the protocol details required to invoke it.}
+
+    \item \important{Response.} The \hl{\textbf{provider} executes} the requested operation and \hl{returns the result.}
+\end{enumerate}
+\textcolor{Green3}{\faIcon{question-circle} \textbf{Why is this useful?}} Suppose the original currency-conversion provider becomes \textbf{unavailable} or is \textbf{replaced} by a different implementation.
+\begin{itemize}
+    \item[\textcolor{Green3}{\faIcon{check}}] A \textbf{discovery mechanism} can help consumers find an alternative provider exposing a compatible service contract.
+    \item[\textcolor{Green3}{\faIcon{check}}] This supports \textbf{flexibility} and \textbf{reduces dependence on specific implementations}.
+    \item[\textcolor{Red2}{\faIcon{times}}] However, SOA doesn't automatically provide \textbf{fault tolerance} or \textbf{guarantee} that an \textbf{equivalent provider exists}.
+\end{itemize}
+Service discovery can contribute to \textbf{location transparency} (\autopageref{item:location-transparency}), a consumer can identify a service logically without embedding the physical location of its implementation. SOA also promotes \textbf{interoperability} (\autopageref{item:interoperability}) and \textbf{modularity} by exposing standardized service contracts.
+
+\newpage
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{project-diagram} \textbf{Service Orchestration}}
+\end{flushleft}
+Until now, we have considered a consumer invoking an individual service. But real distributed applications often need to \hl{combine multiple services to accomplish a single objective.} This introduces the concept of \definition{Service Orchestration}. \textbf{Orchestration} is the process of \hl{coordinating the invocation of multiple services according to a workflow to achieve a particular goal.}
+
+\highspace
+\begin{examplebox}[: Processing an Online Order]
+    Consider an Order Service that must coordinate three other services to process an online order.
+
+    \begin{center}
+        \tikzsetnextfilename{soa-orchestration-online-order}
+        \tikzwidth{\textwidth}
+        \begin{tikzpicture}[
+                font=\normalsize,
+                >={Stealth[length=2mm]},
+                comp/.style={draw=#1, thick, fill=#1!10, rounded corners=3pt, align=center,
+                font=\footnotesize},
+                svc/.style={comp=violet!60!black, minimum width=3.0cm, minimum height=1.0cm},
+                call/.style={->, very thick, #1},
+                reply/.style={->, very thick, dashed, #1},
+                step/.style={circle, draw=#1, fill=white, text=#1, font=\scriptsize\bfseries,
+                inner sep=0pt, minimum size=0.36cm},
+                lbl/.style={font=\footnotesize, text=#1, align=center},
+            ]
+
+            % components
+            \node[comp=blue!50!black, minimum width=1.5cm, minimum height=1.3cm] (cl)
+            at (0.8,2.4) {\small\textbf{Client}};
+            \node[comp=green!40!black, minimum width=2.4cm, minimum height=1.8cm] (os)
+            at (4.75,2.4) {\small\textbf{OrderService}\\[1pt]\itshape orchestrator:\\
+            \itshape runs the workflow};
+            \node[svc] (inv) at (9.9,4.25) {\small\textbf{InventoryService}\\check availability,\\reserve product};
+            \node[svc] (pay) at (9.9,2.4)  {\small\textbf{PaymentService}\\authorize payment};
+            \node[svc] (shp) at (9.9,0.55) {\small\textbf{ShippingService}\\arrange shipment};
+
+            % client <-> orchestrator
+            \draw[call=blue!50!black] ([yshift=3mm]cl.east) -- ([yshift=3mm]os.west)
+            node[midway, above, lbl=blue!50!black] {place order};
+            \draw[reply=green!40!black] ([yshift=-3mm]os.west) -- ([yshift=-3mm]cl.east)
+            node[midway, below, lbl=green!40!black] {confirmation};
+            \node[step=green!40!black] at ($([yshift=-3mm]cl.east)!0.5!([yshift=-3mm]os.west)$) {4};
+
+            % orchestrator -> services, in workflow order
+            \draw[call=violet!60!black] ([yshift=5mm]os.east) -- (inv.west)
+            node[pos=0.3, step=violet!60!black] {1};
+            \draw[call=violet!60!black] (os.east) -- (pay.west)
+            node[pos=0.15, step=violet!60!black] {2}
+            node[pos=0.56, below=1pt, lbl=black!60, font=\footnotesize\itshape] {if available};
+            \draw[call=violet!60!black] ([yshift=-5mm]os.east) -- (shp.west)
+            node[pos=0.2, step=violet!60!black] {3}
+            node[pos=0.55, below, sloped, lbl=black!60, font=\footnotesize\itshape] {if authorized};
+
+            % failure handling
+            \node[comp=red!60!black, minimum width=2.7cm, font=\footnotesize] (fail) at (4.75,0.3)
+            {payment fails $\Rightarrow$ cancel\\order, release reservation};
+            \draw[reply=red!60!black] (os.south) -- (fail.north);
+        \end{tikzpicture}
+    \end{center}
+
+    When a customer places an order, the orchestrator \texttt{OrderService} might execute the following workflow:
+    \begin{enumerate}
+        \item Invoke \texttt{InventoryService} to check product availability.
+        \item If the product is available, invoke \texttt{PaymentService} to authorize the payment.
+        \item If authorization succeeds, reserve the product and arrange shipment through the appropriate services (e.g., \texttt{ShippingService}).
+        \item Return the order confirmation.
+    \end{enumerate}
+    If the payment fails, the orchestrator must decide what happens next, such as cancelling the order or releasing a reservation.
+
+    \highspace
+    The important point is that \hl{each service implements a specific functionality, while the orchestrator \textbf{coordinates} how those functionalities contribute to a larger operation.}
+\end{examplebox}
+
+\newpage
+
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{globe} \textbf{Traditional Web Services}}
+\end{flushleft}
+We have discussed SOA as an architectural style, independently of the technology used to implement it. Now we examine \textbf{one of its historically important implementations}: \definition{SOAP-based Web Services}.
+
+\highspace
+In general, a \definition{Web Service} is a \hl{software system that enables interoperable machine-to-machine communication over a network.} Traditional Web Services typically \textbf{rely on three standards}:
+\begin{itemize}
+    \item \definition{Web Services Description Language (WSDL)} \hl{specifies the \textbf{service contract}}, like the operations it exposes, the messages it can send and receive, and the communication details (e.g., protocols, endpoints).
+
+        Specifically, WSDL is an \hl{XML-based language used to \textbf{describe the public interface} of a Web Service.} It defines information such as:
+        \begin{itemize}
+            \item Which operations the service provides.
+            \item Which messages and data types are accepted.
+            \item Which messages are returned.
+            \item Which protocol and message format are used.
+            \item Where the service can be accessed.
+        \end{itemize}
+        So in general, \hl{WSDL tells the consumer \textbf{what the service exposes} and \textbf{how to invoke it}.}
+
+        \begin{examplebox}[: Calculator Service Contract]
+            Consider a simple calculator Web Service. Its interface might conceptually define:
+\begin{lstlisting}
+CalculatorService
+
+Operation:
+    add(a: integer, b: integer) -> integer
+
+Input:
+    a, b
+
+Output:
+    result
+\end{lstlisting}
+            A \textbf{WSDL document} describes this contract in a \textbf{standardized}, \textbf{machine-readable} way. The standardized description allows different systems, like a Java client and a C\# service, to communicate without needing to know each other's internal implementations. The consumer only needs to understand the interface and communication conventions. Furthermore, development tools can even generate client-side proxy code from a WSDL description.
+        \end{examplebox}
+
+        \newpage
+
+    \item \definition{Simple Object Access Protocol (SOAP)} defines an \textbf{XML-based messaging protocol} for exchanging requests and responses.
+
+        In general, WSDL describes the interface, but \textbf{we still need to exchange actual invocation messages}. This is the role of \textbf{SOAP}, which is an \hl{XML-based messaging protocol defining \textbf{how structured messages are exchanged between communicating components}.}
+
+        \begin{examplebox}[: SOAP Request and Response]
+            For example, a \textbf{consumer} might invoke the calculator's \texttt{add} operation by \textbf{sending an illustrative SOAP request}:
+\begin{lstlisting}[language=xml]
+<soap:Envelope
+    xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+
+    <soap:Body>
+        <add xmlns="http://example.com/calculator">
+            <a>5</a>
+            <b>3</b>
+        </add>
+    </soap:Body>
+
+</soap:Envelope>
+\end{lstlisting}
+            The \textbf{service executes} the operation and \textbf{returns a corresponding SOAP response}:
+\begin{lstlisting}[language=xml]
+<soap:Envelope
+    xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+
+    <soap:Body>
+        <addResponse xmlns="http://example.com/calculator">
+            <result>8</result>
+        </addResponse>
+    </soap:Body>
+
+</soap:Envelope>
+\end{lstlisting}
+            Notice the structure:
+            \begin{itemize}
+                \item \texttt{Envelope} identifies the message as a SOAP message.
+                \item \texttt{Header} (optional) carries additional information, potentially including security or routing metadata.
+                \item \texttt{Body} contains the application-specific message content.
+            \end{itemize}
+            Note that SOAP specifies the \textbf{messaging structure} and \textbf{processing rules}, but it does not determine the application's business logic (i.e., what the service actually does).
+        \end{examplebox}
+
+    \item \definition{Universal Description, Discovery, and Integration (UDDI)} defines a \textbf{registry framework} for publishing and discovering services.
+
+        Precisely, UDDI is a \hl{standardized framework for \textbf{publishing} and \textbf{discovering Web Services} through registries.} It implements the \emph{service broker} concept introduced earlier on \autopageref{def:service-broker}.
+
+        In other words, UDDI tells consumers \hl{which services are available and where to find information about them.} UDDI is historically important for understanding SOA, but many real-world Web Services are accessed through known endpoints or other discovery mechanisms without relying on UDDI registries.
+\end{itemize}
+
+\highspace
+\begin{table}[!htp]
+    \centering
+    \begin{tabular}{@{} l c l @{}}
+        \toprule
+        \textbf{SOA activity} & \textbf{Technology} & \textbf{Responsibility} \\
+        \midrule
+        Describe & WSDL & Defines the service contract \\[.5em]
+        Publish / Discover & UDDI & Registers and discovers services \\[.5em]
+        Bind / Invoke & SOAP & Exchanges invocation messages \\
+        \bottomrule
+    \end{tabular}
+    \caption{\textbf{Traditional Web Services technologies.}}
+\end{table}
+
+\highspace
+\begin{figure}[H]
+    \centering
+    \tikzsetnextfilename{traditional-web-services}
+    \begin{tikzpicture}[
+            font=\normalsize,
+            >={Stealth[length=2mm]},
+            panel/.style={draw=#1, thick, rounded corners=3pt, fill=#1!4},
+            headbar/.style={fill=#1!18, rounded corners=2pt},
+            acr/.style={font=\large\bfseries, text=#1},
+            verb/.style={draw=#1, fill=white, rounded corners=6pt, font=\footnotesize\bfseries,
+            text=#1, inner xsep=4pt, inner ysep=2pt, text height=1.6ex, text depth=0.3ex},
+            expand/.style={font=\footnotesize\itshape, text=black!75, align=center},
+            idea/.style={font=\footnotesize, align=center, text width=3.3cm,
+            execute at begin node={\hyphenpenalty=10000}},
+            code/.style={font=\footnotesize\ttfamily, align=left},
+            part/.style={font=\footnotesize\bfseries, text=teal!60!black, anchor=west},
+            val/.style={font=\footnotesize\ttfamily, anchor=west},
+        ]
+        % ---------- panels and headers
+        \foreach \x/\c/\a/\v/\e in {0/teal!60!black/WSDL/Describe/{Web Services\\Description Language},
+            3.875/violet!60!black/SOAP/Communicate/{Simple Object\\Access Protocol},
+        7.75/orange!70!black/UDDI/Discover/{Universal Description,\\Discovery and Integration}} {
+            \draw[panel=\c] (\x,0) rectangle (\x+3.65,7.45);
+            \fill[headbar=\c] (\x+0.08,5.85) rectangle (\x+3.57,7.37);
+            \node[acr=\c] at (\x+1.825,6.98) {\a};
+            \node[expand] at (\x+1.825,6.28) {\e};
+            \draw[\c, thick] (\x+0.5,6.67) -- (\x+3.15,6.67);
+            \node[verb=\c] at (\x+1.825,5.4) {\v};
+        }
+
+        % ---------- WSDL: the contract document, with its four parts
+        \draw[teal!60!black, thick, fill=white]
+        (0.3,1.08) -- (3.35,1.08) -- (3.35,4.3) -- (3.05,4.6) -- (0.3,4.6) -- cycle;
+        \draw[teal!60!black, thick] (3.05,4.6) -- (3.05,4.3) -- (3.35,4.3);
+        \fill[teal!60!black!15] (0.33,4.0) rectangle (3.02,4.57);
+        \node[font=\footnotesize\ttfamily\bfseries, text=teal!60!black] at (1.67,4.29)
+        {calculator.wsdl};
+        \foreach \y/\p/\v in {3.74/types/{a, b, result:\,int},
+            3.03/interface/{add(a, b)},
+            2.32/binding/{SOAP over HTTP},
+        1.61/service/{endpoint URL}} {
+            \node[part] at (0.4,\y) {\p};
+            \node[val] at (0.55,\y-0.31) {\v};
+        }
+        \foreach \y in {3.25,2.54,1.83}
+        \draw[teal!60!black!30] (0.45,\y) -- (3.2,\y);
+
+        % ---------- SOAP: envelope carried by HTTP
+        \draw[black!45, thick, dashed, rounded corners=2pt] (4.05,1.15) rectangle (7.35,4.75);
+        \node[anchor=north west, font=\footnotesize\itshape, text=black!60] at (4.1,4.75)
+        {HTTP transport};
+        \draw[violet!60!black, thick, fill=white, rounded corners=2pt] (4.2,1.3) rectangle (7.2,4.35);
+        \node[anchor=north west, font=\footnotesize\bfseries, text=violet!60!black]
+        at (4.25,4.33) {Envelope};
+        \draw[violet!60!black, dashed, fill=violet!6] (4.35,3.35) rectangle (7.05,3.85);
+        \node[font=\footnotesize, text=violet!60!black] at (5.7,3.6) {Header (optional)};
+        \draw[violet!60!black, fill=violet!12] (4.35,1.45) rectangle (7.05,3.2);
+        \node[anchor=north west, font=\footnotesize\bfseries, text=violet!60!black]
+        at (4.4,3.18) {Body};
+        \node[code, anchor=north west] at (4.75,2.78)
+        {<add>\\[-1pt]\ \ <a>5</a>\\[-1pt]\ \ <b>3</b>\\[-1pt]</add>};
+
+        % ---------- UDDI: the registry (service broker)
+        \node[cylinder, shape border rotate=90, aspect=0.25, draw=orange!70!black, thick,
+            fill=white, minimum width=2.6cm, minimum height=1.3cm, align=center,
+        font=\footnotesize] (reg) at (9.575,3.85) {\textbf{Registry}\\(service broker)};
+        \node[draw=red!60!black, fill=red!8, rounded corners=2pt, font=\footnotesize,
+        minimum width=1.5cm, text height=1.6ex, text depth=0.4ex] (prov) at (8.65,1.6) {provider};
+        \node[draw=blue!50!black, fill=blue!10, rounded corners=2pt, font=\footnotesize,
+        minimum width=1.5cm, text height=1.6ex, text depth=0.4ex] (cons) at (10.5,1.6) {consumer};
+        \draw[->, thick, red!60!black] (prov.north) -- (prov.north |- reg.south)
+        node[midway, fill=orange!4, inner sep=1pt, font=\footnotesize] {publish};
+        \draw[->, thick, blue!50!black] (cons.north) -- (cons.north |- reg.south)
+        node[midway, fill=orange!4, inner sep=1pt, font=\footnotesize] {find};
+
+        % ---------- key ideas
+        \node[idea] at (1.825,0.62) {\emph{what} the service offers and \emph{how} to call it};
+        \node[idea] at (5.7,0.62)   {XML messages carrying requests and responses};
+        \node[idea] at (9.575,0.62) {\emph{which} services exist and \emph{where} to find them};
+    \end{tikzpicture}
+    \caption{\textbf{The three standards of traditional Web Services.} WSDL describes the
+        service contract (types, interface, binding, endpoint), SOAP carries request and response messages (usually over
+        HTTP), and UDDI provides a registry where providers publish and consumers find
+    services.}
+    \label{fig:traditional-web-services}
+\end{figure}
+
+\newpage
+
+\begin{examplebox}[: How WSDL, SOAP, and UDDI Work Together]
+    Consider a Java application that needs a remote calculator.
+    \begin{enumerate}
+        \item The calculator provider makes its service description available through WSDL.
+        \item The provider may register its service in a UDDI registry.
+        \item The Java application discovers the calculator service through the registry.
+        \item It retrieves the WSDL description and configures or generates a client.
+        \item The client sends a SOAP request to invoke \texttt{add(5, 3)}.
+        \item The provider processes the request and responds with the result \texttt{8}.
+    \end{enumerate}
+    Note that \hl{the broker is involved in discovery, not necessarily in every operation invocation.}
+
+    \begin{center}
+        \tikzsetnextfilename{wsdl-soap-uddi-together}
+        \tikzwidth{\textwidth}
+        \begin{tikzpicture}[
+                font=\normalsize,
+                >={Stealth[length=2mm]},
+                box/.style={draw=#1, thick, rounded corners=3pt, fill=#1!5},
+                head/.style={font=\small\bfseries, text=#1, align=center},
+                inner/.style={draw=#1, thick, fill=white, rounded corners=2pt, align=center,
+                font=\footnotesize},
+                flow/.style={->, very thick, #1},
+                reply/.style={->, very thick, dashed, #1},
+                lbl/.style={font=\footnotesize, align=center, text=#1},
+                step/.style={circle, solid, draw=#1, fill=white, text=#1, font=\scriptsize\bfseries,
+                inner sep=0pt, minimum size=0.36cm},
+            ]
+
+            % UDDI registry (broker)
+            \draw[box=orange!70!black] (3.3,4.55) rectangle (7.7,6.65);
+            \node[head=orange!70!black] at (5.5,6.32) {UDDI registry};
+            \node[cylinder, shape border rotate=90, aspect=0.25, draw=orange!70!black, thick,
+            fill=white, minimum width=1.3cm, minimum height=0.9cm, font=\footnotesize]
+            at (4.2,5.22) {Registry};
+            \node[inner=orange!70!black, align=left, inner sep=3pt] at (6.35,5.22)
+            {\textbf{Calculator}\\$\rightarrow$ WSDL location};
+
+            % WSDL document
+            \draw[teal!60!black, thick, fill=white]
+            (9.15,4.7) -- (10.75,4.7) -- (10.75,5.95) -- (10.5,6.2) -- (9.15,6.2) -- cycle;
+            \draw[teal!60!black, thick] (10.5,6.2) -- (10.5,5.95) -- (10.75,5.95);
+            \node[font=\footnotesize, text=teal!60!black, align=center] (wsdl) at (9.95,5.45)
+            {\textbf{WSDL}\\\ttfamily add(a,b)};
+
+            % Java application (consumer)
+            \draw[box=blue!50!black] (0,0) rectangle (3.7,3.1);
+            \node[head=blue!50!black] at (1.85,2.68) {Java application\\[-2pt]
+            {\footnotesize\mdseries\itshape service consumer}};
+            \node[inner=violet!60!black, minimum width=2.8cm, minimum height=0.85cm] (proxy)
+            at (1.85,1.45) {\textbf{client proxy}\\generated from WSDL};
+
+            % Calculator provider
+            \draw[box=red!60!black] (7.7,0) rectangle (11.4,3.1);
+            \node[head=red!60!black] at (9.55,2.68) {Calculator provider\\[-2pt]
+            {\footnotesize\mdseries\itshape service provider}};
+            \node[inner=red!60!black, minimum width=2.8cm, minimum height=0.85cm] (svc)
+            at (9.55,1.45) {\textbf{CalculatorService}\\\texttt{add(a, b)}};
+
+            % 1. describe with WSDL, 2. register in UDDI
+            \draw[flow=teal!60!black] (9.95,3.1) -- (9.95,4.7)
+            node[pos=0.5, step=teal!60!black] {1}
+            node[pos=0.5, left=6pt, lbl=teal!60!black] {describe};
+            \draw[flow=orange!70!black] (9.15,5.75) -- (7.7,5.75)
+            node[pos=0.5, step=orange!70!black] {2}
+            node[pos=0.5, above=5pt, lbl=orange!70!black] {register};
+
+            % 3. discover, 4. retrieve WSDL
+            \draw[flow=blue!50!black] (0.8,3.1) |- (3.3,5.75)
+            node[pos=0.25, step=blue!50!black] {3}
+            node[pos=0.25, right=6pt, lbl=blue!50!black] {discover};
+            \draw[flow=teal!60!black] (9.15,4.85) -- (2.7,3.1)
+            node[pos=0.13, step=teal!60!black] {4}
+            node[pos=0.55, below, sloped, lbl=teal!60!black] {retrieve WSDL, generate client};
+
+            % 5. SOAP request, 6. SOAP response (direct, no registry)
+            \draw[flow=violet!60!black] (proxy.east |- 0,1.7) -- (svc.west |- 0,1.7)
+            node[pos=0.12, step=violet!60!black] {5}
+            node[pos=0.55, above, lbl=violet!60!black] {SOAP request \texttt{add(5, 3)}};
+            \draw[reply=red!60!black] (svc.west |- 0,1.2) -- (proxy.east |- 0,1.2)
+            node[pos=0.88, step=red!60!black] {6}
+            node[pos=0.45, below, lbl=red!60!black] {SOAP response \texttt{8}};
+            \node[font=\footnotesize\itshape, text=black!60, align=center] at (5.7,0.4)
+            {direct call,\\UDDI not involved};
+        \end{tikzpicture}
+        \captionof{figure}{\textbf{How WSDL, SOAP and UDDI work together.} The provider describes its
+            calculator service with WSDL (1) and registers it in UDDI (2). The Java
+            application discovers it (3), retrieves the WSDL and generates a client (4), then
+            invokes \texttt{add(5, 3)} with a SOAP request (5) and receives \texttt{8} in the
+            SOAP response (6).
+        The SOAP exchange goes directly from consumer to provider, without UDDI.}
+        \label{fig:wsdl-soap-uddi-together}
+    \end{center}
+\end{examplebox}
+
+\newpage
+\begin{flushleft}
+    \textcolor{Green3}{\faIcon{balance-scale} \textbf{SOA vs. Client-Server and Multi-Tier Architectures}}
+\end{flushleft}
+After introducing SOA and traditional Web Services, a natural question arises: \emph{\textbf{isn't SOA simply another name for client-server?}} This question is understandable, as both SOA and client-server architectures involve a consumer (client) invoking a service (server). However, there are important distinctions because \textbf{emphasize different aspects of a system}, even though they can coexist.
+
+\highspace
+\begin{table}[H]
+    \centering
+    \begin{tabular}{@{} l p{20em} @{}}
+        \toprule
+        \textbf{Architecture} & \textbf{Main question} \\
+        \midrule
+        Client-Server & \emph{Who requests functionality, and who provides it?} \\[1.4em]
+        Multi-Tier & \emph{How are application responsibilities distributed across execution tiers?} \\[1.4em]
+        SOA & \emph{How can a system be composed of loosely coupled, reusable services?} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\highspace
+For example, consider the classic e-commerce example:
+\begin{itemize}
+    \item It uses \textbf{client-server} interactions because consumers (i.e., customers) invoke providers (i.e., servers) to request and receive services.
+    \item It can be \textbf{three-tier} because presentation (i.e., web browser), application logic (i.e., order processing), and data management (i.e., database) are separated into different tiers.
+    \item It follows \textbf{SOA principles} because authentication, payment, inventory, and shipping are exposed as independently defined services.
+    \item It might use \textbf{SOAP-based Web Services} as the communication technology between some components (e.g., between the order processing service and the payment service).
+\end{itemize}
+So, SOA is not a replacement for client-server or multi-tier architectures. Also, \hl{SOA is not synonymous with SOAP}, because SOAP-based Web Services are \textbf{just one way to implement SOA}. The broader SOA principles can also be implemented with other communication technologies.
+
+\highspace
+\begin{takeawaysbox}
+    \begin{enumerate}
+        \item \textbf{SOA organizes distributed applications around services.} Services are reusable, loosely coupled units of functionality exposed through well-defined interfaces.
+
+        \item \textbf{Four fundamental concepts define the traditional model.}
+            \begin{itemize}
+                \item \textbf{Service}: the functionality being offered.
+                \item \textbf{Provider}: implements and exposes the service.
+                \item \textbf{Consumer}: discovers and invokes the service.
+                \item \textbf{Broker}: maintains information used for service discovery.
+            \end{itemize}
+
+        \item \textbf{The typical SOA interaction follows a publish-find-bind-invoke model.}
+
+        \item \textbf{Orchestration combines services into workflows.} An orchestrator coordinates multiple service invocations to accomplish a larger objective.
+
+        \item \textbf{Remember the three traditional Web Services technologies.}
+            \begin{equation*}
+                \begin{aligned}
+                    \text{WSDL} &\rightarrow \text{Describe}\\
+                    \text{SOAP} &\rightarrow \text{Communicate}\\
+                    \text{UDDI} &\rightarrow \text{Discover}
+                \end{aligned}
+            \end{equation*}
+    \end{enumerate}
+    In general, \hl{SOA changes the way we think about building distributed applications.} Instead of thinking only about distributing application components across machines, we think about \hl{composing independently defined services into larger applications.} This makes the service contract, loose coupling, discovery, and composition central architectural concerns.
+\end{takeawaysbox}

@@ -12,6 +12,7 @@
 - add `Modeling`
   - add `Software Architecture and Middleware`
   - add `Client-Server and Multi-Tier Architectures`
+  - add `Service-Oriented Architecture (SOA)`
 
 ---------------------
 
